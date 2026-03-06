@@ -46,18 +46,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt);
             e.HasQueryFilter(x => !x.IsDeleted);
-
-            e.HasOne(x => x.CreatedByUser)
-             .WithMany()
-             .HasForeignKey(x => x.CreatedById)
-             .IsRequired(false)
-             .OnDelete(DeleteBehavior.SetNull);
-
-            e.HasOne(x => x.UpdatedByUser)
-             .WithMany()
-             .HasForeignKey(x => x.UpdatedById)
-             .IsRequired(false)
-             .OnDelete(DeleteBehavior.SetNull);
         });
 
         // RefreshToken

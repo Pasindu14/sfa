@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using sfa_api.Common.Errors;
 using sfa_api.Features.Users.DTOs;
 using sfa_api.Features.Users.Entities;
@@ -9,11 +8,9 @@ namespace sfa_api.Features.Users.Services;
 
 public class UserService(
     IUserRepository repo,
-    IHttpContextAccessor httpContextAccessor,
     ILogger<UserService> logger) : IUserService
 {
     private readonly IUserRepository _repo = repo;
-    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
     private readonly ILogger<UserService> _logger = logger;
 
     public async Task<UserDto> GetUserByIdAsync(int userId, CancellationToken ct = default)
@@ -35,28 +32,23 @@ public class UserService(
         );
     }
 
-    public async Task<UserDto> CreateUserAsync(CreateUserRequest request, CancellationToken ct = default)
+    public async Task<UserDto> CreateUserAsync(CreateUserRequest request, int? callerId, CancellationToken ct = default)
     {
         var existingUser = await _repo.GetUserByUsernameAsync(request.Username, ct);
         if (existingUser != null)
-            throw new ValidationException(new Dictionary<string, string[]>
-                { { "Username", new[] { "Username already exists." } } });
+            throw new DuplicateResourceException("Username");
 
         existingUser = await _repo.GetUserByEmailAsync(request.Email, ct);
         if (existingUser != null)
-            throw new ValidationException(new Dictionary<string, string[]>
-                { { "Email", new[] { "Email already exists." } } });
+            throw new DuplicateResourceException("Email");
 
         existingUser = await _repo.GetUserByPhoneAsync(request.Phone, ct);
         if (existingUser != null)
-            throw new ValidationException(new Dictionary<string, string[]>
-                { { "Phone", new[] { "Phone number already exists." } } });
+            throw new DuplicateResourceException("Phone");
 
         if (!Enum.TryParse<UserRole>(request.Role, out var role))
             throw new ValidationException(new Dictionary<string, string[]>
                 { { "Role", new[] { "Invalid role." } } });
-
-        var currentUserId = GetCurrentUserId();
 
         var user = new User
         {
@@ -68,8 +60,8 @@ public class UserService(
             Role = role,
             DeviceId = request.DeviceId,
             IsActive = true,
-            CreatedById = currentUserId,
-            UpdatedById = currentUserId,
+            CreatedBy = callerId,
+            UpdatedBy = callerId,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -81,20 +73,18 @@ public class UserService(
         return MapToDto(user);
     }
 
-    public async Task<UserDto> UpdateUserAsync(int userId, UpdateUserRequest request, CancellationToken ct = default)
+    public async Task<UserDto> UpdateUserAsync(int userId, UpdateUserRequest request, int? callerId, CancellationToken ct = default)
     {
         var user = await _repo.GetUserByIdAsync(userId, ct)
             ?? throw new NotFoundException("User", userId);
 
         var existingUser = await _repo.GetUserByEmailAsync(request.Email, ct);
         if (existingUser != null && existingUser.Id != userId)
-            throw new ValidationException(new Dictionary<string, string[]>
-                { { "Email", new[] { "Email already exists." } } });
+            throw new DuplicateResourceException("Email");
 
         existingUser = await _repo.GetUserByPhoneAsync(request.Phone, ct);
         if (existingUser != null && existingUser.Id != userId)
-            throw new ValidationException(new Dictionary<string, string[]>
-                { { "Phone", new[] { "Phone number already exists." } } });
+            throw new DuplicateResourceException("Phone");
 
         if (!Enum.TryParse<UserRole>(request.Role, out var role))
             throw new ValidationException(new Dictionary<string, string[]>
@@ -105,7 +95,7 @@ public class UserService(
         user.Phone = request.Phone;
         user.Role = role;
         user.DeviceId = request.DeviceId;
-        user.UpdatedById = GetCurrentUserId();
+        user.UpdatedBy = callerId;
         user.UpdatedAt = DateTime.UtcNow;
 
         await _repo.UpdateUserAsync(user, ct);
@@ -126,7 +116,7 @@ public class UserService(
         _logger.LogInformation("User {UserId} deleted", userId);
     }
 
-    public async Task ChangePasswordAsync(int userId, ChangePasswordRequest request, CancellationToken ct = default)
+    public async Task ChangePasswordAsync(int userId, ChangePasswordRequest request, int? callerId, CancellationToken ct = default)
     {
         var user = await _repo.GetUserByIdAsync(userId, ct)
             ?? throw new NotFoundException("User", userId);
@@ -136,7 +126,7 @@ public class UserService(
                 { { "CurrentPassword", new[] { "Current password is incorrect." } } });
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
-        user.UpdatedById = GetCurrentUserId();
+        user.UpdatedBy = callerId;
         user.UpdatedAt = DateTime.UtcNow;
 
         await _repo.UpdateUserAsync(user, ct);
@@ -145,13 +135,13 @@ public class UserService(
         _logger.LogInformation("Password changed for user {UserId}", userId);
     }
 
-    public async Task ResetPasswordAsync(int userId, ResetPasswordRequest request, CancellationToken ct = default)
+    public async Task ResetPasswordAsync(int userId, ResetPasswordRequest request, int? callerId, CancellationToken ct = default)
     {
         var user = await _repo.GetUserByIdAsync(userId, ct)
             ?? throw new NotFoundException("User", userId);
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
-        user.UpdatedById = GetCurrentUserId();
+        user.UpdatedBy = callerId;
         user.UpdatedAt = DateTime.UtcNow;
 
         await _repo.UpdateUserAsync(user, ct);
@@ -160,26 +150,19 @@ public class UserService(
         _logger.LogInformation("Password reset for user {UserId}", userId);
     }
 
-    public async Task DeactivateUserAsync(int userId, CancellationToken ct = default)
+    public async Task DeactivateUserAsync(int userId, int? callerId, CancellationToken ct = default)
     {
         var user = await _repo.GetUserByIdAsync(userId, ct)
             ?? throw new NotFoundException("User", userId);
 
         user.IsActive = false;
-        user.UpdatedById = GetCurrentUserId();
+        user.UpdatedBy = callerId;
         user.UpdatedAt = DateTime.UtcNow;
 
         await _repo.UpdateUserAsync(user, ct);
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("User {UserId} deactivated", userId);
-    }
-
-    private int? GetCurrentUserId()
-    {
-        var claim = _httpContextAccessor.HttpContext?.User
-            .FindFirstValue(ClaimTypes.NameIdentifier);
-        return int.TryParse(claim, out var id) ? id : null;
     }
 
     private static UserDto MapToDto(User user) => new(
@@ -190,8 +173,6 @@ public class UserService(
         Phone: user.Phone,
         Role: user.Role.ToString(),
         IsActive: user.IsActive,
-        CreatedById: user.CreatedById,
-        UpdatedById: user.UpdatedById,
         CreatedAt: user.CreatedAt,
         UpdatedAt: user.UpdatedAt
     );

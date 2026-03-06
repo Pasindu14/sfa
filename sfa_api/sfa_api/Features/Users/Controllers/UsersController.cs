@@ -69,8 +69,10 @@ public class UsersController(
             throw new Common.Errors.ValidationException(fields);
         }
 
-        var result = await _userService.CreateUserAsync(request, ct);
-        return Ok(ResponseHelper.Ok(result, correlationId));
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
+        var result = await _userService.CreateUserAsync(request, callerId, ct);
+        return CreatedAtAction(nameof(GetUserById), new { id = result.Id },
+            ResponseHelper.Created(result, correlationId));
     }
 
     /// <summary>
@@ -101,7 +103,8 @@ public class UsersController(
             throw new Common.Errors.ValidationException(fields);
         }
 
-        var result = await _userService.UpdateUserAsync(id, request, ct);
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
+        var result = await _userService.UpdateUserAsync(id, request, callerId, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 
@@ -112,9 +115,8 @@ public class UsersController(
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteUser(int id, CancellationToken ct)
     {
-        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
         await _userService.DeleteUserAsync(id, ct);
-        return Ok(ResponseHelper.Ok("User deleted successfully.", correlationId));
+        return NoContent();
     }
 
     /// <summary>
@@ -143,7 +145,8 @@ public class UsersController(
             throw new Common.Errors.ValidationException(fields);
         }
 
-        await _userService.ChangePasswordAsync(id, request, ct);
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
+        await _userService.ChangePasswordAsync(id, request, callerId, ct);
         return Ok(ResponseHelper.Ok("Password changed successfully.", correlationId));
     }
 
@@ -166,7 +169,8 @@ public class UsersController(
             throw new Common.Errors.ValidationException(fields);
         }
 
-        await _userService.ResetPasswordAsync(id, request, ct);
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
+        await _userService.ResetPasswordAsync(id, request, callerId, ct);
         return Ok(ResponseHelper.Ok("Password reset successfully.", correlationId));
     }
 
@@ -178,8 +182,8 @@ public class UsersController(
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeactivateUser(int id, CancellationToken ct)
     {
-        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
-        await _userService.DeactivateUserAsync(id, ct);
-        return Ok(ResponseHelper.Ok("User deactivated successfully.", correlationId));
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
+        await _userService.DeactivateUserAsync(id, callerId, ct);
+        return NoContent();
     }
 }

@@ -8,8 +8,6 @@ public record UserDto(
     string Phone,
     string Role,
     bool IsActive,
-    int? CreatedById,
-    int? UpdatedById,
     DateTime CreatedAt,
     DateTime UpdatedAt
 );

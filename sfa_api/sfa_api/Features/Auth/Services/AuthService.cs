@@ -40,7 +40,11 @@ public class AuthService(
                 "Invalid username or password.");
         }
 
-        // 2. Validate DeviceId for Sales Reps
+        // 2. Check account is active
+        if (!user.IsActive)
+            throw new AuthenticationException("AUTH_ACCOUNT_DISABLED", "Account is disabled.");
+
+        // 3. Validate DeviceId for Sales Reps
         if (user.Role == UserRole.SalesRep && string.IsNullOrEmpty(request.DeviceId))
             throw new ValidationException(DeviceIdRequiredError);
 

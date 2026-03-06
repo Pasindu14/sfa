@@ -78,6 +78,9 @@ try
 
     var app = builder.Build();
 
+    // ── Seed ──────────────────────────────────────────────────────────────
+    await DataSeeder.SeedAsync(app.Services, app.Logger);
+
     // ── Middleware Pipeline (ORDER MATTERS) ───────────────────────────────
     app.UseMiddleware<CorrelationIdMiddleware>();    // 1. Correlation ID first
     app.UseMiddleware<GlobalExceptionMiddleware>();  // 2. Catch all exceptions
@@ -101,7 +104,7 @@ try
 
     app.Run();
 }
-catch (Exception ex)
+catch (Exception ex) when (ex is not HostAbortedException)
 {
     Log.Fatal(ex, "Application startup failed");
 }

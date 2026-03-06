@@ -17,12 +17,10 @@ public class User
     // Audit fields
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-    public int? CreatedById { get; set; }
-    public int? UpdatedById { get; set; }
+    public int? CreatedBy { get; set; }
+    public int? UpdatedBy { get; set; }
     public bool IsDeleted { get; set; } = false;
 
     // Navigation
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
-    public User? CreatedByUser { get; set; }
-    public User? UpdatedByUser { get; set; }
 }
