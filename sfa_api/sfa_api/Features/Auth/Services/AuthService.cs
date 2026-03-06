@@ -102,8 +102,11 @@ public class AuthService(
         // Consume old token
         storedToken.IsConsumed = true;
 
+        // Guard: user may have been deactivated or deleted since token was issued
+        var user = storedToken.User
+            ?? throw new InvalidTokenException();
+
         // Issue new access token
-        var user = storedToken.User;
         var newAccessToken = _jwtHelper.GenerateAccessToken(user, out _);
 
         // Issue new refresh token — same family, rotated

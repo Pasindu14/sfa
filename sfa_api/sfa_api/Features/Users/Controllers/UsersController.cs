@@ -83,10 +83,10 @@ public class UsersController(
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
 
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? throw new AuthenticationException("AUTH_INVALID_TOKEN", "Invalid token.");
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(userIdClaim, out var currentUserId))
+            throw new AuthenticationException("AUTH_INVALID_TOKEN", "Invalid token.");
 
-        var currentUserId = int.Parse(userIdClaim);
         var roleClaim = User.FindFirstValue(ClaimTypes.Role);
 
         if (roleClaim != "Admin" && currentUserId != id)
@@ -127,10 +127,11 @@ public class UsersController(
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
 
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? throw new AuthenticationException("AUTH_INVALID_TOKEN", "Invalid token.");
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(userIdClaim, out var currentUserIdForPassword))
+            throw new AuthenticationException("AUTH_INVALID_TOKEN", "Invalid token.");
 
-        if (int.Parse(userIdClaim) != id)
+        if (currentUserIdForPassword != id)
             throw new AuthorizationException("other users");
 
         var validation = await _changePasswordValidator.ValidateAsync(request, ct);

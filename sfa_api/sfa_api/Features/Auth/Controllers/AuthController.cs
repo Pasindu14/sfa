@@ -94,10 +94,9 @@ public class AuthController(
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
 
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? throw new AuthenticationException("AUTH_INVALID_TOKEN", "Invalid token.");
-
-        var userId = int.Parse(userIdClaim);
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(userIdClaim, out var userId))
+            throw new AuthenticationException("AUTH_INVALID_TOKEN", "Invalid token.");
 
         await _authService.LogoutAllAsync(userId, ct);
         return Ok(ResponseHelper.Ok("Logged out from all devices successfully.", correlationId));
