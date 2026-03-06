@@ -74,9 +74,11 @@ export function useUserDataTable(
   _dateRange?: { from_date: string; to_date: string },
   _sortBy?: string,
   _sortOrder?: string,
+  _caseConfig?: unknown,
+  customFilters?: { role?: string },
 ) {
   return useQuery({
-    queryKey: userKeys.list({ page, pageSize, search }),
+    queryKey: userKeys.list({ page, pageSize, search, customFilters }),
     queryFn: async () => {
       const result = await getUsersAction(page, pageSize)
       if (!result.success) throw new Error(result.error)
@@ -92,9 +94,11 @@ export function useUserDataTable(
               u.role.toLowerCase().includes(term)
           )
         : users
+      const role = customFilters?.role
+      const roleFiltered = role ? filtered.filter((u) => u.role === role) : filtered
       return {
         success: true as const,
-        data: filtered,
+        data: roleFiltered,
         pagination: {
           page: p,
           limit: ps,

@@ -3,6 +3,7 @@
 import { useCallback } from 'react'
 import { DataTable } from '@/components/data-table/data-table'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { UserPlus } from 'lucide-react'
 import {
   useEditDialog,
@@ -66,6 +67,22 @@ export function UserTable() {
         headers: ['Name', 'Username', 'Email', 'Phone', 'Role', 'Status', 'Created At'],
       }}
       idField="id"
+      renderCustomFilters={(filters, setFilters) => (
+        <Select
+          value={filters?.role ?? ''}
+          onValueChange={(value) => setFilters({ ...filters, role: value === 'all' ? '' : value })}
+        >
+          <SelectTrigger className="h-8 w-[130px]">
+            <SelectValue placeholder="All Roles" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Roles</SelectItem>
+            <SelectItem value="Admin">Admin</SelectItem>
+            <SelectItem value="Manager">Manager</SelectItem>
+            <SelectItem value="SalesRep">Sales Rep</SelectItem>
+          </SelectContent>
+        </Select>
+      )}
       renderToolbarContent={() => (
         <Button onClick={openCreate} className="gap-2">
           <UserPlus className="h-4 w-4" />

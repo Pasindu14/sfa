@@ -6,5 +6,6 @@
       "Bash(dotnet run:*)",
       "Bash(npm run:*)"
     ]
-  }
+  },
+  "outputStyle": "Explanatory"
 }
