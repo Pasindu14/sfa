@@ -7,6 +7,15 @@ using sfa_api.Infrastructure.Caching;
 using sfa_api.Infrastructure.Locking;
 using sfa_api.Infrastructure.Logging;
 using sfa_api.Infrastructure.Persistence;
+using sfa_api.Features.Users.Repositories;
+using sfa_api.Features.Users.Services;
+using sfa_api.Features.Users.Validators;
+using sfa_api.Features.Users.Requests;
+using sfa_api.Features.Auth.Repositories;
+using sfa_api.Features.Auth.Services;
+using sfa_api.Features.Auth.Validators;
+using sfa_api.Features.Auth.Requests;
+using FluentValidation;
 
 // Bootstrap logger
 Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger();
@@ -51,6 +60,21 @@ try
     builder.Services.AddSFAHealthChecks(builder.Configuration);
 
     // ── Features (added here as features are built) ───────────────────────
+
+    // ── Auth Feature ──────────────────────────────────────────────────────
+    builder.Services.AddScoped<IAuthRepository, AuthRepository>();
+    builder.Services.AddScoped<IAuthService, AuthService>();
+    builder.Services.AddScoped<IJwtTokenHelper, JwtTokenHelper>();
+    builder.Services.AddScoped<IValidator<LoginRequest>, LoginValidator>();
+    builder.Services.AddScoped<IValidator<RefreshRequest>, RefreshValidator>();
+
+    // ── Users Feature ─────────────────────────────────────────────────────
+    builder.Services.AddScoped<IUserRepository, UserRepository>();
+    builder.Services.AddScoped<IUserService, UserService>();
+    builder.Services.AddScoped<IValidator<CreateUserRequest>, CreateUserValidator>();
+    builder.Services.AddScoped<IValidator<UpdateUserRequest>, UpdateUserValidator>();
+    builder.Services.AddScoped<IValidator<ChangePasswordRequest>, ChangePasswordValidator>();
+    builder.Services.AddScoped<IValidator<ResetPasswordRequest>, ResetPasswordValidator>();
 
     var app = builder.Build();
 
