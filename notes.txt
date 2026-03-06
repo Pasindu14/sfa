@@ -1,0 +1,34 @@
+dotnet watch run
+dotnet ef database update
+
+# Migration commands
+dotnet ef migrations add MigrationName
+dotnet ef migrations remove
+dotnet ef migrations list
+dotnet ef database update
+http://localhost:5136/swagger/index.html
+
+
+
+dotnet ef database update --project "d:\Github\sfa_api_v1\SFA.API\SFA.API\SFA.API.csproj"
+dotnet ef migrations add FixAuditLogSchema --project "d:\Github\sfa_api_v1\SFA.API\SFA.API\SFA.API.csproj"
+dotnet ef migrations remove --project "d:\Github\sfa_api_v1\SFA.API\SFA.API\SFA.API.csproj"
+dotnet ef migrations list --project "d:\Github\sfa_api_v1\SFA.API\SFA.API\SFA.API.csproj"
+dotnet ef database update --project "d:\Github\sfa_api_v1\SFA.API\SFA.API\SFA.API.csproj"
+
+
+INSERT INTO "Users" ("Name", "Username", "Email", "PasswordHash", "Role", "DeviceId", "IsActive", "CreatedAt", "UpdatedAt", "CreatedBy", "UpdatedBy", "IsDeleted")
+VALUES (
+    'Admin User',
+    'admin',
+    'admin@example.com',
+    '$2a$11$AJamPi1SZjpNeKGq7U9d3ugwF1Ey90frHgVzzq7OYddjvc5hf.9/a',
+    0,
+    '1',
+    true,
+    NOW(),
+    NOW(),
+    'system',
+    'system',
+    false
+);
