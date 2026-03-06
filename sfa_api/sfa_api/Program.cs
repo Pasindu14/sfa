@@ -11,6 +11,10 @@ using sfa_api.Features.Users.Repositories;
 using sfa_api.Features.Users.Services;
 using sfa_api.Features.Users.Validators;
 using sfa_api.Features.Users.Requests;
+using sfa_api.Features.Distributors.Repositories;
+using sfa_api.Features.Distributors.Services;
+using sfa_api.Features.Distributors.Validators;
+using sfa_api.Features.Distributors.Requests;
 using sfa_api.Features.Auth.Repositories;
 using sfa_api.Features.Auth.Services;
 using sfa_api.Features.Auth.Validators;
@@ -75,6 +79,12 @@ try
     builder.Services.AddScoped<IValidator<UpdateUserRequest>, UpdateUserValidator>();
     builder.Services.AddScoped<IValidator<ChangePasswordRequest>, ChangePasswordValidator>();
     builder.Services.AddScoped<IValidator<ResetPasswordRequest>, ResetPasswordValidator>();
+
+    // ── Distributors Feature ──────────────────────────────────────────────
+    builder.Services.AddScoped<IDistributorRepository, DistributorRepository>();
+    builder.Services.AddScoped<IDistributorService, DistributorService>();
+    builder.Services.AddScoped<IValidator<CreateDistributorRequest>, CreateDistributorValidator>();
+    builder.Services.AddScoped<IValidator<UpdateDistributorRequest>, UpdateDistributorValidator>();
 
     var app = builder.Build();
 

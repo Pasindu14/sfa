@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using sfa_api.Common.Audit;
 using sfa_api.Features.Auth.Entities;
+using sfa_api.Features.Distributors.Entities;
 using sfa_api.Features.Users.Entities;
 
 namespace sfa_api.Infrastructure.Persistence;
@@ -15,6 +16,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     // Feature tables
     public DbSet<User> Users => Set<User>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<Distributor> Distributors => Set<Distributor>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -60,6 +62,21 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .HasForeignKey(x => x.UserId)
              .IsRequired(false);
             e.HasQueryFilter(x => x.User == null || !x.User.IsDeleted);
+        });
+
+        // Distributor
+        modelBuilder.Entity<Distributor>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.Property(x => x.TradeDiscount).HasColumnType("decimal(5,2)");
+            e.Property(x => x.Commission).HasColumnType("decimal(5,2)");
+            e.HasIndex(x => x.Email).IsUnique();
+            e.HasIndex(x => x.Phone).IsUnique();
+            e.HasIndex(x => x.Code).IsUnique();
+            e.HasIndex(x => x.IsDeleted);
+            e.HasIndex(x => x.UpdatedAt);
+            e.HasQueryFilter(x => !x.IsDeleted);
         });
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
