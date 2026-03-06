@@ -17,9 +17,6 @@ public class DistributorRepository(AppDbContext context) : IDistributorRepositor
     public async Task<Distributor?> GetByPhoneAsync(string phone, CancellationToken ct = default)
         => await _context.Distributors.FirstOrDefaultAsync(d => d.Phone == phone, ct);
 
-    public async Task<Distributor?> GetByCodeAsync(string code, CancellationToken ct = default)
-        => await _context.Distributors.FirstOrDefaultAsync(d => d.Code == code, ct);
-
     public async Task<(IEnumerable<Distributor> Distributors, int TotalCount)> GetAllAsync(int skip, int take, CancellationToken ct = default)
     {
         var totalCount = await _context.Distributors.CountAsync(ct);

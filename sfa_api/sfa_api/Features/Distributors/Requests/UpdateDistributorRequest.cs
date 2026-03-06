@@ -6,8 +6,7 @@ public class UpdateDistributorRequest
     public string Address { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
-    public string Alias { get; set; } = string.Empty;
-    public string Code { get; set; } = string.Empty;
+    public int Alias { get; set; }
     public decimal TradeDiscount { get; set; }
     public decimal Commission { get; set; }
     public string? Remark { get; set; }

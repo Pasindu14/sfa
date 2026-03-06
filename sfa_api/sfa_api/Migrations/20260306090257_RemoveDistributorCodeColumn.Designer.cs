@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using sfa_api.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using sfa_api.Infrastructure.Persistence;
 namespace sfa_api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260306090257_RemoveDistributorCodeColumn")]
+    partial class RemoveDistributorCodeColumn
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -168,8 +171,9 @@ namespace sfa_api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("Alias")
-                        .HasColumnType("integer");
+                    b.Property<string>("Alias")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<decimal>("Commission")
                         .HasColumnType("decimal(5,2)");

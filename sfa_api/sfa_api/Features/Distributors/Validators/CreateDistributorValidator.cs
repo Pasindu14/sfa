@@ -27,19 +27,15 @@ public class CreateDistributorValidator : AbstractValidator<CreateDistributorReq
             .MaximumLength(255).WithMessage("Email must not exceed 255 characters.");
 
         RuleFor(x => x.Alias)
-            .NotEmpty().WithMessage("Alias is required.")
-            .MaximumLength(100).WithMessage("Alias must not exceed 100 characters.");
-
-        RuleFor(x => x.Code)
-            .NotEmpty().WithMessage("Code is required.")
-            .MaximumLength(50).WithMessage("Code must not exceed 50 characters.")
-            .Matches("^[a-zA-Z0-9_-]+$").WithMessage("Code can only contain letters, numbers, underscores, and hyphens.");
+            .GreaterThan(0).WithMessage("Alias must be greater than 0.");
 
         RuleFor(x => x.TradeDiscount)
-            .InclusiveBetween(0, 100).WithMessage("Trade discount must be between 0 and 100.");
+            .GreaterThanOrEqualTo(0).WithMessage("Trade discount is required and cannot be negative.")
+            .LessThanOrEqualTo(100).WithMessage("Trade discount cannot exceed 100%.");
 
         RuleFor(x => x.Commission)
-            .InclusiveBetween(0, 100).WithMessage("Commission must be between 0 and 100.");
+            .GreaterThanOrEqualTo(0).WithMessage("Commission is required and cannot be negative.")
+            .LessThanOrEqualTo(100).WithMessage("Commission cannot exceed 100%.");
 
         RuleFor(x => x.Remark)
             .MaximumLength(1000).WithMessage("Remark must not exceed 1000 characters.")

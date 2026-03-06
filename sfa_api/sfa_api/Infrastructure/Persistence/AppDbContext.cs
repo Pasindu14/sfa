@@ -73,7 +73,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Commission).HasColumnType("decimal(5,2)");
             e.HasIndex(x => x.Email).IsUnique();
             e.HasIndex(x => x.Phone).IsUnique();
-            e.HasIndex(x => x.Code).IsUnique();
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt);
             e.HasQueryFilter(x => !x.IsDeleted);

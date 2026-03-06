@@ -42,10 +42,6 @@ public class DistributorService(
         if (existing != null)
             throw new DuplicateResourceException("Phone");
 
-        existing = await _repo.GetByCodeAsync(request.Code, ct);
-        if (existing != null)
-            throw new DuplicateResourceException("Code");
-
         var distributor = new Distributor
         {
             Name = request.Name,
@@ -53,7 +49,6 @@ public class DistributorService(
             Phone = request.Phone,
             Email = request.Email,
             Alias = request.Alias,
-            Code = request.Code,
             TradeDiscount = request.TradeDiscount,
             Commission = request.Commission,
             Remark = request.Remark,
@@ -87,16 +82,11 @@ public class DistributorService(
         if (existing != null && existing.Id != id)
             throw new DuplicateResourceException("Phone");
 
-        existing = await _repo.GetByCodeAsync(request.Code, ct);
-        if (existing != null && existing.Id != id)
-            throw new DuplicateResourceException("Code");
-
         distributor.Name = request.Name;
         distributor.Address = request.Address;
         distributor.Phone = request.Phone;
         distributor.Email = request.Email;
         distributor.Alias = request.Alias;
-        distributor.Code = request.Code;
         distributor.TradeDiscount = request.TradeDiscount;
         distributor.Commission = request.Commission;
         distributor.Remark = request.Remark;
@@ -161,7 +151,6 @@ public class DistributorService(
         Phone: d.Phone,
         Email: d.Email,
         Alias: d.Alias,
-        Code: d.Code,
         TradeDiscount: d.TradeDiscount,
         Commission: d.Commission,
         Remark: d.Remark,
