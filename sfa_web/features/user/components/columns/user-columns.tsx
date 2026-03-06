@@ -104,7 +104,7 @@ export function getUserColumns(actions: UserColumnActions): ColumnDef<UserDto>[]
     },
     {
       id: 'actions',
-      header: '',
+      header: 'Actions',
       cell: ({ row }) => {
         const user = row.original
         return (

@@ -91,7 +91,7 @@ export function getDistributorColumns(actions: DistributorColumnActions): Column
     },
     {
       id: 'actions',
-      header: '',
+      header: 'Actions',
       cell: ({ row }) => {
         const item = row.original
         return (

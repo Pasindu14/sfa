@@ -97,7 +97,17 @@ function EditDistributorDialog() {
         ) : (
           <DistributorForm
             mode="edit"
-            defaultValues={distributor}
+            defaultValues={
+              distributor
+                ? {
+                    ...distributor,
+                    remark: distributor.remark ?? undefined,
+                    vatRegNo: distributor.vatRegNo ?? undefined,
+                    latitude: distributor.latitude ?? undefined,
+                    longitude: distributor.longitude ?? undefined,
+                  }
+                : undefined
+            }
             onSubmit={(data) => {
               if (!selectedId) return
               mutate({ id: selectedId, data: data as UpdateDistributorInput })

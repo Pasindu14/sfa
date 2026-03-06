@@ -3,9 +3,9 @@ import { z } from 'zod'
 // Validation rules
 const emailRules = z.string().min(1, 'Email is required').email('Invalid email format')
 const phoneRules = z.string().min(10, 'Phone must be at least 10 characters').regex(/^[0-9+\-\s()]+$/, 'Invalid phone format')
-const aliasRules = z.coerce.number().int('Alias must be a whole number').positive('Alias must be greater than 0')
-const tradeDiscountRules = z.coerce.number().min(0, 'Trade discount is required and cannot be negative').max(100, 'Trade discount cannot exceed 100%')
-const commissionRules = z.coerce.number().min(0, 'Commission is required and cannot be negative').max(100, 'Commission cannot exceed 100%')
+const aliasRules = z.number().int('Alias must be a whole number').positive('Alias must be greater than 0')
+const tradeDiscountRules = z.number().min(0, 'Trade discount cannot be negative').max(100, 'Trade discount cannot exceed 100%')
+const commissionRules = z.number().min(0, 'Commission cannot be negative').max(100, 'Commission cannot exceed 100%')
 
 // Create schema (all fields needed for creation)
 export const createDistributorSchema = z.object({
@@ -18,8 +18,8 @@ export const createDistributorSchema = z.object({
   commission: commissionRules,
   remark: z.string().optional(),
   vatRegNo: z.string().optional(),
-  latitude: z.coerce.number().optional(),
-  longitude: z.coerce.number().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
 })
 
 // Update schema (same as create)
@@ -33,8 +33,8 @@ export const updateDistributorSchema = z.object({
   commission: commissionRules,
   remark: z.string().optional(),
   vatRegNo: z.string().optional(),
-  latitude: z.coerce.number().optional(),
-  longitude: z.coerce.number().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
 })
 
 // Filter schema (for search and pagination)

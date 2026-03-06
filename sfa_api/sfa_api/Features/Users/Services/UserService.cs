@@ -34,16 +34,13 @@ public class UserService(
 
     public async Task<UserDto> CreateUserAsync(CreateUserRequest request, int? callerId, CancellationToken ct = default)
     {
-        var existingUser = await _repo.GetUserByUsernameAsync(request.Username, ct);
-        if (existingUser != null)
+        if (await _repo.ExistsByUsernameAsync(request.Username, ct))
             throw new DuplicateResourceException("Username");
 
-        existingUser = await _repo.GetUserByEmailAsync(request.Email, ct);
-        if (existingUser != null)
+        if (await _repo.ExistsByEmailAsync(request.Email, ct))
             throw new DuplicateResourceException("Email");
 
-        existingUser = await _repo.GetUserByPhoneAsync(request.Phone, ct);
-        if (existingUser != null)
+        if (await _repo.ExistsByPhoneAsync(request.Phone, ct))
             throw new DuplicateResourceException("Phone");
 
         if (!Enum.TryParse<UserRole>(request.Role, out var role))
@@ -78,16 +75,13 @@ public class UserService(
         var user = await _repo.GetUserByIdAsync(userId, ct)
             ?? throw new NotFoundException("User", userId);
 
-        var existingUser = await _repo.GetUserByUsernameAsync(request.Username, ct);
-        if (existingUser != null && existingUser.Id != userId)
+        if (await _repo.ExistsByUsernameAsync(request.Username, userId, ct))
             throw new DuplicateResourceException("Username");
 
-        existingUser = await _repo.GetUserByEmailAsync(request.Email, ct);
-        if (existingUser != null && existingUser.Id != userId)
+        if (await _repo.ExistsByEmailAsync(request.Email, userId, ct))
             throw new DuplicateResourceException("Email");
 
-        existingUser = await _repo.GetUserByPhoneAsync(request.Phone, ct);
-        if (existingUser != null && existingUser.Id != userId)
+        if (await _repo.ExistsByPhoneAsync(request.Phone, userId, ct))
             throw new DuplicateResourceException("Phone");
 
         if (!Enum.TryParse<UserRole>(request.Role, out var role))

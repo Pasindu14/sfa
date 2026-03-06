@@ -12,18 +12,37 @@ public class UserRepository(AppDbContext context) : IUserRepository
         => await _context.Users.FindAsync([userId], ct);
 
     public async Task<User?> GetUserByEmailAsync(string email, CancellationToken ct = default)
-        => await _context.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
+        => await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == email, ct);
 
     public async Task<User?> GetUserByUsernameAsync(string username, CancellationToken ct = default)
-        => await _context.Users.FirstOrDefaultAsync(u => u.Username == username, ct);
+        => await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Username == username, ct);
 
     public async Task<User?> GetUserByPhoneAsync(string phone, CancellationToken ct = default)
-        => await _context.Users.FirstOrDefaultAsync(u => u.Phone == phone, ct);
+        => await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Phone == phone, ct);
+
+    public async Task<bool> ExistsByEmailAsync(string email, CancellationToken ct = default)
+        => await _context.Users.AnyAsync(u => u.Email == email, ct);
+
+    public async Task<bool> ExistsByUsernameAsync(string username, CancellationToken ct = default)
+        => await _context.Users.AnyAsync(u => u.Username == username, ct);
+
+    public async Task<bool> ExistsByPhoneAsync(string phone, CancellationToken ct = default)
+        => await _context.Users.AnyAsync(u => u.Phone == phone, ct);
+
+    public async Task<bool> ExistsByEmailAsync(string email, int excludeUserId, CancellationToken ct = default)
+        => await _context.Users.AnyAsync(u => u.Email == email && u.Id != excludeUserId, ct);
+
+    public async Task<bool> ExistsByUsernameAsync(string username, int excludeUserId, CancellationToken ct = default)
+        => await _context.Users.AnyAsync(u => u.Username == username && u.Id != excludeUserId, ct);
+
+    public async Task<bool> ExistsByPhoneAsync(string phone, int excludeUserId, CancellationToken ct = default)
+        => await _context.Users.AnyAsync(u => u.Phone == phone && u.Id != excludeUserId, ct);
 
     public async Task<(IEnumerable<User> Users, int TotalCount)> GetAllUsersAsync(int skip, int take, CancellationToken ct = default)
     {
         var totalCount = await _context.Users.CountAsync(ct);
         var users = await _context.Users
+            .AsNoTracking()
             .OrderBy(u => u.Id)
             .Skip(skip)
             .Take(take)

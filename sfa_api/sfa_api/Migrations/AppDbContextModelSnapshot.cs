@@ -66,7 +66,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("EntityType", "EntityId");
 
-                    b.ToTable("AuditLogs");
+                    b.ToTable("AuditLogs", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Common.Audit.IdempotencyKey", b =>
@@ -91,7 +91,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("ExpiresAt");
 
-                    b.ToTable("IdempotencyKeys");
+                    b.ToTable("IdempotencyKeys", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Common.Audit.RevokedToken", b =>
@@ -109,7 +109,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("ExpiresAt");
 
-                    b.ToTable("RevokedTokens");
+                    b.ToTable("RevokedTokens", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.Auth.Entities.RefreshToken", b =>
@@ -153,7 +153,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("RefreshTokens");
+                    b.ToTable("RefreshTokens", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.Distributors.Entities.Distributor", b =>
@@ -231,7 +231,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("UpdatedAt");
 
-                    b.ToTable("Distributors");
+                    b.ToTable("Distributors", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.Users.Entities.User", b =>
@@ -301,7 +301,7 @@ namespace sfa_api.Migrations
                     b.HasIndex("Username")
                         .IsUnique();
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.Auth.Entities.RefreshToken", b =>

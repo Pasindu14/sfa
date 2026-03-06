@@ -47,7 +47,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.Phone).IsUnique();
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt);
-            e.HasQueryFilter(x => !x.IsDeleted);
+            // NOTE: No HasQueryFilter - we display both active and inactive records
+            // Soft delete is for audit purposes only, records are never physically removed
         });
 
         // RefreshToken
@@ -61,7 +62,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .WithMany(x => x.RefreshTokens)
              .HasForeignKey(x => x.UserId)
              .IsRequired(false);
-            e.HasQueryFilter(x => x.User == null || !x.User.IsDeleted);
+            // NOTE: No query filter - refresh tokens are tied to users via FK relationship
         });
 
         // Distributor
@@ -75,7 +76,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.Phone).IsUnique();
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt);
-            e.HasQueryFilter(x => !x.IsDeleted);
+            // NOTE: No HasQueryFilter - we display both active and inactive records
+            // Soft delete is for audit purposes only, records are never physically removed
         });
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);

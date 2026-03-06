@@ -39,15 +39,15 @@ export function DistributorForm({
   const schema = mode === 'create' ? createDistributorSchema : updateDistributorSchema
 
   const form = useForm<CreateDistributorInput>({
-    resolver: zodResolver(schema as typeof createDistributorSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
       name: '',
       address: '',
       phone: '',
       email: '',
-      alias: undefined,
-      tradeDiscount: undefined,
-      commission: undefined,
+      alias: 0,
+      tradeDiscount: 0,
+      commission: 0,
       remark: '',
       vatRegNo: '',
       latitude: undefined,
@@ -91,7 +91,12 @@ export function DistributorForm({
               <FormItem>
                 <FormLabel>Alias (Numbers only)</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="Enter alias (numbers only)" {...field} />
+                  <Input
+                    type="number"
+                    placeholder="Enter alias (numbers only)"
+                    {...field}
+                    onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : 0)}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -151,7 +156,15 @@ export function DistributorForm({
               <FormItem>
                 <FormLabel>Trade Discount (%) *</FormLabel>
                 <FormControl>
-                  <Input type="number" step="0.01" min="0.01" placeholder="5.00" {...field} />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    placeholder="0"
+                    {...field}
+                    onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -165,7 +178,15 @@ export function DistributorForm({
               <FormItem>
                 <FormLabel>Commission (%) *</FormLabel>
                 <FormControl>
-                  <Input type="number" step="0.01" min="0.01" placeholder="2.50" {...field} />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    placeholder="0"
+                    {...field}
+                    onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

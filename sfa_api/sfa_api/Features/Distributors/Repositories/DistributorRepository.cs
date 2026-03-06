@@ -12,15 +12,28 @@ public class DistributorRepository(AppDbContext context) : IDistributorRepositor
         => await _context.Distributors.FindAsync([id], ct);
 
     public async Task<Distributor?> GetByEmailAsync(string email, CancellationToken ct = default)
-        => await _context.Distributors.FirstOrDefaultAsync(d => d.Email == email, ct);
+        => await _context.Distributors.AsNoTracking().FirstOrDefaultAsync(d => d.Email == email, ct);
 
     public async Task<Distributor?> GetByPhoneAsync(string phone, CancellationToken ct = default)
-        => await _context.Distributors.FirstOrDefaultAsync(d => d.Phone == phone, ct);
+        => await _context.Distributors.AsNoTracking().FirstOrDefaultAsync(d => d.Phone == phone, ct);
+
+    public async Task<bool> ExistsByEmailAsync(string email, CancellationToken ct = default)
+        => await _context.Distributors.AnyAsync(d => d.Email == email, ct);
+
+    public async Task<bool> ExistsByPhoneAsync(string phone, CancellationToken ct = default)
+        => await _context.Distributors.AnyAsync(d => d.Phone == phone, ct);
+
+    public async Task<bool> ExistsByEmailAsync(string email, int excludeId, CancellationToken ct = default)
+        => await _context.Distributors.AnyAsync(d => d.Email == email && d.Id != excludeId, ct);
+
+    public async Task<bool> ExistsByPhoneAsync(string phone, int excludeId, CancellationToken ct = default)
+        => await _context.Distributors.AnyAsync(d => d.Phone == phone && d.Id != excludeId, ct);
 
     public async Task<(IEnumerable<Distributor> Distributors, int TotalCount)> GetAllAsync(int skip, int take, CancellationToken ct = default)
     {
         var totalCount = await _context.Distributors.CountAsync(ct);
         var distributors = await _context.Distributors
+            .AsNoTracking()
             .OrderBy(d => d.Id)
             .Skip(skip)
             .Take(take)

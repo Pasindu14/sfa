@@ -34,12 +34,10 @@ public class DistributorService(
 
     public async Task<DistributorDto> CreateAsync(CreateDistributorRequest request, int? callerId, CancellationToken ct = default)
     {
-        var existing = await _repo.GetByEmailAsync(request.Email, ct);
-        if (existing != null)
+        if (await _repo.ExistsByEmailAsync(request.Email, ct))
             throw new DuplicateResourceException("Email");
 
-        existing = await _repo.GetByPhoneAsync(request.Phone, ct);
-        if (existing != null)
+        if (await _repo.ExistsByPhoneAsync(request.Phone, ct))
             throw new DuplicateResourceException("Phone");
 
         var distributor = new Distributor
@@ -74,12 +72,10 @@ public class DistributorService(
         var distributor = await _repo.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("Distributor", id);
 
-        var existing = await _repo.GetByEmailAsync(request.Email, ct);
-        if (existing != null && existing.Id != id)
+        if (await _repo.ExistsByEmailAsync(request.Email, id, ct))
             throw new DuplicateResourceException("Email");
 
-        existing = await _repo.GetByPhoneAsync(request.Phone, ct);
-        if (existing != null && existing.Id != id)
+        if (await _repo.ExistsByPhoneAsync(request.Phone, id, ct))
             throw new DuplicateResourceException("Phone");
 
         distributor.Name = request.Name;
