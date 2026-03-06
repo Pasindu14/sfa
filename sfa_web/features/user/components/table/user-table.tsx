@@ -3,6 +3,7 @@
 import { useCallback } from 'react'
 import { DataTable } from '@/components/data-table/data-table'
 import { Button } from '@/components/ui/button'
+import { UserPlus } from 'lucide-react'
 import {
   useEditDialog,
   useDeleteDialog,
@@ -66,7 +67,10 @@ export function UserTable() {
       }}
       idField="id"
       renderToolbarContent={() => (
-        <Button onClick={openCreate}>Create User</Button>
+        <Button onClick={openCreate} className="gap-2">
+          <UserPlus className="h-4 w-4" />
+          Add User
+        </Button>
       )}
     />
   )
