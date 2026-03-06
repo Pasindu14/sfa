@@ -186,4 +186,17 @@ public class UsersController(
         await _userService.DeactivateUserAsync(id, callerId, ct);
         return NoContent();
     }
+
+    /// <summary>
+    /// POST /api/v1/users/{id}/activate
+    /// Admin only — sets IsActive = true.
+    /// </summary>
+    [HttpPost("{id}/activate")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> ActivateUser(int id, CancellationToken ct)
+    {
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
+        await _userService.ActivateUserAsync(id, callerId, ct);
+        return NoContent();
+    }
 }

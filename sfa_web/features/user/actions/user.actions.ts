@@ -56,16 +56,15 @@ export const updateUserAction = createAction(
 export const deleteUserAction = createAction(
   { name: 'deleteUserAction', requireAuth: true, requiredRole: 'Admin' },
   async (id: number) => {
-    const res = await client.delete(`/api/v1/users/${id}`)
+    await client.delete(`/api/v1/users/${id}`)
     revalidatePath('/users')
-    return res.data.data as string
   }
 )
 
 export const changePasswordAction = createAction(
   { name: 'changePasswordAction', requireAuth: true, requiredRole: 'Admin' },
   async (id: number, data: ChangePasswordInput) => {
-    const res = await client.put(`/api/v1/users/${id}/change-password`, data)
+    const res = await client.post(`/api/v1/users/${id}/change-password`, data)
     revalidatePath('/users')
     return res.data.data as string
   }
@@ -74,17 +73,15 @@ export const changePasswordAction = createAction(
 export const activateUserAction = createAction(
   { name: 'activateUserAction', requireAuth: true, requiredRole: 'Admin' },
   async (id: number) => {
-    const res = await client.put(`/api/v1/users/${id}/activate`, {})
+    await client.post(`/api/v1/users/${id}/activate`)
     revalidatePath('/users')
-    return res.data.data as UserDto
   }
 )
 
 export const deactivateUserAction = createAction(
   { name: 'deactivateUserAction', requireAuth: true, requiredRole: 'Admin' },
   async (id: number) => {
-    const res = await client.put(`/api/v1/users/${id}/deactivate`, {})
+    await client.post(`/api/v1/users/${id}/deactivate`)
     revalidatePath('/users')
-    return res.data.data as UserDto
   }
 )

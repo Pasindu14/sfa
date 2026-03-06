@@ -5,32 +5,45 @@ export const roleEnum = z.enum(['Admin', 'SalesRep', 'Manager'])
 const passwordRules = z
   .string()
   .min(8, 'Password must be at least 8 characters')
-  .regex(/[A-Z]/, 'Password must contain an uppercase letter')
-  .regex(/[a-z]/, 'Password must contain a lowercase letter')
-  .regex(/[0-9]/, 'Password must contain a number')
-  .regex(/[^A-Za-z0-9]/, 'Password must contain a special character')
+  .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+  .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+  .regex(/[0-9]/, 'Password must contain at least one digit')
+  .regex(/[^a-zA-Z0-9]/, 'Password must contain at least one special character')
+
+const usernameRules = z
+  .string()
+  .min(3, 'Username must be at least 3 characters')
+  .max(50, 'Username must not exceed 50 characters')
+  .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores')
+
+const phoneRules = z
+  .string()
+  .min(10, 'Phone number must be at least 10 characters')
+  .max(20, 'Phone number must not exceed 20 characters')
+  .regex(/^[0-9+\-\s()]+$/, 'Phone number can only contain digits, +, -, spaces, and parentheses')
 
 export const createUserSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  username: z.string().min(1, 'Username is required'),
-  email: z.string().email('Invalid email address'),
-  phone: z.string().min(1, 'Phone is required'),
+  name: z.string().min(1, 'Name is required').max(100, 'Name must not exceed 100 characters'),
+  username: usernameRules,
+  email: z.string().email('Invalid email format').max(255, 'Email must not exceed 255 characters'),
+  phone: phoneRules,
   password: passwordRules,
   role: roleEnum,
   deviceId: z.string().optional(),
 })
 
 export const updateUserSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  username: z.string().min(1, 'Username is required'),
-  email: z.string().email('Invalid email address'),
-  phone: z.string().min(1, 'Phone is required'),
+  name: z.string().min(1, 'Name is required').max(100, 'Name must not exceed 100 characters'),
+  username: usernameRules,
+  email: z.string().email('Invalid email format').max(255, 'Email must not exceed 255 characters'),
+  phone: phoneRules,
   role: roleEnum,
   deviceId: z.string().optional(),
 })
 
 export const changePasswordSchema = z
   .object({
+    currentPassword: z.string().min(1, 'Current password is required'),
     newPassword: passwordRules,
     confirmPassword: z.string().min(1, 'Please confirm your password'),
   })

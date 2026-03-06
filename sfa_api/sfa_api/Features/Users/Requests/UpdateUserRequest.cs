@@ -1,9 +1,11 @@
 namespace sfa_api.Features.Users.Requests;
 
-public record UpdateUserRequest(
-    string Name,
-    string Email,
-    string Phone,
-    string Role,
-    string? DeviceId
-);
+public class UpdateUserRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string Username { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
+    public string Role { get; set; } = string.Empty;
+    public string? DeviceId { get; set; }
+}

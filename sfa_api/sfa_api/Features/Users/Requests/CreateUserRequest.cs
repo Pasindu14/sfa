@@ -1,11 +1,12 @@
 namespace sfa_api.Features.Users.Requests;
 
-public record CreateUserRequest(
-    string Name,
-    string Username,
-    string Email,
-    string Phone,
-    string Password,
-    string Role,
-    string? DeviceId
-);
+public class CreateUserRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string Username { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public string Role { get; set; } = string.Empty;
+    public string? DeviceId { get; set; }
+}

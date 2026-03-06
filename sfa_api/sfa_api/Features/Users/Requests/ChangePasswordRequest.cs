@@ -1,6 +1,7 @@
 namespace sfa_api.Features.Users.Requests;
 
-public record ChangePasswordRequest(
-    string CurrentPassword,
-    string NewPassword
-);
+public class ChangePasswordRequest
+{
+    public string CurrentPassword { get; set; } = string.Empty;
+    public string NewPassword { get; set; } = string.Empty;
+}

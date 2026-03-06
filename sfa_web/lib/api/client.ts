@@ -125,12 +125,13 @@ client.interceptors.response.use(
           ? "SERVICE_UNAVAILABLE"
           : "INTERNAL_ERROR");
 
-      // Flatten fields: { Phone: ["msg1", "msg2"] } → { Phone: "msg1, msg2" }
+      // Flatten fields and convert PascalCase keys → camelCase to match form field names
+      // e.g. { Name: ["msg1", "msg2"] } → { name: "msg1, msg2" }
       const fields: Record<string, string> | undefined =
         apiErr?.fields && Object.keys(apiErr.fields).length > 0
           ? Object.fromEntries(
               Object.entries(apiErr.fields).map(([k, v]) => [
-                k,
+                k.charAt(0).toLowerCase() + k.slice(1),
                 Array.isArray(v) ? v.join(", ") : String(v),
               ])
             )

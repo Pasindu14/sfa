@@ -13,4 +13,5 @@ public interface IUserService
     Task ChangePasswordAsync(int userId, ChangePasswordRequest request, int? callerId, CancellationToken ct = default);
     Task ResetPasswordAsync(int userId, ResetPasswordRequest request, int? callerId, CancellationToken ct = default);
     Task DeactivateUserAsync(int userId, int? callerId, CancellationToken ct = default);
+    Task ActivateUserAsync(int userId, int? callerId, CancellationToken ct = default);
 }

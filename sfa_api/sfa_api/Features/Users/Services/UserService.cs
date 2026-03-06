@@ -78,7 +78,11 @@ public class UserService(
         var user = await _repo.GetUserByIdAsync(userId, ct)
             ?? throw new NotFoundException("User", userId);
 
-        var existingUser = await _repo.GetUserByEmailAsync(request.Email, ct);
+        var existingUser = await _repo.GetUserByUsernameAsync(request.Username, ct);
+        if (existingUser != null && existingUser.Id != userId)
+            throw new DuplicateResourceException("Username");
+
+        existingUser = await _repo.GetUserByEmailAsync(request.Email, ct);
         if (existingUser != null && existingUser.Id != userId)
             throw new DuplicateResourceException("Email");
 
@@ -91,6 +95,7 @@ public class UserService(
                 { { "Role", new[] { "Invalid role." } } });
 
         user.Name = request.Name;
+        user.Username = request.Username;
         user.Email = request.Email;
         user.Phone = request.Phone;
         user.Role = role;
@@ -163,6 +168,21 @@ public class UserService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("User {UserId} deactivated", userId);
+    }
+
+    public async Task ActivateUserAsync(int userId, int? callerId, CancellationToken ct = default)
+    {
+        var user = await _repo.GetUserByIdAsync(userId, ct)
+            ?? throw new NotFoundException("User", userId);
+
+        user.IsActive = true;
+        user.UpdatedBy = callerId;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _repo.UpdateUserAsync(user, ct);
+        await _repo.SaveChangesAsync(ct);
+
+        _logger.LogInformation("User {UserId} activated", userId);
     }
 
     private static UserDto MapToDto(User user) => new(

@@ -3,7 +3,7 @@ import type { NextAuthConfig } from "next-auth";
 export default {
   providers: [],
   pages: {
-    signIn: "/login",
+    signIn: "/sign-in",
     error: "/auth/error",
   },
   callbacks: {
@@ -13,7 +13,7 @@ export default {
       const path = nextUrl.pathname;
 
       // Redirect logged-in users away from login page
-      if (path === "/sign-in" && isLoggedIn) {
+      if ((path === "/sign-in" || path === "/login") && isLoggedIn) {
         return Response.redirect(new URL("/dashboard", nextUrl));
       }
 

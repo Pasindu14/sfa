@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { queryOptions, useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { queryOptions, useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   getUsersAction,
@@ -21,6 +21,7 @@ import {
   useActivateDialog,
   useDeactivateDialog,
 } from '../store'
+import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { CreateUserInput, UpdateUserInput, ChangePasswordInput } from '../schema/user.schema'
 
 // --- Query key factory ---
@@ -64,6 +65,50 @@ export function useUser(id: number | null) {
   })
 }
 
+// --- DataTable hook (used as fetchDataFn with isQueryHook = true) ---
+
+export function useUserDataTable(
+  page: number,
+  pageSize: number,
+  search: string,
+  _dateRange?: { from_date: string; to_date: string },
+  _sortBy?: string,
+  _sortOrder?: string,
+) {
+  return useQuery({
+    queryKey: userKeys.list({ page, pageSize, search }),
+    queryFn: async () => {
+      const result = await getUsersAction(page, pageSize)
+      if (!result.success) throw new Error(result.error)
+      const { users, page: p, pageSize: ps, totalCount } = result.data
+      const term = search.trim().toLowerCase()
+      const filtered = term
+        ? users.filter(
+            (u) =>
+              u.name.toLowerCase().includes(term) ||
+              u.username.toLowerCase().includes(term) ||
+              u.email.toLowerCase().includes(term) ||
+              u.phone.toLowerCase().includes(term) ||
+              u.role.toLowerCase().includes(term)
+          )
+        : users
+      return {
+        success: true as const,
+        data: filtered,
+        pagination: {
+          page: p,
+          limit: ps,
+          total_pages: Math.ceil(totalCount / ps),
+          total_items: totalCount,
+        },
+      }
+    },
+    placeholderData: keepPreviousData,
+  })
+}
+
+;(useUserDataTable as any).isQueryHook = true
+
 // --- Mutation hooks ---
 
 export function useCreateUser() {
@@ -72,19 +117,21 @@ export function useCreateUser() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null)
 
   const mutation = useMutation({
-    mutationFn: (data: CreateUserInput) => createUserAction(data),
-    onSuccess: (result) => {
-      if (!result.success) {
-        toast.error(result.error)
-        if (result.fields) setFieldErrors(result.fields)
-        return
-      }
-      queryClient.invalidateQueries({ queryKey: userKeys.lists() })
+    mutationFn: async (data: CreateUserInput) => {
+      const result = await createUserAction(data)
+      if (!result.success) throw result
+      return result.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: userKeys.all })
       setFieldErrors(null)
       close()
       toast.success('User created successfully')
     },
-    onError: () => toast.error('Failed to create user'),
+    onError: (error: any) => {
+      if (error.fields) setFieldErrors(error.fields)
+      handleErrorToast(error, 'user', 'create')
+    },
   })
 
   return { ...mutation, fieldErrors, clearFieldErrors: () => setFieldErrors(null) }
@@ -96,21 +143,23 @@ export function useUpdateUser() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null)
 
   const mutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateUserInput }) =>
-      updateUserAction(id, data),
-    onSuccess: (result) => {
-      if (!result.success) {
-        toast.error(result.error)
-        if (result.fields) setFieldErrors(result.fields)
-        return
-      }
-      queryClient.invalidateQueries({ queryKey: userKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: userKeys.detail(result.data.id) })
+    mutationFn: async ({ id, data }: { id: number; data: UpdateUserInput }) => {
+      const result = await updateUserAction(id, data)
+
+      console.log(result)
+      if (!result.success) throw result
+      return result.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: userKeys.all })
       setFieldErrors(null)
       close()
       toast.success('User updated successfully')
     },
-    onError: () => toast.error('Failed to update user'),
+    onError: (error: any) => {
+      if (error.fields) setFieldErrors(error.fields)
+      handleErrorToast(error, 'user', 'update')
+    },
   })
 
   return { ...mutation, fieldErrors, clearFieldErrors: () => setFieldErrors(null) }
@@ -121,17 +170,18 @@ export function useDeleteUser() {
   const { close } = useDeleteDialog()
 
   return useMutation({
-    mutationFn: (id: number) => deleteUserAction(id),
-    onSuccess: (result) => {
-      if (!result.success) {
-        toast.error(result.error)
-        return
-      }
-      queryClient.invalidateQueries({ queryKey: userKeys.lists() })
+    mutationFn: async (id: number) => {
+      const result = await deleteUserAction(id)
+      if (!result.success) throw result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: userKeys.all })
       close()
       toast.success('User deleted successfully')
     },
-    onError: () => toast.error('Failed to delete user'),
+    onError: (error: any) => {
+      handleErrorToast(error, 'user', 'delete')
+    },
   })
 }
 
@@ -140,19 +190,20 @@ export function useChangePassword() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null)
 
   const mutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: ChangePasswordInput }) =>
-      changePasswordAction(id, data),
-    onSuccess: (result) => {
-      if (!result.success) {
-        toast.error(result.error)
-        if (result.fields) setFieldErrors(result.fields)
-        return
-      }
+    mutationFn: async ({ id, data }: { id: number; data: ChangePasswordInput }) => {
+      const result = await changePasswordAction(id, data)
+      if (!result.success) throw result
+      return result.data
+    },
+    onSuccess: () => {
       setFieldErrors(null)
       close()
       toast.success('Password changed successfully')
     },
-    onError: () => toast.error('Failed to change password'),
+    onError: (error: any) => {
+      if (error.fields) setFieldErrors(error.fields)
+      handleErrorToast(error, 'user', 'change password')
+    },
   })
 
   return { ...mutation, fieldErrors, clearFieldErrors: () => setFieldErrors(null) }
@@ -163,18 +214,18 @@ export function useActivateUser() {
   const { close } = useActivateDialog()
 
   return useMutation({
-    mutationFn: (id: number) => activateUserAction(id),
-    onSuccess: (result) => {
-      if (!result.success) {
-        toast.error(result.error)
-        return
-      }
-      queryClient.invalidateQueries({ queryKey: userKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: userKeys.detail(result.data.id) })
+    mutationFn: async (id: number) => {
+      const result = await activateUserAction(id)
+      if (!result.success) throw result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: userKeys.all })
       close()
       toast.success('User activated successfully')
     },
-    onError: () => toast.error('Failed to activate user'),
+    onError: (error: any) => {
+      handleErrorToast(error, 'user', 'activate')
+    },
   })
 }
 
@@ -183,17 +234,17 @@ export function useDeactivateUser() {
   const { close } = useDeactivateDialog()
 
   return useMutation({
-    mutationFn: (id: number) => deactivateUserAction(id),
-    onSuccess: (result) => {
-      if (!result.success) {
-        toast.error(result.error)
-        return
-      }
-      queryClient.invalidateQueries({ queryKey: userKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: userKeys.detail(result.data.id) })
+    mutationFn: async (id: number) => {
+      const result = await deactivateUserAction(id)
+      if (!result.success) throw result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: userKeys.all })
       close()
       toast.success('User deactivated successfully')
     },
-    onError: () => toast.error('Failed to deactivate user'),
+    onError: (error: any) => {
+      handleErrorToast(error, 'user', 'deactivate')
+    },
   })
 }

@@ -11,9 +11,8 @@ import {
   useDeactivateDialog,
   useUserDialogStore,
 } from '../../store'
-import { getUsersAction } from '../../actions/user.actions'
+import { useUserDataTable } from '../../hooks/user.hooks'
 import { getUserColumns } from '../columns/user-columns'
-import type { UserDto } from '../types/user.types'
 
 export function UserTable() {
   const openCreate = useUserDialogStore((s) => s.openCreate)
@@ -29,44 +28,6 @@ export function UserTable() {
     [openEdit, openDelete, openChangePassword, openActivate, openDeactivate]
   )
 
-  const fetchData = useCallback(
-    async (params: { page: number; limit: number; search?: string }) => {
-      const result = await getUsersAction(params.page, params.limit)
-      if (!result.success) {
-        return {
-          success: false,
-          data: [] as UserDto[],
-          pagination: { page: 1, limit: params.limit, total_pages: 0, total_items: 0 },
-        }
-      }
-      const { users, page, pageSize, totalCount } = result.data
-
-      const term = params.search?.trim().toLowerCase()
-      const filtered = term
-        ? users.filter(
-            (u) =>
-              u.name.toLowerCase().includes(term) ||
-              u.username.toLowerCase().includes(term) ||
-              u.email.toLowerCase().includes(term) ||
-              u.phone.toLowerCase().includes(term) ||
-              u.role.toLowerCase().includes(term)
-          )
-        : users
-
-      return {
-        success: true,
-        data: filtered,
-        pagination: {
-          page,
-          limit: pageSize,
-          total_pages: Math.ceil(totalCount / pageSize),
-          total_items: totalCount,
-        },
-      }
-    },
-    []
-  )
-
   return (
     <DataTable
       config={{
@@ -80,7 +41,7 @@ export function UserTable() {
         searchPlaceholder: 'Search users...',
       }}
       getColumns={getColumns}
-      fetchDataFn={fetchData as any}
+      fetchDataFn={useUserDataTable as any}
       exportConfig={{
         entityName: 'users',
         columnMapping: {

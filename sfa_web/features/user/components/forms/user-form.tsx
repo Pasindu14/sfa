@@ -10,7 +10,14 @@ import {
 } from '../../schema/user.schema'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
 import {
   Select,
   SelectContent,
@@ -51,14 +58,7 @@ export function UserForm({
     },
   })
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    setError,
-    formState: { errors },
-  } = form
+  const { setError } = form
 
   useEffect(() => {
     if (fieldErrors) {
@@ -69,93 +69,127 @@ export function UserForm({
   }, [fieldErrors, setError])
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div className="space-y-1">
-        <Label htmlFor="name">Name</Label>
-        <Input id="name" placeholder="Full name" {...register('name')} />
-        {errors.name && (
-          <p className="text-sm text-destructive">{errors.name.message}</p>
-        )}
-      </div>
-
-      <div className="space-y-1">
-        <Label htmlFor="username">Username</Label>
-        <Input id="username" placeholder="Username" {...register('username')} />
-        {errors.username && (
-          <p className="text-sm text-destructive">{errors.username.message}</p>
-        )}
-      </div>
-
-      <div className="space-y-1">
-        <Label htmlFor="email">Email</Label>
-        <Input id="email" type="email" placeholder="email@example.com" {...register('email')} />
-        {errors.email && (
-          <p className="text-sm text-destructive">{errors.email.message}</p>
-        )}
-      </div>
-
-      <div className="space-y-1">
-        <Label htmlFor="phone">Phone</Label>
-        <Input id="phone" placeholder="+1234567890" {...register('phone')} />
-        {errors.phone && (
-          <p className="text-sm text-destructive">{errors.phone.message}</p>
-        )}
-      </div>
-
-      <div className="space-y-1">
-        <Label htmlFor="role">Role</Label>
-        <Select
-          value={watch('role')}
-          onValueChange={(val) =>
-            setValue('role', val as CreateUserInput['role'], { shouldValidate: true })
-          }
-        >
-          <SelectTrigger id="role">
-            <SelectValue placeholder="Select role" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Admin">Admin</SelectItem>
-            <SelectItem value="SalesRep">Sales Rep</SelectItem>
-            <SelectItem value="Manager">Manager</SelectItem>
-          </SelectContent>
-        </Select>
-        {errors.role && (
-          <p className="text-sm text-destructive">{errors.role.message}</p>
-        )}
-      </div>
-
-      <div className="space-y-1">
-        <Label htmlFor="deviceId">Device ID (optional)</Label>
-        <Input id="deviceId" placeholder="Device ID" {...register('deviceId')} />
-        {errors.deviceId && (
-          <p className="text-sm text-destructive">{errors.deviceId.message}</p>
-        )}
-      </div>
-
-      {mode === 'create' && (
-        <div className="space-y-1">
-          <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            type="password"
-            placeholder="Password"
-            {...register('password')}
-          />
-          {errors.password && (
-            <p className="text-sm text-destructive">{errors.password.message}</p>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Name</FormLabel>
+              <FormControl>
+                <Input placeholder="Full name" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
           )}
-        </div>
-      )}
+        />
 
-      <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? (
-          <Spinner className="mr-2" />
-        ) : mode === 'create' ? (
-          'Create User'
-        ) : (
-          'Update User'
+        <FormField
+          control={form.control}
+          name="username"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Username</FormLabel>
+              <FormControl>
+                <Input placeholder="Username" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input type="email" placeholder="email@example.com" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="phone"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Phone</FormLabel>
+              <FormControl>
+                <Input placeholder="+1234567890" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="role"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Role</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="Admin">Admin</SelectItem>
+                  <SelectItem value="SalesRep">Sales Rep</SelectItem>
+                  <SelectItem value="Manager">Manager</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="deviceId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Device ID (optional)</FormLabel>
+              <FormControl>
+                <Input placeholder="Device ID" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {mode === 'create' && (
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Password</FormLabel>
+                <FormControl>
+                  <Input type="password" placeholder="Password" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         )}
-      </Button>
-    </form>
+
+        <Button type="submit" className="w-full" disabled={isLoading}>
+          {isLoading ? (
+            <Spinner className="mr-2" />
+          ) : mode === 'create' ? (
+            'Create User'
+          ) : (
+            'Update User'
+          )}
+        </Button>
+      </form>
+    </Form>
   )
 }
