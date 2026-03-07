@@ -150,7 +150,6 @@ export function useUpdateUser() {
     mutationFn: async ({ id, data }: { id: number; data: UpdateUserInput }) => {
       const result = await updateUserAction(id, data)
 
-      console.log(result)
       if (!result.success) throw result
       return result.data
     },

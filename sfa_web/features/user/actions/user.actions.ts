@@ -1,7 +1,6 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { auth } from '@/auth'
 import { createAction } from '@/lib/actions/wrapper'
 import client from '@/lib/api/client'
 import type {
