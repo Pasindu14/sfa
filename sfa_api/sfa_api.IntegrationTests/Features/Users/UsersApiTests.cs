@@ -7,7 +7,8 @@ using sfa_api.IntegrationTests.Infrastructure;
 
 namespace sfa_api.IntegrationTests.Features.Users;
 
-public class UsersApiTests : IClassFixture<SfaWebApplicationFactory>
+[Collection(SfaApiCollection.Name)]
+public class UsersApiTests
 {
     private readonly HttpClient _client;
     private readonly JsonSerializerOptions _jsonOpts = new() { PropertyNameCaseInsensitive = true };
