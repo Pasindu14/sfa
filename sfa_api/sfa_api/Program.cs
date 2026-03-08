@@ -93,8 +93,8 @@ try
 
     // ── Middleware Pipeline (ORDER MATTERS) ───────────────────────────────
     app.UseMiddleware<CorrelationIdMiddleware>();    // 1. Correlation ID first
-    app.UseMiddleware<GlobalExceptionMiddleware>();  // 2. Catch all exceptions
-    app.UseSerilogRequestLogging();                 // 3. Log every request
+    app.UseSerilogRequestLogging();                 // 2. Log every request (sees final status)
+    app.UseMiddleware<GlobalExceptionMiddleware>();  // 3. Catch all exceptions
     app.UseHttpsRedirection();                      // 4. HTTPS only
     app.UseCors("SFAPolicy");                       // 5. CORS
     app.UseRateLimiter();                           // 6. Rate limiting
@@ -122,3 +122,6 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+// Make Program accessible to WebApplicationFactory in integration tests
+public partial class Program { }
