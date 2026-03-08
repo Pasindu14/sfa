@@ -1,7 +1,6 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { auth } from '@/auth'
 import { createAction } from '@/lib/actions/wrapper'
 import client from '@/lib/api/client'
 import type {
@@ -17,7 +16,6 @@ type UsersListResponse = {
   page: number
   pageSize: number
 }
-
 
 export const getUsersAction = createAction(
   { name: 'getUsersAction', requireAuth: true, requiredRole: 'Admin' },

@@ -22,20 +22,8 @@ export const createDistributorSchema = z.object({
   longitude: z.number().optional(),
 })
 
-// Update schema (same as create)
-export const updateDistributorSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  address: z.string().min(1, 'Address is required'),
-  phone: phoneRules,
-  email: emailRules,
-  alias: aliasRules,
-  tradeDiscount: tradeDiscountRules,
-  commission: commissionRules,
-  remark: z.string().optional(),
-  vatRegNo: z.string().optional(),
-  latitude: z.number().optional(),
-  longitude: z.number().optional(),
-})
+// Update schema (same shape as create)
+export const updateDistributorSchema = createDistributorSchema
 
 // Filter schema (for search and pagination)
 export const filterSchema = z.object({

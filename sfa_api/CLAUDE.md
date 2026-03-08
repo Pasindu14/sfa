@@ -17,6 +17,38 @@ Claims: `sub=3`, `email=admin@sfa.com`, `name=admin`, `role=Admin`
 
 ---
 
+## Directory Layout
+
+```
+sfa_api/sfa_api/
+├── Program.cs                         ← DI registration + middleware pipeline
+├── Features/{Feature}/                ← vertical slices (see Feature Architecture below)
+│   Each has: Controllers/, DTOs/, Entities/, Repositories/, Requests/, Services/, Validators/
+├── Common/
+│   ├── Errors/                        ← ApiResponse, SFAException, ResponseHelper
+│   ├── Middleware/                     ← GlobalExceptionMiddleware, CorrelationIdMiddleware
+│   ├── Extensions/                    ← Cors, JWT, RateLimit, Swagger, HealthCheck extensions
+│   └── Audit/                         ← AuditInterceptor, IdempotencyKey, RevokedToken
+├── Infrastructure/
+│   ├── Persistence/                   ← AppDbContext, DataSeeder, DesignTimeDbContextFactory
+│   ├── Caching/                       ← ICacheService, IIdempotencyService, ITokenRevocationService
+│   ├── Locking/                       ← IDistributedLockService (PostgreSQL advisory locks)
+│   └── Logging/                       ← SerilogConfig
+└── Migrations/
+```
+
+### Implemented Features
+| Feature      | Description                                  |
+|--------------|----------------------------------------------|
+| Auth         | Login, JWT refresh, logout, token revocation |
+| Users        | User CRUD, password change, status toggle    |
+| Distributors | Distributor CRUD                             |
+| Categories   | (scaffold only — not yet implemented)        |
+
+Test projects: `sfa_api.IntegrationTests/`, `sfa_api.UnitTests/`
+
+---
+
 ## Feature Architecture (Vertical Slice)
 
 Each feature lives under `Features/{Feature}/` with this exact layout:

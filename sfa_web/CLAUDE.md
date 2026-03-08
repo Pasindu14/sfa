@@ -12,6 +12,53 @@ No `src/` directory — files live directly under `sfa_web/`.
 
 ---
 
+## Directory Layout
+
+```
+sfa_web/
+├── app/
+│   ├── (auth)/login/                  ← login page
+│   ├── (protected)/                   ← auth-guarded pages (dashboard, users, distributors)
+│   └── api/auth/[...nextauth]/        ← NextAuth route handler
+├── features/{feature}/                ← feature modules (see 7-Layer Architecture below)
+│   Each has: actions/, hooks/, schema/, store/, components/
+├── lib/
+│   ├── actions/wrapper.ts             ← createAction() wrapper
+│   ├── actions/helpers.ts             ← shared action utilities
+│   ├── api/client.ts                  ← axios client (default export)
+│   ├── api/query-keys.ts              ← shared query key helpers
+│   ├── auth/                          ← auth helpers and wrappers
+│   ├── hooks/use-error-toast.ts       ← handleErrorToast()
+│   ├── queries/pagination.ts          ← pagination utilities
+│   ├── types/actions.ts               ← ActionResponse<T>, PaginatedResponse<T>
+│   ├── types/common.ts                ← shared common types
+│   ├── errors.ts                      ← AppError and error utilities
+│   └── utils.ts                       ← general utilities (cn, etc.)
+├── components/
+│   ├── ui/                            ← shadcn components
+│   ├── data-table/                    ← DataTable, toolbar, pagination, column-header
+│   ├── app-sidebar.tsx                ← main sidebar
+│   ├── calendar-date-picker.tsx       ← date range picker
+│   ├── company-logo.tsx               ← company logo display
+│   ├── error-boundary.tsx             ← React error boundary
+│   ├── nav-main.tsx                   ← primary nav links
+│   ├── nav-projects.tsx               ← project nav links
+│   └── nav-user.tsx                   ← user nav/avatar menu
+├── providers/                         ← QueryProvider, SessionProvider
+├── hooks/                             ← use-debounce, use-mobile, use-error-toast
+├── auth.ts + auth.config.ts           ← NextAuth v5 setup
+└── e2e/                               ← Playwright tests (POM pattern)
+```
+
+### Implemented Features
+| Feature      | Description                                    |
+|--------------|------------------------------------------------|
+| Auth         | Login form                                     |
+| Users        | Full CRUD + password change (reference feature)|
+| Distributors | Full CRUD                                      |
+
+---
+
 ## 7-Layer Architecture
 
 ```
