@@ -23,7 +23,7 @@ export default {
           return Response.redirect(new URL("/sign-in", nextUrl));
         }
         // Only allow admin users to access dashboard
-        if (userRole !== "admin") {
+        if (userRole?.toLowerCase() !== "admin") {
           return Response.redirect(new URL("/unauthorized", nextUrl));
         }
         return true;
