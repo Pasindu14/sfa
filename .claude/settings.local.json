@@ -5,7 +5,8 @@
       "Bash(dotnet ef:*)",
       "Bash(dotnet run:*)",
       "Bash(npm run:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(claude mcp add playwright -- npx @playwright/mcp@latest)"
     ]
   },
   "outputStyle": "Explanatory"
