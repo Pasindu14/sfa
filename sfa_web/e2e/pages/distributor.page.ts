@@ -94,11 +94,6 @@ export class DistributorPage {
     await this.page.getByRole('menuitem', { name: 'Edit' }).click()
   }
 
-  async clickDelete(name: string) {
-    await this.openRowActions(name)
-    await this.page.getByRole('menuitem', { name: 'Delete' }).click()
-  }
-
   async clickDeactivate(name: string) {
     await this.openRowActions(name)
     await this.page.getByRole('menuitem', { name: 'Deactivate' }).click()
@@ -177,8 +172,8 @@ export class DistributorPage {
     await this.page.getByRole('button', { name: 'Update Distributor' }).click()
   }
 
-  /** Confirm a destructive alert dialog (Delete / Deactivate / Activate) */
-  async confirmAlertAction(buttonName: 'Delete' | 'Activate' | 'Deactivate') {
+  /** Confirm an alert dialog (Activate / Deactivate) */
+  async confirmAlertAction(buttonName: 'Activate' | 'Deactivate') {
     await this.page.getByRole('alertdialog').getByRole('button', { name: buttonName }).click()
   }
 

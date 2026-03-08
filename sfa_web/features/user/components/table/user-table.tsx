@@ -39,21 +39,21 @@ export function UserTable() {
         enableExport: false,
         enableColumnResizing: false,
         enableUrlState: false,
-        columnResizingTableId: 'users-table',
-        searchPlaceholder: 'Search users...',
+        columnResizingTableId: "users-table",
+        searchPlaceholder: "Search users...",
       }}
       getColumns={getColumns}
-      fetchDataFn={useUserDataTable as any}
+      fetchDataFn={useUserDataTable}
       exportConfig={{
-        entityName: 'users',
+        entityName: "users",
         columnMapping: {
-          name: 'Name',
-          username: 'Username',
-          email: 'Email',
-          phone: 'Phone',
-          role: 'Role',
-          isActive: 'Status',
-          createdAt: 'Created At',
+          name: "Name",
+          username: "Username",
+          email: "Email",
+          phone: "Phone",
+          role: "Role",
+          isActive: "Status",
+          createdAt: "Created At",
         },
         columnWidths: [
           { wch: 25 },
@@ -64,15 +64,25 @@ export function UserTable() {
           { wch: 10 },
           { wch: 20 },
         ],
-        headers: ['Name', 'Username', 'Email', 'Phone', 'Role', 'Status', 'Created At'],
+        headers: [
+          "Name",
+          "Username",
+          "Email",
+          "Phone",
+          "Role",
+          "Status",
+          "Created At",
+        ],
       }}
       idField="id"
       renderCustomFilters={(filters, setFilters) => (
         <Select
-          value={filters?.role ?? ''}
-          onValueChange={(value) => setFilters({ ...filters, role: value === 'all' ? '' : value })}
+          value={filters?.role ?? ""}
+          onValueChange={(value) =>
+            setFilters({ ...filters, role: value === "all" ? "" : value })
+          }
         >
-          <SelectTrigger className="h-8 w-[130px]">
+          <SelectTrigger className="h-8 w-32.5">
             <SelectValue placeholder="All Roles" />
           </SelectTrigger>
           <SelectContent>
@@ -90,5 +100,5 @@ export function UserTable() {
         </Button>
       )}
     />
-  )
+  );
 }

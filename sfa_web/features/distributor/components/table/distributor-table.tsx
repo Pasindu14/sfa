@@ -6,26 +6,24 @@ import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import {
   useEditDialog,
-  useDeleteDialog,
   useActivateDialog,
   useDeactivateDialog,
   useDistributorDialogStore,
-} from '../../store'
-import { useDistributorDataTable } from '../../hooks/distributor.hooks'
-import { getDistributorColumns } from '../columns/distributor-columns'
+} from "../../store";
+import { useDistributorDataTable } from "../../hooks/distributor.hooks";
+import { getDistributorColumns } from "../columns/distributor-columns";
 
 export function DistributorTable() {
-  const openCreate = useDistributorDialogStore((s) => s.openCreate)
-  const { open: openEdit } = useEditDialog()
-  const { open: openDelete } = useDeleteDialog()
-  const { open: openActivate } = useActivateDialog()
-  const { open: openDeactivate } = useDeactivateDialog()
+  const openCreate = useDistributorDialogStore((s) => s.openCreate);
+  const { open: openEdit } = useEditDialog();
+  const { open: openActivate } = useActivateDialog();
+  const { open: openDeactivate } = useDeactivateDialog();
 
   const getColumns = useCallback(
     (_handleRowDeselection: ((rowId: string) => void) | null | undefined) =>
-      getDistributorColumns({ openEdit, openDelete, openActivate, openDeactivate }),
-    [openEdit, openDelete, openActivate, openDeactivate]
-  )
+      getDistributorColumns({ openEdit, openActivate, openDeactivate }),
+    [openEdit, openActivate, openDeactivate],
+  );
 
   return (
     <DataTable
@@ -36,23 +34,23 @@ export function DistributorTable() {
         enableExport: false,
         enableColumnResizing: false,
         enableUrlState: false,
-        columnResizingTableId: 'distributors-table',
-        searchPlaceholder: 'Search distributors...',
+        columnResizingTableId: "distributors-table",
+        searchPlaceholder: "Search distributors...",
       }}
       getColumns={getColumns}
-      fetchDataFn={useDistributorDataTable as any}
+      fetchDataFn={useDistributorDataTable}
       exportConfig={{
-        entityName: 'distributors',
+        entityName: "distributors",
         columnMapping: {
-          name: 'Name',
-          alias: 'Alias',
-          email: 'Email',
-          phone: 'Phone',
-          address: 'Address',
-          tradeDiscount: 'Trade Discount (%)',
-          commission: 'Commission (%)',
-          vatRegNo: 'VAT Reg No',
-          isActive: 'Status',
+          name: "Name",
+          alias: "Alias",
+          email: "Email",
+          phone: "Phone",
+          address: "Address",
+          tradeDiscount: "Trade Discount (%)",
+          commission: "Commission (%)",
+          vatRegNo: "VAT Reg No",
+          isActive: "Status",
         },
         columnWidths: [
           { wch: 25 },
@@ -66,15 +64,15 @@ export function DistributorTable() {
           { wch: 12 },
         ],
         headers: [
-          'Name',
-          'Alias',
-          'Email',
-          'Phone',
-          'Address',
-          'Trade Discount (%)',
-          'Commission (%)',
-          'VAT Reg No',
-          'Status',
+          "Name",
+          "Alias",
+          "Email",
+          "Phone",
+          "Address",
+          "Trade Discount (%)",
+          "Commission (%)",
+          "VAT Reg No",
+          "Status",
         ],
       }}
       idField="id"
@@ -85,5 +83,5 @@ export function DistributorTable() {
         </Button>
       )}
     />
-  )
+  );
 }
