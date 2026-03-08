@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 using sfa_api.Common.Errors;
+using sfa_api.Common.Extensions;
+using sfa_api.Features.Auth.Repositories;
 using sfa_api.Features.Auth.Requests;
 using sfa_api.Features.Auth.Services;
 
@@ -14,11 +16,17 @@ namespace sfa_api.Features.Auth.Controllers;
 public class AuthController(
     IAuthService authService,
     IValidator<LoginRequest> loginValidator,
-    IValidator<RefreshRequest> refreshValidator) : ControllerBase
+    IValidator<RefreshRequest> refreshValidator,
+    IAuthRepository authRepository,
+    IJwtTokenHelper jwtTokenHelper,
+    IWebHostEnvironment env) : ControllerBase
 {
     private readonly IAuthService _authService = authService;
     private readonly IValidator<LoginRequest> _loginValidator = loginValidator;
     private readonly IValidator<RefreshRequest> _refreshValidator = refreshValidator;
+    private readonly IAuthRepository _authRepository = authRepository;
+    private readonly IJwtTokenHelper _jwtTokenHelper = jwtTokenHelper;
+    private readonly IWebHostEnvironment _env = env;
 
     /// <summary>
     /// POST /api/v1/auth/login
@@ -100,5 +108,38 @@ public class AuthController(
 
         await _authService.LogoutAllAsync(userId, ct);
         return Ok(ResponseHelper.Ok("Logged out from all devices successfully.", correlationId));
+    }
+
+    /// <summary>
+    /// POST /api/v1/auth/dev-token
+    /// Generates a long-lived test token. Only available in Development environment.
+    /// </summary>
+    [HttpPost("dev-token")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GenerateDevToken(
+        [FromBody] DevTokenRequest request, CancellationToken ct)
+    {
+        if (!_env.IsDevelopment())
+            throw new AuthorizationException("dev-token endpoint");
+
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+
+        var user = await _authRepository.GetUserByIdAsync(request.UserId, ct)
+            ?? throw new NotFoundException("User", request.UserId);
+
+        var expiryDays = request.ExpiryDays is > 0 and <= 3650
+            ? request.ExpiryDays.Value
+            : 365;
+
+        var token = _jwtTokenHelper.GenerateTestToken(user, expiryDays);
+
+        return Ok(ResponseHelper.Ok(new
+        {
+            accessToken = token,
+            expiresAt = DateTime.UtcNow.AddDays(expiryDays),
+            userId = user.Id,
+            userName = user.Name,
+            role = user.Role.ToString()
+        }, correlationId));
     }
 }

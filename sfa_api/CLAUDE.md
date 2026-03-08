@@ -3,12 +3,17 @@
 ## How to Run
 
 ```bash
-cd sfa_api
-dotnet run --project sfa_api
-dotnet test
+dotnet run --project "d:\Github\sfa\sfa_api\sfa_api\sfa_api.csproj"
+dotnet test --project "d:\Github\sfa\sfa_api\sfa_api\sfa_api.csproj"
 ```
 
-Swagger UI: `https://localhost:7237/swagger`
+Swagger UI: `http://localhost:5135/swagger` (http profile) or `https://localhost:7169/swagger` (https profile)
+
+**Dev Access Token (never expires):**
+```
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzIiwiZW1haWwiOiJhZG1pbkBzZmEuY29tIiwianRpIjoiMWM5MWJlOTgtMTIxZC00YmQ2LWJiMzEtODc2ZjA2OWY1Nzc0IiwibmFtZSI6ImFkbWluIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQWRtaW4iLCJkZXZpY2VJZCI6IiIsImV4cCI6MTgwNDQ4MzMwNCwiaXNzIjoiU0ZBLkFQSSIsImF1ZCI6IlNGQS5DbGllbnRzIn0.Uw_CFCZQQ5Fw4v0Ctv58-g8lsu1rRWvG1n09T1RzdX4
+```
+Claims: `sub=3`, `email=admin@sfa.com`, `name=admin`, `role=Admin`
 
 ---
 
@@ -84,8 +89,8 @@ Throw these from services — `GlobalExceptionMiddleware` catches and formats th
 - **Decimal columns:** Use `[Column(TypeName = "decimal(5,2)")]` for percentage/rate fields
 - **Migrations:**
   ```bash
-  dotnet ef migrations add <Name> --project sfa_api
-  dotnet ef database update --project sfa_api
+  dotnet ef migrations add <Name> --project "d:\Github\sfa\sfa_api\sfa_api\sfa_api.csproj"
+  dotnet ef database update --project "d:\Github\sfa\sfa_api\sfa_api\sfa_api.csproj"
   ```
 
 ---
