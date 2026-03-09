@@ -85,12 +85,12 @@ export class RegionPage {
 
   async clickDeactivate(name: string) {
     await this.openRowActions(name)
-    await this.page.getByRole('menuitem', { name: 'Deactivate' }).click()
+    await this.page.getByRole('menuitem', { name: 'Deactivate', exact: true }).click()
   }
 
   async clickActivate(name: string) {
     await this.openRowActions(name)
-    await this.page.getByRole('menuitem', { name: 'Activate' }).click()
+    await this.page.getByRole('menuitem', { name: 'Activate', exact: true }).click()
   }
 
   // ─── Dialog interactions ──────────────────────────────

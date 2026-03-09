@@ -53,8 +53,8 @@ test.describe.serial('Region Activate / Deactivate', () => {
     await regionPage.goto()
     await regionPage.openRowActions(testData.name)
 
-    await expect(regionPage.page.getByRole('menuitem', { name: 'Activate' })).toBeVisible()
-    await expect(regionPage.page.getByRole('menuitem', { name: 'Deactivate' })).not.toBeVisible()
+    await expect(regionPage.page.getByRole('menuitem', { name: 'Activate', exact: true })).toBeVisible()
+    await expect(regionPage.page.getByRole('menuitem', { name: 'Deactivate', exact: true })).not.toBeVisible()
     // Close the menu
     await regionPage.page.keyboard.press('Escape')
   })
@@ -82,8 +82,8 @@ test.describe.serial('Region Activate / Deactivate', () => {
     await regionPage.goto()
     await regionPage.openRowActions(testData.name)
 
-    await expect(regionPage.page.getByRole('menuitem', { name: 'Deactivate' })).toBeVisible()
-    await expect(regionPage.page.getByRole('menuitem', { name: 'Activate' })).not.toBeVisible()
+    await expect(regionPage.page.getByRole('menuitem', { name: 'Deactivate', exact: true })).toBeVisible()
+    await expect(regionPage.page.getByRole('menuitem', { name: 'Activate', exact: true })).not.toBeVisible()
     await regionPage.page.keyboard.press('Escape')
   })
 })

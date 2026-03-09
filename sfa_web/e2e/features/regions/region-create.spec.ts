@@ -52,29 +52,33 @@ test.describe('Region Create', () => {
   })
 
   test('should show error when creating a duplicate region name', async () => {
-    // Create the first region
+    const dupName = `E2E Dup Region ${Date.now().toString(36)}`
+
+    // First creation — should succeed
     await regionPage.openCreateDialog()
-    await regionPage.fillRegionForm(testData)
+    await regionPage.fillRegionForm({ name: dupName })
     await regionPage.submitCreateForm()
     await regionPage.expectSuccessToast('Region created successfully')
     await regionPage.expectDialogClosed()
 
-    // Try to create another with the same name
+    // Second creation with the same name — should conflict
     await regionPage.openCreateDialog()
-    await regionPage.fillRegionForm(testData)
+    await regionPage.fillRegionForm({ name: dupName })
     await regionPage.submitCreateForm()
 
-    // Dialog should stay open on conflict
+    // Dialog stays open on conflict
     await expect(regionPage.page.getByRole('dialog')).toBeVisible()
   })
 
   test('newly created region should show Active status badge', async () => {
+    const localName = `E2E Badge Region ${Date.now().toString(36)}`
+
     await regionPage.openCreateDialog()
-    await regionPage.fillRegionForm(testData)
+    await regionPage.fillRegionForm({ name: localName })
     await regionPage.submitCreateForm()
     await regionPage.expectSuccessToast()
     await regionPage.expectDialogClosed()
 
-    await regionPage.expectRowStatus(testData.name, 'Active')
+    await regionPage.expectRowStatus(localName, 'Active')
   })
 })
