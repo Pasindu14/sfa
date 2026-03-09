@@ -46,7 +46,11 @@ const data = {
         {
           title: "Distributors",
           url: "/distributors",
-        },  
+        },
+        {
+          title: "Regions",
+          url: "/regions",
+        },
       ],
     },
 /*     {
