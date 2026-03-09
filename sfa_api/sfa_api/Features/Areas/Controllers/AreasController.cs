@@ -40,10 +40,18 @@ public class AreasController(
     public async Task<IActionResult> GetAll(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
+        [FromQuery] int? regionId = null,
+        [FromQuery] string? status = null,
         CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
-        var result = await _service.GetAllAsync(page, pageSize, ct);
+        var isActive = status?.ToLower() switch
+        {
+            "active" => (bool?)true,
+            "inactive" => (bool?)false,
+            _ => null
+        };
+        var result = await _service.GetAllAsync(page, pageSize, regionId, isActive, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 
@@ -52,10 +60,12 @@ public class AreasController(
     /// </summary>
     [HttpGet("active")]
     [Authorize]
-    public async Task<IActionResult> GetAllActive(CancellationToken ct)
+    public async Task<IActionResult> GetAllActive(
+        [FromQuery] int? regionId = null,
+        CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
-        var result = await _service.GetAllActiveAsync(ct);
+        var result = await _service.GetAllActiveAsync(regionId, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 

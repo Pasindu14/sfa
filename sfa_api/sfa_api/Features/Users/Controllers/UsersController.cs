@@ -114,7 +114,7 @@ public class UsersController(
     [HttpDelete("{id}")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteUser(int id, CancellationToken ct)
-    {
+    {   
         await _userService.DeleteUserAsync(id, ct);
         return NoContent();
     }

@@ -5,8 +5,8 @@ namespace sfa_api.Features.Areas.Repositories;
 public interface IAreaRepository
 {
     Task<Area?> GetByIdAsync(int id, CancellationToken ct = default);
-    Task<(IEnumerable<Area> Areas, int TotalCount)> GetAllAsync(int skip, int take, CancellationToken ct = default);
-    Task<IEnumerable<Area>> GetAllActiveAsync(CancellationToken ct = default);
+    Task<(IEnumerable<Area> Areas, int TotalCount)> GetAllAsync(int skip, int take, int? regionId = null, bool? isActive = null, CancellationToken ct = default);
+    Task<IEnumerable<Area>> GetAllActiveAsync(int? regionId = null, CancellationToken ct = default);
     Task<bool> ExistsByNameAsync(string name, int regionId, CancellationToken ct = default);
     Task<bool> ExistsByNameAsync(string name, int regionId, int excludeId, CancellationToken ct = default);
     Task<bool> RegionExistsAsync(int regionId, CancellationToken ct = default);
