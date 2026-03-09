@@ -15,6 +15,10 @@ using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.Distributors.Services;
 using sfa_api.Features.Distributors.Validators;
 using sfa_api.Features.Distributors.Requests;
+using sfa_api.Features.Regions.Repositories;
+using sfa_api.Features.Regions.Services;
+using sfa_api.Features.Regions.Validators;
+using sfa_api.Features.Regions.Requests;
 using sfa_api.Features.Auth.Repositories;
 using sfa_api.Features.Auth.Services;
 using sfa_api.Features.Auth.Validators;
@@ -85,6 +89,12 @@ try
     builder.Services.AddScoped<IDistributorService, DistributorService>();
     builder.Services.AddScoped<IValidator<CreateDistributorRequest>, CreateDistributorValidator>();
     builder.Services.AddScoped<IValidator<UpdateDistributorRequest>, UpdateDistributorValidator>();
+
+    // ── Regions Feature ───────────────────────────────────────────────────
+    builder.Services.AddScoped<IRegionRepository, RegionRepository>();
+    builder.Services.AddScoped<IRegionService, RegionService>();
+    builder.Services.AddScoped<IValidator<CreateRegionRequest>, CreateRegionValidator>();
+    builder.Services.AddScoped<IValidator<UpdateRegionRequest>, UpdateRegionValidator>();
 
     var app = builder.Build();
 

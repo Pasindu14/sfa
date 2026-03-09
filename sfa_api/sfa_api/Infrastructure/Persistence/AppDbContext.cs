@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using sfa_api.Common.Audit;
 using sfa_api.Features.Auth.Entities;
 using sfa_api.Features.Distributors.Entities;
+using sfa_api.Features.Regions.Entities;
 using sfa_api.Features.Users.Entities;
 
 namespace sfa_api.Infrastructure.Persistence;
@@ -17,6 +18,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<User> Users => Set<User>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Distributor> Distributors => Set<Distributor>();
+    public DbSet<Region> Regions => Set<Region>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -78,6 +80,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.UpdatedAt);
             // NOTE: No HasQueryFilter - we display both active and inactive records
             // Soft delete is for audit purposes only, records are never physically removed
+        });
+
+        // Region
+        modelBuilder.Entity<Region>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.HasIndex(x => x.Name).IsUnique();
+            e.HasIndex(x => x.UpdatedAt);
         });
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
