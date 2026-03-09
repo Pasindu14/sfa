@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using sfa_api.Common.Audit;
+using sfa_api.Features.Areas.Entities;
 using sfa_api.Features.Auth.Entities;
 using sfa_api.Features.Distributors.Entities;
 using sfa_api.Features.Regions.Entities;
@@ -19,6 +20,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Distributor> Distributors => Set<Distributor>();
     public DbSet<Region> Regions => Set<Region>();
+    public DbSet<Area> Areas => Set<Area>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -89,6 +91,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Id).UseIdentityColumn();
             e.HasIndex(x => x.Name).IsUnique();
             e.HasIndex(x => x.UpdatedAt);
+        });
+
+        // Area
+        modelBuilder.Entity<Area>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.HasIndex(x => new { x.Name, x.RegionId }).IsUnique();
+            e.HasIndex(x => x.RegionId);
+            e.HasIndex(x => x.UpdatedAt);
+            e.HasOne(x => x.Region)
+             .WithMany()
+             .HasForeignKey(x => x.RegionId)
+             .IsRequired();
         });
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
