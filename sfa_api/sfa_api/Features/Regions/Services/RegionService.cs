@@ -32,6 +32,12 @@ public class RegionService(
         );
     }
 
+    public async Task<IEnumerable<RegionDto>> GetAllActiveAsync(CancellationToken ct = default)
+    {
+        var regions = await _repo.GetAllActiveAsync(ct);
+        return regions.Select(MapToDto);
+    }
+
     public async Task<RegionDto> CreateAsync(CreateRegionRequest request, int? callerId, CancellationToken ct = default)
     {
         if (await _repo.ExistsByNameAsync(request.Name, ct))

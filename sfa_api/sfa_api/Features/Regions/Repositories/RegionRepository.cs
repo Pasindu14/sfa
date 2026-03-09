@@ -23,6 +23,13 @@ public class RegionRepository(AppDbContext context) : IRegionRepository
         return (regions, totalCount);
     }
 
+    public async Task<IEnumerable<Region>> GetAllActiveAsync(CancellationToken ct = default)
+        => await _context.Regions
+            .AsNoTracking()
+            .Where(r => r.IsActive)
+            .OrderBy(r => r.Name)
+            .ToListAsync(ct);
+
     public async Task<bool> ExistsByNameAsync(string name, CancellationToken ct = default)
         => await _context.Regions.AnyAsync(r => r.Name == name, ct);
 

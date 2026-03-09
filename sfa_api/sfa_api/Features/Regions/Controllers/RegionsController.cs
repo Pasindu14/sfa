@@ -48,6 +48,18 @@ public class RegionsController(
     }
 
     /// <summary>
+    /// GET /api/v1/regions/active
+    /// </summary>
+    [HttpGet("active")]
+    [Authorize]
+    public async Task<IActionResult> GetAllActive(CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var result = await _service.GetAllActiveAsync(ct);
+        return Ok(ResponseHelper.Ok(result, correlationId));
+    }
+
+    /// <summary>
     /// POST /api/v1/regions
     /// </summary>
     [HttpPost]
