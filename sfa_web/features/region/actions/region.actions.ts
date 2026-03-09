@@ -58,6 +58,14 @@ export const deleteRegionAction = createAction(
   }
 )
 
+export const getActiveRegionsAction = createAction(
+  { name: 'getActiveRegionsAction', requireAuth: true, requiredRole: 'Admin' },
+  async () => {
+    const res = await client.get('/api/v1/regions/active')
+    return res.data.data as RegionDto[]
+  }
+)
+
 export const activateRegionAction = createAction(
   { name: 'activateRegionAction', requireAuth: true, requiredRole: 'Admin' },
   async (id: number) => {

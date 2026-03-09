@@ -4,14 +4,13 @@ import { useState } from 'react'
 import { queryOptions, useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
-  getRegionsAction,
-  getRegionByIdAction,
-  createRegionAction,
-  updateRegionAction,
-  activateRegionAction,
-  deactivateRegionAction,
-  getActiveRegionsAction,
-} from '../actions/region.actions'
+  getAreasAction,
+  getAreaByIdAction,
+  createAreaAction,
+  updateAreaAction,
+  activateAreaAction,
+  deactivateAreaAction,
+} from '../actions/area.actions'
 import {
   useCreateDialog,
   useEditDialog,
@@ -19,25 +18,25 @@ import {
   useDeactivateDialog,
 } from '../store'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
-import type { CreateRegionInput, UpdateRegionInput } from '../schema/region.schema'
+import type { CreateAreaInput, UpdateAreaInput } from '../schema/area.schema'
 
 // --- Query key factory ---
 
-export const regionKeys = {
-  all: ['regions'] as const,
-  lists: () => [...regionKeys.all, 'list'] as const,
-  list: (filters: object) => [...regionKeys.lists(), filters] as const,
-  details: () => [...regionKeys.all, 'detail'] as const,
-  detail: (id: number) => [...regionKeys.details(), id] as const,
+export const areaKeys = {
+  all: ['areas'] as const,
+  lists: () => [...areaKeys.all, 'list'] as const,
+  list: (filters: object) => [...areaKeys.lists(), filters] as const,
+  details: () => [...areaKeys.all, 'detail'] as const,
+  detail: (id: number) => [...areaKeys.details(), id] as const,
 }
 
 // --- Query options factory ---
 
-export function regionQueryOptions(page: number, pageSize: number) {
+export function areaQueryOptions(page: number, pageSize: number) {
   return queryOptions({
-    queryKey: regionKeys.list({ page, pageSize }),
+    queryKey: areaKeys.list({ page, pageSize }),
     queryFn: async () => {
-      const result = await getRegionsAction(page, pageSize)
+      const result = await getAreasAction(page, pageSize)
       if (!result.success) throw new Error(result.error)
       return result.data
     },
@@ -46,15 +45,15 @@ export function regionQueryOptions(page: number, pageSize: number) {
 
 // --- Query hooks ---
 
-export function useRegions(page: number, pageSize: number) {
-  return useQuery(regionQueryOptions(page, pageSize))
+export function useAreas(page: number, pageSize: number) {
+  return useQuery(areaQueryOptions(page, pageSize))
 }
 
-export function useRegion(id: number | null) {
+export function useArea(id: number | null) {
   return useQuery({
-    queryKey: regionKeys.detail(id!),
+    queryKey: areaKeys.detail(id!),
     queryFn: async () => {
-      const result = await getRegionByIdAction(id!)
+      const result = await getAreaByIdAction(id!)
       if (!result.success) throw new Error(result.error)
       return result.data
     },
@@ -62,22 +61,9 @@ export function useRegion(id: number | null) {
   })
 }
 
-// --- Active regions hook (for dropdowns/selects) ---
-
-export function useActiveRegions() {
-  return useQuery({
-    queryKey: [...regionKeys.all, 'active'] as const,
-    queryFn: async () => {
-      const result = await getActiveRegionsAction()
-      if (!result.success) throw new Error(result.error)
-      return result.data
-    },
-  })
-}
-
 // --- DataTable hook (used as fetchDataFn with isQueryHook = true) ---
 
-export function useRegionDataTable(
+export function useAreaDataTable(
   page: number,
   pageSize: number,
   search: string,
@@ -88,16 +74,20 @@ export function useRegionDataTable(
   customFilters?: Record<string, unknown>,
 ) {
   return useQuery({
-    queryKey: regionKeys.list({ page, pageSize, search, customFilters }),
+    queryKey: areaKeys.list({ page, pageSize, search, customFilters }),
     queryFn: async () => {
-      const result = await getRegionsAction(page, pageSize)
+      const result = await getAreasAction(page, pageSize)
       if (!result.success) throw new Error(result.error)
-      const { regions, page: p, pageSize: ps, totalCount } = result.data
+      const { areas, page: p, pageSize: ps, totalCount } = result.data
 
       const term = search.trim().toLowerCase()
       const filtered = term
-        ? regions.filter((r) => r.name.toLowerCase().includes(term))
-        : regions
+        ? areas.filter(
+            (a) =>
+              a.name.toLowerCase().includes(term) ||
+              a.regionName.toLowerCase().includes(term),
+          )
+        : areas
 
       return {
         success: true as const,
@@ -114,98 +104,98 @@ export function useRegionDataTable(
   })
 }
 
-;(useRegionDataTable as any).isQueryHook = true
+;(useAreaDataTable as any).isQueryHook = true
 
 // --- Mutation hooks ---
 
-export function useCreateRegion() {
+export function useCreateArea() {
   const queryClient = useQueryClient()
   const { close } = useCreateDialog()
   const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null)
 
   const mutation = useMutation({
-    mutationFn: async (data: CreateRegionInput) => {
-      const result = await createRegionAction(data)
+    mutationFn: async (data: CreateAreaInput) => {
+      const result = await createAreaAction(data)
       if (!result.success) throw result
       return result.data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: regionKeys.all })
+      queryClient.invalidateQueries({ queryKey: areaKeys.all })
       setFieldErrors(null)
       close()
-      toast.success('Region created successfully')
+      toast.success('Area created successfully')
     },
     onError: (error: any) => {
       if (error.fields) setFieldErrors(error.fields)
-      handleErrorToast(error, 'region', 'create')
+      handleErrorToast(error, 'area', 'create')
     },
   })
 
   return { ...mutation, fieldErrors, clearFieldErrors: () => setFieldErrors(null) }
 }
 
-export function useUpdateRegion() {
+export function useUpdateArea() {
   const queryClient = useQueryClient()
   const { close } = useEditDialog()
   const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null)
 
   const mutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: UpdateRegionInput }) => {
-      const result = await updateRegionAction(id, data)
+    mutationFn: async ({ id, data }: { id: number; data: UpdateAreaInput }) => {
+      const result = await updateAreaAction(id, data)
       if (!result.success) throw result
       return result.data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: regionKeys.all })
+      queryClient.invalidateQueries({ queryKey: areaKeys.all })
       setFieldErrors(null)
       close()
-      toast.success('Region updated successfully')
+      toast.success('Area updated successfully')
     },
     onError: (error: any) => {
       if (error.fields) setFieldErrors(error.fields)
-      handleErrorToast(error, 'region', 'update')
+      handleErrorToast(error, 'area', 'update')
     },
   })
 
   return { ...mutation, fieldErrors, clearFieldErrors: () => setFieldErrors(null) }
 }
 
-export function useActivateRegion() {
+export function useActivateArea() {
   const queryClient = useQueryClient()
   const { close } = useActivateDialog()
 
   return useMutation({
     mutationFn: async (id: number) => {
-      const result = await activateRegionAction(id)
+      const result = await activateAreaAction(id)
       if (!result.success) throw result
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: regionKeys.all })
+      queryClient.invalidateQueries({ queryKey: areaKeys.all })
       close()
-      toast.success('Region activated successfully')
+      toast.success('Area activated successfully')
     },
     onError: (error: any) => {
-      handleErrorToast(error, 'region', 'activate')
+      handleErrorToast(error, 'area', 'activate')
     },
   })
 }
 
-export function useDeactivateRegion() {
+export function useDeactivateArea() {
   const queryClient = useQueryClient()
   const { close } = useDeactivateDialog()
 
   return useMutation({
     mutationFn: async (id: number) => {
-      const result = await deactivateRegionAction(id)
+      const result = await deactivateAreaAction(id)
       if (!result.success) throw result
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: regionKeys.all })
+      queryClient.invalidateQueries({ queryKey: areaKeys.all })
       close()
-      toast.success('Region deactivated successfully')
+      toast.success('Area deactivated successfully')
     },
     onError: (error: any) => {
-      handleErrorToast(error, 'region', 'deactivate')
+      handleErrorToast(error, 'area', 'deactivate')
     },
   })
 }
