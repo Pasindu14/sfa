@@ -16,6 +16,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { usePathname } from "next/navigation";
 
 export default function ProtectedLayout({
@@ -32,6 +33,7 @@ export default function ProtectedLayout({
   };
 
   return (
+    <TooltipProvider>
     <SidebarProvider defaultOpen={false}>
       <AppSidebar />
       <SidebarInset>
@@ -69,5 +71,6 @@ export default function ProtectedLayout({
         {children}
       </SidebarInset>
     </SidebarProvider>
+    </TooltipProvider>
   );
 }
