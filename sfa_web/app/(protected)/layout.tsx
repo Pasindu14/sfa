@@ -1,7 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { AppSidebar } from "@/components/app-sidebar";
+import dynamic from "next/dynamic";
+
+const AppSidebar = dynamic(
+  () => import("@/components/app-sidebar").then((m) => ({ default: m.AppSidebar })),
+  { ssr: false }
+);
 import {
   Breadcrumb,
   BreadcrumbItem,

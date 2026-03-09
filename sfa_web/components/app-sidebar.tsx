@@ -51,6 +51,10 @@ const data = {
           title: "Regions",
           url: "/regions",
         },
+        {
+          title: "Outlets",
+          url: "/outlets/map",
+        },
       ],
     },
 /*     {
