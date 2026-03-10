@@ -1,11 +1,15 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using System.Threading.RateLimiting;
 using sfa_api.Infrastructure.Persistence;
 
 namespace sfa_api.IntegrationTests.Infrastructure;
@@ -41,7 +45,13 @@ public class SfaWebApplicationFactory : WebApplicationFactory<Program>
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["ConnectionStrings:DefaultConnection"] = "DataSource=:memory:"
+                ["ConnectionStrings:DefaultConnection"] = "DataSource=:memory:",
+                ["RateLimit:GlobalPermitLimit"]         = "100000",
+                ["RateLimit:GlobalWindowSeconds"]       = "3600",
+                ["RateLimit:AuthPermitLimit"]           = "100000",
+                ["RateLimit:AuthWindowSeconds"]         = "3600",
+                ["RateLimit:TestPermitLimit"]           = "100000",
+                ["RateLimit:TestWindowSeconds"]         = "3600"
             });
         });
 
@@ -62,6 +72,13 @@ public class SfaWebApplicationFactory : WebApplicationFactory<Program>
 
             // Remove background services that use PostgreSQL-specific features
             services.RemoveAll<IHostedService>();
+
+            // Disable rate limiting in tests — replace global limiter with no-op
+            services.Configure<RateLimiterOptions>(options =>
+            {
+                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(
+                    _ => RateLimitPartition.GetNoLimiter("testing"));
+            });
         });
     }
 

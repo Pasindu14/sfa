@@ -4,6 +4,7 @@ using sfa_api.Features.Areas.Entities;
 using sfa_api.Features.Auth.Entities;
 using sfa_api.Features.Distributors.Entities;
 using sfa_api.Features.Regions.Entities;
+using sfa_api.Features.Territories.Entities;
 using sfa_api.Features.Users.Entities;
 
 namespace sfa_api.Infrastructure.Persistence;
@@ -21,6 +22,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Distributor> Distributors => Set<Distributor>();
     public DbSet<Region> Regions => Set<Region>();
     public DbSet<Area> Areas => Set<Area>();
+    public DbSet<Territory> Territories => Set<Territory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -104,6 +106,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(x => x.Region)
              .WithMany()
              .HasForeignKey(x => x.RegionId)
+             .IsRequired();
+        });
+
+        // Territory
+        modelBuilder.Entity<Territory>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.HasIndex(x => new { x.Name, x.AreaId }).IsUnique();
+            e.HasIndex(x => x.AreaId);
+            e.HasIndex(x => x.UpdatedAt);
+            e.HasOne(x => x.Area)
+             .WithMany()
+             .HasForeignKey(x => x.AreaId)
              .IsRequired();
         });
 

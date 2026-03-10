@@ -23,6 +23,10 @@ using sfa_api.Features.Areas.Repositories;
 using sfa_api.Features.Areas.Services;
 using sfa_api.Features.Areas.Validators;
 using sfa_api.Features.Areas.Requests;
+using sfa_api.Features.Territories.Repositories;
+using sfa_api.Features.Territories.Services;
+using sfa_api.Features.Territories.Validators;
+using sfa_api.Features.Territories.Requests;
 using sfa_api.Features.Auth.Repositories;
 using sfa_api.Features.Auth.Services;
 using sfa_api.Features.Auth.Validators;
@@ -105,6 +109,12 @@ try
     builder.Services.AddScoped<IAreaService, AreaService>();
     builder.Services.AddScoped<IValidator<CreateAreaRequest>, CreateAreaValidator>();
     builder.Services.AddScoped<IValidator<UpdateAreaRequest>, UpdateAreaValidator>();
+
+    // ── Territories Feature ────────────────────────────────────────────
+    builder.Services.AddScoped<ITerritoryRepository, TerritoryRepository>();
+    builder.Services.AddScoped<ITerritoryService, TerritoryService>();
+    builder.Services.AddScoped<IValidator<CreateTerritoryRequest>, CreateTerritoryValidator>();
+    builder.Services.AddScoped<IValidator<UpdateTerritoryRequest>, UpdateTerritoryValidator>();
 
     var app = builder.Build();
 

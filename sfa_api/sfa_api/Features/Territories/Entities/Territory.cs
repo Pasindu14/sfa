@@ -1,0 +1,16 @@
+using sfa_api.Features.Areas.Entities;
+
+namespace sfa_api.Features.Territories.Entities;
+
+public class Territory
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public int AreaId { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public int? CreatedBy { get; set; }
+    public int? UpdatedBy { get; set; }
+    public Area? Area { get; set; }
+}
