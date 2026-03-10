@@ -20,10 +20,10 @@ public class DivisionService(
         return MapToDto(division);
     }
 
-    public async Task<DivisionListDto> GetAllAsync(int page, int pageSize, int? territoryId = null, int? areaId = null, int? regionId = null, bool? isActive = null, CancellationToken ct = default)
+    public async Task<DivisionListDto> GetAllAsync(int page, int pageSize, int? territoryId = null, int? areaId = null, int? regionId = null, bool? isActive = null, string? search = null, CancellationToken ct = default)
     {
         var skip = (page - 1) * pageSize;
-        var (divisions, totalCount) = await _repo.GetAllAsync(skip, pageSize, territoryId, areaId, regionId, isActive, ct);
+        var (divisions, totalCount) = await _repo.GetAllAsync(skip, pageSize, territoryId, areaId, regionId, isActive, search, ct);
         return new DivisionListDto(
             Divisions: divisions.Select(MapToDto),
             TotalCount: totalCount,

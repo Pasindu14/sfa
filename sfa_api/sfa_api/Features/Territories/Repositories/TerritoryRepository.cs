@@ -15,11 +15,13 @@ public class TerritoryRepository(AppDbContext context) : ITerritoryRepository
                 .ThenInclude(a => a!.Region)
             .FirstOrDefaultAsync(t => t.Id == id, ct);
 
-    public async Task<(IEnumerable<Territory> Territories, int TotalCount)> GetAllAsync(int skip, int take, int? areaId = null, bool? isActive = null, CancellationToken ct = default)
+    public async Task<(IEnumerable<Territory> Territories, int TotalCount)> GetAllAsync(int skip, int take, int? areaId = null, bool? isActive = null, string? search = null, CancellationToken ct = default)
     {
         var query = _context.Territories.AsQueryable();
         if (areaId.HasValue) query = query.Where(t => t.AreaId == areaId.Value);
         if (isActive.HasValue) query = query.Where(t => t.IsActive == isActive.Value);
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(t => t.Name.ToLower().Contains(search.ToLower()));
 
         var totalCount = await query.CountAsync(ct);
         var territories = await query

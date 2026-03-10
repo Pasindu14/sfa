@@ -11,10 +11,14 @@ public class RegionRepository(AppDbContext context) : IRegionRepository
     public async Task<Region?> GetByIdAsync(int id, CancellationToken ct = default)
         => await _context.Regions.FindAsync([id], ct);
 
-    public async Task<(IEnumerable<Region> Regions, int TotalCount)> GetAllAsync(int skip, int take, CancellationToken ct = default)
+    public async Task<(IEnumerable<Region> Regions, int TotalCount)> GetAllAsync(int skip, int take, string? search = null, CancellationToken ct = default)
     {
-        var totalCount = await _context.Regions.CountAsync(ct);
-        var regions = await _context.Regions
+        var query = _context.Regions.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(r => r.Name.ToLower().Contains(search.ToLower()));
+
+        var totalCount = await query.CountAsync(ct);
+        var regions = await query
             .AsNoTracking()
             .OrderBy(r => r.Name)
             .Skip(skip)

@@ -20,10 +20,10 @@ public class RegionService(
         return MapToDto(region);
     }
 
-    public async Task<RegionListDto> GetAllAsync(int page, int pageSize, CancellationToken ct = default)
+    public async Task<RegionListDto> GetAllAsync(int page, int pageSize, string? search = null, CancellationToken ct = default)
     {
         var skip = (page - 1) * pageSize;
-        var (regions, totalCount) = await _repo.GetAllAsync(skip, pageSize, ct);
+        var (regions, totalCount) = await _repo.GetAllAsync(skip, pageSize, search, ct);
         return new RegionListDto(
             Regions: regions.Select(MapToDto),
             TotalCount: totalCount,

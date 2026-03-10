@@ -42,6 +42,7 @@ public class AreasController(
         [FromQuery] int pageSize = 10,
         [FromQuery] int? regionId = null,
         [FromQuery] string? status = null,
+        [FromQuery] string? search = null,
         CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
@@ -51,7 +52,7 @@ public class AreasController(
             "inactive" => (bool?)false,
             _ => null
         };
-        var result = await _service.GetAllAsync(page, pageSize, regionId, isActive, ct);
+        var result = await _service.GetAllAsync(page, pageSize, regionId, isActive, search, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 

@@ -44,6 +44,7 @@ public class DivisionsController(
         [FromQuery] int? areaId = null,
         [FromQuery] int? regionId = null,
         [FromQuery] string? status = null,
+        [FromQuery] string? search = null,
         CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
@@ -53,7 +54,7 @@ public class DivisionsController(
             "inactive" => (bool?)false,
             _ => null
         };
-        var result = await _service.GetAllAsync(page, pageSize, territoryId, areaId, regionId, isActive, ct);
+        var result = await _service.GetAllAsync(page, pageSize, territoryId, areaId, regionId, isActive, search, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 

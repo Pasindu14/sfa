@@ -14,8 +14,8 @@ type AreasListResponse = {
 
 export const getAreasAction = createAction(
   { name: 'getAreasAction', requireAuth: true, requiredRole: 'Admin' },
-  async (page: number = 1, pageSize: number = 10) => {
-    const res = await client.get('/api/v1/areas', { params: { page, pageSize } })
+  async (page: number = 1, pageSize: number = 10, search?: string) => {
+    const res = await client.get('/api/v1/areas', { params: { page, pageSize, search: search || undefined } })
     return res.data.data as AreasListResponse
   }
 )

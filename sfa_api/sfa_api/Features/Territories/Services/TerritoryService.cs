@@ -20,10 +20,10 @@ public class TerritoryService(
         return MapToDto(territory);
     }
 
-    public async Task<TerritoryListDto> GetAllAsync(int page, int pageSize, int? areaId = null, bool? isActive = null, CancellationToken ct = default)
+    public async Task<TerritoryListDto> GetAllAsync(int page, int pageSize, int? areaId = null, bool? isActive = null, string? search = null, CancellationToken ct = default)
     {
         var skip = (page - 1) * pageSize;
-        var (territories, totalCount) = await _repo.GetAllAsync(skip, pageSize, areaId, isActive, ct);
+        var (territories, totalCount) = await _repo.GetAllAsync(skip, pageSize, areaId, isActive, search, ct);
         return new TerritoryListDto(
             Territories: territories.Select(MapToDto),
             TotalCount: totalCount,

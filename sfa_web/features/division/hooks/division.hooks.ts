@@ -90,35 +90,17 @@ export function useDivisionDataTable(
   return useQuery({
     queryKey: divisionKeys.list({ page, pageSize, search, customFilters }),
     queryFn: async () => {
-      // Fetch all divisions so client-side search works across the full dataset
-      const result = await getDivisionsAction(1, 1000)
+      const result = await getDivisionsAction(page, pageSize, search || undefined)
       if (!result.success) throw new Error(result.error)
-      const { divisions, totalCount } = result.data
-
-      const term = search.trim().toLowerCase()
-      const filtered = term
-        ? divisions.filter(
-            (d) =>
-              d.name.toLowerCase().includes(term) ||
-              d.territoryName.toLowerCase().includes(term) ||
-              d.areaName.toLowerCase().includes(term) ||
-              d.regionName.toLowerCase().includes(term),
-          )
-        : divisions
-
-      filtered.sort((a, b) => a.name.localeCompare(b.name))
-
-      const start = (page - 1) * pageSize
-      const paginated = filtered.slice(start, start + pageSize)
-
+      const { divisions, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,
-        data: paginated,
+        data: divisions,
         pagination: {
-          page,
-          limit: pageSize,
-          total_pages: Math.ceil(filtered.length / pageSize),
-          total_items: filtered.length,
+          page: p,
+          limit: ps,
+          total_pages: Math.ceil(totalCount / ps),
+          total_items: totalCount,
         },
       }
     },

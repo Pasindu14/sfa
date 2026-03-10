@@ -90,33 +90,17 @@ export function useAreaDataTable(
   return useQuery({
     queryKey: areaKeys.list({ page, pageSize, search, customFilters }),
     queryFn: async () => {
-      // Fetch all areas so client-side search works across the full dataset
-      const result = await getAreasAction(1, 1000)
+      const result = await getAreasAction(page, pageSize, search || undefined)
       if (!result.success) throw new Error(result.error)
-      const { areas } = result.data
-
-      const term = search.trim().toLowerCase()
-      const filtered = term
-        ? areas.filter(
-            (a) =>
-              a.name.toLowerCase().includes(term) ||
-              a.regionName.toLowerCase().includes(term),
-          )
-        : areas
-
-      filtered.sort((a, b) => a.name.localeCompare(b.name))
-
-      const start = (page - 1) * pageSize
-      const paginated = filtered.slice(start, start + pageSize)
-
+      const { areas, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,
-        data: paginated,
+        data: areas,
         pagination: {
-          page,
-          limit: pageSize,
-          total_pages: Math.ceil(filtered.length / pageSize),
-          total_items: filtered.length,
+          page: p,
+          limit: ps,
+          total_pages: Math.ceil(totalCount / ps),
+          total_items: totalCount,
         },
       }
     },

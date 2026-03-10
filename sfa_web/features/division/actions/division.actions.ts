@@ -14,8 +14,8 @@ type DivisionsListResponse = {
 
 export const getDivisionsAction = createAction(
   { name: 'getDivisionsAction', requireAuth: true, requiredRole: 'Admin' },
-  async (page: number = 1, pageSize: number = 10) => {
-    const res = await client.get('/api/v1/divisions', { params: { page, pageSize } })
+  async (page: number = 1, pageSize: number = 10, search?: string) => {
+    const res = await client.get('/api/v1/divisions', { params: { page, pageSize, search: search || undefined } })
     return res.data.data as DivisionsListResponse
   }
 )

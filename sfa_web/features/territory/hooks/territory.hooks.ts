@@ -76,33 +76,17 @@ export function useTerritoryDataTable(
   return useQuery({
     queryKey: territoryKeys.list({ page, pageSize, search, customFilters }),
     queryFn: async () => {
-      // Fetch all territories so client-side search works across the full dataset
-      const result = await getTerritoriesAction(1, 1000)
+      const result = await getTerritoriesAction(page, pageSize, search || undefined)
       if (!result.success) throw new Error(result.error)
-      const { territories, totalCount } = result.data
-
-      const term = search.trim().toLowerCase()
-      const filtered = term
-        ? territories.filter(
-            (t) =>
-              t.name.toLowerCase().includes(term) ||
-              t.areaName.toLowerCase().includes(term),
-          )
-        : territories
-
-      filtered.sort((a, b) => a.name.localeCompare(b.name))
-
-      const start = (page - 1) * pageSize
-      const paginated = filtered.slice(start, start + pageSize)
-
+      const { territories, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,
-        data: paginated,
+        data: territories,
         pagination: {
-          page,
-          limit: pageSize,
-          total_pages: Math.ceil(filtered.length / pageSize),
-          total_items: filtered.length,
+          page: p,
+          limit: ps,
+          total_pages: Math.ceil(totalCount / ps),
+          total_items: totalCount,
         },
       }
     },

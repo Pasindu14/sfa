@@ -13,11 +13,13 @@ public class AreaRepository(AppDbContext context) : IAreaRepository
             .Include(a => a.Region)
             .FirstOrDefaultAsync(a => a.Id == id, ct);
 
-    public async Task<(IEnumerable<Area> Areas, int TotalCount)> GetAllAsync(int skip, int take, int? regionId = null, bool? isActive = null, CancellationToken ct = default)
+    public async Task<(IEnumerable<Area> Areas, int TotalCount)> GetAllAsync(int skip, int take, int? regionId = null, bool? isActive = null, string? search = null, CancellationToken ct = default)
     {
         var query = _context.Areas.AsQueryable();
         if (regionId.HasValue) query = query.Where(a => a.RegionId == regionId.Value);
         if (isActive.HasValue) query = query.Where(a => a.IsActive == isActive.Value);
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(a => a.Name.ToLower().Contains(search.ToLower()));
 
         var totalCount = await query.CountAsync(ct);
         var areas = await query

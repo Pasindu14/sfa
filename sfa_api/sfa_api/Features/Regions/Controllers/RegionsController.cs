@@ -40,10 +40,11 @@ public class RegionsController(
     public async Task<IActionResult> GetAll(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
+        [FromQuery] string? search = null,
         CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
-        var result = await _service.GetAllAsync(page, pageSize, ct);
+        var result = await _service.GetAllAsync(page, pageSize, search, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 

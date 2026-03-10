@@ -21,7 +21,7 @@ public class DivisionRepository(AppDbContext context) : IDivisionRepository
     public async Task<(IEnumerable<Division> Divisions, int TotalCount)> GetAllAsync(
         int skip, int take,
         int? territoryId = null, int? areaId = null, int? regionId = null,
-        bool? isActive = null,
+        bool? isActive = null, string? search = null,
         CancellationToken ct = default)
     {
         var query = _context.Divisions.AsQueryable();
@@ -29,6 +29,8 @@ public class DivisionRepository(AppDbContext context) : IDivisionRepository
         if (areaId.HasValue) query = query.Where(d => d.AreaId == areaId.Value);
         if (regionId.HasValue) query = query.Where(d => d.RegionId == regionId.Value);
         if (isActive.HasValue) query = query.Where(d => d.IsActive == isActive.Value);
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(d => d.Name.ToLower().Contains(search.ToLower()));
 
         var totalCount = await query.CountAsync(ct);
         var divisions = await query
