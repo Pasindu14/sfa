@@ -98,7 +98,7 @@ public class TerritoryServiceTests
     public async Task GetAllAsync_ReturnsPaginatedTerritoryListDto()
     {
         var territories = new[] { CreateFakeTerritory(1), CreateFakeTerritory(2) };
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((territories.AsEnumerable(), 2));
 
         var result = await _sut.GetAllAsync(1, 10);
@@ -112,19 +112,19 @@ public class TerritoryServiceTests
     [Fact]
     public async Task GetAllAsync_Page2_CalculatesCorrectSkip()
     {
-        _repoMock.Setup(r => r.GetAllAsync(10, 10, null, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(10, 10, null, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<Territory>(), 0));
 
         await _sut.GetAllAsync(2, 10);
 
         // skip = (page - 1) * pageSize = (2 - 1) * 10 = 10
-        _repoMock.Verify(r => r.GetAllAsync(10, 10, null, null, It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.GetAllAsync(10, 10, null, null, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task GetAllAsync_EmptyResult_ReturnsEmptyTerritoryList()
     {
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<Territory>(), 0));
 
         var result = await _sut.GetAllAsync(1, 10);
@@ -173,8 +173,8 @@ public class TerritoryServiceTests
     public async Task CreateAsync_AreaNotFound_ThrowsNotFoundException()
     {
         var request = CreateValidCreateRequest();
-        _repoMock.Setup(r => r.AreaExistsAsync(request.AreaId, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(false);
+        _repoMock.Setup(r => r.GetAreaWithRegionAsync(request.AreaId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((Area?)null);
 
         var act = () => _sut.CreateAsync(request, callerId: 1);
 
@@ -186,8 +186,8 @@ public class TerritoryServiceTests
     public async Task CreateAsync_DuplicateName_ThrowsDuplicateResourceException()
     {
         var request = CreateValidCreateRequest();
-        _repoMock.Setup(r => r.AreaExistsAsync(request.AreaId, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(true);
+        _repoMock.Setup(r => r.GetAreaWithRegionAsync(request.AreaId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(CreateFakeArea(request.AreaId));
         _repoMock.Setup(r => r.ExistsByNameAsync(request.Name, request.AreaId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(true);
 
@@ -281,8 +281,8 @@ public class TerritoryServiceTests
         var request = new UpdateTerritoryRequest { Name = "New Name", AreaId = 99 };
         _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(territory);
-        _repoMock.Setup(r => r.AreaExistsAsync(99, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(false);
+        _repoMock.Setup(r => r.GetAreaWithRegionAsync(99, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((Area?)null);
 
         var act = () => _sut.UpdateAsync(1, request, callerId: 1);
 
@@ -297,8 +297,8 @@ public class TerritoryServiceTests
         var request = new UpdateTerritoryRequest { Name = "Taken Territory", AreaId = 1 };
         _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(territory);
-        _repoMock.Setup(r => r.AreaExistsAsync(1, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(true);
+        _repoMock.Setup(r => r.GetAreaWithRegionAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(CreateFakeArea(1));
         _repoMock.Setup(r => r.ExistsByNameAsync("Taken Territory", 1, 1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(true);
 
@@ -316,8 +316,8 @@ public class TerritoryServiceTests
         var request = new UpdateTerritoryRequest { Name = "My Territory", AreaId = 1 };
         _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(territory);
-        _repoMock.Setup(r => r.AreaExistsAsync(1, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(true);
+        _repoMock.Setup(r => r.GetAreaWithRegionAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(CreateFakeArea(1));
         _repoMock.Setup(r => r.ExistsByNameAsync("My Territory", 1, 1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(false);
         SetupGetByIdAfterUpdate(1, territory);
@@ -334,8 +334,8 @@ public class TerritoryServiceTests
         var request = new UpdateTerritoryRequest { Name = "Renamed Territory", AreaId = 2 };
         _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(territory);
-        _repoMock.Setup(r => r.AreaExistsAsync(2, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(true);
+        _repoMock.Setup(r => r.GetAreaWithRegionAsync(2, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(CreateFakeArea(2));
         _repoMock.Setup(r => r.ExistsByNameAsync("Renamed Territory", 2, 1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(false);
         var updatedTerritory = CreateFakeTerritory(id: 1, areaId: 2);
@@ -469,8 +469,8 @@ public class TerritoryServiceTests
 
     private void SetupSuccessfulCreate(CreateTerritoryRequest request)
     {
-        _repoMock.Setup(r => r.AreaExistsAsync(request.AreaId, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(true);
+        _repoMock.Setup(r => r.GetAreaWithRegionAsync(request.AreaId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(CreateFakeArea(request.AreaId));
         _repoMock.Setup(r => r.ExistsByNameAsync(request.Name, request.AreaId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(false);
         _repoMock.Setup(r => r.CreateAsync(It.IsAny<Territory>(), It.IsAny<CancellationToken>()))
@@ -483,8 +483,8 @@ public class TerritoryServiceTests
 
     private void SetupSuccessfulUpdate(Territory existingTerritory, UpdateTerritoryRequest request, int territoryId)
     {
-        _repoMock.Setup(r => r.AreaExistsAsync(request.AreaId, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(true);
+        _repoMock.Setup(r => r.GetAreaWithRegionAsync(request.AreaId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(CreateFakeArea(request.AreaId));
         _repoMock.Setup(r => r.ExistsByNameAsync(request.Name, request.AreaId, territoryId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(false);
         _repoMock.Setup(r => r.UpdateAsync(existingTerritory, It.IsAny<CancellationToken>()))

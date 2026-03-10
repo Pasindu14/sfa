@@ -98,7 +98,7 @@ public class AreaServiceTests
     public async Task GetAllAsync_ReturnsPaginatedAreaListDto()
     {
         var areas = new[] { CreateFakeArea(1), CreateFakeArea(2) };
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((areas.AsEnumerable(), 2));
 
         var result = await _sut.GetAllAsync(1, 10);
@@ -112,19 +112,19 @@ public class AreaServiceTests
     [Fact]
     public async Task GetAllAsync_Page2_CalculatesCorrectSkip()
     {
-        _repoMock.Setup(r => r.GetAllAsync(10, 10, null, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(10, 10, null, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<Area>(), 0));
 
         await _sut.GetAllAsync(2, 10);
 
         // skip = (page - 1) * pageSize = (2 - 1) * 10 = 10
-        _repoMock.Verify(r => r.GetAllAsync(10, 10, null, null, It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.GetAllAsync(10, 10, null, null, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task GetAllAsync_EmptyResult_ReturnsEmptyAreasList()
     {
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<Area>(), 0));
 
         var result = await _sut.GetAllAsync(1, 10);

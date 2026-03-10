@@ -20,10 +20,10 @@ public class DistributorService(
         return MapToDto(distributor);
     }
 
-    public async Task<DistributorListDto> GetAllAsync(int page, int pageSize, CancellationToken ct = default)
+    public async Task<DistributorListDto> GetAllAsync(int page, int pageSize, string? search = null, bool? isActive = null, CancellationToken ct = default)
     {
         var skip = (page - 1) * pageSize;
-        var (distributors, totalCount) = await _repo.GetAllAsync(skip, pageSize, ct);
+        var (distributors, totalCount) = await _repo.GetAllAsync(skip, pageSize, search, isActive, ct);
         return new DistributorListDto(
             Distributors: distributors.Select(MapToDto),
             TotalCount: totalCount,

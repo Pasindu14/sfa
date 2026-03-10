@@ -121,7 +121,7 @@ public class DistributorServiceTests
     public async Task GetAllAsync_ReturnsPaginatedList()
     {
         var distributors = new[] { CreateFakeDistributor(1), CreateFakeDistributor(2) };
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((distributors.AsEnumerable(), 2));
 
         var result = await _sut.GetAllAsync(1, 10);
@@ -135,19 +135,19 @@ public class DistributorServiceTests
     [Fact]
     public async Task GetAllAsync_Page2_CalculatesCorrectSkip()
     {
-        _repoMock.Setup(r => r.GetAllAsync(10, 10, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(10, 10, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<Distributor>(), 0));
 
         await _sut.GetAllAsync(2, 10);
 
         // skip = (page-1) * pageSize = (2-1) * 10 = 10
-        _repoMock.Verify(r => r.GetAllAsync(10, 10, It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.GetAllAsync(10, 10, null, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task GetAllAsync_EmptyResult_ReturnsEmptyList()
     {
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<Distributor>(), 0));
 
         var result = await _sut.GetAllAsync(1, 10);

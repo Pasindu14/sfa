@@ -149,7 +149,7 @@ public class RegionServiceTests
     public async Task GetAllAsync_ReturnsPaginatedListDto()
     {
         var regions = new[] { CreateFakeRegion(1), CreateFakeRegion(2) };
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((regions.AsEnumerable(), 2));
 
         var result = await _sut.GetAllAsync(1, 10);
@@ -163,19 +163,19 @@ public class RegionServiceTests
     [Fact]
     public async Task GetAllAsync_Page2_CalculatesCorrectSkip()
     {
-        _repoMock.Setup(r => r.GetAllAsync(10, 10, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(10, 10, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<Region>(), 0));
 
         await _sut.GetAllAsync(2, 10);
 
         // skip = (page - 1) * pageSize = (2 - 1) * 10 = 10
-        _repoMock.Verify(r => r.GetAllAsync(10, 10, It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.GetAllAsync(10, 10, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task GetAllAsync_EmptyResult_ReturnsEmptyRegionsList()
     {
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<Region>(), 0));
 
         var result = await _sut.GetAllAsync(1, 10);

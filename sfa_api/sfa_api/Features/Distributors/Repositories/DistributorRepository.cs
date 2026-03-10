@@ -29,12 +29,20 @@ public class DistributorRepository(AppDbContext context) : IDistributorRepositor
     public async Task<bool> ExistsByPhoneAsync(string phone, int excludeId, CancellationToken ct = default)
         => await _context.Distributors.AnyAsync(d => d.Phone == phone && d.Id != excludeId, ct);
 
-    public async Task<(IEnumerable<Distributor> Distributors, int TotalCount)> GetAllAsync(int skip, int take, CancellationToken ct = default)
+    public async Task<(IEnumerable<Distributor> Distributors, int TotalCount)> GetAllAsync(int skip, int take, string? search = null, bool? isActive = null, CancellationToken ct = default)
     {
-        var totalCount = await _context.Distributors.CountAsync(ct);
-        var distributors = await _context.Distributors
+        var query = _context.Distributors.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(d => d.Name.ToLower().Contains(search.ToLower())
+                || d.Email.ToLower().Contains(search.ToLower())
+                || d.Phone.ToLower().Contains(search.ToLower()));
+        if (isActive.HasValue)
+            query = query.Where(d => d.IsActive == isActive.Value);
+
+        var totalCount = await query.CountAsync(ct);
+        var distributors = await query
             .AsNoTracking()
-            .OrderBy(d => d.Id)
+            .OrderBy(d => d.Name)
             .Skip(skip)
             .Take(take)
             .ToListAsync(ct);

@@ -11,7 +11,7 @@ public interface IDistributorRepository
     Task<bool> ExistsByPhoneAsync(string phone, CancellationToken ct = default);
     Task<bool> ExistsByEmailAsync(string email, int excludeId, CancellationToken ct = default);
     Task<bool> ExistsByPhoneAsync(string phone, int excludeId, CancellationToken ct = default);
-    Task<(IEnumerable<Distributor> Distributors, int TotalCount)> GetAllAsync(int skip, int take, CancellationToken ct = default);
+    Task<(IEnumerable<Distributor> Distributors, int TotalCount)> GetAllAsync(int skip, int take, string? search = null, bool? isActive = null, CancellationToken ct = default);
     Task CreateAsync(Distributor distributor, CancellationToken ct = default);
     Task UpdateAsync(Distributor distributor, CancellationToken ct = default);
     Task DeleteAsync(int id, CancellationToken ct = default);

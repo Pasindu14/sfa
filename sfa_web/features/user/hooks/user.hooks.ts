@@ -80,25 +80,12 @@ export function useUserDataTable(
   return useQuery({
     queryKey: userKeys.list({ page, pageSize, search, customFilters }),
     queryFn: async () => {
-      const result = await getUsersAction(page, pageSize)
+      const result = await getUsersAction(page, pageSize, search || undefined, customFilters?.role || undefined)
       if (!result.success) throw new Error(result.error)
-      const { users, page: p, pageSize: ps, totalCount } = result.data
-      const term = search.trim().toLowerCase()
-      const filtered = term
-        ? users.filter(
-            (u) =>
-              u.name.toLowerCase().includes(term) ||
-              u.username.toLowerCase().includes(term) ||
-              u.email.toLowerCase().includes(term) ||
-              u.phone.toLowerCase().includes(term) ||
-              u.role.toLowerCase().includes(term)
-          )
-        : users
-      const role = customFilters?.role
-      const roleFiltered = role ? filtered.filter((u) => u.role === role) : filtered
+      const { users, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,
-        data: roleFiltered,
+        data: users,
         pagination: {
           page: p,
           limit: ps,

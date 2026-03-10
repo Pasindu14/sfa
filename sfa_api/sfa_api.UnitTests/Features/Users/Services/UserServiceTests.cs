@@ -91,7 +91,7 @@ public class UserServiceTests
     public async Task GetAllUsersAsync_ReturnsPaginatedList()
     {
         var users = new[] { CreateFakeUser(1), CreateFakeUser(2) };
-        _repoMock.Setup(r => r.GetAllUsersAsync(0, 10, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllUsersAsync(0, 10, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((users.AsEnumerable(), 2));
 
         var result = await _sut.GetAllUsersAsync(1, 10);
@@ -105,19 +105,19 @@ public class UserServiceTests
     [Fact]
     public async Task GetAllUsersAsync_Page2_CalculatesCorrectSkip()
     {
-        _repoMock.Setup(r => r.GetAllUsersAsync(10, 10, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllUsersAsync(10, 10, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<User>(), 0));
 
         await _sut.GetAllUsersAsync(2, 10);
 
         // skip = (page-1) * pageSize = (2-1) * 10 = 10
-        _repoMock.Verify(r => r.GetAllUsersAsync(10, 10, It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.GetAllUsersAsync(10, 10, null, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task GetAllUsersAsync_EmptyResult_ReturnsEmptyList()
     {
-        _repoMock.Setup(r => r.GetAllUsersAsync(0, 10, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllUsersAsync(0, 10, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<User>(), 0));
 
         var result = await _sut.GetAllUsersAsync(1, 10);
