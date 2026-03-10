@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useState } from "react";
 import dynamic from "next/dynamic";
 
 const AppSidebar = dynamic(
@@ -30,7 +31,25 @@ export default function ProtectedLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  
+
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    try {
+      const stored = localStorage.getItem("sidebar:open");
+      return stored !== null ? stored === "true" : false;
+    } catch {
+      return false;
+    }
+  });
+
+  const handleSidebarChange = (open: boolean) => {
+    setSidebarOpen(open);
+    try {
+      localStorage.setItem("sidebar:open", String(open));
+    } catch {
+      // ignore
+    }
+  };
+
   const pathSegments = pathname.split("/").filter(Boolean);
   
   const formatSegment = (segment: string) => {
@@ -39,7 +58,7 @@ export default function ProtectedLayout({
 
   return (
     <TooltipProvider>
-    <SidebarProvider defaultOpen={false}>
+    <SidebarProvider open={sidebarOpen} onOpenChange={handleSidebarChange}>
       <AppSidebar />
       <SidebarInset>
         <header className="flex h-12 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-10">
