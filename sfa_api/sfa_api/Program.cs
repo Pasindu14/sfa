@@ -140,6 +140,7 @@ try
     app.UseRateLimiter();                           // 6. Rate limiting
     app.UseAuthentication();                        // 7. Validate JWT
     app.UseAuthorization();                         // 8. Permissions
+    app.UseMiddleware<IdempotencyMiddleware>();      // 9. Idempotency (after auth — needs User claims)
 
     // ── Endpoints ─────────────────────────────────────────────────────────
     app.MapControllers();
