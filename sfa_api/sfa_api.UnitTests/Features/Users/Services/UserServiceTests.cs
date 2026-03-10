@@ -126,6 +126,19 @@ public class UserServiceTests
         result.TotalCount.Should().Be(0);
     }
 
+    [Fact]
+    public async Task GetAllUsersAsync_WithSearch_PassesSearchToRepository()
+    {
+        const string search = "test";
+
+        _repoMock.Setup(r => r.GetAllUsersAsync(0, 10, search, null, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((Enumerable.Empty<User>(), 0));
+
+        await _sut.GetAllUsersAsync(page: 1, pageSize: 10, search: search);
+
+        _repoMock.Verify(r => r.GetAllUsersAsync(0, 10, search, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     // ─────────────────────────────────────────────────
     // CreateUserAsync
     // ─────────────────────────────────────────────────

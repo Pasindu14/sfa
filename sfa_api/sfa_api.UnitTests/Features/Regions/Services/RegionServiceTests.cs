@@ -184,6 +184,19 @@ public class RegionServiceTests
         result.TotalCount.Should().Be(0);
     }
 
+    [Fact]
+    public async Task GetAllAsync_WithSearch_PassesSearchToRepository()
+    {
+        const string search = "test";
+
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, search, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((Enumerable.Empty<Region>(), 0));
+
+        await _sut.GetAllAsync(page: 1, pageSize: 10, search: search);
+
+        _repoMock.Verify(r => r.GetAllAsync(0, 10, search, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     // ─────────────────────────────────────────────────
     // CreateAsync
     // ─────────────────────────────────────────────────

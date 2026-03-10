@@ -62,6 +62,51 @@ public class XxxApiTests
 
 - **Users**: Service, Validators (Create/Update/ChangePassword/ResetPassword), API endpoints
 - **Distributors**: Service, Validators (Create/Update), API endpoints (all 7 endpoints covered)
+- **Regions**: Service, API endpoints (including search + pagination IT tests)
+- **Areas**: API endpoints (including search + pagination IT tests)
+
+## Pagination + Search Patterns
+
+### Service unit test — verify search is forwarded to repo
+```csharp
+[Fact]
+public async Task GetAllAsync_WithSearch_PassesSearchToRepository()
+{
+    const string search = "test";
+    _repoMock.Setup(r => r.GetAllAsync(0, 10, search, It.IsAny<CancellationToken>()))
+             .ReturnsAsync((Enumerable.Empty<Region>(), 0));
+
+    await _sut.GetAllAsync(page: 1, pageSize: 10, search: search);
+
+    _repoMock.Verify(r => r.GetAllAsync(0, 10, search, It.IsAny<CancellationToken>()), Times.Once);
+}
+```
+- Must match the exact `search` string in the setup — do NOT use `It.IsAny<string>()` or mock won't trigger
+- UserService repo signature: `GetAllUsersAsync(skip, take, search?, role?, ct?)` — pass `null` for role
+
+### Integration test — search param
+```csharp
+[Fact]
+public async Task GetAllXxx_WithSearchParam_Returns200()
+{
+    // Seed an item whose name contains the search term first
+    SetToken(AuthHelper.AdminToken);
+    await _client.PostAsJsonAsync("/api/v1/xxx", payload);
+
+    var response = await _client.GetAsync("/api/v1/xxx?search=SomeTerm");
+
+    response.StatusCode.Should().Be(HttpStatusCode.OK);
+    var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
+    body.GetProperty("success").GetBoolean().Should().BeTrue();
+
+    // Conditionally assert returned items contain the search term
+    // (use TryGetProperty since list shape may be data.items or data directly)
+    if (body.GetProperty("data").TryGetProperty("regions", out var items) && items.ValueKind == JsonValueKind.Array)
+        foreach (var item in items.EnumerateArray())
+            item.GetProperty("name").GetString()!.ToLower().Should().Contain("someterm");
+}
+```
+- The list wrapper key varies by feature: `data.regions`, `data.areas`, `data.distributors`, `data.users`
 
 ## Test File Locations
 
@@ -78,6 +123,8 @@ sfa_api.UnitTests/
       Services/DistributorServiceTests.cs
       Validators/CreateDistributorValidatorTests.cs
       Validators/UpdateDistributorValidatorTests.cs
+    Regions/
+      Services/RegionServiceTests.cs
 
 sfa_api.IntegrationTests/
   Infrastructure/
@@ -87,4 +134,8 @@ sfa_api.IntegrationTests/
   Features/
     Users/UsersApiTests.cs
     Distributors/DistributorsApiTests.cs
+    Regions/RegionsApiTests.cs
+    Areas/AreasApiTests.cs
+    Territories/TerritoriesApiTests.cs
+    Divisions/DivisionsApiTests.cs
 ```

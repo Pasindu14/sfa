@@ -210,6 +210,30 @@ public class AreasApiTests
         body.GetProperty("success").GetBoolean().Should().BeTrue();
     }
 
+    [Fact]
+    public async Task GetAllAreas_WithSearchParam_Returns200()
+    {
+        // Arrange — seed a region and an area whose name contains the search term
+        var regionId = await CreateRegionAsync("Region For Search Area Test");
+        await _client.PostAsJsonAsync("/api/v1/areas", CreateAreaPayload("Searchable Eastern Area", regionId));
+
+        // Act
+        var response = await _client.GetAsync("/api/v1/areas?search=Searchable+Eastern");
+
+        // Assert — pipeline accepts the param and returns a valid envelope
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
+        body.GetProperty("success").GetBoolean().Should().BeTrue();
+
+        // All returned items (if any) must contain the search term in their name
+        if (body.GetProperty("data").TryGetProperty("areas", out var areas) && areas.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var area in areas.EnumerateArray())
+                area.GetProperty("name").GetString()!.ToLower().Should().Contain("searchable eastern");
+        }
+    }
+
     // ─────────────────────────────────────────────────
     // GET /api/v1/areas — status filter
     // ─────────────────────────────────────────────────

@@ -168,6 +168,19 @@ public class UsersApiTests
     // ─────────────────────────────────────────────────
 
     [Fact]
+    public async Task GetAllUsers_WithPaginationParams_Returns200()
+    {
+        SetToken(AuthHelper.AdminToken);
+
+        var response = await _client.GetAsync("/api/v1/users?page=1&pageSize=5");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
+        body.GetProperty("success").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
     public async Task GetAllUsers_AsAdmin_Returns200WithEnvelope()
     {
         SetToken(AuthHelper.AdminToken);

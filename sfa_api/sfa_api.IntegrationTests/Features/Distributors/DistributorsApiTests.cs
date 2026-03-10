@@ -221,6 +221,36 @@ public class DistributorsApiTests
         body.GetProperty("success").GetBoolean().Should().BeTrue();
     }
 
+    [Fact]
+    public async Task GetAllDistributors_WithSearchParam_Returns200()
+    {
+        // Arrange — seed a distributor whose name contains the search term
+        SetToken(AuthHelper.AdminToken);
+        await _client.PostAsJsonAsync("/api/v1/distributors", CreateDistributorPayload(
+            name: "Searchable Alpha Distributors",
+            address: "1 Search Lane, Colombo",
+            phone: "0771550001",
+            email: "searchable_alpha@example.com",
+            alias: 1301));
+
+        // Act
+        var response = await _client.GetAsync("/api/v1/distributors?search=Searchable+Alpha");
+
+        // Assert — pipeline accepts the param and returns a valid envelope
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
+        body.GetProperty("success").GetBoolean().Should().BeTrue();
+
+        // All returned items (if any) must contain the search term in their name
+        var data = body.GetProperty("data");
+        if (data.TryGetProperty("distributors", out var distributors) && distributors.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var dist in distributors.EnumerateArray())
+                dist.GetProperty("name").GetString()!.ToLower().Should().Contain("searchable alpha");
+        }
+    }
+
     // ─────────────────────────────────────────────────
     // POST /api/v1/distributors — Create + GET by ID
     // ─────────────────────────────────────────────────

@@ -186,6 +186,31 @@ public class RegionsApiTests
         body.GetProperty("success").GetBoolean().Should().BeTrue();
     }
 
+    [Fact]
+    public async Task GetAllRegions_WithSearchParam_Returns200()
+    {
+        // Arrange — create a region whose name contains the search term so we have at least one match
+        SetToken(AuthHelper.AdminToken);
+        await _client.PostAsJsonAsync("/api/v1/regions", CreateRegionPayload("Searchable North Region"));
+
+        // Act
+        var response = await _client.GetAsync("/api/v1/regions?search=Searchable+North");
+
+        // Assert — pipeline accepts the param and returns a valid envelope
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
+        body.GetProperty("success").GetBoolean().Should().BeTrue();
+
+        // All returned items (if any) must contain the search term in their name
+        var data = body.GetProperty("data");
+        if (data.TryGetProperty("regions", out var regions) && regions.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var region in regions.EnumerateArray())
+                region.GetProperty("name").GetString()!.ToLower().Should().Contain("searchable north");
+        }
+    }
+
     // ─────────────────────────────────────────────────
     // POST /api/v1/regions — Create + GET by ID
     // ─────────────────────────────────────────────────
