@@ -46,6 +46,14 @@ export const updateAreaAction = createAction(
   }
 )
 
+export const getActiveAreasAction = createAction(
+  { name: 'getActiveAreasAction', requireAuth: true, requiredRole: 'Admin' },
+  async () => {
+    const res = await client.get('/api/v1/areas/active')
+    return res.data.data as AreaDto[]
+  }
+)
+
 export const activateAreaAction = createAction(
   { name: 'activateAreaAction', requireAuth: true, requiredRole: 'Admin' },
   async (id: number) => {

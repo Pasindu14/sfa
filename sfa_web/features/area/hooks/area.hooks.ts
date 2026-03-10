@@ -10,6 +10,7 @@ import {
   updateAreaAction,
   activateAreaAction,
   deactivateAreaAction,
+  getActiveAreasAction,
 } from '../actions/area.actions'
 import {
   useCreateDialog,
@@ -58,6 +59,19 @@ export function useArea(id: number | null) {
       return result.data
     },
     enabled: id !== null,
+  })
+}
+
+// --- Active areas hook (for dropdowns/selects) ---
+
+export function useActiveAreas() {
+  return useQuery({
+    queryKey: [...areaKeys.all, 'active'] as const,
+    queryFn: async () => {
+      const result = await getActiveAreasAction()
+      if (!result.success) throw new Error(result.error)
+      return result.data
+    },
   })
 }
 

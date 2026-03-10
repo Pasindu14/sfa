@@ -6,7 +6,7 @@ export const createAreaSchema = z.object({
     .min(1, 'Name is required')
     .max(100, 'Name must not exceed 100 characters'),
   regionId: z
-    .number({ required_error: 'Region is required', invalid_type_error: 'Region is required' })
+    .number({ error: 'Region is required' })
     .int()
     .min(1, 'Region is required'),
 })
@@ -17,7 +17,7 @@ export const updateAreaSchema = z.object({
     .min(1, 'Name is required')
     .max(100, 'Name must not exceed 100 characters'),
   regionId: z
-    .number({ required_error: 'Region is required', invalid_type_error: 'Region is required' })
+    .number({ error: 'Region is required' })
     .int()
     .min(1, 'Region is required'),
 })
