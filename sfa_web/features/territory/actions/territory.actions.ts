@@ -12,6 +12,14 @@ type TerritoriesListResponse = {
   pageSize: number
 }
 
+export const getActiveTerritoriesAction = createAction(
+  { name: 'getActiveTerritoriesAction', requireAuth: true, requiredRole: 'Admin' },
+  async () => {
+    const res = await client.get('/api/v1/territories/active')
+    return res.data.data as TerritoryDto[]
+  }
+)
+
 export const getTerritoriesAction = createAction(
   { name: 'getTerritoriesAction', requireAuth: true, requiredRole: 'Admin' },
   async (page: number = 1, pageSize: number = 10) => {

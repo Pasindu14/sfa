@@ -72,6 +72,10 @@ const data = {
           title: "Territories",
           url: "/territories",
         },
+        {
+          title: "Divisions",
+          url: "/divisions",
+        },
       ],
     },
 /*     {
