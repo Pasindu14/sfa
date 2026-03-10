@@ -855,15 +855,8 @@ export function DataTable<TData extends ExportableData, TValue>({
         ? updaterOrValue({ pageIndex: page - 1, pageSize })
         : updaterOrValue;
       
-      // Special handling: When page size changes, always reset to page 1
+      // When page size changes, reset to page 1
       if (newPagination.pageSize !== pageSize) {
-        // First, directly update URL to ensure it's in sync
-        const url = new URL(window.location.href);
-        url.searchParams.set('pageSize', String(newPagination.pageSize));
-        url.searchParams.set('page', '1'); // Always reset to page 1
-        window.history.replaceState({}, '', url.toString());
-        
-        // Then update our state
         setPageSize(newPagination.pageSize);
         setPage(1);
         return;

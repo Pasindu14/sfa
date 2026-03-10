@@ -1,6 +1,8 @@
 "use client";
 import { ChevronRight, type LucideIcon } from "lucide-react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useCallback } from "react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -16,6 +18,24 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
+
+const STORAGE_KEY = "sidebar:nav-open";
+
+function readStorage(): Record<string, boolean> {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+}
+
+function writeStorage(state: Record<string, boolean>) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // ignore quota errors
+  }
+}
 
 export function NavMain({
   items,
@@ -33,6 +53,30 @@ export function NavMain({
 }) {
   const pathname = usePathname();
 
+  const [openState, setOpenState] = useState<Record<string, boolean>>(() => {
+    const stored = readStorage();
+    const initial: Record<string, boolean> = {};
+    for (const item of items) {
+      if (item.title in stored) {
+        initial[item.title] = stored[item.title];
+      } else {
+        initial[item.title] =
+          item.items?.some((sub) => pathname.startsWith(sub.url)) ??
+          item.isActive ??
+          false;
+      }
+    }
+    return initial;
+  });
+
+  const toggle = useCallback((title: string, next: boolean) => {
+    setOpenState((prev) => {
+      const updated = { ...prev, [title]: next };
+      writeStorage(updated);
+      return updated;
+    });
+  }, []);
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Administration</SidebarGroupLabel>
@@ -41,7 +85,8 @@ export function NavMain({
           <Collapsible
             key={item.title}
             asChild
-            defaultOpen={item.isActive}
+            open={openState[item.title] ?? false}
+            onOpenChange={(next) => toggle(item.title, next)}
             className="group/collapsible"
           >
             <SidebarMenuItem>
@@ -57,7 +102,7 @@ export function NavMain({
                   {item.items?.map((subItem) => (
                     <SidebarMenuSubItem key={subItem.title}>
                       <SidebarMenuSubButton asChild>
-                        <a
+                        <Link
                           href={subItem.url}
                           className={
                             pathname === subItem.url
@@ -66,7 +111,7 @@ export function NavMain({
                           }
                         >
                           <span>{subItem.title}</span>
-                        </a>
+                        </Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                   ))}

@@ -3,4 +3,6 @@
     <File Path=".editorconfig" />
   </Folder>
   <Project Path="sfa_api/sfa_api.csproj" />
+  <Project Path="sfa_api.UnitTests/sfa_api.UnitTests.csproj" />
+  <Project Path="sfa_api.IntegrationTests/sfa_api.IntegrationTests.csproj" />
 </Solution>

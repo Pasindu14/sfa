@@ -1,0 +1,146 @@
+using FluentAssertions;
+using sfa_api.Features.Routes.Requests;
+using sfa_api.Features.Routes.Validators;
+
+namespace sfa_api.UnitTests.Features.Routes.Validators;
+
+public class CreateRouteValidatorTests
+{
+    private readonly CreateRouteValidator _validator = new();
+
+    [Fact]
+    public void Validate_ValidRequest_PassesValidation()
+    {
+        var request = new CreateRouteRequest
+        {
+            Name = "North Route",
+            PinColor = "#FF5733",
+            Description = "A route description",
+            DivisionId = 1
+        };
+
+        var result = _validator.Validate(request);
+
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Validate_ValidRequest_NullDescription_PassesValidation()
+    {
+        var request = new CreateRouteRequest
+        {
+            Name = "North Route",
+            PinColor = "#FF5733",
+            Description = null,
+            DivisionId = 1
+        };
+
+        var result = _validator.Validate(request);
+
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(null)]
+    public void Validate_EmptyName_FailsWithNameError(string? name)
+    {
+        var request = new CreateRouteRequest { Name = name!, PinColor = "#FF5733", DivisionId = 1 };
+
+        var result = _validator.Validate(request);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "Name");
+    }
+
+    [Fact]
+    public void Validate_NameExceedsMaxLength_FailsWithNameError()
+    {
+        var request = new CreateRouteRequest { Name = new string('R', 101), PinColor = "#FF5733", DivisionId = 1 };
+
+        var result = _validator.Validate(request);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "Name");
+    }
+
+    [Fact]
+    public void Validate_NameAtMaxLength_PassesValidation()
+    {
+        var request = new CreateRouteRequest { Name = new string('R', 100), PinColor = "#FF5733", DivisionId = 1 };
+
+        var result = _validator.Validate(request);
+
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(null)]
+    public void Validate_EmptyPinColor_FailsWithPinColorError(string? pinColor)
+    {
+        var request = new CreateRouteRequest { Name = "North Route", PinColor = pinColor!, DivisionId = 1 };
+
+        var result = _validator.Validate(request);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "PinColor");
+    }
+
+    [Fact]
+    public void Validate_PinColorExceedsMaxLength_FailsWithPinColorError()
+    {
+        var request = new CreateRouteRequest { Name = "North Route", PinColor = new string('C', 51), DivisionId = 1 };
+
+        var result = _validator.Validate(request);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "PinColor");
+    }
+
+    [Fact]
+    public void Validate_DescriptionExceedsMaxLength_FailsWithDescriptionError()
+    {
+        var request = new CreateRouteRequest
+        {
+            Name = "North Route",
+            PinColor = "#FF5733",
+            Description = new string('D', 501),
+            DivisionId = 1
+        };
+
+        var result = _validator.Validate(request);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "Description");
+    }
+
+    [Fact]
+    public void Validate_DescriptionAtMaxLength_PassesValidation()
+    {
+        var request = new CreateRouteRequest
+        {
+            Name = "North Route",
+            PinColor = "#FF5733",
+            Description = new string('D', 500),
+            DivisionId = 1
+        };
+
+        var result = _validator.Validate(request);
+
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Validate_InvalidDivisionId_FailsWithDivisionIdError(int divisionId)
+    {
+        var request = new CreateRouteRequest { Name = "North Route", PinColor = "#FF5733", DivisionId = divisionId };
+
+        var result = _validator.Validate(request);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "DivisionId");
+    }
+}

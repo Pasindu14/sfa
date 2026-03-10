@@ -15,6 +15,26 @@ using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.Distributors.Services;
 using sfa_api.Features.Distributors.Validators;
 using sfa_api.Features.Distributors.Requests;
+using sfa_api.Features.Regions.Repositories;
+using sfa_api.Features.Regions.Services;
+using sfa_api.Features.Regions.Validators;
+using sfa_api.Features.Regions.Requests;
+using sfa_api.Features.Areas.Repositories;
+using sfa_api.Features.Areas.Services;
+using sfa_api.Features.Areas.Validators;
+using sfa_api.Features.Areas.Requests;
+using sfa_api.Features.Territories.Repositories;
+using sfa_api.Features.Territories.Services;
+using sfa_api.Features.Territories.Validators;
+using sfa_api.Features.Territories.Requests;
+using sfa_api.Features.Divisions.Repositories;
+using sfa_api.Features.Divisions.Services;
+using sfa_api.Features.Divisions.Validators;
+using sfa_api.Features.Divisions.Requests;
+using sfa_api.Features.Routes.Repositories;
+using sfa_api.Features.Routes.Services;
+using sfa_api.Features.Routes.Validators;
+using sfa_api.Features.Routes.Requests;
 using sfa_api.Features.Auth.Repositories;
 using sfa_api.Features.Auth.Services;
 using sfa_api.Features.Auth.Validators;
@@ -86,6 +106,36 @@ try
     builder.Services.AddScoped<IValidator<CreateDistributorRequest>, CreateDistributorValidator>();
     builder.Services.AddScoped<IValidator<UpdateDistributorRequest>, UpdateDistributorValidator>();
 
+    // ── Regions Feature ───────────────────────────────────────────────────
+    builder.Services.AddScoped<IRegionRepository, RegionRepository>();
+    builder.Services.AddScoped<IRegionService, RegionService>();
+    builder.Services.AddScoped<IValidator<CreateRegionRequest>, CreateRegionValidator>();
+    builder.Services.AddScoped<IValidator<UpdateRegionRequest>, UpdateRegionValidator>();
+
+    // ── Areas Feature ─────────────────────────────────────────────────────
+    builder.Services.AddScoped<IAreaRepository, AreaRepository>();
+    builder.Services.AddScoped<IAreaService, AreaService>();
+    builder.Services.AddScoped<IValidator<CreateAreaRequest>, CreateAreaValidator>();
+    builder.Services.AddScoped<IValidator<UpdateAreaRequest>, UpdateAreaValidator>();
+
+    // ── Territories Feature ────────────────────────────────────────────
+    builder.Services.AddScoped<ITerritoryRepository, TerritoryRepository>();
+    builder.Services.AddScoped<ITerritoryService, TerritoryService>();
+    builder.Services.AddScoped<IValidator<CreateTerritoryRequest>, CreateTerritoryValidator>();
+    builder.Services.AddScoped<IValidator<UpdateTerritoryRequest>, UpdateTerritoryValidator>();
+
+    // ── Division Feature ──────────────────────────────────────────────────
+    builder.Services.AddScoped<IDivisionRepository, DivisionRepository>();
+    builder.Services.AddScoped<IDivisionService, DivisionService>();
+    builder.Services.AddScoped<IValidator<CreateDivisionRequest>, CreateDivisionValidator>();
+    builder.Services.AddScoped<IValidator<UpdateDivisionRequest>, UpdateDivisionValidator>();
+
+    // ── Routes Feature ────────────────────────────────────────────────────
+    builder.Services.AddScoped<IRouteRepository, RouteRepository>();
+    builder.Services.AddScoped<IRouteService, RouteService>();
+    builder.Services.AddScoped<IValidator<CreateRouteRequest>, CreateRouteValidator>();
+    builder.Services.AddScoped<IValidator<UpdateRouteRequest>, UpdateRouteValidator>();
+
     var app = builder.Build();
 
     // ── Seed ──────────────────────────────────────────────────────────────
@@ -93,13 +143,14 @@ try
 
     // ── Middleware Pipeline (ORDER MATTERS) ───────────────────────────────
     app.UseMiddleware<CorrelationIdMiddleware>();    // 1. Correlation ID first
-    app.UseMiddleware<GlobalExceptionMiddleware>();  // 2. Catch all exceptions
-    app.UseSerilogRequestLogging();                 // 3. Log every request
+    app.UseSerilogRequestLogging();                 // 2. Log every request (sees final status)
+    app.UseMiddleware<GlobalExceptionMiddleware>();  // 3. Catch all exceptions
     app.UseHttpsRedirection();                      // 4. HTTPS only
     app.UseCors("SFAPolicy");                       // 5. CORS
     app.UseRateLimiter();                           // 6. Rate limiting
     app.UseAuthentication();                        // 7. Validate JWT
     app.UseAuthorization();                         // 8. Permissions
+    app.UseMiddleware<IdempotencyMiddleware>();      // 9. Idempotency (after auth — needs User claims)
 
     // ── Endpoints ─────────────────────────────────────────────────────────
     app.MapControllers();
@@ -122,3 +173,6 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+// Make Program accessible to WebApplicationFactory in integration tests
+public partial class Program { }

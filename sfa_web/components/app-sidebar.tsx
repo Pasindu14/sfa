@@ -2,6 +2,7 @@
 import {
   Cog,
   GalleryVerticalEnd,
+  Map,
 } from "lucide-react";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
@@ -46,7 +47,39 @@ const data = {
         {
           title: "Distributors",
           url: "/distributors",
-        },  
+        },
+        {
+          title: "Outlets",
+          url: "/outlets/map",
+        },
+      ],
+    },
+    {
+      title: "Geography",
+      url: "#",
+      icon: Map,
+      isActive: false,
+      items: [
+        {
+          title: "Regions",
+          url: "/regions",
+        },
+        {
+          title: "Areas",
+          url: "/areas",
+        },
+        {
+          title: "Territories",
+          url: "/territories",
+        },
+        {
+          title: "Divisions",
+          url: "/divisions",
+        },
+        {
+          title: "Routes",
+          url: "/routes",
+        },
       ],
     },
 /*     {

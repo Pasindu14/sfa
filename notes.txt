@@ -32,3 +32,6 @@ VALUES (
     'system',
     false
 );
+
+npx playwright test e2e/features/distributor/ --headed
+npm run test:e2e --headed

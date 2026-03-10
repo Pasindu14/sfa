@@ -55,30 +55,12 @@ export function DataTablePagination<TData>({
           <Select
             value={`${table.getState().pagination.pageSize}`}
             onValueChange={(value) => {
-              // Validate the input value
               const numericValue = parseInt(value, 10);
-              if (isNaN(numericValue) || numericValue <= 0) {
-                console.error(`Invalid page size value: ${value}`);
-                return;
-              }
-              
-              try {
-                // Force URL update via direct window manipulation first
-                // This ensures the URL gets updated before the table state changes
-                const url = new URL(window.location.href);
-                url.searchParams.set('pageSize', value);
-                url.searchParams.set('page', '1'); // Always reset to page 1
-                window.history.replaceState({}, '', url.toString());
-                
-                // Then use the table's pagination change handler to update table state
-                // This order ensures the URL is already set when the table state updates
-                table.setPagination({
-                  pageIndex: 0, // Reset to first page
-                  pageSize: numericValue
-                });
-              } catch (error) {
-                console.error('Error updating pagination:', error);
-              }
+              if (isNaN(numericValue) || numericValue <= 0) return;
+              table.setPagination({
+                pageIndex: 0,
+                pageSize: numericValue,
+              });
             }}
           >
             <SelectTrigger className="cursor-pointer" size={selectSize}>

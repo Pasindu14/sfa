@@ -18,8 +18,8 @@ type DistributorsListResponse = {
 
 export const getDistributorsAction = createAction(
   { name: 'getDistributorsAction', requireAuth: true, requiredRole: 'Admin' },
-  async (page: number = 1, pageSize: number = 10) => {
-    const res = await client.get('/api/v1/distributors', { params: { page, pageSize } })
+  async (page: number = 1, pageSize: number = 10, search?: string, status?: string) => {
+    const res = await client.get('/api/v1/distributors', { params: { page, pageSize, search: search || undefined, status: status || undefined } })
     return res.data.data as DistributorsListResponse
   }
 )

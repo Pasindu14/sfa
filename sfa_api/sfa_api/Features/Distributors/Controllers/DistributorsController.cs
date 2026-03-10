@@ -39,10 +39,18 @@ public class DistributorsController(
     public async Task<IActionResult> GetAll(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
+        [FromQuery] string? search = null,
+        [FromQuery] string? status = null,
         CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
-        var result = await _distributorService.GetAllAsync(page, pageSize, ct);
+        var isActive = status?.ToLower() switch
+        {
+            "active" => (bool?)true,
+            "inactive" => (bool?)false,
+            _ => null
+        };
+        var result = await _distributorService.GetAllAsync(page, pageSize, search, isActive, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 

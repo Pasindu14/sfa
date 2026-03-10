@@ -1,7 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { AppSidebar } from "@/components/app-sidebar";
+import { useState } from "react";
+import dynamic from "next/dynamic";
+
+const AppSidebar = dynamic(
+  () => import("@/components/app-sidebar").then((m) => ({ default: m.AppSidebar })),
+  { ssr: false }
+);
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -16,6 +22,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { usePathname } from "next/navigation";
 
 export default function ProtectedLayout({
@@ -24,7 +31,25 @@ export default function ProtectedLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  
+
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    try {
+      const stored = localStorage.getItem("sidebar:open");
+      return stored !== null ? stored === "true" : false;
+    } catch {
+      return false;
+    }
+  });
+
+  const handleSidebarChange = (open: boolean) => {
+    setSidebarOpen(open);
+    try {
+      localStorage.setItem("sidebar:open", String(open));
+    } catch {
+      // ignore
+    }
+  };
+
   const pathSegments = pathname.split("/").filter(Boolean);
   
   const formatSegment = (segment: string) => {
@@ -32,7 +57,8 @@ export default function ProtectedLayout({
   };
 
   return (
-    <SidebarProvider defaultOpen={false}>
+    <TooltipProvider>
+    <SidebarProvider open={sidebarOpen} onOpenChange={handleSidebarChange}>
       <AppSidebar />
       <SidebarInset>
         <header className="flex h-12 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-10">
@@ -69,5 +95,6 @@ export default function ProtectedLayout({
         {children}
       </SidebarInset>
     </SidebarProvider>
+    </TooltipProvider>
   );
 }

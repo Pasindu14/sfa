@@ -38,12 +38,21 @@ public class UserRepository(AppDbContext context) : IUserRepository
     public async Task<bool> ExistsByPhoneAsync(string phone, int excludeUserId, CancellationToken ct = default)
         => await _context.Users.AnyAsync(u => u.Phone == phone && u.Id != excludeUserId, ct);
 
-    public async Task<(IEnumerable<User> Users, int TotalCount)> GetAllUsersAsync(int skip, int take, CancellationToken ct = default)
+    public async Task<(IEnumerable<User> Users, int TotalCount)> GetAllUsersAsync(int skip, int take, string? search = null, string? role = null, CancellationToken ct = default)
     {
-        var totalCount = await _context.Users.CountAsync(ct);
-        var users = await _context.Users
+        var query = _context.Users.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(u => u.Name.ToLower().Contains(search.ToLower())
+                || u.Username.ToLower().Contains(search.ToLower())
+                || u.Email.ToLower().Contains(search.ToLower())
+                || u.Phone.ToLower().Contains(search.ToLower()));
+        if (!string.IsNullOrWhiteSpace(role) && Enum.TryParse<UserRole>(role, out var parsedRole))
+            query = query.Where(u => u.Role == parsedRole);
+
+        var totalCount = await query.CountAsync(ct);
+        var users = await query
             .AsNoTracking()
-            .OrderBy(u => u.Id)
+            .OrderBy(u => u.Name)
             .Skip(skip)
             .Take(take)
             .ToListAsync(ct);

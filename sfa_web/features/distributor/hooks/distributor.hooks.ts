@@ -78,31 +78,13 @@ export function useDistributorDataTable(
   return useQuery({
     queryKey: distributorKeys.list({ page, pageSize, search, customFilters }),
     queryFn: async () => {
-      const result = await getDistributorsAction(page, pageSize)
+      const status = customFilters?.status as string | undefined
+      const result = await getDistributorsAction(page, pageSize, search || undefined, status || undefined)
       if (!result.success) throw new Error(result.error)
-      const { distributors, page: p, pageSize: ps, totalCount } = result.data
-
-      // Client-side search filtering
-      const term = search.trim().toLowerCase()
-      const filtered = term
-        ? distributors.filter((item) =>
-            item.name.toLowerCase().includes(term) ||
-            item.email.toLowerCase().includes(term) ||
-            item.phone.toLowerCase().includes(term) ||
-            item.alias.toString().includes(term)
-          )
-        : distributors
-
-      // Apply custom status filter if provided
-      let finalData = filtered
-      if (customFilters?.status) {
-        const statusValue = customFilters.status === 'active'
-        finalData = finalData.filter((item) => item.isActive === statusValue)
-      }
-
+      const { distributors, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,
-        data: finalData,
+        data: distributors,
         pagination: {
           page: p,
           limit: ps,

@@ -10,6 +10,7 @@ namespace sfa_api.Common.Extensions;
 public interface IJwtTokenHelper
 {
     string GenerateAccessToken(User user, out string jti);
+    string GenerateTestToken(User user, int expiryDays);
     string GenerateRefreshToken();
     string HashToken(string token);
     ClaimsPrincipal? ValidateExpiredToken(string token);
@@ -45,6 +46,33 @@ public class JwtTokenHelper(IConfiguration config) : IJwtTokenHelper
             audience: _config["Jwt:Audience"],
             claims: claims,
             expires: expiry,
+            signingCredentials: credentials
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public string GenerateTestToken(User user, int expiryDays)
+    {
+        var key = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(_config["Jwt:SecretKey"]!));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new Claim(JwtRegisteredClaimNames.Email, user.Email),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new Claim(JwtRegisteredClaimNames.Name, user.Name),
+            new Claim(ClaimTypes.Role, user.Role.ToString()),
+            new Claim("deviceId", user.DeviceId ?? string.Empty)
+        };
+
+        var token = new JwtSecurityToken(
+            issuer: _config["Jwt:Issuer"],
+            audience: _config["Jwt:Audience"],
+            claims: claims,
+            expires: DateTime.UtcNow.AddDays(expiryDays),
             signingCredentials: credentials
         );
 

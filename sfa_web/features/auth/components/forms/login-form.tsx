@@ -6,17 +6,9 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-  FieldSeparator,
-} from "@/components/ui/field"
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
+import { Label } from "@/components/ui/label";
 
 export function LoginForm({
   className,
@@ -52,48 +44,42 @@ export function LoginForm({
   }
 
   return (
-    <Card className="border-0 shadow-xl bg-white/95 dark:bg-slate-950/95 backdrop-blur border">
-      <CardHeader className="space-y-2 text-center">
-        <CardTitle className="text-3xl font-bold tracking-tight">Sign In</CardTitle>
-        <CardDescription className="text-base">
-          Enter your credentials to access your account
-        </CardDescription>
-      </CardHeader>
-      <Separator />
-      <CardContent>
-        <form onSubmit={handleSubmit} className={cn("flex flex-col gap-6", className)} {...props}>
-          <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="username">Username</FieldLabel>
-              <Input 
-                id="username" 
-                type="text" 
-                placeholder="Enter your username" 
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required 
-                className="h-10"
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="password">Password</FieldLabel>
-              <Input 
-                id="password" 
-                type="password" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required 
-                className="h-10"
-              />
-            </Field>
-            <Field>
-              <Button type="submit" className="w-full h-10 text-base font-semibold" disabled={loading}>
-                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Sign In"}
-              </Button>
-            </Field>
-          </FieldGroup>
-        </form>
-      </CardContent>
-    </Card>
-  )
+    <form
+      onSubmit={handleSubmit}
+      className={cn("flex flex-col gap-5", className)}
+      {...props}
+    >
+      <div className="space-y-2">
+        <Label htmlFor="username">Username</Label>
+        <Input
+          id="username"
+          type="text"
+          placeholder="Enter your username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          required
+          autoComplete="username"
+          className="h-10"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="password">Password</Label>
+        <Input
+          id="password"
+          type="password"
+          placeholder="••••••••"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          autoComplete="current-password"
+          className="h-10"
+        />
+      </div>
+
+      <Button type="submit" disabled={loading}>
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
+      </Button>
+    </form>
+  );
 }

@@ -1,11 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dotnet build:*)",
-      "Bash(dotnet ef:*)",
-      "Bash(dotnet run:*)",
-      "Bash(npm run:*)",
-      "Bash(ls:*)"
+      "Bash(*)",
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)"
     ]
   },
   "outputStyle": "Explanatory"

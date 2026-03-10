@@ -44,10 +44,12 @@ public class UsersController(
     public async Task<IActionResult> GetAllUsers(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
+        [FromQuery] string? search = null,
+        [FromQuery] string? role = null,
         CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
-        var result = await _userService.GetAllUsersAsync(page, pageSize, ct);
+        var result = await _userService.GetAllUsersAsync(page, pageSize, search, role, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 
@@ -114,7 +116,7 @@ public class UsersController(
     [HttpDelete("{id}")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteUser(int id, CancellationToken ct)
-    {
+    {   
         await _userService.DeleteUserAsync(id, ct);
         return NoContent();
     }

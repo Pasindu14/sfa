@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { toast } from "sonner";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("Admin@1234");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,7 +23,7 @@ export default function LoginPage() {
 
     try {
       const result = await signIn("credentials", {
-        email,
+        username,
         password,
         redirect: false,
       });
@@ -31,7 +31,7 @@ export default function LoginPage() {
       if (result?.error) {
         toast.error("Invalid credentials");
       } else {
-        router.push("/dashboard");
+        router.push("/users");
         router.refresh();
       }
     } catch (err) {
@@ -51,13 +51,13 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="username">Username</Label>
               <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@sfa.com"
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="admin"
                 required
               />
             </div>
@@ -83,8 +83,8 @@ export default function LoginPage() {
           </form>
           <div className="mt-4 text-center text-sm text-gray-600 p-3 bg-gray-50 rounded-md">
             <p className="font-medium mb-1">Test Credentials:</p>
-            <p>Email: pasindu14@gmail.com</p>
-            <p>Password: password</p>
+            <p>Username: admin</p>
+            <p>Password: Admin@1234</p>
           </div>
         </CardContent>
       </Card>

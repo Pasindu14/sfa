@@ -84,11 +84,19 @@ const client = axios.create({
 });
 
 // Attach Bearer token from Next-Auth session on every request
+// For state-mutating methods, also attach a unique idempotency key so the API
+// can detect and reject duplicate requests (e.g. network retries, double-submits)
 client.interceptors.request.use(async (config) => {
   const session = await auth();
   if (session?.user?.accessToken) {
     config.headers.Authorization = `Bearer ${session.user.accessToken}`;
   }
+
+  const method = (config.method ?? "").toUpperCase();
+  if (["POST", "PUT", "DELETE"].includes(method)) {
+    config.headers["X-Idempotency-Key"] = crypto.randomUUID();
+  }
+
   return config;
 });
 

@@ -66,7 +66,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("EntityType", "EntityId");
 
-                    b.ToTable("AuditLogs", (string)null);
+                    b.ToTable("AuditLogs");
                 });
 
             modelBuilder.Entity("sfa_api.Common.Audit.IdempotencyKey", b =>
@@ -91,7 +91,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("ExpiresAt");
 
-                    b.ToTable("IdempotencyKeys", (string)null);
+                    b.ToTable("IdempotencyKeys");
                 });
 
             modelBuilder.Entity("sfa_api.Common.Audit.RevokedToken", b =>
@@ -109,7 +109,49 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("ExpiresAt");
 
-                    b.ToTable("RevokedTokens", (string)null);
+                    b.ToTable("RevokedTokens");
+                });
+
+            modelBuilder.Entity("sfa_api.Features.Areas.Entities.Area", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("RegionId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdatedBy")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RegionId");
+
+                    b.HasIndex("UpdatedAt");
+
+                    b.HasIndex("Name", "RegionId")
+                        .IsUnique();
+
+                    b.ToTable("Areas");
                 });
 
             modelBuilder.Entity("sfa_api.Features.Auth.Entities.RefreshToken", b =>
@@ -153,7 +195,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("RefreshTokens", (string)null);
+                    b.ToTable("RefreshTokens");
                 });
 
             modelBuilder.Entity("sfa_api.Features.Distributors.Entities.Distributor", b =>
@@ -231,7 +273,143 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("UpdatedAt");
 
-                    b.ToTable("Distributors", (string)null);
+                    b.ToTable("Distributors");
+                });
+
+            modelBuilder.Entity("sfa_api.Features.Divisions.Entities.Division", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AreaId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("RegionId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TerritoryId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdatedBy")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AreaId");
+
+                    b.HasIndex("RegionId");
+
+                    b.HasIndex("TerritoryId");
+
+                    b.HasIndex("UpdatedAt");
+
+                    b.HasIndex("Name", "TerritoryId")
+                        .IsUnique();
+
+                    b.ToTable("Divisions");
+                });
+
+            modelBuilder.Entity("sfa_api.Features.Regions.Entities.Region", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdatedBy")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.HasIndex("UpdatedAt");
+
+                    b.ToTable("Regions");
+                });
+
+            modelBuilder.Entity("sfa_api.Features.Territories.Entities.Territory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AreaId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("RegionId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdatedBy")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AreaId");
+
+                    b.HasIndex("RegionId");
+
+                    b.HasIndex("UpdatedAt");
+
+                    b.HasIndex("Name", "AreaId")
+                        .IsUnique();
+
+                    b.ToTable("Territories");
                 });
 
             modelBuilder.Entity("sfa_api.Features.Users.Entities.User", b =>
@@ -301,7 +479,18 @@ namespace sfa_api.Migrations
                     b.HasIndex("Username")
                         .IsUnique();
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("sfa_api.Features.Areas.Entities.Area", b =>
+                {
+                    b.HasOne("sfa_api.Features.Regions.Entities.Region", "Region")
+                        .WithMany()
+                        .HasForeignKey("RegionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Region");
                 });
 
             modelBuilder.Entity("sfa_api.Features.Auth.Entities.RefreshToken", b =>
@@ -311,6 +500,52 @@ namespace sfa_api.Migrations
                         .HasForeignKey("UserId");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("sfa_api.Features.Divisions.Entities.Division", b =>
+                {
+                    b.HasOne("sfa_api.Features.Areas.Entities.Area", "Area")
+                        .WithMany()
+                        .HasForeignKey("AreaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("sfa_api.Features.Regions.Entities.Region", "Region")
+                        .WithMany()
+                        .HasForeignKey("RegionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("sfa_api.Features.Territories.Entities.Territory", "Territory")
+                        .WithMany()
+                        .HasForeignKey("TerritoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Area");
+
+                    b.Navigation("Region");
+
+                    b.Navigation("Territory");
+                });
+
+            modelBuilder.Entity("sfa_api.Features.Territories.Entities.Territory", b =>
+                {
+                    b.HasOne("sfa_api.Features.Areas.Entities.Area", "Area")
+                        .WithMany()
+                        .HasForeignKey("AreaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("sfa_api.Features.Regions.Entities.Region", "Region")
+                        .WithMany()
+                        .HasForeignKey("RegionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Area");
+
+                    b.Navigation("Region");
                 });
 
             modelBuilder.Entity("sfa_api.Features.Users.Entities.User", b =>
