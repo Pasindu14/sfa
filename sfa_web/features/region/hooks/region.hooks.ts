@@ -99,6 +99,8 @@ export function useRegionDataTable(
         ? regions.filter((r) => r.name.toLowerCase().includes(term))
         : regions
 
+      filtered.sort((a, b) => a.name.localeCompare(b.name))
+
       return {
         success: true as const,
         data: filtered,

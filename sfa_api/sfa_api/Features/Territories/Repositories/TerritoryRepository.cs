@@ -26,7 +26,7 @@ public class TerritoryRepository(AppDbContext context) : ITerritoryRepository
             .Include(t => t.Area)
                 .ThenInclude(a => a!.Region)
             .AsNoTracking()
-            .OrderBy(t => t.Id)
+            .OrderBy(t => t.Name)
             .Skip(skip)
             .Take(take)
             .ToListAsync(ct);

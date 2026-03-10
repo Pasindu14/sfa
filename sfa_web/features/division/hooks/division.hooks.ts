@@ -106,6 +106,8 @@ export function useDivisionDataTable(
           )
         : divisions
 
+      filtered.sort((a, b) => a.name.localeCompare(b.name))
+
       const start = (page - 1) * pageSize
       const paginated = filtered.slice(start, start + pageSize)
 

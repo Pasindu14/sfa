@@ -23,7 +23,7 @@ public class AreaRepository(AppDbContext context) : IAreaRepository
         var areas = await query
             .Include(a => a.Region)
             .AsNoTracking()
-            .OrderBy(a => a.Id)
+            .OrderBy(a => a.Name)
             .Skip(skip)
             .Take(take)
             .ToListAsync(ct);

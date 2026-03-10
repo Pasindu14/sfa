@@ -16,7 +16,7 @@ public class RegionRepository(AppDbContext context) : IRegionRepository
         var totalCount = await _context.Regions.CountAsync(ct);
         var regions = await _context.Regions
             .AsNoTracking()
-            .OrderBy(r => r.Id)
+            .OrderBy(r => r.Name)
             .Skip(skip)
             .Take(take)
             .ToListAsync(ct);
