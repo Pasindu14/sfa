@@ -90,9 +90,10 @@ export function useRegionDataTable(
   return useQuery({
     queryKey: regionKeys.list({ page, pageSize, search, customFilters }),
     queryFn: async () => {
-      const result = await getRegionsAction(page, pageSize)
+      // Fetch all regions so client-side search works across the full dataset
+      const result = await getRegionsAction(1, 1000)
       if (!result.success) throw new Error(result.error)
-      const { regions, page: p, pageSize: ps, totalCount } = result.data
+      const { regions } = result.data
 
       const term = search.trim().toLowerCase()
       const filtered = term
@@ -101,14 +102,17 @@ export function useRegionDataTable(
 
       filtered.sort((a, b) => a.name.localeCompare(b.name))
 
+      const start = (page - 1) * pageSize
+      const paginated = filtered.slice(start, start + pageSize)
+
       return {
         success: true as const,
-        data: filtered,
+        data: paginated,
         pagination: {
-          page: p,
-          limit: ps,
-          total_pages: Math.ceil(totalCount / ps),
-          total_items: totalCount,
+          page,
+          limit: pageSize,
+          total_pages: Math.ceil(filtered.length / pageSize),
+          total_items: filtered.length,
         },
       }
     },
