@@ -31,6 +31,10 @@ using sfa_api.Features.Divisions.Repositories;
 using sfa_api.Features.Divisions.Services;
 using sfa_api.Features.Divisions.Validators;
 using sfa_api.Features.Divisions.Requests;
+using sfa_api.Features.Routes.Repositories;
+using sfa_api.Features.Routes.Services;
+using sfa_api.Features.Routes.Validators;
+using sfa_api.Features.Routes.Requests;
 using sfa_api.Features.Auth.Repositories;
 using sfa_api.Features.Auth.Services;
 using sfa_api.Features.Auth.Validators;
@@ -125,6 +129,12 @@ try
     builder.Services.AddScoped<IDivisionService, DivisionService>();
     builder.Services.AddScoped<IValidator<CreateDivisionRequest>, CreateDivisionValidator>();
     builder.Services.AddScoped<IValidator<UpdateDivisionRequest>, UpdateDivisionValidator>();
+
+    // ── Routes Feature ────────────────────────────────────────────────────
+    builder.Services.AddScoped<IRouteRepository, RouteRepository>();
+    builder.Services.AddScoped<IRouteService, RouteService>();
+    builder.Services.AddScoped<IValidator<CreateRouteRequest>, CreateRouteValidator>();
+    builder.Services.AddScoped<IValidator<UpdateRouteRequest>, UpdateRouteValidator>();
 
     var app = builder.Build();
 

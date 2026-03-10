@@ -7,6 +7,7 @@ using sfa_api.Features.Divisions.Entities;
 using sfa_api.Features.Regions.Entities;
 using sfa_api.Features.Territories.Entities;
 using sfa_api.Features.Users.Entities;
+using RouteEntity = sfa_api.Features.Routes.Entities.Route;
 
 namespace sfa_api.Infrastructure.Persistence;
 
@@ -25,6 +26,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Area> Areas => Set<Area>();
     public DbSet<Territory> Territories => Set<Territory>();
     public DbSet<Division> Divisions => Set<Division>();
+    public DbSet<RouteEntity> Routes => Set<RouteEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -152,6 +154,22 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .WithMany()
              .HasForeignKey(x => x.RegionId)
              .IsRequired();
+        });
+
+        // Route
+        modelBuilder.Entity<RouteEntity>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.HasIndex(x => x.IsDeleted);
+            e.HasIndex(x => x.DivisionId);
+            e.HasIndex(x => x.TerritoryId);
+            e.HasIndex(x => x.AreaId);
+            e.HasIndex(x => x.RegionId);
+            e.HasOne(x => x.Division).WithMany().HasForeignKey(x => x.DivisionId).IsRequired();
+            e.HasOne(x => x.Territory).WithMany().HasForeignKey(x => x.TerritoryId).IsRequired();
+            e.HasOne(x => x.Area).WithMany().HasForeignKey(x => x.AreaId).IsRequired();
+            e.HasOne(x => x.Region).WithMany().HasForeignKey(x => x.RegionId).IsRequired();
         });
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
