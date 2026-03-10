@@ -5,6 +5,8 @@ public record TerritoryDto(
     string Name,
     int AreaId,
     string AreaName,
+    int RegionId,
+    string RegionName,
     bool IsActive,
     DateTime CreatedAt,
     DateTime UpdatedAt

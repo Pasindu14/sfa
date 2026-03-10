@@ -38,12 +38,21 @@ sfa_api/sfa_api/
 ```
 
 ### Implemented Features
-| Feature      | Description                                  |
-|--------------|----------------------------------------------|
-| Auth         | Login, JWT refresh, logout, token revocation |
-| Users        | User CRUD, password change, status toggle    |
-| Distributors | Distributor CRUD                             |
-| Categories   | (scaffold only — not yet implemented)        |
+| Feature      | Description                                             |
+|--------------|---------------------------------------------------------|
+| Auth         | Login, JWT refresh, logout, token revocation            |
+| Users        | User CRUD, password change, status toggle               |
+| Distributors | Distributor CRUD                                        |
+| Regions      | Region CRUD, activate/deactivate                        |
+| Areas        | Area CRUD, activate/deactivate — stores `RegionId`      |
+| Territories  | Territory CRUD, activate/deactivate — stores `AreaId` + `RegionId` (denormalized) |
+
+### Geographic Hierarchy
+```
+Region → Area → Territory → Division (planned)
+```
+Each level stores all ancestor IDs directly (denormalized) for flat, join-free queries.
+See `dotnet-feature-generator` skill for the full denormalization pattern.
 
 Test projects: `sfa_api.IntegrationTests/`, `sfa_api.UnitTests/`
 

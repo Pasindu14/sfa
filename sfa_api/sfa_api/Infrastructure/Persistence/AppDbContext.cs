@@ -116,10 +116,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Id).UseIdentityColumn();
             e.HasIndex(x => new { x.Name, x.AreaId }).IsUnique();
             e.HasIndex(x => x.AreaId);
+            e.HasIndex(x => x.RegionId);
             e.HasIndex(x => x.UpdatedAt);
             e.HasOne(x => x.Area)
              .WithMany()
              .HasForeignKey(x => x.AreaId)
+             .IsRequired();
+            e.HasOne(x => x.Region)
+             .WithMany()
+             .HasForeignKey(x => x.RegionId)
              .IsRequired();
         });
 

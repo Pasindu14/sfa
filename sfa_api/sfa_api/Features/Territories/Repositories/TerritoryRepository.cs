@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using sfa_api.Features.Areas.Entities;
 using sfa_api.Features.Territories.Entities;
 using sfa_api.Infrastructure.Persistence;
 
@@ -11,6 +12,7 @@ public class TerritoryRepository(AppDbContext context) : ITerritoryRepository
     public async Task<Territory?> GetByIdAsync(int id, CancellationToken ct = default)
         => await _context.Territories
             .Include(t => t.Area)
+                .ThenInclude(a => a!.Region)
             .FirstOrDefaultAsync(t => t.Id == id, ct);
 
     public async Task<(IEnumerable<Territory> Territories, int TotalCount)> GetAllAsync(int skip, int take, int? areaId = null, bool? isActive = null, CancellationToken ct = default)
@@ -22,6 +24,7 @@ public class TerritoryRepository(AppDbContext context) : ITerritoryRepository
         var totalCount = await query.CountAsync(ct);
         var territories = await query
             .Include(t => t.Area)
+                .ThenInclude(a => a!.Region)
             .AsNoTracking()
             .OrderBy(t => t.Id)
             .Skip(skip)
@@ -36,10 +39,16 @@ public class TerritoryRepository(AppDbContext context) : ITerritoryRepository
         if (areaId.HasValue) query = query.Where(t => t.AreaId == areaId.Value);
         return await query
             .Include(t => t.Area)
+                .ThenInclude(a => a!.Region)
             .AsNoTracking()
             .OrderBy(t => t.Name)
             .ToListAsync(ct);
     }
+
+    public async Task<Area?> GetAreaWithRegionAsync(int areaId, CancellationToken ct = default)
+        => await _context.Areas
+            .Include(a => a.Region)
+            .FirstOrDefaultAsync(a => a.Id == areaId, ct);
 
     public async Task<bool> ExistsByNameAsync(string name, int areaId, CancellationToken ct = default)
         => await _context.Territories.AnyAsync(t => t.Name == name && t.AreaId == areaId, ct);

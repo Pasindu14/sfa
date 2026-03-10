@@ -40,8 +40,8 @@ public class TerritoryService(
 
     public async Task<TerritoryDto> CreateAsync(CreateTerritoryRequest request, int? callerId, CancellationToken ct = default)
     {
-        if (!await _repo.AreaExistsAsync(request.AreaId, ct))
-            throw new NotFoundException("Area", request.AreaId);
+        var area = await _repo.GetAreaWithRegionAsync(request.AreaId, ct)
+            ?? throw new NotFoundException("Area", request.AreaId);
 
         if (await _repo.ExistsByNameAsync(request.Name, request.AreaId, ct))
             throw new DuplicateResourceException("Name");
@@ -49,7 +49,8 @@ public class TerritoryService(
         var territory = new Territory
         {
             Name = request.Name,
-            AreaId = request.AreaId,
+            AreaId = area.Id,
+            RegionId = area.RegionId,
             IsActive = true,
             CreatedBy = callerId,
             UpdatedBy = callerId,
@@ -72,14 +73,15 @@ public class TerritoryService(
         var territory = await _repo.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("Territory", id);
 
-        if (!await _repo.AreaExistsAsync(request.AreaId, ct))
-            throw new NotFoundException("Area", request.AreaId);
+        var area = await _repo.GetAreaWithRegionAsync(request.AreaId, ct)
+            ?? throw new NotFoundException("Area", request.AreaId);
 
         if (await _repo.ExistsByNameAsync(request.Name, request.AreaId, id, ct))
             throw new DuplicateResourceException("Name");
 
         territory.Name = request.Name;
-        territory.AreaId = request.AreaId;
+        territory.AreaId = area.Id;
+        territory.RegionId = area.RegionId;
         territory.UpdatedBy = callerId;
         territory.UpdatedAt = DateTime.UtcNow;
 
@@ -128,6 +130,8 @@ public class TerritoryService(
         Name: territory.Name,
         AreaId: territory.AreaId,
         AreaName: territory.Area?.Name ?? string.Empty,
+        RegionId: territory.RegionId,
+        RegionName: territory.Region?.Name ?? territory.Area?.Region?.Name ?? string.Empty,
         IsActive: territory.IsActive,
         CreatedAt: territory.CreatedAt,
         UpdatedAt: territory.UpdatedAt
