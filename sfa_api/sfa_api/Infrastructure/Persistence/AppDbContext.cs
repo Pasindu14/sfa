@@ -4,6 +4,7 @@ using sfa_api.Features.Areas.Entities;
 using sfa_api.Features.Auth.Entities;
 using sfa_api.Features.Distributors.Entities;
 using sfa_api.Features.Divisions.Entities;
+using sfa_api.Features.Outlets.Entities;
 using sfa_api.Features.Regions.Entities;
 using sfa_api.Features.Territories.Entities;
 using sfa_api.Features.Users.Entities;
@@ -27,6 +28,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Territory> Territories => Set<Territory>();
     public DbSet<Division> Divisions => Set<Division>();
     public DbSet<RouteEntity> Routes => Set<RouteEntity>();
+    public DbSet<Outlet> Outlets => Set<Outlet>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -170,6 +172,26 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(x => x.Territory).WithMany().HasForeignKey(x => x.TerritoryId).IsRequired();
             e.HasOne(x => x.Area).WithMany().HasForeignKey(x => x.AreaId).IsRequired();
             e.HasOne(x => x.Region).WithMany().HasForeignKey(x => x.RegionId).IsRequired();
+        });
+
+        // Outlet
+        modelBuilder.Entity<Outlet>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.Property(x => x.CreditLimit).HasColumnType("decimal(18,2)");
+            e.HasIndex(x => x.NicNo);
+            e.HasIndex(x => x.IsDeleted);
+            e.HasIndex(x => x.IsActive);
+            e.HasIndex(x => x.RouteId);
+            e.HasIndex(x => x.DivisionId);
+            e.HasIndex(x => x.TerritoryId);
+            e.HasIndex(x => x.AreaId);
+            e.HasIndex(x => x.RegionId);
+            e.HasIndex(x => x.UpdatedAt);
+            e.HasOne(x => x.Route).WithMany().HasForeignKey(x => x.RouteId).IsRequired();
+            // NOTE: No HasQueryFilter - we display both active and inactive records
+            // Soft delete is for audit purposes only, records are never physically removed
         });
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);

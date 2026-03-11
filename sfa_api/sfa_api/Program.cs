@@ -35,6 +35,10 @@ using sfa_api.Features.Routes.Repositories;
 using sfa_api.Features.Routes.Services;
 using sfa_api.Features.Routes.Validators;
 using sfa_api.Features.Routes.Requests;
+using sfa_api.Features.Outlets.Repositories;
+using sfa_api.Features.Outlets.Services;
+using sfa_api.Features.Outlets.Validators;
+using sfa_api.Features.Outlets.Requests;
 using sfa_api.Features.Auth.Repositories;
 using sfa_api.Features.Auth.Services;
 using sfa_api.Features.Auth.Validators;
@@ -135,6 +139,12 @@ try
     builder.Services.AddScoped<IRouteService, RouteService>();
     builder.Services.AddScoped<IValidator<CreateRouteRequest>, CreateRouteValidator>();
     builder.Services.AddScoped<IValidator<UpdateRouteRequest>, UpdateRouteValidator>();
+
+    // ── Outlets Feature ───────────────────────────────────────────────────
+    builder.Services.AddScoped<IOutletRepository, OutletRepository>();
+    builder.Services.AddScoped<IOutletService, OutletService>();
+    builder.Services.AddScoped<IValidator<CreateOutletRequest>, CreateOutletValidator>();
+    builder.Services.AddScoped<IValidator<UpdateOutletRequest>, UpdateOutletValidator>();
 
     var app = builder.Build();
 
