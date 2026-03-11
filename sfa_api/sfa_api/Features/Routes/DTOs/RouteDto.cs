@@ -13,6 +13,7 @@ public record RouteDto(
     string AreaName,
     int RegionId,
     string RegionName,
+    bool IsActive,
     DateTime CreatedAt,
     DateTime UpdatedAt
 );

@@ -61,6 +61,7 @@ export type RouteDto = {
   areaName: string
   regionId: number
   regionName: string
+  isActive: boolean
   createdAt: string
   updatedAt: string
 }

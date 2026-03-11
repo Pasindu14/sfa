@@ -25,13 +25,23 @@ export const useEditDialog = () =>
     }))
   )
 
-export const useDeleteDialog = () =>
+export const useActivateDialog = () =>
   useRouteDialogStore(
     useShallow((s) => ({
-      isOpen: s.isDeleteOpen,
+      isOpen: s.isActivateOpen,
       selectedId: s.selectedRouteId,
-      open: s.openDelete,
-      close: s.closeDelete,
+      open: s.openActivate,
+      close: s.closeActivate,
+    }))
+  )
+
+export const useDeactivateDialog = () =>
+  useRouteDialogStore(
+    useShallow((s) => ({
+      isOpen: s.isDeactivateOpen,
+      selectedId: s.selectedRouteId,
+      open: s.openDeactivate,
+      close: s.closeDeactivate,
     }))
   )
 

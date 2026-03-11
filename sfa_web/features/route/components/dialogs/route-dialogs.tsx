@@ -21,12 +21,14 @@ import { Spinner } from '@/components/ui/spinner'
 import {
   useCreateDialog,
   useEditDialog,
-  useDeleteDialog,
+  useActivateDialog,
+  useDeactivateDialog,
 } from '../../store'
 import {
   useCreateRoute,
   useUpdateRoute,
-  useDeleteRoute,
+  useActivateRoute,
+  useDeactivateRoute,
   useRoute,
 } from '../../hooks/route.hooks'
 import { RouteForm } from '../forms/route-form'
@@ -101,19 +103,49 @@ function EditRouteDialog() {
   )
 }
 
-// --- Delete ---
+// --- Activate ---
 
-function DeleteRouteDialog() {
-  const { isOpen, selectedId, close } = useDeleteDialog()
-  const { mutate, isPending } = useDeleteRoute()
+function ActivateRouteDialog() {
+  const { isOpen, selectedId, close } = useActivateDialog()
+  const { mutate, isPending } = useActivateRoute()
 
   return (
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && close()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Route</AlertDialogTitle>
+          <AlertDialogTitle>Activate Route</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. The route will be permanently removed.
+            The route will be marked as active and available for assignment.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={isPending}
+            onClick={() => selectedId && mutate(selectedId)}
+          >
+            {isPending ? <Spinner className="mr-2" /> : null}
+            Activate
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
+// --- Deactivate ---
+
+function DeactivateRouteDialog() {
+  const { isOpen, selectedId, close } = useDeactivateDialog()
+  const { mutate, isPending } = useDeactivateRoute()
+
+  return (
+    <AlertDialog open={isOpen} onOpenChange={(open) => !open && close()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Deactivate Route</AlertDialogTitle>
+          <AlertDialogDescription>
+            The route will be marked as inactive and unavailable for assignment.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -124,7 +156,7 @@ function DeleteRouteDialog() {
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             {isPending ? <Spinner className="mr-2" /> : null}
-            Delete
+            Deactivate
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -139,7 +171,8 @@ export function RouteDialogs() {
     <>
       <CreateRouteDialog />
       <EditRouteDialog />
-      <DeleteRouteDialog />
+      <ActivateRouteDialog />
+      <DeactivateRouteDialog />
     </>
   )
 }

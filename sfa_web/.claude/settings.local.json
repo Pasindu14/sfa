@@ -8,7 +8,9 @@
       "Bash(curl -sk \"http://localhost:5135/api/v1/routes?page=1&pageSize=5\" -o /dev/null -w \"%{http_code}\" 2>&1 || echo \"CONNECTION_FAILED\")",
       "Bash(curl -sk \"https://127.0.0.1:7169/api/v1/routes?page=1&pageSize=5\" -w \"\\\\nHTTP_STATUS:%{http_code}\" 2>&1)",
       "Bash(cd \"D:/Github/sfa/sfa_web\" && npx tsc --noEmit 2>&1 | grep -i \"route\\\\|Route\" | head -30)",
-      "Bash(cd \"D:/Github/sfa/sfa_web\" && npx tsc --noEmit 2>&1 | tail -5)"
+      "Bash(cd \"D:/Github/sfa/sfa_web\" && npx tsc --noEmit 2>&1 | tail -5)",
+      "Bash(cd \"D:/Github/sfa/sfa_api/sfa_api\" && dotnet ef migrations add routes_isactive_replace_isdeleted 2>&1)",
+      "Bash(cd \"D:/Github/sfa/sfa_api/sfa_api\" && dotnet ef database update 2>&1)"
     ]
   }
 }

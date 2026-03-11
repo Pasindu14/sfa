@@ -18,12 +18,13 @@ public class Route
     public int AreaId { get; set; }       // denormalized
     public int RegionId { get; set; }     // denormalized
 
+    public bool IsActive { get; set; } = true;
+
     // Audit fields
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public int? CreatedBy { get; set; }
     public int? UpdatedBy { get; set; }
-    public bool IsDeleted { get; set; } = false;
 
     // Navigation
     public Division? Division { get; set; }

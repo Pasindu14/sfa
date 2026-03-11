@@ -71,7 +71,7 @@ public class RouteServiceTests
         Region = CreateFakeRegion(regionId)
     };
 
-    private static RouteEntity CreateFakeRoute(int id = 1, int divisionId = 40, int territoryId = 30, int areaId = 20, int regionId = 10) => new()
+    private static RouteEntity CreateFakeRoute(int id = 1, int divisionId = 40, int territoryId = 30, int areaId = 20, int regionId = 10, bool isActive = true) => new()
     {
         Id = id,
         Name = "Test Route",
@@ -81,7 +81,7 @@ public class RouteServiceTests
         TerritoryId = territoryId,
         AreaId = areaId,
         RegionId = regionId,
-        IsDeleted = false,
+        IsActive = isActive,
         CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         CreatedBy = 1,
@@ -131,6 +131,7 @@ public class RouteServiceTests
         result.TerritoryId.Should().Be(route.TerritoryId);
         result.AreaId.Should().Be(route.AreaId);
         result.RegionId.Should().Be(route.RegionId);
+        result.IsActive.Should().Be(route.IsActive);
         result.CreatedAt.Should().Be(route.CreatedAt);
         result.UpdatedAt.Should().Be(route.UpdatedAt);
     }
@@ -155,7 +156,7 @@ public class RouteServiceTests
     public async Task GetAllAsync_ReturnsPaginatedRouteListDto()
     {
         var routes = new[] { CreateFakeRoute(1), CreateFakeRoute(2) };
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((routes.AsEnumerable(), 2));
 
         var result = await _sut.GetAllAsync(1, 10);
@@ -169,18 +170,18 @@ public class RouteServiceTests
     [Fact]
     public async Task GetAllAsync_Page2_CalculatesCorrectSkip()
     {
-        _repoMock.Setup(r => r.GetAllAsync(10, 10, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(10, 10, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<RouteEntity>(), 0));
 
         await _sut.GetAllAsync(2, 10);
 
-        _repoMock.Verify(r => r.GetAllAsync(10, 10, null, It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.GetAllAsync(10, 10, null, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task GetAllAsync_EmptyResult_ReturnsEmptyRouteList()
     {
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<RouteEntity>(), 0));
 
         var result = await _sut.GetAllAsync(1, 10);
@@ -190,14 +191,53 @@ public class RouteServiceTests
     }
 
     [Fact]
-    public async Task GetAllAsync_SearchParam_ForwardedToRepository()
+    public async Task GetAllAsync_ActiveFilter_ForwardedToRepository()
     {
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, "north", It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, true, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<RouteEntity>(), 0));
 
-        await _sut.GetAllAsync(1, 10, "north");
+        await _sut.GetAllAsync(1, 10, isActive: true);
 
-        _repoMock.Verify(r => r.GetAllAsync(0, 10, "north", It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.GetAllAsync(0, 10, true, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_InactiveFilter_ForwardedToRepository()
+    {
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, false, null, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((Enumerable.Empty<RouteEntity>(), 0));
+
+        await _sut.GetAllAsync(1, 10, isActive: false);
+
+        _repoMock.Verify(r => r.GetAllAsync(0, 10, false, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_SearchParam_ForwardedToRepository()
+    {
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, "north", It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((Enumerable.Empty<RouteEntity>(), 0));
+
+        await _sut.GetAllAsync(1, 10, search: "north");
+
+        _repoMock.Verify(r => r.GetAllAsync(0, 10, null, "north", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // ─────────────────────────────────────────────────
+    // GetAllActiveAsync
+    // ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetAllActiveAsync_ReturnsOnlyActiveRoutes()
+    {
+        var activeRoutes = new[] { CreateFakeRoute(1, isActive: true), CreateFakeRoute(2, isActive: true) };
+        _repoMock.Setup(r => r.GetAllActiveAsync(It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(activeRoutes.AsEnumerable());
+
+        var result = await _sut.GetAllActiveAsync();
+
+        result.Should().HaveCount(2);
+        result.Should().OnlyContain(r => r.IsActive);
     }
 
     // ─────────────────────────────────────────────────
@@ -230,6 +270,21 @@ public class RouteServiceTests
 
         var ex = await act.Should().ThrowAsync<DuplicateResourceException>();
         ex.Which.ErrorCode.Should().Be("NAME_DUPLICATE");
+    }
+
+    [Fact]
+    public async Task CreateAsync_ValidRequest_SetsIsActiveTrue()
+    {
+        var request = CreateValidCreateRequest();
+        SetupSuccessfulCreate(request);
+        RouteEntity? captured = null;
+        _repoMock.Setup(r => r.CreateAsync(It.IsAny<RouteEntity>(), It.IsAny<CancellationToken>()))
+                 .Callback<RouteEntity, CancellationToken>((e, _) => captured = e)
+                 .Returns(Task.CompletedTask);
+
+        await _sut.CreateAsync(request, callerId: 1);
+
+        captured!.IsActive.Should().BeTrue();
     }
 
     [Fact]
@@ -433,36 +488,133 @@ public class RouteServiceTests
     }
 
     // ─────────────────────────────────────────────────
-    // DeleteAsync
+    // ActivateAsync
     // ─────────────────────────────────────────────────
 
     [Fact]
-    public async Task DeleteAsync_ExistingRoute_CallsDeleteAndSaveChanges()
+    public async Task ActivateAsync_ExistingRoute_SetsIsActiveTrue()
     {
-        var route = CreateFakeRoute();
+        var route = CreateFakeRoute(isActive: false);
         _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(route);
-        _repoMock.Setup(r => r.DeleteAsync(1, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.UpdateAsync(route, It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
 
-        await _sut.DeleteAsync(1);
+        await _sut.ActivateAsync(1, callerId: 1);
 
-        _repoMock.Verify(r => r.DeleteAsync(1, It.IsAny<CancellationToken>()), Times.Once);
-        _repoMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        route.IsActive.Should().BeTrue();
     }
 
     [Fact]
-    public async Task DeleteAsync_NonExistentRoute_ThrowsNotFoundException()
+    public async Task ActivateAsync_ExistingRoute_UpdatesAuditFields()
+    {
+        var route = CreateFakeRoute(isActive: false);
+        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(route);
+        _repoMock.Setup(r => r.UpdateAsync(route, It.IsAny<CancellationToken>()))
+                 .Returns(Task.CompletedTask);
+        _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
+                 .Returns(Task.CompletedTask);
+
+        await _sut.ActivateAsync(1, callerId: 7);
+
+        route.UpdatedBy.Should().Be(7);
+        route.UpdatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(2));
+    }
+
+    [Fact]
+    public async Task ActivateAsync_NonExistentRoute_ThrowsNotFoundException()
     {
         _repoMock.Setup(r => r.GetByIdAsync(99, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((RouteEntity?)null);
 
-        var act = () => _sut.DeleteAsync(99);
+        var act = () => _sut.ActivateAsync(99, callerId: 1);
 
         var ex = await act.Should().ThrowAsync<NotFoundException>();
         ex.Which.ErrorCode.Should().Be("ROUTE_NOT_FOUND");
+    }
+
+    [Fact]
+    public async Task ActivateAsync_CallsSaveChanges()
+    {
+        var route = CreateFakeRoute(isActive: false);
+        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(route);
+        _repoMock.Setup(r => r.UpdateAsync(route, It.IsAny<CancellationToken>()))
+                 .Returns(Task.CompletedTask);
+        _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
+                 .Returns(Task.CompletedTask);
+
+        await _sut.ActivateAsync(1, callerId: 1);
+
+        _repoMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // ─────────────────────────────────────────────────
+    // DeactivateAsync
+    // ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task DeactivateAsync_ExistingRoute_SetsIsActiveFalse()
+    {
+        var route = CreateFakeRoute(isActive: true);
+        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(route);
+        _repoMock.Setup(r => r.UpdateAsync(route, It.IsAny<CancellationToken>()))
+                 .Returns(Task.CompletedTask);
+        _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
+                 .Returns(Task.CompletedTask);
+
+        await _sut.DeactivateAsync(1, callerId: 1);
+
+        route.IsActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DeactivateAsync_ExistingRoute_UpdatesAuditFields()
+    {
+        var route = CreateFakeRoute(isActive: true);
+        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(route);
+        _repoMock.Setup(r => r.UpdateAsync(route, It.IsAny<CancellationToken>()))
+                 .Returns(Task.CompletedTask);
+        _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
+                 .Returns(Task.CompletedTask);
+
+        await _sut.DeactivateAsync(1, callerId: 9);
+
+        route.UpdatedBy.Should().Be(9);
+        route.UpdatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(2));
+    }
+
+    [Fact]
+    public async Task DeactivateAsync_NonExistentRoute_ThrowsNotFoundException()
+    {
+        _repoMock.Setup(r => r.GetByIdAsync(99, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((RouteEntity?)null);
+
+        var act = () => _sut.DeactivateAsync(99, callerId: 1);
+
+        var ex = await act.Should().ThrowAsync<NotFoundException>();
+        ex.Which.ErrorCode.Should().Be("ROUTE_NOT_FOUND");
+    }
+
+    [Fact]
+    public async Task DeactivateAsync_CallsSaveChanges()
+    {
+        var route = CreateFakeRoute(isActive: true);
+        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(route);
+        _repoMock.Setup(r => r.UpdateAsync(route, It.IsAny<CancellationToken>()))
+                 .Returns(Task.CompletedTask);
+        _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
+                 .Returns(Task.CompletedTask);
+
+        await _sut.DeactivateAsync(1, callerId: 1);
+
+        _repoMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     // ─────────────────────────────────────────────────

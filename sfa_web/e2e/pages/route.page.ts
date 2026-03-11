@@ -52,6 +52,12 @@ export class RoutePage {
     await expect(this.getRowByName(name)).toBeHidden({ timeout: 10_000 })
   }
 
+  /** Assert the status badge text for a given route row */
+  async expectRowStatus(name: string, status: 'Active' | 'Inactive') {
+    const row = this.getRowByName(name)
+    await expect(row.getByText(status, { exact: true })).toBeVisible({ timeout: 10_000 })
+  }
+
   /** Assert the table has at least one data row */
   async expectTableHasRows() {
     await expect(this.table.locator('tbody tr').first()).toBeVisible({ timeout: 10_000 })
@@ -82,9 +88,14 @@ export class RoutePage {
     await this.page.getByRole('menuitem', { name: 'Edit' }).click()
   }
 
-  async clickDelete(name: string) {
+  async clickDeactivate(name: string) {
     await this.openRowActions(name)
-    await this.page.getByRole('menuitem', { name: 'Delete' }).click()
+    await this.page.getByRole('menuitem', { name: 'Deactivate', exact: true }).click()
+  }
+
+  async clickActivate(name: string) {
+    await this.openRowActions(name)
+    await this.page.getByRole('menuitem', { name: 'Activate', exact: true }).click()
   }
 
   // ─── Dialog interactions ───────────────────────────────────────────────────
@@ -154,8 +165,8 @@ export class RoutePage {
     await this.page.getByRole('button', { name: 'Update Route' }).click()
   }
 
-  /** Confirm an alert dialog (Delete) */
-  async confirmAlertAction(buttonName: 'Delete') {
+  /** Confirm an alert dialog (Activate / Deactivate) */
+  async confirmAlertAction(buttonName: 'Activate' | 'Deactivate') {
     await this.page.getByRole('alertdialog').getByRole('button', { name: buttonName }).click()
   }
 

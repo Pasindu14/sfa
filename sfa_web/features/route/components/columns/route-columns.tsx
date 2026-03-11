@@ -3,22 +3,23 @@
 import type { ColumnDef } from '@tanstack/react-table'
 import { MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { RouteDto } from '../types/route.types'
 
 export interface RouteColumnActions {
   openEdit: (id: number) => void
-  openDelete: (id: number) => void
+  openActivate: (id: number) => void
+  openDeactivate: (id: number) => void
 }
 
 export function getRouteColumns(actions: RouteColumnActions): ColumnDef<RouteDto>[] {
-  const { openEdit, openDelete } = actions
+  const { openEdit, openActivate, openDeactivate } = actions
 
   return [
     {
@@ -65,6 +66,18 @@ export function getRouteColumns(actions: RouteColumnActions): ColumnDef<RouteDto
       ),
     },
     {
+      accessorKey: 'isActive',
+      header: 'Status',
+      cell: ({ row }) => (
+        <Badge
+          variant={row.original.isActive ? 'default' : 'secondary'}
+          className="text-xs font-medium"
+        >
+          {row.original.isActive ? 'Active' : 'Inactive'}
+        </Badge>
+      ),
+    },
+    {
       accessorKey: 'createdAt',
       header: 'Created',
       cell: ({ row }) => (
@@ -92,13 +105,15 @@ export function getRouteColumns(actions: RouteColumnActions): ColumnDef<RouteDto
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => openEdit(route.id)}>Edit</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => openDelete(route.id)}
-                className="text-destructive focus:text-destructive"
-              >
-                Delete
-              </DropdownMenuItem>
+              {route.isActive ? (
+                <DropdownMenuItem onClick={() => openDeactivate(route.id)}>
+                  Deactivate
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onClick={() => openActivate(route.id)}>
+                  Activate
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )

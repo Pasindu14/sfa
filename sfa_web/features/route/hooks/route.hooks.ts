@@ -8,12 +8,15 @@ import {
   getRouteByIdAction,
   createRouteAction,
   updateRouteAction,
-  deleteRouteAction,
+  activateRouteAction,
+  deactivateRouteAction,
+  getActiveRoutesAction,
 } from '../actions/route.actions'
 import {
   useCreateDialog,
   useEditDialog,
-  useDeleteDialog,
+  useActivateDialog,
+  useDeactivateDialog,
 } from '../store'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { CreateRouteInput, UpdateRouteInput } from '../schema/route.schema'
@@ -59,6 +62,19 @@ export function useRoute(id: number | null) {
   })
 }
 
+// --- Active routes hook (for dropdowns/selects) ---
+
+export function useActiveRoutes() {
+  return useQuery({
+    queryKey: [...routeKeys.all, 'active'] as const,
+    queryFn: async () => {
+      const result = await getActiveRoutesAction()
+      if (!result.success) throw new Error(result.error)
+      return result.data
+    },
+  })
+}
+
 // --- DataTable hook ---
 // Uses server-side pagination + search — the API does all filtering.
 
@@ -76,7 +92,6 @@ export function useRouteDataTable(
     queryKey: routeKeys.list({ page, pageSize, search, customFilters }),
     queryFn: async () => {
       const result = await getRoutesAction(page, pageSize, search || undefined)
-      console.log('Fetched routes:', result)
       if (!result.success) throw new Error(result.error)
       const { routes, totalCount, page: p, pageSize: ps } = result.data
       return {
@@ -94,7 +109,7 @@ export function useRouteDataTable(
   })
 }
 
-;(useRouteDataTable as any).isQueryHook = true
+;(useRouteDataTable as unknown as Record<string, unknown>).isQueryHook = true
 
 // --- Mutation hooks ---
 
@@ -115,6 +130,7 @@ export function useCreateRoute() {
       close()
       toast.success('Route created successfully')
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
       if (error.fields) setFieldErrors(error.fields)
       handleErrorToast(error, 'route', 'create')
@@ -141,6 +157,7 @@ export function useUpdateRoute() {
       close()
       toast.success('Route updated successfully')
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
       if (error.fields) setFieldErrors(error.fields)
       handleErrorToast(error, 'route', 'update')
@@ -150,22 +167,44 @@ export function useUpdateRoute() {
   return { ...mutation, fieldErrors, clearFieldErrors: () => setFieldErrors(null) }
 }
 
-export function useDeleteRoute() {
+export function useActivateRoute() {
   const queryClient = useQueryClient()
-  const { close } = useDeleteDialog()
+  const { close } = useActivateDialog()
 
   return useMutation({
     mutationFn: async (id: number) => {
-      const result = await deleteRouteAction(id)
+      const result = await activateRouteAction(id)
       if (!result.success) throw result
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: routeKeys.all })
       close()
-      toast.success('Route deleted successfully')
+      toast.success('Route activated successfully')
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
-      handleErrorToast(error, 'route', 'delete')
+      handleErrorToast(error, 'route', 'activate')
+    },
+  })
+}
+
+export function useDeactivateRoute() {
+  const queryClient = useQueryClient()
+  const { close } = useDeactivateDialog()
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const result = await deactivateRouteAction(id)
+      if (!result.success) throw result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: routeKeys.all })
+      close()
+      toast.success('Route deactivated successfully')
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onError: (error: any) => {
+      handleErrorToast(error, 'route', 'deactivate')
     },
   })
 }

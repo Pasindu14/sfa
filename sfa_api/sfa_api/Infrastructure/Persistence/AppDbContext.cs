@@ -161,7 +161,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).UseIdentityColumn();
-            e.HasIndex(x => x.IsDeleted);
+            e.HasIndex(x => x.IsActive);
             e.HasIndex(x => x.DivisionId);
             e.HasIndex(x => x.TerritoryId);
             e.HasIndex(x => x.AreaId);

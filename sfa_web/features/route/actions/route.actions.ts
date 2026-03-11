@@ -48,10 +48,26 @@ export const updateRouteAction = createAction(
   }
 )
 
-export const deleteRouteAction = createAction(
-  { name: 'deleteRouteAction', requireAuth: true, requiredRole: 'Admin' },
+export const getActiveRoutesAction = createAction(
+  { name: 'getActiveRoutesAction', requireAuth: true, requiredRole: 'Admin' },
+  async () => {
+    const res = await client.get('/api/v1/routes/active')
+    return res.data.data as RouteDto[]
+  }
+)
+
+export const activateRouteAction = createAction(
+  { name: 'activateRouteAction', requireAuth: true, requiredRole: 'Admin' },
   async (id: number) => {
-    await client.delete(`/api/v1/routes/${id}`)
+    await client.post(`/api/v1/routes/${id}/activate`)
+    revalidatePath('/routes')
+  }
+)
+
+export const deactivateRouteAction = createAction(
+  { name: 'deactivateRouteAction', requireAuth: true, requiredRole: 'Admin' },
+  async (id: number) => {
+    await client.post(`/api/v1/routes/${id}/deactivate`)
     revalidatePath('/routes')
   }
 )

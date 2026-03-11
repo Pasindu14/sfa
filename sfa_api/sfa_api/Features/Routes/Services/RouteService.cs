@@ -20,16 +20,22 @@ public class RouteService(
         return MapToDto(route);
     }
 
-    public async Task<RouteListDto> GetAllAsync(int page, int pageSize, string? search = null, CancellationToken ct = default)
+    public async Task<RouteListDto> GetAllAsync(int page, int pageSize, bool? isActive = null, string? search = null, CancellationToken ct = default)
     {
         var skip = (page - 1) * pageSize;
-        var (routes, totalCount) = await _repo.GetAllAsync(skip, pageSize, search, ct);
+        var (routes, totalCount) = await _repo.GetAllAsync(skip, pageSize, isActive, search, ct);
         return new RouteListDto(
             Routes: routes.Select(MapToDto),
             TotalCount: totalCount,
             Page: page,
             PageSize: pageSize
         );
+    }
+
+    public async Task<IEnumerable<RouteDto>> GetAllActiveAsync(CancellationToken ct = default)
+    {
+        var routes = await _repo.GetAllActiveAsync(ct);
+        return routes.Select(MapToDto);
     }
 
     public async Task<RouteDto> CreateAsync(CreateRouteRequest request, int? callerId, CancellationToken ct = default)
@@ -49,6 +55,7 @@ public class RouteService(
             TerritoryId = division.TerritoryId,
             AreaId = division.AreaId,
             RegionId = division.RegionId,
+            IsActive = true,
             CreatedBy = callerId,
             UpdatedBy = callerId,
             CreatedAt = DateTime.UtcNow,
@@ -96,15 +103,34 @@ public class RouteService(
         return MapToDto(updated);
     }
 
-    public async Task DeleteAsync(int id, CancellationToken ct = default)
+    public async Task ActivateAsync(int id, int? callerId, CancellationToken ct = default)
     {
         var route = await _repo.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("Route", id);
 
-        await _repo.DeleteAsync(route.Id, ct);
+        route.IsActive = true;
+        route.UpdatedBy = callerId;
+        route.UpdatedAt = DateTime.UtcNow;
+
+        await _repo.UpdateAsync(route, ct);
         await _repo.SaveChangesAsync(ct);
 
-        _logger.LogInformation("Route {RouteId} soft-deleted", id);
+        _logger.LogInformation("Route {RouteId} activated", id);
+    }
+
+    public async Task DeactivateAsync(int id, int? callerId, CancellationToken ct = default)
+    {
+        var route = await _repo.GetByIdAsync(id, ct)
+            ?? throw new NotFoundException("Route", id);
+
+        route.IsActive = false;
+        route.UpdatedBy = callerId;
+        route.UpdatedAt = DateTime.UtcNow;
+
+        await _repo.UpdateAsync(route, ct);
+        await _repo.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Route {RouteId} deactivated", id);
     }
 
     private static RouteDto MapToDto(RouteEntity r) => new(
@@ -120,6 +146,7 @@ public class RouteService(
         AreaName: r.Area?.Name ?? r.Division?.Territory?.Area?.Name ?? string.Empty,
         RegionId: r.RegionId,
         RegionName: r.Region?.Name ?? r.Division?.Territory?.Area?.Region?.Name ?? string.Empty,
+        IsActive: r.IsActive,
         CreatedAt: r.CreatedAt,
         UpdatedAt: r.UpdatedAt
     );

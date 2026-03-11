@@ -40,11 +40,30 @@ public class RoutesController(
     public async Task<IActionResult> GetAll(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
+        [FromQuery] string? status = null,
         [FromQuery] string? search = null,
         CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
-        var result = await _service.GetAllAsync(page, pageSize, search, ct);
+        var isActive = status?.ToLower() switch
+        {
+            "active" => (bool?)true,
+            "inactive" => (bool?)false,
+            _ => null
+        };
+        var result = await _service.GetAllAsync(page, pageSize, isActive, search, ct);
+        return Ok(ResponseHelper.Ok(result, correlationId));
+    }
+
+    /// <summary>
+    /// GET /api/v1/routes/active
+    /// </summary>
+    [HttpGet("active")]
+    [Authorize]
+    public async Task<IActionResult> GetAllActive(CancellationToken ct = default)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var result = await _service.GetAllActiveAsync(ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 
@@ -96,13 +115,26 @@ public class RoutesController(
     }
 
     /// <summary>
-    /// DELETE /api/v1/routes/{id}
+    /// POST /api/v1/routes/{id}/activate
     /// </summary>
-    [HttpDelete("{id}")]
+    [HttpPost("{id}/activate")]
     [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> Delete(int id, CancellationToken ct)
+    public async Task<IActionResult> Activate(int id, CancellationToken ct)
     {
-        await _service.DeleteAsync(id, ct);
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
+        await _service.ActivateAsync(id, callerId, ct);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// POST /api/v1/routes/{id}/deactivate
+    /// </summary>
+    [HttpPost("{id}/deactivate")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Deactivate(int id, CancellationToken ct)
+    {
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
+        await _service.DeactivateAsync(id, callerId, ct);
         return NoContent();
     }
 }
