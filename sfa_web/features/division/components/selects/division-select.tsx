@@ -1,8 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { createAction } from '@/lib/actions/wrapper'
-import client from '@/lib/api/client'
+import { getActiveDivisionsAction } from '../../actions/division.actions'
 import {
   Select,
   SelectContent,
@@ -13,19 +12,11 @@ import {
 import { Spinner } from '@/components/ui/spinner'
 import type { DivisionDto } from '../types/division.types'
 
-const getActiveDivisionsSelectAction = createAction(
-  { name: 'getActiveDivisionsSelectAction', requireAuth: true, requiredRole: 'Admin' },
-  async () => {
-    const res = await client.get('/api/v1/divisions/active')
-    return res.data.data as DivisionDto[]
-  }
-)
-
 function useActiveDivisionsSelect() {
   return useQuery({
     queryKey: ['divisions', 'active'] as const,
     queryFn: async () => {
-      const result = await getActiveDivisionsSelectAction()
+      const result = await getActiveDivisionsAction()
       if (!result.success) throw new Error(result.error)
       return result.data
     },

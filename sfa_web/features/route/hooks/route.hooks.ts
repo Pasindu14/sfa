@@ -76,6 +76,7 @@ export function useRouteDataTable(
     queryKey: routeKeys.list({ page, pageSize, search, customFilters }),
     queryFn: async () => {
       const result = await getRoutesAction(page, pageSize, search || undefined)
+      console.log('Fetched routes:', result)
       if (!result.success) throw new Error(result.error)
       const { routes, totalCount, page: p, pageSize: ps } = result.data
       return {
