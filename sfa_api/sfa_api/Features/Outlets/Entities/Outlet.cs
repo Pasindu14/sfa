@@ -25,8 +25,8 @@ public class Outlet
     public OutletType OutletType { get; set; }
     public OutletCategory OutletCategory { get; set; }
     public BillingPriceType? BillingPriceType { get; set; }
-    public int ProvinceCode { get; set; }
-    public int DistrictCode { get; set; }
+    public int? ProvinceCode { get; set; }
+    public int? DistrictCode { get; set; }
 
     // Ancestor IDs (denormalized)
     public int RouteId { get; set; }      // direct parent (FK)

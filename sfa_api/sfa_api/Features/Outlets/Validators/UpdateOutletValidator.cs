@@ -65,12 +65,6 @@ public class UpdateOutletValidator : AbstractValidator<UpdateOutletRequest>
             .WithMessage("Invalid BillingPriceType. Valid values: DealerPrice, OldPrice, MarketPrice.")
             .When(x => x.BillingPriceType != null);
 
-        RuleFor(x => x.ProvinceCode)
-            .GreaterThan(0).WithMessage("ProvinceCode must be a valid province.");
-
-        RuleFor(x => x.DistrictCode)
-            .GreaterThan(0).WithMessage("DistrictCode must be a valid district.");
-
         RuleFor(x => x.RouteId)
             .GreaterThan(0).WithMessage("RouteId must be a valid route.");
     }
