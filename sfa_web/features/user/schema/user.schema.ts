@@ -22,24 +22,20 @@ const phoneRules = z
   .max(20, 'Phone number must not exceed 20 characters')
   .regex(/^[0-9+\-\s()]+$/, 'Phone number can only contain digits, +, -, spaces, and parentheses')
 
-export const createUserSchema = z.object({
+const baseUserSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name must not exceed 100 characters'),
   username: usernameRules,
   email: z.string().email('Invalid email format').max(255, 'Email must not exceed 255 characters'),
   phone: phoneRules,
-  password: passwordRules,
   role: roleEnum,
   deviceId: z.string().optional(),
 })
 
-export const updateUserSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(100, 'Name must not exceed 100 characters'),
-  username: usernameRules,
-  email: z.string().email('Invalid email format').max(255, 'Email must not exceed 255 characters'),
-  phone: phoneRules,
-  role: roleEnum,
-  deviceId: z.string().optional(),
+export const createUserSchema = baseUserSchema.extend({
+  password: passwordRules,
 })
+
+export const updateUserSchema = baseUserSchema
 
 export const changePasswordSchema = z
   .object({

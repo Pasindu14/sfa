@@ -5,24 +5,17 @@ import { DataTable } from '@/components/data-table/data-table'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { UserPlus } from 'lucide-react'
-import {
-  useEditDialog,
-  useDeleteDialog,
-  useChangePasswordDialog,
-  useActivateDialog,
-  useDeactivateDialog,
-  useUserDialogStore,
-} from '../../store'
+import { useUserDialogStore } from '../../store'
 import { useUserDataTable } from '../../hooks/user.hooks'
 import { getUserColumns } from '../columns/user-columns'
 
 export function UserTable() {
   const openCreate = useUserDialogStore((s) => s.openCreate)
-  const { open: openEdit } = useEditDialog()
-  const { open: openDelete } = useDeleteDialog()
-  const { open: openChangePassword } = useChangePasswordDialog()
-  const { open: openActivate } = useActivateDialog()
-  const { open: openDeactivate } = useDeactivateDialog()
+  const openEdit = useUserDialogStore((s) => s.openEdit)
+  const openDelete = useUserDialogStore((s) => s.openDelete)
+  const openChangePassword = useUserDialogStore((s) => s.openChangePassword)
+  const openActivate = useUserDialogStore((s) => s.openActivate)
+  const openDeactivate = useUserDialogStore((s) => s.openDeactivate)
 
   const getColumns = useCallback(
     (_handleRowDeselection: ((rowId: string) => void) | null | undefined) =>
