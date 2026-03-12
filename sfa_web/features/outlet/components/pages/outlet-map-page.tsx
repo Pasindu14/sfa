@@ -6,22 +6,25 @@ import { MarkerClusterer, SuperClusterAlgorithm } from '@googlemaps/markercluste
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MapPin } from 'lucide-react'
-import { OUTLET_LOCATIONS } from '@/features/outlet/data/outlet-locations'
+import { Spinner } from '@/components/ui/spinner'
+import { useOutletsForMap } from '@/features/outlet/hooks/outlet.hooks'
+import type { OutletDto } from '@/features/outlet/schema/outlet.schema'
 
-const CENTER = { lat: 6.03, lng: 80.31 }
+const CENTER = { lat: 7.8731, lng: 80.7718 } // Sri Lanka center
 
 // Must live inside <Map> to access map context
-function ClusteredMarkers() {
+function ClusteredMarkers({ outlets }: { outlets: OutletDto[] }) {
   const map = useMap()
 
   useEffect(() => {
-    if (!map) return
+    if (!map || outlets.length === 0) return
 
-    // Legacy Marker: canvas-rendered (GPU), not DOM-based — stays smooth at 600+ points
-    const markers = OUTLET_LOCATIONS.map(
-      ({ lat, lng }) =>
+    // Legacy Marker: canvas-rendered (GPU), not DOM-based — stays smooth at 5000+ points
+    const markers = outlets.map(
+      (o) =>
         new google.maps.Marker({
-          position: { lat, lng },
+          position: { lat: o.latitude, lng: o.longitude },
+          title: o.name,
           optimized: true, // batch all markers into a single canvas layer
         })
     )
@@ -36,13 +39,14 @@ function ClusteredMarkers() {
       clusterer.clearMarkers()
       markers.forEach((m) => m.setMap(null))
     }
-  }, [map])
+  }, [map, outlets])
 
   return null
 }
 
 export function OutletMapPage() {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ''
+  const { data: outlets = [], isLoading } = useOutletsForMap()
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -52,19 +56,25 @@ export function OutletMapPage() {
           <p className="text-muted-foreground">Visualise outlet locations across the region</p>
         </div>
         <Badge variant="secondary" className="text-sm px-3 py-1">
-          {OUTLET_LOCATIONS.length} outlets
+          {isLoading ? 'Loading...' : `${outlets.length} outlets`}
         </Badge>
       </div>
 
       <div className="relative" style={{ height: 'calc(100vh - 260px)' }}>
+        {isLoading && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-background/60 backdrop-blur-sm">
+            <Spinner className="h-8 w-8" />
+          </div>
+        )}
+
         <APIProvider apiKey={apiKey}>
           <Map
             defaultCenter={CENTER}
-            defaultZoom={12}
+            defaultZoom={8}
             gestureHandling="cooperative"
             className="w-full h-full rounded-xl overflow-hidden border"
           >
-            <ClusteredMarkers />
+            <ClusteredMarkers outlets={outlets} />
           </Map>
         </APIProvider>
 
