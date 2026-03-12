@@ -24,7 +24,7 @@ public class OutletRepository(AppDbContext context) : IOutletRepository
     public async Task<(IEnumerable<Outlet> Outlets, int TotalCount)> GetAllAsync(
         int skip, int take, bool? isActive = null, string? search = null, CancellationToken ct = default)
     {
-        var query = _context.Outlets.Where(o => !o.IsDeleted);
+        var query = _context.Outlets.AsQueryable();
 
         if (isActive.HasValue) query = query.Where(o => o.IsActive == isActive.Value);
         if (!string.IsNullOrWhiteSpace(search))
@@ -51,7 +51,7 @@ public class OutletRepository(AppDbContext context) : IOutletRepository
 
     public async Task<IEnumerable<Outlet>> GetAllActiveAsync(CancellationToken ct = default)
         => await _context.Outlets
-            .Where(o => o.IsActive && !o.IsDeleted)
+            .Where(o => o.IsActive)
             .Include(o => o.Route)
                 .ThenInclude(r => r!.Division)
             .Include(o => o.Route)
@@ -73,10 +73,10 @@ public class OutletRepository(AppDbContext context) : IOutletRepository
             .FirstOrDefaultAsync(r => r.Id == routeId, ct);
 
     public async Task<bool> ExistsByNicNoAsync(string nicNo, CancellationToken ct = default)
-        => await _context.Outlets.AnyAsync(o => o.NicNo == nicNo && !o.IsDeleted, ct);
+        => await _context.Outlets.AnyAsync(o => o.NicNo == nicNo, ct);
 
     public async Task<bool> ExistsByNicNoAsync(string nicNo, int excludeId, CancellationToken ct = default)
-        => await _context.Outlets.AnyAsync(o => o.NicNo == nicNo && o.Id != excludeId && !o.IsDeleted, ct);
+        => await _context.Outlets.AnyAsync(o => o.NicNo == nicNo && o.Id != excludeId, ct);
 
     public async Task CreateAsync(Outlet outlet, CancellationToken ct = default)
         => await _context.Outlets.AddAsync(outlet, ct);
@@ -91,10 +91,7 @@ public class OutletRepository(AppDbContext context) : IOutletRepository
     {
         var outlet = await _context.Outlets.FindAsync([id], ct);
         if (outlet != null)
-        {
-            outlet.IsDeleted = true;
-            _context.Outlets.Update(outlet);
-        }
+            _context.Outlets.Remove(outlet);
     }
 
     public async Task SaveChangesAsync(CancellationToken ct = default)

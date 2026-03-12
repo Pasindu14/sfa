@@ -185,7 +185,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Id).UseIdentityColumn();
             e.Property(x => x.CreditLimit).HasColumnType("decimal(18,2)");
             e.HasIndex(x => x.NicNo);
-            e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.IsActive);
             e.HasIndex(x => x.RouteId);
             e.HasIndex(x => x.DivisionId);
@@ -194,8 +193,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.RegionId);
             e.HasIndex(x => x.UpdatedAt);
             e.HasOne(x => x.Route).WithMany().HasForeignKey(x => x.RouteId).IsRequired();
-            // NOTE: No HasQueryFilter - we display both active and inactive records
-            // Soft delete is for audit purposes only, records are never physically removed
         });
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);

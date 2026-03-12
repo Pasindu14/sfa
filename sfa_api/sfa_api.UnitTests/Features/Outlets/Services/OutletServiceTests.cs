@@ -96,7 +96,6 @@ public class OutletServiceTests
         AreaId = areaId,
         RegionId = regionId,
         IsActive = isActive,
-        IsDeleted = false,
         CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         Route = CreateFakeRoute(routeId, divisionId, territoryId, areaId, regionId)

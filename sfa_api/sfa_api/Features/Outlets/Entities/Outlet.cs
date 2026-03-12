@@ -42,7 +42,6 @@ public class Outlet
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public int? CreatedBy { get; set; }
     public int? UpdatedBy { get; set; }
-    public bool IsDeleted { get; set; } = false;
 
     // Navigation
     public RouteEntity? Route { get; set; }
