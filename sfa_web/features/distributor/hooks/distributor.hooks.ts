@@ -64,6 +64,20 @@ export function useDistributor(id: number | null) {
   })
 }
 
+// --- Select hook (for foreign-key pickers) ---
+
+export function useDistributorsForSelect() {
+  const { data, isLoading } = useQuery({
+    queryKey: [...distributorKeys.all, 'select'] as const,
+    queryFn: async () => {
+      const result = await getDistributorsAction(1, 1000)
+      if (!result.success) throw new Error(result.error)
+      return result.data.distributors
+    },
+  })
+  return { distributors: data ?? [], isLoading }
+}
+
 // --- DataTable hook ---
 
 export function useDistributorDataTable(

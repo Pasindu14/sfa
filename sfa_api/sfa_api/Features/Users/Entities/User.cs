@@ -1,4 +1,5 @@
 using sfa_api.Features.Auth.Entities;
+using sfa_api.Features.Distributors.Entities;
 
 namespace sfa_api.Features.Users.Entities;
 
@@ -11,6 +12,8 @@ public class User
     public string Phone { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
     public UserRole Role { get; set; } = UserRole.SalesRep;
+    public int? DistributorId { get; set; }
+    public Distributor? Distributor { get; set; }
     public string? DeviceId { get; set; }                    // Mobile device identifier
     public bool IsActive { get; set; } = true;
 

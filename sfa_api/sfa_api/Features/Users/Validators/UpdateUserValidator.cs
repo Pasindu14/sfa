@@ -36,5 +36,13 @@ public class UpdateUserValidator : AbstractValidator<UpdateUserRequest>
         RuleFor(x => x.DeviceId)
             .NotEmpty().When(x => x.Role.Equals("SalesRep", StringComparison.OrdinalIgnoreCase))
             .WithMessage("Device ID is required for Sales Reps.");
+
+        RuleFor(x => x.DistributorId)
+            .NotNull().When(x => x.Role.Equals("Distributor", StringComparison.OrdinalIgnoreCase))
+            .WithMessage("Distributor is required for Distributor role.");
+
+        RuleFor(x => x.DistributorId)
+            .Null().When(x => !x.Role.Equals("Distributor", StringComparison.OrdinalIgnoreCase))
+            .WithMessage("Distributor ID must be empty for non-Distributor roles.");
     }
 }

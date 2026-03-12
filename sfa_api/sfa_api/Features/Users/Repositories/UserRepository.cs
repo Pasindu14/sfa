@@ -9,7 +9,9 @@ public class UserRepository(AppDbContext context) : IUserRepository
     private readonly AppDbContext _context = context;
 
     public async Task<User?> GetUserByIdAsync(int userId, CancellationToken ct = default)
-        => await _context.Users.FindAsync([userId], ct);
+        => await _context.Users
+            .Include(u => u.Distributor)
+            .FirstOrDefaultAsync(u => u.Id == userId, ct);
 
     public async Task<User?> GetUserByEmailAsync(string email, CancellationToken ct = default)
         => await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == email, ct);
@@ -40,7 +42,7 @@ public class UserRepository(AppDbContext context) : IUserRepository
 
     public async Task<(IEnumerable<User> Users, int TotalCount)> GetAllUsersAsync(int skip, int take, string? search = null, string? role = null, CancellationToken ct = default)
     {
-        var query = _context.Users.AsQueryable();
+        var query = _context.Users.Include(u => u.Distributor).AsQueryable();
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(u => u.Name.ToLower().Contains(search.ToLower())
                 || u.Username.ToLower().Contains(search.ToLower())

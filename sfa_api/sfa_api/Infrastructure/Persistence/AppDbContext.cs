@@ -61,6 +61,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.UpdatedAt);
             // NOTE: No HasQueryFilter - we display both active and inactive records
             // Soft delete is for audit purposes only, records are never physically removed
+            e.HasOne(x => x.Distributor)
+             .WithMany()
+             .HasForeignKey(x => x.DistributorId)
+             .IsRequired(false);
         });
 
         // RefreshToken

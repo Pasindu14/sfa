@@ -8,6 +8,7 @@ import {
   updateUserSchema,
   type CreateUserInput,
 } from '../../schema/user.schema'
+import { useDistributorsForSelect } from '@/features/distributor/hooks/distributor.hooks'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -58,7 +59,15 @@ export function UserForm({
     },
   })
 
-  const { setError } = form
+  const { setError, setValue, watch } = form
+  const watchedRole = watch('role')
+  const { distributors, isLoading: isLoadingDistributors } = useDistributorsForSelect()
+
+  useEffect(() => {
+    if (watchedRole !== 'Distributor') {
+      setValue('distributorId', undefined)
+    }
+  }, [watchedRole, setValue])
 
   useEffect(() => {
     if (fieldErrors) {
@@ -143,12 +152,44 @@ export function UserForm({
                   <SelectItem value="Admin">Admin</SelectItem>
                   <SelectItem value="SalesRep">Sales Rep</SelectItem>
                   <SelectItem value="Manager">Manager</SelectItem>
+                  <SelectItem value="Distributor">Distributor</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
             </FormItem>
           )}
         />
+
+        {watchedRole === 'Distributor' && (
+          <FormField
+            control={form.control}
+            name="distributorId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Distributor</FormLabel>
+                <Select
+                  onValueChange={(val) => field.onChange(Number(val))}
+                  value={field.value?.toString() ?? ''}
+                  disabled={isLoadingDistributors}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder={isLoadingDistributors ? 'Loading...' : 'Select distributor'} />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {distributors.map((d) => (
+                      <SelectItem key={d.id} value={d.id.toString()}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <FormField
           control={form.control}

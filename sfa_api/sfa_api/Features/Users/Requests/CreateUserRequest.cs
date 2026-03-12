@@ -9,4 +9,5 @@ public class CreateUserRequest
     public string Password { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
     public string? DeviceId { get; set; }
+    public int? DistributorId { get; set; }
 }

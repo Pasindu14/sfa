@@ -1,4 +1,5 @@
 using sfa_api.Common.Errors;
+using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.Users.DTOs;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Features.Users.Repositories;
@@ -8,9 +9,11 @@ namespace sfa_api.Features.Users.Services;
 
 public class UserService(
     IUserRepository repo,
+    IDistributorRepository distributorRepo,
     ILogger<UserService> logger) : IUserService
 {
     private readonly IUserRepository _repo = repo;
+    private readonly IDistributorRepository _distributorRepo = distributorRepo;
     private readonly ILogger<UserService> _logger = logger;
 
     public async Task<UserDto> GetUserByIdAsync(int userId, CancellationToken ct = default)
@@ -47,6 +50,14 @@ public class UserService(
             throw new ValidationException(new Dictionary<string, string[]>
                 { { "Role", new[] { "Invalid role." } } });
 
+        int? distributorId = null;
+        if (role == UserRole.Distributor)
+        {
+            var distributor = await _distributorRepo.GetByIdAsync(request.DistributorId!.Value, ct)
+                ?? throw new NotFoundException("Distributor", request.DistributorId.Value);
+            distributorId = distributor.Id;
+        }
+
         var user = new User
         {
             Name = request.Name,
@@ -55,6 +66,7 @@ public class UserService(
             Phone = request.Phone,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             Role = role,
+            DistributorId = distributorId,
             DeviceId = request.DeviceId,
             IsActive = true,
             CreatedBy = callerId,
@@ -87,6 +99,17 @@ public class UserService(
         if (!Enum.TryParse<UserRole>(request.Role, out var role))
             throw new ValidationException(new Dictionary<string, string[]>
                 { { "Role", new[] { "Invalid role." } } });
+
+        if (role == UserRole.Distributor)
+        {
+            var distributor = await _distributorRepo.GetByIdAsync(request.DistributorId!.Value, ct)
+                ?? throw new NotFoundException("Distributor", request.DistributorId.Value);
+            user.DistributorId = distributor.Id;
+        }
+        else
+        {
+            user.DistributorId = null;
+        }
 
         user.Name = request.Name;
         user.Username = request.Username;
@@ -186,6 +209,8 @@ public class UserService(
         Email: user.Email,
         Phone: user.Phone,
         Role: user.Role.ToString(),
+        DistributorId: user.DistributorId,
+        DistributorName: user.Distributor?.Name,
         IsActive: user.IsActive,
         CreatedAt: user.CreatedAt,
         UpdatedAt: user.UpdatedAt

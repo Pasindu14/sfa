@@ -7,6 +7,8 @@ public record UserDto(
     string Email,
     string Phone,
     string Role,
+    int? DistributorId,
+    string? DistributorName,
     bool IsActive,
     DateTime CreatedAt,
     DateTime UpdatedAt
