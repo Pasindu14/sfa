@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createAction } from '@/lib/actions/wrapper'
 import client from '@/lib/api/client'
-import type { CreateOutletInput, UpdateOutletInput, OutletDto } from '../schema/outlet.schema'
+import type { CreateOutletInput, UpdateOutletInput, OutletDto, OutletMapPointDto } from '../schema/outlet.schema'
 
 type OutletsListResponse = {
   outlets: OutletDto[]
@@ -35,6 +35,14 @@ export const getActiveOutletsAction = createAction(
   async () => {
     const res = await client.get('/api/v1/outlets/active')
     return res.data.data as OutletDto[]
+  }
+)
+
+export const getOutletMapPointsAction = createAction(
+  { name: 'getOutletMapPointsAction', requireAuth: true, requiredRole: 'Admin' },
+  async () => {
+    const res = await client.get('/api/v1/outlets/map-points')
+    return res.data.data as OutletMapPointDto[]
   }
 )
 

@@ -125,3 +125,12 @@ export type OutletDto = {
   createdAt: string
   updatedAt: string
 }
+
+// --- Slim DTO for map rendering (id, name, lat, lng only) ---
+
+export type OutletMapPointDto = {
+  id: number
+  name: string
+  latitude: number
+  longitude: number
+}

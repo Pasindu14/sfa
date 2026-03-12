@@ -7,6 +7,7 @@ import {
   getOutletsAction,
   getOutletByIdAction,
   getActiveOutletsAction,
+  getOutletMapPointsAction,
   createOutletAction,
   updateOutletAction,
   deleteOutletAction,
@@ -81,12 +82,9 @@ export function useOutletsForMap() {
   return useQuery({
     queryKey: [...outletKeys.all, 'map'] as const,
     queryFn: async () => {
-      const result = await getOutletsAction(1, 5000)
+      const result = await getOutletMapPointsAction()
       if (!result.success) throw new Error(result.error)
-      // Filter out outlets with no real coordinates (migration placeholder 0,0)
-      return result.data.outlets.filter(
-        (o) => !(o.latitude === 0 && o.longitude === 0)
-      )
+      return result.data
     },
   })
 }

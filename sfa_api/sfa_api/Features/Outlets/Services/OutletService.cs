@@ -38,6 +38,9 @@ public class OutletService(
         return outlets.Select(MapToDto);
     }
 
+    public async Task<IEnumerable<OutletMapPointDto>> GetMapPointsAsync(CancellationToken ct = default)
+        => await _repo.GetMapPointsAsync(ct);
+
     public async Task<OutletDto> CreateAsync(CreateOutletRequest request, int? callerId, CancellationToken ct = default)
     {
         var route = await _repo.GetRouteWithAncestorsAsync(request.RouteId, ct)

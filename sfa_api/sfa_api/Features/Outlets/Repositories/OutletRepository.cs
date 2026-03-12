@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using sfa_api.Features.Outlets.DTOs;
 using sfa_api.Features.Outlets.Entities;
 using sfa_api.Infrastructure.Persistence;
 using RouteEntity = sfa_api.Features.Routes.Entities.Route;
@@ -77,6 +78,13 @@ public class OutletRepository(AppDbContext context) : IOutletRepository
 
     public async Task<bool> ExistsByNicNoAsync(string nicNo, int excludeId, CancellationToken ct = default)
         => await _context.Outlets.AnyAsync(o => o.NicNo == nicNo && o.Id != excludeId, ct);
+
+    public async Task<IEnumerable<OutletMapPointDto>> GetMapPointsAsync(CancellationToken ct = default)
+        => await _context.Outlets
+            .Where(o => o.IsActive)
+            .Select(o => new OutletMapPointDto(o.Id, o.Name, o.Latitude, o.Longitude))
+            .AsNoTracking()
+            .ToListAsync(ct);
 
     public async Task CreateAsync(Outlet outlet, CancellationToken ct = default)
         => await _context.Outlets.AddAsync(outlet, ct);

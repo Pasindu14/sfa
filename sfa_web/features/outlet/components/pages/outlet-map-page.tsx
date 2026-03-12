@@ -8,12 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MapPin } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import { useOutletsForMap } from '@/features/outlet/hooks/outlet.hooks'
-import type { OutletDto } from '@/features/outlet/schema/outlet.schema'
+import type { OutletMapPointDto } from '@/features/outlet/schema/outlet.schema'
 
 const CENTER = { lat: 7.8731, lng: 80.7718 } // Sri Lanka center
 
 // Must live inside <Map> to access map context
-function ClusteredMarkers({ outlets }: { outlets: OutletDto[] }) {
+function ClusteredMarkers({ outlets }: { outlets: OutletMapPointDto[] }) {
   const map = useMap()
 
   useEffect(() => {
@@ -46,17 +46,29 @@ function ClusteredMarkers({ outlets }: { outlets: OutletDto[] }) {
 
 export function OutletMapPage() {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ''
-  const { data: outlets = [], isLoading } = useOutletsForMap()
+  const { data: allOutlets = [], isLoading, error } = useOutletsForMap()
+
+  // Filter out 0,0 placeholders — those have no real coordinates yet
+  const mappableOutlets = allOutlets.filter(
+    (o) => !(o.latitude === 0 && o.longitude === 0)
+  )
+  const noCoords = allOutlets.length - mappableOutlets.length
 
   return (
     <div className="flex flex-col gap-6 p-6">
       <div className="flex items-center justify-between bg-muted/90 p-10 rounded-lg">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Outlet Map</h1>
-          <p className="text-muted-foreground">Visualise outlet locations across the region</p>
+          <p className="text-muted-foreground">
+            {isLoading
+              ? 'Loading outlets...'
+              : noCoords > 0
+              ? `${mappableOutlets.length} mapped · ${noCoords} missing coordinates`
+              : 'Visualise outlet locations across the region'}
+          </p>
         </div>
         <Badge variant="secondary" className="text-sm px-3 py-1">
-          {isLoading ? 'Loading...' : `${outlets.length} outlets`}
+          {isLoading ? 'Loading...' : `${mappableOutlets.length} outlets`}
         </Badge>
       </div>
 
@@ -67,6 +79,18 @@ export function OutletMapPage() {
           </div>
         )}
 
+        {!isLoading && !error && mappableOutlets.length === 0 && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-xl bg-background/80 backdrop-blur-sm gap-2">
+            <MapPin className="h-10 w-10 text-muted-foreground" />
+            <p className="text-sm font-medium">No outlets with coordinates found</p>
+            <p className="text-xs text-muted-foreground">
+              {allOutlets.length > 0
+                ? `${allOutlets.length} outlets exist but all have missing coordinates (0, 0)`
+                : 'No active outlets in the database'}
+            </p>
+          </div>
+        )}
+
         <APIProvider apiKey={apiKey}>
           <Map
             defaultCenter={CENTER}
@@ -74,7 +98,7 @@ export function OutletMapPage() {
             gestureHandling="cooperative"
             className="w-full h-full rounded-xl overflow-hidden border"
           >
-            <ClusteredMarkers outlets={outlets} />
+            <ClusteredMarkers outlets={mappableOutlets} />
           </Map>
         </APIProvider>
 

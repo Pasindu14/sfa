@@ -68,6 +68,19 @@ public class OutletsController(
     }
 
     /// <summary>
+    /// GET /api/v1/outlets/map-points
+    /// Returns slim {id, name, latitude, longitude} for all active outlets with valid coordinates.
+    /// </summary>
+    [HttpGet("map-points")]
+    [Authorize]
+    public async Task<IActionResult> GetMapPoints(CancellationToken ct = default)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var result = await _service.GetMapPointsAsync(ct);
+        return Ok(ResponseHelper.Ok(result, correlationId));
+    }
+
+    /// <summary>
     /// POST /api/v1/outlets
     /// </summary>
     [HttpPost]
