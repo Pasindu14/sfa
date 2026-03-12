@@ -20,8 +20,7 @@ export function DivisionTable() {
   const { open: openDeactivate } = useDeactivateDialog()
 
   const getColumns = useCallback(
-    (_handleRowDeselection: ((rowId: string) => void) | null | undefined) =>
-      getDivisionColumns({ openEdit, openActivate, openDeactivate }),
+    () => getDivisionColumns({ openEdit, openActivate, openDeactivate }),
     [openEdit, openActivate, openDeactivate],
   )
 

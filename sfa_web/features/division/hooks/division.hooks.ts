@@ -19,6 +19,7 @@ import {
   useDeactivateDialog,
 } from '../store'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
+import type { ActionFailure } from '@/lib/types/actions'
 import type { CreateDivisionInput, UpdateDivisionInput } from '../schema/division.schema'
 
 // --- Query key factory ---
@@ -108,7 +109,7 @@ export function useDivisionDataTable(
   })
 }
 
-;(useDivisionDataTable as any).isQueryHook = true
+;(useDivisionDataTable as unknown as Record<string, unknown>).isQueryHook = true
 
 // --- Mutation hooks ---
 
@@ -129,7 +130,7 @@ export function useCreateDivision() {
       close()
       toast.success('Division created successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       if (error.fields) setFieldErrors(error.fields)
       handleErrorToast(error, 'division', 'create')
     },
@@ -155,7 +156,7 @@ export function useUpdateDivision() {
       close()
       toast.success('Division updated successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       if (error.fields) setFieldErrors(error.fields)
       handleErrorToast(error, 'division', 'update')
     },
@@ -178,7 +179,7 @@ export function useActivateDivision() {
       close()
       toast.success('Division activated successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       handleErrorToast(error, 'division', 'activate')
     },
   })
@@ -198,7 +199,7 @@ export function useDeactivateDivision() {
       close()
       toast.success('Division deactivated successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       handleErrorToast(error, 'division', 'deactivate')
     },
   })

@@ -1,4 +1,5 @@
 import { toast } from 'sonner'
+import type { ActionFailure } from '@/lib/types/actions'
 
 /**
  * Display error toast based on error code
@@ -9,7 +10,7 @@ import { toast } from 'sonner'
  * handleErrorToast(error, 'category', 'delete')
  */
 export function handleErrorToast(
-  error: any,
+  error: ActionFailure,
   resource: string = 'resource',
   action: string = 'perform action'
 ) {

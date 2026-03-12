@@ -20,8 +20,7 @@ export function TerritoryTable() {
   const { open: openDeactivate } = useDeactivateDialog();
 
   const getColumns = useCallback(
-    (_handleRowDeselection: ((rowId: string) => void) | null | undefined) =>
-      getTerritoryColumns({ openEdit, openActivate, openDeactivate }),
+    () => getTerritoryColumns({ openEdit, openActivate, openDeactivate }),
     [openEdit, openActivate, openDeactivate],
   );
 

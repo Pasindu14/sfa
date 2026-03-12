@@ -21,6 +21,7 @@ import {
   useDeactivateDialog,
 } from '../store'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
+import type { ActionFailure } from '@/lib/types/actions'
 import type { CreateOutletInput, UpdateOutletInput } from '../schema/outlet.schema'
 
 // --- Query key factory ---
@@ -110,7 +111,7 @@ export function useOutletDataTable(
   })
 }
 
-;(useOutletDataTable as any).isQueryHook = true
+;(useOutletDataTable as unknown as Record<string, unknown>).isQueryHook = true
 
 // --- Mutation hooks ---
 
@@ -131,7 +132,7 @@ export function useCreateOutlet() {
       close()
       toast.success('Outlet created successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       if (error.fields) setFieldErrors(error.fields)
       handleErrorToast(error, 'outlet', 'create')
     },
@@ -157,7 +158,7 @@ export function useUpdateOutlet() {
       close()
       toast.success('Outlet updated successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       if (error.fields) setFieldErrors(error.fields)
       handleErrorToast(error, 'outlet', 'update')
     },
@@ -180,7 +181,7 @@ export function useDeleteOutlet() {
       close()
       toast.success('Outlet deleted successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       handleErrorToast(error, 'outlet', 'delete')
     },
   })
@@ -200,7 +201,7 @@ export function useActivateOutlet() {
       close()
       toast.success('Outlet activated successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       handleErrorToast(error, 'outlet', 'activate')
     },
   })
@@ -220,7 +221,7 @@ export function useDeactivateOutlet() {
       close()
       toast.success('Outlet deactivated successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       handleErrorToast(error, 'outlet', 'deactivate')
     },
   })

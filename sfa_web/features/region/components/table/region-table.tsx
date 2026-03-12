@@ -20,8 +20,7 @@ export function RegionTable() {
   const { open: openDeactivate } = useDeactivateDialog()
 
   const getColumns = useCallback(
-    (_handleRowDeselection: ((rowId: string) => void) | null | undefined) =>
-      getRegionColumns({ openEdit, openActivate, openDeactivate }),
+    () => getRegionColumns({ openEdit, openActivate, openDeactivate }),
     [openEdit, openActivate, openDeactivate]
   )
 

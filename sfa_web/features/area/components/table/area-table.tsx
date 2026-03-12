@@ -20,8 +20,7 @@ export function AreaTable() {
   const { open: openDeactivate } = useDeactivateDialog()
 
   const getColumns = useCallback(
-    (_handleRowDeselection: ((rowId: string) => void) | null | undefined) =>
-      getAreaColumns({ openEdit, openActivate, openDeactivate }),
+    () => getAreaColumns({ openEdit, openActivate, openDeactivate }),
     [openEdit, openActivate, openDeactivate],
   )
 

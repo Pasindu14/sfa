@@ -19,6 +19,7 @@ import {
   useDeactivateDialog,
 } from '../store'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
+import type { ActionFailure } from '@/lib/types/actions'
 import type { CreateRouteInput, UpdateRouteInput } from '../schema/route.schema'
 
 // --- Query key factory ---
@@ -130,8 +131,7 @@ export function useCreateRoute() {
       close()
       toast.success('Route created successfully')
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       if (error.fields) setFieldErrors(error.fields)
       handleErrorToast(error, 'route', 'create')
     },
@@ -157,8 +157,7 @@ export function useUpdateRoute() {
       close()
       toast.success('Route updated successfully')
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       if (error.fields) setFieldErrors(error.fields)
       handleErrorToast(error, 'route', 'update')
     },
@@ -181,8 +180,7 @@ export function useActivateRoute() {
       close()
       toast.success('Route activated successfully')
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       handleErrorToast(error, 'route', 'activate')
     },
   })
@@ -202,8 +200,7 @@ export function useDeactivateRoute() {
       close()
       toast.success('Route deactivated successfully')
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       handleErrorToast(error, 'route', 'deactivate')
     },
   })

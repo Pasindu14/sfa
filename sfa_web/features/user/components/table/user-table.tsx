@@ -18,8 +18,7 @@ export function UserTable() {
   const openDeactivate = useUserDialogStore((s) => s.openDeactivate)
 
   const getColumns = useCallback(
-    (_handleRowDeselection: ((rowId: string) => void) | null | undefined) =>
-      getUserColumns({ openEdit, openDelete, openChangePassword, openActivate, openDeactivate }),
+    () => getUserColumns({ openEdit, openDelete, openChangePassword, openActivate, openDeactivate }),
     [openEdit, openDelete, openChangePassword, openActivate, openDeactivate]
   )
 

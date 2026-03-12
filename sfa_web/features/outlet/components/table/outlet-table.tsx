@@ -22,8 +22,7 @@ export function OutletTable() {
   const { open: openDeactivate } = useDeactivateDialog()
 
   const getColumns = useCallback(
-    (_handleRowDeselection: ((rowId: string) => void) | null | undefined) =>
-      getOutletColumns({ openEdit, openDelete, openActivate, openDeactivate }),
+    () => getOutletColumns({ openEdit, openDelete, openActivate, openDeactivate }),
     [openEdit, openDelete, openActivate, openDeactivate],
   )
 

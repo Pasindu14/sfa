@@ -49,6 +49,12 @@ No compose file found at root — run each project independently in dev.
 
 ---
 
+## Dev Tools
+
+- Use `rg` (ripgrep) instead of `grep` for all file searches
+- Use `sg` (ast-grep) for structural code pattern searches
+- Prefer explicit file paths over broad directory scans
+
 ## Never Do (Cross-Project)
 
 - Never hard-delete records — always soft-delete via `isDeleted`

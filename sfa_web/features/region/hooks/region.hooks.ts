@@ -19,6 +19,7 @@ import {
   useDeactivateDialog,
 } from '../store'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
+import type { ActionFailure } from '@/lib/types/actions'
 import type { CreateRegionInput, UpdateRegionInput } from '../schema/region.schema'
 
 // --- Query key factory ---
@@ -108,7 +109,7 @@ export function useRegionDataTable(
   })
 }
 
-;(useRegionDataTable as any).isQueryHook = true
+;(useRegionDataTable as unknown as Record<string, unknown>).isQueryHook = true
 
 // --- Mutation hooks ---
 
@@ -129,7 +130,7 @@ export function useCreateRegion() {
       close()
       toast.success('Region created successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       if (error.fields) setFieldErrors(error.fields)
       handleErrorToast(error, 'region', 'create')
     },
@@ -155,7 +156,7 @@ export function useUpdateRegion() {
       close()
       toast.success('Region updated successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       if (error.fields) setFieldErrors(error.fields)
       handleErrorToast(error, 'region', 'update')
     },
@@ -178,7 +179,7 @@ export function useActivateRegion() {
       close()
       toast.success('Region activated successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       handleErrorToast(error, 'region', 'activate')
     },
   })
@@ -198,7 +199,7 @@ export function useDeactivateRegion() {
       close()
       toast.success('Region deactivated successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       handleErrorToast(error, 'region', 'deactivate')
     },
   })

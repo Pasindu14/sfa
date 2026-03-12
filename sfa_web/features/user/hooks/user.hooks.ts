@@ -22,6 +22,7 @@ import {
   useDeactivateDialog,
 } from '../store'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
+import type { ActionFailure } from '@/lib/types/actions'
 import type { CreateUserInput, UpdateUserInput, ChangePasswordInput } from '../schema/user.schema'
 
 // --- Query key factory ---
@@ -98,7 +99,7 @@ export function useUserDataTable(
   })
 }
 
-;(useUserDataTable as any).isQueryHook = true
+;(useUserDataTable as unknown as Record<string, unknown>).isQueryHook = true
 
 // --- Mutation hooks ---
 
@@ -119,7 +120,7 @@ export function useCreateUser() {
       close()
       toast.success('User created successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       if (error.fields) setFieldErrors(error.fields)
       handleErrorToast(error, 'user', 'create')
     },
@@ -145,7 +146,7 @@ export function useUpdateUser() {
       close()
       toast.success('User updated successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       if (error.fields) setFieldErrors(error.fields)
       handleErrorToast(error, 'user', 'update')
     },
@@ -168,7 +169,7 @@ export function useDeleteUser() {
       close()
       toast.success('User deleted successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       handleErrorToast(error, 'user', 'delete')
     },
   })
@@ -189,7 +190,7 @@ export function useChangePassword() {
       close()
       toast.success('Password changed successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       if (error.fields) setFieldErrors(error.fields)
       handleErrorToast(error, 'user', 'change password')
     },
@@ -212,7 +213,7 @@ export function useActivateUser() {
       close()
       toast.success('User activated successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       handleErrorToast(error, 'user', 'activate')
     },
   })
@@ -232,7 +233,7 @@ export function useDeactivateUser() {
       close()
       toast.success('User deactivated successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       handleErrorToast(error, 'user', 'deactivate')
     },
   })

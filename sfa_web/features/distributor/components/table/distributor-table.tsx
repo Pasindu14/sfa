@@ -20,8 +20,7 @@ export function DistributorTable() {
   const { open: openDeactivate } = useDeactivateDialog();
 
   const getColumns = useCallback(
-    (_handleRowDeselection: ((rowId: string) => void) | null | undefined) =>
-      getDistributorColumns({ openEdit, openActivate, openDeactivate }),
+    () => getDistributorColumns({ openEdit, openActivate, openDeactivate }),
     [openEdit, openActivate, openDeactivate],
   );
 

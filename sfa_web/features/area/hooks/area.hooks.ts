@@ -19,6 +19,7 @@ import {
   useDeactivateDialog,
 } from '../store'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
+import type { ActionFailure } from '@/lib/types/actions'
 import type { CreateAreaInput, UpdateAreaInput } from '../schema/area.schema'
 
 // --- Query key factory ---
@@ -108,7 +109,7 @@ export function useAreaDataTable(
   })
 }
 
-;(useAreaDataTable as any).isQueryHook = true
+;(useAreaDataTable as unknown as Record<string, unknown>).isQueryHook = true
 
 // --- Mutation hooks ---
 
@@ -129,7 +130,7 @@ export function useCreateArea() {
       close()
       toast.success('Area created successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       if (error.fields) setFieldErrors(error.fields)
       handleErrorToast(error, 'area', 'create')
     },
@@ -155,7 +156,7 @@ export function useUpdateArea() {
       close()
       toast.success('Area updated successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       if (error.fields) setFieldErrors(error.fields)
       handleErrorToast(error, 'area', 'update')
     },
@@ -178,7 +179,7 @@ export function useActivateArea() {
       close()
       toast.success('Area activated successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       handleErrorToast(error, 'area', 'activate')
     },
   })
@@ -198,7 +199,7 @@ export function useDeactivateArea() {
       close()
       toast.success('Area deactivated successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       handleErrorToast(error, 'area', 'deactivate')
     },
   })

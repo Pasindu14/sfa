@@ -4,9 +4,15 @@
  * Generic action response type
  * Use this for ALL server actions to maintain consistency
  */
-export type ActionResponse<T = void> = 
+export type ActionResponse<T = void> =
   | { success: true; data: T }
   | { success: false; error: string; code?: string; fields?: Record<string, string> }
+
+/**
+ * The failure variant of ActionResponse.
+ * Use this as the error type in mutation onError handlers instead of `any`.
+ */
+export type ActionFailure = Extract<ActionResponse, { success: false }>
 
 /**
  * Paginated response type

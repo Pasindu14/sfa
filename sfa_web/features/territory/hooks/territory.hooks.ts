@@ -18,6 +18,7 @@ import {
   useDeactivateDialog,
 } from '../store'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
+import type { ActionFailure } from '@/lib/types/actions'
 import type { CreateTerritoryInput, UpdateTerritoryInput } from '../schema/territory.schema'
 
 // --- Query key factory ---
@@ -94,7 +95,7 @@ export function useTerritoryDataTable(
   })
 }
 
-;(useTerritoryDataTable as any).isQueryHook = true
+;(useTerritoryDataTable as unknown as Record<string, unknown>).isQueryHook = true
 
 // --- Mutation hooks ---
 
@@ -115,7 +116,7 @@ export function useCreateTerritory() {
       close()
       toast.success('Territory created successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       if (error.fields) setFieldErrors(error.fields)
       handleErrorToast(error, 'territory', 'create')
     },
@@ -141,7 +142,7 @@ export function useUpdateTerritory() {
       close()
       toast.success('Territory updated successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       if (error.fields) setFieldErrors(error.fields)
       handleErrorToast(error, 'territory', 'update')
     },
@@ -164,7 +165,7 @@ export function useActivateTerritory() {
       close()
       toast.success('Territory activated successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       handleErrorToast(error, 'territory', 'activate')
     },
   })
@@ -184,7 +185,7 @@ export function useDeactivateTerritory() {
       close()
       toast.success('Territory deactivated successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       handleErrorToast(error, 'territory', 'deactivate')
     },
   })

@@ -20,6 +20,7 @@ import {
   useDeactivateDialog,
 } from '../store'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
+import type { ActionFailure } from '@/lib/types/actions'
 import type { CreateDistributorInput, UpdateDistributorInput } from '../schema/distributor.schema'
 
 // --- Query key factory ---
@@ -97,7 +98,7 @@ export function useDistributorDataTable(
   })
 }
 
-;(useDistributorDataTable as any).isQueryHook = true
+;(useDistributorDataTable as unknown as Record<string, unknown>).isQueryHook = true
 
 // --- Mutation hooks ---
 
@@ -118,7 +119,7 @@ export function useCreateDistributor() {
       close()
       toast.success('Distributor created successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       if (error.fields) setFieldErrors(error.fields)
       handleErrorToast(error, 'distributor', 'create')
     },
@@ -144,7 +145,7 @@ export function useUpdateDistributor() {
       close()
       toast.success('Distributor updated successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       if (error.fields) setFieldErrors(error.fields)
       handleErrorToast(error, 'distributor', 'update')
     },
@@ -167,7 +168,7 @@ export function useDeleteDistributor() {
       close()
       toast.success('Distributor deleted successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       handleErrorToast(error, 'distributor', 'delete')
     },
   })
@@ -187,7 +188,7 @@ export function useActivateDistributor() {
       close()
       toast.success('Distributor activated successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       handleErrorToast(error, 'distributor', 'activate')
     },
   })
@@ -207,7 +208,7 @@ export function useDeactivateDistributor() {
       close()
       toast.success('Distributor deactivated successfully')
     },
-    onError: (error: any) => {
+    onError: (error: ActionFailure) => {
       handleErrorToast(error, 'distributor', 'deactivate')
     },
   })

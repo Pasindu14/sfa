@@ -20,10 +20,9 @@ export function RouteTable() {
   const { open: openDeactivate } = useDeactivateDialog()
 
   const getColumns = useCallback(
-    (_handleRowDeselection: ((rowId: string) => void) | null | undefined) =>
-      getRouteColumns({ openEdit, openActivate, openDeactivate }),
+    () => getRouteColumns({ openEdit, openActivate, openDeactivate }),
     [openEdit, openActivate, openDeactivate],
-  )
+  );
 
   return (
     <DataTable
