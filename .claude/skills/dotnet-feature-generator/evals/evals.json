@@ -1,0 +1,20 @@
+{
+  "skill_name": "dotnet-feature-generator",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need to add a Product feature to the SFA API. It should have: name (string, required, max 200 chars), SKU (string, required, unique, max 50 chars), description (string, optional, max 1000 chars), price (decimal, required, must be >= 0), category (string, required), isActive (bool, defaults to true). I need full CRUD - create, read by ID, read all with pagination, update, delete (soft delete). Make the list endpoint Admin-only, but anyone authenticated can view a single product. Create and update should be Admin-only.",
+      "expected_output": "Complete Product feature with: Entity (with audit fields), Repository interface and implementation, Service interface and implementation, DTOs (ProductDto, ProductListDto), Request models (CreateProductRequest, UpdateProductRequest), Validators (CreateProductValidator with all validation rules, UpdateProductValidator), Controller with all CRUD endpoints and correct authorization, DI registration in Program.cs, DbContext registration with proper indexes, clean dotnet build with no errors, and EF migration command provided"
+    },
+    {
+      "id": 2,
+      "prompt": "Create a Customer feature for the SFA API. Properties: companyName (string, required, max 150 chars, must be unique), contactPerson (string, required, max 100 chars), email (string, required, valid email format, unique), phone (string, required, valid phone format), address (string, optional, max 500 chars), city (string, required, max 100 chars), country (string, required, max 100 chars), status enum (Active, Inactive, Suspended - default Active). I need standard CRUD plus two extra endpoints: activate (POST /customers/{id}/activate) and suspend (POST /customers/{id}/suspend) that change the status - both Admin-only. The main CRUD should follow the usual pattern - admins can do everything, sales reps can only read.",
+      "expected_output": "Complete Customer feature with: Entity including CustomerStatus enum, Repository with all methods including GetByEmail and GetByCompanyName lookups, Service with CRUD plus ActivateAsync and SuspendAsync methods, DTOs, Request models, Validators with email/phone regex validation, Controller with 7 endpoints total (GET, GET all, POST, PUT, DELETE, activate, suspend) with proper auth, DI registrations, DbContext config with unique indexes on email and companyName, clean build, migration command"
+    },
+    {
+      "id": 3,
+      "prompt": "add a simple Category feature to the API - just name (string, required, unique, max 100 chars) and description (optional, max 500 chars). basic crud, all admin-only",
+      "expected_output": "Complete Category feature with: Entity with audit fields, Repository (interface + impl) with GetByName lookup, Service layer, DTOs (CategoryDto, CategoryListDto), Request models, Validators checking name uniqueness and length, Controller with [Authorize(Roles = \"Admin\")] on all endpoints, DI registration, DbContext with unique index on name, clean build, migration command"
+    }
+  ]
+}
