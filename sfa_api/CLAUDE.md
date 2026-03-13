@@ -46,6 +46,7 @@ sfa_api/sfa_api/
 | Regions      | Region CRUD, activate/deactivate                        |
 | Areas        | Area CRUD, activate/deactivate — stores `RegionId`      |
 | Territories  | Territory CRUD, activate/deactivate — stores `AreaId` + `RegionId` (denormalized) |
+| Outlets      | Outlet CRUD, activate/deactivate                        |
 
 ### Geographic Hierarchy
 ```
@@ -100,73 +101,5 @@ record ApiError(
 
 Use `ResponseHelper.Ok(data, correlationId)` in controllers — never construct manually.
 
----
-
-## Exception Types → HTTP Status
-
-| Exception                    | HTTP |
-|------------------------------|------|
-| `ValidationException`        | 400  |
-| `AuthenticationException`    | 401  |
-| `TokenExpiredException`      | 401  |
-| `AuthorizationException`     | 403  |
-| `NotFoundException`          | 404  |
-| `DuplicateResourceException` | 409  |
-| `ConcurrencyConflictException`| 409 |
-| `BusinessRuleException`      | 422  |
-| `RateLimitException`         | 429  |
-| `InfrastructureException`    | 503  |
-
-Throw these from services — `GlobalExceptionMiddleware` catches and formats them.
-
----
-
-## EF Core & Database
-
-- **Database:** PostgreSQL (Npgsql.EntityFrameworkCore)
-- **DbContext:** `AppDbContext` at `Infrastructure/Persistence/AppDbContext.cs`
-- **Audit:** Interceptor automatically sets `CreatedAt`, `UpdatedAt`, `CreatedBy`, `UpdatedBy`
-- **Soft delete:** Set `IsDeleted = true` — no hard deletes. **No global query filter** — add `.Where(x => !x.IsDeleted)` explicitly in every query
-- **Decimal columns:** Use `[Column(TypeName = "decimal(5,2)")]` for percentage/rate fields
-- **Migrations:**
-  ```bash
-  dotnet ef migrations add <Name> --project "d:\Github\sfa\sfa_api\sfa_api\sfa_api.csproj"
-  dotnet ef database update --project "d:\Github\sfa\sfa_api\sfa_api\sfa_api.csproj"
-  ```
-
----
-
-## Authentication & JWT
-
-- **Login:** POST `/api/v1/auth/login` → returns `AuthResponseDto`
-  ```json
-  { "accessToken": "...", "refreshToken": "...", "accessTokenExpiry": "...",
-    "refreshTokenExpiry": "...", "user": { "id", "name", "email", "role" } }
-  ```
-- **Token rotation:** On refresh, old token consumed; reuse detection revokes entire family
-- **Device binding:** Refresh tokens are locked to device via `DeviceId` claim
-- **Hash storage:** Refresh tokens stored as BCrypt hash, never plain
-- **Roles:** `Admin`, `SalesRep`, `Manager`
-
----
-
-## Infrastructure Services
-
-| Interface                   | Implementation                    | Purpose                         |
-|-----------------------------|-----------------------------------|---------------------------------|
-| `ICacheService`             | `MemoryCacheService`              | Short-lived in-memory cache     |
-| `IIdempotencyService`       | `PostgresIdempotencyService`      | Prevent duplicate API calls     |
-| `ITokenRevocationService`   | `PostgresTokenRevocationService`  | Track revoked/expired tokens    |
-| `IDistributedLockService`   | `PostgresAdvisoryLockService`     | Prevent concurrent modifications|
-
----
-
-## Never Do
-
-- Never hard-delete — always soft-delete (`IsDeleted = true`)
-- Never omit `.Where(x => !x.IsDeleted)` in repository queries
-- Never expose raw exception messages or stack traces
-- Never use SQL Server — database is PostgreSQL
-- Never send or accept tenant/company ID from the client — resolve from JWT claims
-- Never skip FluentValidation — all request inputs must have a validator
-- Never use PUT for partial updates — PUT replaces the full resource; no PATCH unless already used in the feature
+> Exception → HTTP status mapping, EF Core patterns, auth details, and infrastructure services
+> are in `.claude/rules/api-conventions.md` (auto-loaded when editing `sfa_api/**` files).

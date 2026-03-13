@@ -9,9 +9,14 @@
 | `sfa_mobile/`| Flutter                            | Field sales reps (mobile ops)  |
 
 Sub-project rules live in their own CLAUDE.md files:
-- `sfa_api/CLAUDE.md` — .NET patterns, EF Core, auth, response envelope
-- `sfa_web/CLAUDE.md` — Next.js patterns, actions, hooks, stores, components
+- `sfa_api/CLAUDE.md` — run commands, directory layout, feature list, architecture overview
+- `sfa_web/CLAUDE.md` — run commands, directory layout, feature list, architecture overview
 - `sfa_mobile/CLAUDE.md` — Flutter patterns, navigation, state management
+
+Path-scoped conventions in `.claude/rules/`:
+- `never-do.md` — cross-project prohibitions (always loaded)
+- `api-conventions.md` — exception mapping, EF Core, auth, infra services (loaded for `sfa_api/**`)
+- `web-conventions.md` — TanStack Query, Zustand, NextAuth patterns (loaded for `sfa_web/**`)
 
 ---
 
@@ -29,7 +34,7 @@ Sub-project rules live in their own CLAUDE.md files:
   { "code": "USER_NOT_FOUND", "message": "...", "fields": {}, "traceId": "..." }
   ```
 - **Versioning:** All endpoints are prefixed `/api/v1/`
-- **Soft delete:** Entities are never hard-deleted; they have `isDeleted` flag
+- **Soft delete:** Entities are never hard-deleted; status is controlled via `IsActive` flag (default `true`); deactivation sets `IsActive = false`
 - **No tenant ID from client:** Multi-tenancy (if implemented) resolves server-side from JWT
 
 ---
@@ -54,11 +59,3 @@ No compose file found at root — run each project independently in dev.
 - Use `rg` (ripgrep) instead of `grep` for all file searches
 - Use `sg` (ast-grep) for structural code pattern searches
 - Prefer explicit file paths over broad directory scans
-
-## Never Do (Cross-Project)
-
-- Never hard-delete records — always soft-delete via `isDeleted`
-- Never send tenant/company ID from the client — resolve from JWT server-side
-- Never commit secrets, `.env` files, or connection strings
-- Never expose raw exception stack traces in API responses
-- Never use SQL Server — the database is **PostgreSQL**

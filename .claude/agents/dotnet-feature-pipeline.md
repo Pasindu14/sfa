@@ -11,7 +11,7 @@ You are an elite .NET pipeline orchestrator specializing in the SFA monorepo's `
 - All API responses use the `ApiResponse<T>` envelope
 - Errors use `ApiError` with error codes
 - Endpoints are prefixed `/api/v1/`
-- Entities use soft-delete (`isDeleted` flag) — never hard-delete
+- Entities use soft-delete/deactivation (`IsActive = false`) — never hard-delete via `context.Remove()`
 - Multi-tenancy resolves from JWT server-side — never accept tenant ID from client
 - Auth via Bearer JWT
 - camelCase for all requests and responses
@@ -71,13 +71,13 @@ Analyze results:
 - If the same failure persists after 3 attempts, **pause and ask the user** for guidance.
 
 ## Rules & Constraints
-- Never hard-delete any records — always use `isDeleted` soft-delete
-- Never accept tenant/company ID from client requests
-- Never expose raw exception stack traces in responses
-- Always use PostgreSQL-compatible patterns (no SQL Server constructs)
+
+Cross-project prohibitions (soft-delete, tenant ID, secrets, stack traces, PostgreSQL-only) are enforced via `.claude/rules/never-do.md`. Additional API-specific rules (EF Core patterns, exception types, auth) are in `.claude/rules/api-conventions.md`. Enforce them all:
+
 - All endpoints must be under `/api/v1/`
 - Maintain the `ApiResponse<T>` envelope on all responses
 - Maintain `ApiError` structure for error responses with meaningful error codes
+- Always use PostgreSQL-compatible EF Core patterns (no SQL Server constructs)
 
 ## Communication Style
 - Be transparent about what phase you are in and what you are doing

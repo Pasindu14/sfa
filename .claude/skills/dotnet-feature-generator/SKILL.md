@@ -67,8 +67,8 @@ mkdir -p sfa_api/sfa_api/Features/{FeatureName}/Controllers
 
 **Pattern to follow:**
 - Use `int Id` as primary key with auto-increment
-- Include audit fields: `CreatedAt`, `UpdatedAt`, `CreatedBy`, `UpdatedBy`, `IsDeleted`
-- Set proper defaults: `= string.Empty` for strings, `= DateTime.UtcNow` for timestamps, `= false` for IsDeleted
+- Include audit fields: `CreatedAt`, `UpdatedAt`, `CreatedBy`, `UpdatedBy`, `IsActive`
+- Set proper defaults: `= string.Empty` for strings, `= DateTime.UtcNow` for timestamps, `= true` for IsActive
 - Add any enum properties (create enum in same file or separate if complex)
 - Add navigation properties if relationships exist
 - Use collection initializer `= []` for navigation collections
@@ -86,7 +86,7 @@ public class {FeatureName}
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public int? CreatedBy { get; set; }
     public int? UpdatedBy { get; set; }
-    public bool IsDeleted { get; set; } = false;
+    public bool IsActive { get; set; } = true;
 
     // Navigation properties (if needed)
 }
@@ -123,8 +123,8 @@ public interface I{FeatureName}Repository
 - Use `_context.{Entities}.FindAsync([id], ct)` for GetById
 - Use `FirstOrDefaultAsync` for custom lookups
 - Implement pagination with `Skip().Take()`
-- **CRITICAL: Soft delete only** - set `IsDeleted = true`, then `Update()` - NEVER use `Remove()`
-- **Do NOT filter by IsDeleted** - queries should return ALL records (active and inactive)
+- **CRITICAL: Never hard-delete** — deactivate by setting `IsActive = false`, then `Update()` — NEVER use `Remove()`
+- **Filter active records** with `.Where(x => x.IsActive)` — there is no global query filter
 - Never call `SaveChangesAsync` in repository methods (except the SaveChangesAsync method itself)
 
 ```csharp
@@ -143,7 +143,7 @@ public class {FeatureName}Repository(AppDbContext context) : I{FeatureName}Repos
 
     public async Task<(IEnumerable<{FeatureName}>, int)> GetAllAsync(int skip, int take, string? search = null, CancellationToken ct = default)
     {
-        var query = _context.{Entities}.Where(x => !x.IsDeleted);
+        var query = _context.{Entities}.Where(x => x.IsActive);
 
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(x => x.Name.ToLower().Contains(search.ToLower()));
@@ -401,11 +401,10 @@ modelBuilder.Entity<{FeatureName}>(e =>
     e.Property(x => x.Id).UseIdentityColumn();
     // Add unique indexes for unique fields
     // e.HasIndex(x => x.Email).IsUnique();
-    e.HasIndex(x => x.IsDeleted);
+    e.HasIndex(x => x.IsActive);
     e.HasIndex(x => x.UpdatedAt);
-    // NOTE: We DO NOT add HasQueryFilter(x => !x.IsDeleted) because the frontend
-    // needs to display both active and inactive records. Soft delete is for audit
-    // purposes only - records are never physically removed from the database.
+    // NOTE: We DO NOT add HasQueryFilter(x => x.IsActive) — filter explicitly in each query.
+    // Records are never physically removed; deactivation sets IsActive = false.
 });
 ```
 
@@ -566,22 +565,22 @@ So renaming a Region is automatically reflected on the next read.
 - Maintain the same level of detail in XML comments
 - Use the same exception types (`NotFoundException`, `DuplicateResourceException`, `ValidationException`)
 
-### Soft Delete Pattern (CRITICAL)
-- **NEVER EVER hard delete records** - no `context.Remove()`, no `_context.{Entities}.Remove(entity)`
-- **ALWAYS use soft delete**: Set `IsDeleted = true` in Delete methods, then call `Update()`
-- **Show ALL records** in queries - do NOT filter by `IsDeleted` in repository methods
-- **Do NOT add global query filter** `HasQueryFilter(x => !x.IsDeleted)` in DbContext
-- The frontend displays both active and inactive records - soft delete is for audit trail only
-- Records are NEVER physically removed from the database - they are marked as deleted
-- Example soft delete implementation:
+### Soft Delete / Deactivation Pattern (CRITICAL)
+- **NEVER hard-delete records** — no `context.Remove()`, no `_context.{Entities}.Remove(entity)`
+- **`IsActive` is the universal status flag** — every entity has it, defaulting to `true`
+- **Deactivation:** set `IsActive = false` then call `Update()` — this is "soft delete"
+- **Active-only queries:** always filter with `.Where(x => x.IsActive)` — there is no global query filter
+- **Do NOT add** `HasQueryFilter(x => x.IsActive)` in DbContext — filter explicitly per query
+- Records are NEVER physically removed — they are deactivated
+- Example deactivation implementation:
   ```csharp
-  public async Task DeleteAsync(int id, CancellationToken ct = default)
+  public async Task DeactivateAsync(int id, CancellationToken ct = default)
   {
       var entity = await _context.{Entities}.FindAsync([id], ct);
       if (entity != null)
       {
-          entity.IsDeleted = true;  // Mark as deleted
-          _context.{Entities}.Update(entity);  // Update, not Remove
+          entity.IsActive = false;
+          _context.{Entities}.Update(entity);
       }
   }
   ```

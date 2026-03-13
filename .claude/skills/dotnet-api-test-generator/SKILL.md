@@ -65,7 +65,7 @@ public class {Feature}ServiceTests
         // fill all required fields with valid data
         CreatedAt = DateTime.UtcNow,
         UpdatedAt = DateTime.UtcNow,
-        IsDeleted = false
+        IsActive = true
     };
 
     private static Create{Feature}Request CreateValidRequest() => new()
@@ -128,8 +128,8 @@ public async Task GetByIdAsync_NonExistentId_ThrowsNotFoundException() { ... }
 - Invalid enum → throws `ValidationException` with field key
 - (If hierarchical entity — Territory, Division) → parent not found → throws `NotFoundException` with parent error code
 
-**Delete (soft):**
-- Existing entity → calls repo Delete and SaveChanges once each
+**Delete / Deactivate (soft — sets `IsActive = false`, never removes):**
+- Existing entity → calls repo Deactivate/Delete and SaveChanges once each
 - Non-existent id → throws `NotFoundException`
 
 **Custom actions (activate/deactivate, status changes):**
