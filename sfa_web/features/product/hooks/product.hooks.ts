@@ -10,6 +10,7 @@ import {
   updateProductAction,
   deleteProductAction,
   activateProductAction,
+  getAllActiveProductsAction,
 } from '../actions/product.actions'
 import {
   useCreateDialog,
@@ -97,6 +98,18 @@ export function useProductDataTable(
 }
 
 ;(useProductDataTable as unknown as Record<string, unknown>).isQueryHook = true
+
+export function useAllActiveProducts() {
+  return useQuery({
+    queryKey: [...productKeys.all, 'active-all'] as const,
+    queryFn: async () => {
+      const result = await getAllActiveProductsAction()
+      if (!result.success) throw new Error(result.error)
+      return result.data
+    },
+    staleTime: 5 * 60 * 1000, // 5 min — product list changes infrequently
+  })
+}
 
 // --- Mutation hooks ---
 

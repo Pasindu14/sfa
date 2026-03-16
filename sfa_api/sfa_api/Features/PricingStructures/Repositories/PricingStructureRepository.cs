@@ -54,6 +54,15 @@ public class PricingStructureRepository(AppDbContext context) : IPricingStructur
             .OrderBy(i => i.Product.ItemDescription)
             .ToListAsync(ct);
 
+    public async Task<IEnumerable<PricingStructure>> GetAllActiveWithItemsAsync(CancellationToken ct = default)
+        => await _context.PricingStructures
+            .Include(ps => ps.Items.Where(i => i.Product.IsActive))
+                .ThenInclude(i => i.Product)
+            .AsNoTracking()
+            .Where(ps => ps.IsActive)
+            .OrderBy(ps => ps.Name)
+            .ToListAsync(ct);
+
     public async Task CreateAsync(PricingStructure entity, CancellationToken ct = default)
         => await _context.PricingStructures.AddAsync(entity, ct);
 

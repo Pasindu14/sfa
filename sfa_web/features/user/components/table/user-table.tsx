@@ -4,7 +4,7 @@ import { useCallback } from 'react'
 import { DataTable } from '@/components/data-table/data-table'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, UserPlus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useUserDialogStore } from "../../store";
 import { useUserDataTable } from "../../hooks/user.hooks";
 import { getUserColumns } from "../columns/user-columns";
