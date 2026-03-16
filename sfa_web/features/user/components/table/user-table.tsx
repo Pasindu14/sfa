@@ -4,23 +4,30 @@ import { useCallback } from 'react'
 import { DataTable } from '@/components/data-table/data-table'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { UserPlus } from 'lucide-react'
-import { useUserDialogStore } from '../../store'
-import { useUserDataTable } from '../../hooks/user.hooks'
-import { getUserColumns } from '../columns/user-columns'
+import { Plus, UserPlus } from "lucide-react";
+import { useUserDialogStore } from "../../store";
+import { useUserDataTable } from "../../hooks/user.hooks";
+import { getUserColumns } from "../columns/user-columns";
 
 export function UserTable() {
-  const openCreate = useUserDialogStore((s) => s.openCreate)
-  const openEdit = useUserDialogStore((s) => s.openEdit)
-  const openDelete = useUserDialogStore((s) => s.openDelete)
-  const openChangePassword = useUserDialogStore((s) => s.openChangePassword)
-  const openActivate = useUserDialogStore((s) => s.openActivate)
-  const openDeactivate = useUserDialogStore((s) => s.openDeactivate)
+  const openCreate = useUserDialogStore((s) => s.openCreate);
+  const openEdit = useUserDialogStore((s) => s.openEdit);
+  const openDelete = useUserDialogStore((s) => s.openDelete);
+  const openChangePassword = useUserDialogStore((s) => s.openChangePassword);
+  const openActivate = useUserDialogStore((s) => s.openActivate);
+  const openDeactivate = useUserDialogStore((s) => s.openDeactivate);
 
   const getColumns = useCallback(
-    () => getUserColumns({ openEdit, openDelete, openChangePassword, openActivate, openDeactivate }),
-    [openEdit, openDelete, openChangePassword, openActivate, openDeactivate]
-  )
+    () =>
+      getUserColumns({
+        openEdit,
+        openDelete,
+        openChangePassword,
+        openActivate,
+        openDeactivate,
+      }),
+    [openEdit, openDelete, openChangePassword, openActivate, openDeactivate],
+  );
 
   return (
     <DataTable
@@ -87,7 +94,7 @@ export function UserTable() {
       )}
       renderToolbarContent={() => (
         <Button onClick={openCreate} className="gap-2">
-          <UserPlus className="h-4 w-4" />
+          <Plus className="h-4 w-4" />
           Add User
         </Button>
       )}

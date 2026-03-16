@@ -51,6 +51,23 @@ public class XxxApiTests
 | `DuplicateResourceException` | `{FIELD}_DUPLICATE`     |
 | `ValidationException`      | `VALIDATION_FAILED`       |
 
+### Error Response Shape in Integration Tests
+Error responses are wrapped under an `error` property, NOT at the root:
+```csharp
+// CORRECT
+body.GetProperty("success").GetBoolean().Should().BeFalse();
+body.GetProperty("error").GetProperty("code").GetString().Should().Be("VALIDATION_FAILED");
+body.GetProperty("error").GetProperty("fields").TryGetProperty("Name", out _).Should().BeTrue();
+
+// WRONG — "code" is NOT at the root of the response
+body.GetProperty("code").GetString()  // KeyNotFoundException!
+```
+
+### ValidationException vs BusinessRuleException in Services
+`ValidationException` maps to HTTP 400 — used when product IDs don't exist in bulk item operations.
+`BusinessRuleException` maps to HTTP 422 — used for domain rule violations.
+Check the service throw site to know which exception is used before writing the IT assertion.
+
 ## API Conventions
 
 - All endpoints: `[Authorize(Roles = "Admin")]` on Distributor and User controllers
@@ -64,6 +81,12 @@ public class XxxApiTests
 - **Distributors**: Service, Validators (Create/Update), API endpoints (all 7 endpoints covered)
 - **Regions**: Service, API endpoints (including search + pagination IT tests)
 - **Areas**: API endpoints (including search + pagination IT tests)
+- **PricingStructures**: Service (27 unit tests), API endpoints (26 integration tests incl. default-swap, bulk items, search)
+
+## Multi-Repository Services
+`PricingStructureService` takes both `IPricingStructureRepository` AND `IProductRepository`.
+When testing `BulkReplaceItemsAsync`, mock `_productRepoMock.Setup(r => r.GetAllAsync(0, int.MaxValue, null, ct))`.
+The returned tuple uses named field `.Products` — but service accesses it positionally (first element).
 
 ## Pagination + Search Patterns
 
@@ -125,6 +148,8 @@ sfa_api.UnitTests/
       Validators/UpdateDistributorValidatorTests.cs
     Regions/
       Services/RegionServiceTests.cs
+    PricingStructures/
+      Services/PricingStructureServiceTests.cs
 
 sfa_api.IntegrationTests/
   Infrastructure/
@@ -138,4 +163,5 @@ sfa_api.IntegrationTests/
     Areas/AreasApiTests.cs
     Territories/TerritoriesApiTests.cs
     Divisions/DivisionsApiTests.cs
+    PricingStructures/PricingStructuresApiTests.cs
 ```

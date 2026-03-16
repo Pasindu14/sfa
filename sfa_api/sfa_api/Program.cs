@@ -43,6 +43,10 @@ using sfa_api.Features.Products.Repositories;
 using sfa_api.Features.Products.Services;
 using sfa_api.Features.Products.Validators;
 using sfa_api.Features.Products.Requests;
+using sfa_api.Features.PricingStructures.Repositories;
+using sfa_api.Features.PricingStructures.Services;
+using sfa_api.Features.PricingStructures.Validators;
+using sfa_api.Features.PricingStructures.Requests;
 using sfa_api.Features.Auth.Repositories;
 using sfa_api.Features.Auth.Services;
 using sfa_api.Features.Auth.Validators;
@@ -155,6 +159,13 @@ try
     builder.Services.AddScoped<IProductService, ProductService>();
     builder.Services.AddScoped<IValidator<CreateProductRequest>, CreateProductValidator>();
     builder.Services.AddScoped<IValidator<UpdateProductRequest>, UpdateProductValidator>();
+
+    // ── PricingStructures Feature ──────────────────────────────────────────
+    builder.Services.AddScoped<IPricingStructureRepository, PricingStructureRepository>();
+    builder.Services.AddScoped<IPricingStructureService, PricingStructureService>();
+    builder.Services.AddScoped<IValidator<CreatePricingStructureRequest>, CreatePricingStructureValidator>();
+    builder.Services.AddScoped<IValidator<UpdatePricingStructureRequest>, UpdatePricingStructureValidator>();
+    builder.Services.AddScoped<IValidator<BulkUpdateItemsRequest>, BulkUpdateItemsValidator>();
 
     var app = builder.Build();
 
