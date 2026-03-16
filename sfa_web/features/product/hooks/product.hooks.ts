@@ -9,11 +9,13 @@ import {
   createProductAction,
   updateProductAction,
   deleteProductAction,
+  activateProductAction,
 } from '../actions/product.actions'
 import {
   useCreateDialog,
   useEditDialog,
   useDeleteDialog,
+  useActivateDialog,
 } from '../store'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { ActionFailure } from '@/lib/types/actions'
@@ -166,6 +168,26 @@ export function useDeleteProduct() {
     },
     onError: (error: ActionFailure) => {
       handleErrorToast(error, 'product', 'delete')
+    },
+  })
+}
+
+export function useActivateProduct() {
+  const queryClient = useQueryClient()
+  const { close } = useActivateDialog()
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const result = await activateProductAction(id)
+      if (!result.success) throw result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productKeys.all })
+      close()
+      toast.success('Product activated successfully')
+    },
+    onError: (error: ActionFailure) => {
+      handleErrorToast(error, 'product', 'activate')
     },
   })
 }

@@ -35,6 +35,16 @@ export const useDeleteDialog = () =>
     }))
   )
 
+export const useActivateDialog = () =>
+  useProductDialogStore(
+    useShallow((s) => ({
+      isOpen: s.isActivateOpen,
+      selectedId: s.selectedProductId,
+      open: s.openActivate,
+      close: s.closeActivate,
+    }))
+  )
+
 // --- Filter selectors ---
 
 export const useProductFilters = () =>

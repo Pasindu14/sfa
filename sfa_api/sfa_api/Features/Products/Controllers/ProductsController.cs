@@ -106,4 +106,16 @@ public class ProductsController(
         await _productService.DeleteAsync(id, ct);
         return NoContent();
     }
+
+    /// <summary>
+    /// POST /api/v1/products/{id}/activate
+    /// Sets IsActive = true.
+    /// </summary>
+    [HttpPost("{id}/activate")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> ActivateProduct(int id, CancellationToken ct)
+    {
+        await _productService.ActivateAsync(id, ct);
+        return NoContent();
+    }
 }

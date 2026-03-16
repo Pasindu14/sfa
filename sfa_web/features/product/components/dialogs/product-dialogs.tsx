@@ -22,11 +22,13 @@ import {
   useCreateDialog,
   useEditDialog,
   useDeleteDialog,
+  useActivateDialog,
 } from '../../store'
 import {
   useCreateProduct,
   useUpdateProduct,
   useDeleteProduct,
+  useActivateProduct,
   useProduct,
 } from '../../hooks/product.hooks'
 import { ProductForm } from '../forms/product-form'
@@ -150,6 +152,36 @@ function DeleteProductDialog() {
   )
 }
 
+// --- Activate Dialog ---
+
+function ActivateProductDialog() {
+  const { isOpen, selectedId, close } = useActivateDialog()
+  const { mutate, isPending } = useActivateProduct()
+
+  return (
+    <AlertDialog open={isOpen} onOpenChange={(open) => !open && close()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Activate Product</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will mark the product as active and make it available in the catalogue again.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={isPending}
+            onClick={() => selectedId && mutate(selectedId)}
+          >
+            {isPending ? <Spinner className="mr-2" /> : null}
+            Activate
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
 // --- Combined Export ---
 
 export function ProductDialogs() {
@@ -158,6 +190,7 @@ export function ProductDialogs() {
       <CreateProductDialog />
       <EditProductDialog />
       <DeleteProductDialog />
+      <ActivateProductDialog />
     </>
   )
 }

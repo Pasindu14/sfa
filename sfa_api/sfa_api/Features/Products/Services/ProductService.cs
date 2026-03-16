@@ -94,6 +94,20 @@ public class ProductService(
         _logger.LogInformation("Product {ProductId} deactivated", id);
     }
 
+    public async Task ActivateAsync(int id, CancellationToken ct = default)
+    {
+        var product = await _repo.GetByIdAsync(id, ct)
+            ?? throw new NotFoundException("Product", id);
+
+        product.IsActive = true;
+        product.UpdatedAt = DateTime.UtcNow;
+
+        await _repo.UpdateAsync(product, ct);
+        await _repo.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Product {ProductId} activated", id);
+    }
+
     private static ProductDto MapToDto(Product product) => new(
         Id: product.Id,
         Code: product.Code,

@@ -7,6 +7,7 @@ import { Plus } from 'lucide-react'
 import {
   useEditDialog,
   useDeleteDialog,
+  useActivateDialog,
   useProductDialogStore,
 } from '../../store'
 import { useProductDataTable } from '../../hooks/product.hooks'
@@ -16,10 +17,11 @@ export function ProductTable() {
   const openCreate = useProductDialogStore((s) => s.openCreate)
   const { open: openEdit } = useEditDialog()
   const { open: openDelete } = useDeleteDialog()
+  const { open: openActivate } = useActivateDialog()
 
   const getColumns = useCallback(
-    () => getProductColumns({ openEdit, openDelete }),
-    [openEdit, openDelete]
+    () => getProductColumns({ openEdit, openDelete, openActivate }),
+    [openEdit, openDelete, openActivate]
   )
 
   return (
