@@ -48,10 +48,13 @@ export function DivisionSelect({
         <SelectTrigger className="flex-1">
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
-        <SelectContent className="max-h-10 overflow-y-scroll">
+        <SelectContent className="max-h-64 overflow-y-auto">
           {divisions?.map((division) => (
             <SelectItem key={division.id} value={String(division.id)}>
               {division.name}
+              <span className="ml-1 text-muted-foreground">
+                ({division.territoryName} → {division.areaName})
+              </span>
             </SelectItem>
           ))}
         </SelectContent>

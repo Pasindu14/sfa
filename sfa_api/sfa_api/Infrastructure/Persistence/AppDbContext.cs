@@ -7,6 +7,7 @@ using sfa_api.Features.Divisions.Entities;
 using sfa_api.Features.Outlets.Entities;
 using sfa_api.Features.Regions.Entities;
 using sfa_api.Features.Territories.Entities;
+using sfa_api.Features.Products.Entities;
 using sfa_api.Features.Users.Entities;
 using RouteEntity = sfa_api.Features.Routes.Entities.Route;
 
@@ -29,6 +30,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Division> Divisions => Set<Division>();
     public DbSet<RouteEntity> Routes => Set<RouteEntity>();
     public DbSet<Outlet> Outlets => Set<Outlet>();
+    public DbSet<Product> Products => Set<Product>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -193,6 +195,17 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.RegionId);
             e.HasIndex(x => x.UpdatedAt);
             e.HasOne(x => x.Route).WithMany().HasForeignKey(x => x.RouteId).IsRequired();
+        });
+
+        // Product
+        modelBuilder.Entity<Product>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.HasIndex(x => x.Code).IsUnique();
+            e.HasIndex(x => x.IsActive);
+            e.HasIndex(x => x.UpdatedAt);
+            // NOTE: No HasQueryFilter - we display both active and inactive records
         });
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);

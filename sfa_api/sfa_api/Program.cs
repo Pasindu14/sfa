@@ -39,6 +39,10 @@ using sfa_api.Features.Outlets.Repositories;
 using sfa_api.Features.Outlets.Services;
 using sfa_api.Features.Outlets.Validators;
 using sfa_api.Features.Outlets.Requests;
+using sfa_api.Features.Products.Repositories;
+using sfa_api.Features.Products.Services;
+using sfa_api.Features.Products.Validators;
+using sfa_api.Features.Products.Requests;
 using sfa_api.Features.Auth.Repositories;
 using sfa_api.Features.Auth.Services;
 using sfa_api.Features.Auth.Validators;
@@ -145,6 +149,12 @@ try
     builder.Services.AddScoped<IOutletService, OutletService>();
     builder.Services.AddScoped<IValidator<CreateOutletRequest>, CreateOutletValidator>();
     builder.Services.AddScoped<IValidator<UpdateOutletRequest>, UpdateOutletValidator>();
+
+    // ── Products Feature ──────────────────────────────────────────────────
+    builder.Services.AddScoped<IProductRepository, ProductRepository>();
+    builder.Services.AddScoped<IProductService, ProductService>();
+    builder.Services.AddScoped<IValidator<CreateProductRequest>, CreateProductValidator>();
+    builder.Services.AddScoped<IValidator<UpdateProductRequest>, UpdateProductValidator>();
 
     var app = builder.Build();
 
