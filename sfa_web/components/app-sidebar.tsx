@@ -49,6 +49,10 @@ const data = {
           url: "/distributors",
         },
         {
+          title: "Products",
+          url: "/products",
+        },
+        {
           title: "Outlets",
           url: "/outlets/map",
         },
