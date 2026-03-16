@@ -157,8 +157,9 @@ public class PricingStructureService(
         {
             PricingStructureId = id,
             ProductId = i.ProductId,
-            UnitPrice = i.UnitPrice,
-            PackPrice = i.PackPrice,
+            DealerPackPrice = i.DealerPackPrice,
+            DealerCasePrice = i.DealerCasePrice,
+            PromotionalPrice = i.PromotionalPrice,
             CreatedBy = callerId,
             UpdatedBy = callerId,
             CreatedAt = DateTime.UtcNow,
@@ -203,7 +204,8 @@ public class PricingStructureService(
         ProductId: item.ProductId,
         ProductCode: item.Product.Code,
         ProductItemDescription: item.Product.ItemDescription,
-        UnitPrice: item.UnitPrice,
-        PackPrice: item.PackPrice
+        DealerPackPrice: item.DealerPackPrice,
+        DealerCasePrice: item.DealerCasePrice,
+        PromotionalPrice: item.PromotionalPrice
     );
 }

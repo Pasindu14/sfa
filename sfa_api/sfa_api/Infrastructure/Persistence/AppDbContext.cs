@@ -224,8 +224,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<PricingStructureItem>(e => {
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).UseIdentityColumn();
-            e.Property(x => x.UnitPrice).HasColumnType("decimal(18,2)");
-            e.Property(x => x.PackPrice).HasColumnType("decimal(18,2)");
+            e.Property(x => x.DealerPackPrice).HasColumnType("decimal(18,2)");
+            e.Property(x => x.DealerCasePrice).HasColumnType("decimal(18,2)");
+            e.Property(x => x.PromotionalPrice).HasColumnType("decimal(18,2)");
             e.HasOne(x => x.PricingStructure).WithMany(p => p.Items).HasForeignKey(x => x.PricingStructureId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(x => new { x.PricingStructureId, x.ProductId }).IsUnique();

@@ -29,8 +29,9 @@ public record PricingStructureItemDto(
     int ProductId,
     string ProductCode,
     string ProductItemDescription,
-    decimal UnitPrice,
-    decimal? PackPrice
+    decimal? DealerPackPrice,
+    decimal? DealerCasePrice,
+    decimal? PromotionalPrice
 );
 
 public record PricingStructureListDto(

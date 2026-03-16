@@ -12,12 +12,17 @@ public class BulkUpdateItemsValidator : AbstractValidator<BulkUpdateItemsRequest
 
         RuleForEach(x => x.Items).ChildRules(item =>
         {
-            item.RuleFor(x => x.UnitPrice)
-                .GreaterThanOrEqualTo(0).WithMessage("UnitPrice must be greater than or equal to 0.");
+            item.RuleFor(x => x.DealerPackPrice)
+                .GreaterThanOrEqualTo(0).When(x => x.DealerPackPrice.HasValue)
+                .WithMessage("DealerPackPrice must be greater than or equal to 0.");
 
-            item.RuleFor(x => x.PackPrice)
-                .GreaterThanOrEqualTo(0).When(x => x.PackPrice.HasValue)
-                .WithMessage("PackPrice must be greater than or equal to 0.");
+            item.RuleFor(x => x.DealerCasePrice)
+                .GreaterThanOrEqualTo(0).When(x => x.DealerCasePrice.HasValue)
+                .WithMessage("DealerCasePrice must be greater than or equal to 0.");
+
+            item.RuleFor(x => x.PromotionalPrice)
+                .GreaterThanOrEqualTo(0).When(x => x.PromotionalPrice.HasValue)
+                .WithMessage("PromotionalPrice must be greater than or equal to 0.");
         });
     }
 }

@@ -14,8 +14,9 @@ export const updatePricingStructureSchema = z.object({
 
 export const pricingStructureItemRequestSchema = z.object({
   productId: z.number().int().positive('Product is required'),
-  unitPrice: z.number().min(0, 'Unit price must be 0 or greater'),
-  packPrice: z.number().min(0, 'Pack price must be 0 or greater').optional(),
+  dealerPackPrice: z.number().min(0, 'Dealer pack price must be 0 or greater').optional(),
+  dealerCasePrice: z.number().min(0, 'Dealer case price must be 0 or greater').optional(),
+  promotionalPrice: z.number().min(0, 'Promotional price must be 0 or greater').optional(),
 })
 
 export const bulkUpdateItemsSchema = z.object({
@@ -44,8 +45,9 @@ export type PricingStructureItemDto = {
   productId: number
   productCode: string
   productItemDescription: string
-  unitPrice: number
-  packPrice?: number
+  dealerPackPrice?: number
+  dealerCasePrice?: number
+  promotionalPrice?: number
 }
 
 export type PricingStructureDetailDto = PricingStructureDto & {

@@ -10,10 +10,13 @@ public class PricingStructureItem
     public int ProductId { get; set; }
 
     [Column(TypeName = "decimal(18,2)")]
-    public decimal UnitPrice { get; set; }
+    public decimal? DealerPackPrice { get; set; }
 
     [Column(TypeName = "decimal(18,2)")]
-    public decimal? PackPrice { get; set; }
+    public decimal? DealerCasePrice { get; set; }
+
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal? PromotionalPrice { get; set; }
 
     // Audit fields
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

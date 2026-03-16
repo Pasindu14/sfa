@@ -54,7 +54,11 @@ const data = {
         },
         {
           title: "Outlets",
-          url: "/outlets/map",
+          url: "/outlets",
+        },
+        {
+          title: "Pricing Structures",
+          url: "/pricing-structures",
         },
       ],
     },
@@ -86,7 +90,7 @@ const data = {
         },
       ],
     },
-/*     {
+    /*     {
       title: "Models",
       url: "#",
       icon: Bot,
@@ -153,7 +157,7 @@ const data = {
     }, */
   ],
   projects: [
-/*     {
+    /*     {
       name: "Design Engineering",
       url: "#",
       icon: Frame,

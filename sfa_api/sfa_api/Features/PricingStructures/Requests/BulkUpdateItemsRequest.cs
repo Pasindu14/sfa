@@ -8,6 +8,7 @@ public class BulkUpdateItemsRequest
 public class PricingStructureItemRequest
 {
     public int ProductId { get; set; }
-    public decimal UnitPrice { get; set; }
-    public decimal? PackPrice { get; set; }
+    public decimal? DealerPackPrice { get; set; }
+    public decimal? DealerCasePrice { get; set; }
+    public decimal? PromotionalPrice { get; set; }
 }
