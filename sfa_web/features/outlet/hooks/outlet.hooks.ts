@@ -165,10 +165,10 @@ export function useUpdateOutlet() {
       return result.data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: outletKeys.all })
       setFieldErrors(null)
       close()
       toast.success('Outlet updated successfully')
+      queryClient.invalidateQueries({ queryKey: outletKeys.all })
     },
     onError: (error: ActionFailure) => {
       if (error.fields) setFieldErrors(error.fields)

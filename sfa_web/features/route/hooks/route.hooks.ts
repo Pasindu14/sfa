@@ -11,6 +11,7 @@ import {
   activateRouteAction,
   deactivateRouteAction,
   getActiveRoutesAction,
+  searchActiveRoutesAction,
 } from '../actions/route.actions'
 import {
   useCreateDialog,
@@ -73,6 +74,21 @@ export function useActiveRoutes() {
       if (!result.success) throw new Error(result.error)
       return result.data
     },
+  })
+}
+
+// --- Search routes hook (type-ahead, fires only when search.length >= 1) ---
+
+export function useSearchRoutes(search: string) {
+  return useQuery({
+    queryKey: [...routeKeys.all, 'search', search] as const,
+    queryFn: async () => {
+      const result = await searchActiveRoutesAction(search)
+      if (!result.success) throw new Error(result.error)
+      return result.data
+    },
+    enabled: search.length >= 1,
+    staleTime: 30_000,
   })
 }
 

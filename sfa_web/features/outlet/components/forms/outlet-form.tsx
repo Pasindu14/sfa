@@ -31,11 +31,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
-import { useActiveRoutes } from "@/features/route/hooks/route.hooks";
+import { AsyncSelect } from "@/components/async-select";
+import { searchActiveRoutesAction } from "@/features/route/actions/route.actions";
+import type { RouteDto } from "@/features/route/schema/route.schema";
 
 interface OutletFormProps {
   mode: "create" | "edit";
   defaultValues?: Partial<CreateOutletInput>;
+  initialRouteName?: string;
   onSubmit: (data: CreateOutletInput) => void;
   isLoading: boolean;
   fieldErrors?: Record<string, string> | null;
@@ -44,12 +47,11 @@ interface OutletFormProps {
 export function OutletForm({
   mode,
   defaultValues,
+  initialRouteName,
   onSubmit,
   isLoading,
   fieldErrors,
 }: OutletFormProps) {
-  const { data: activeRoutes, isLoading: isLoadingRoutes } = useActiveRoutes();
-
   const form = useForm<CreateOutletInput>({
     resolver: zodResolver(createOutletSchema),
     defaultValues: {
@@ -466,28 +468,30 @@ export function OutletForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Route</FormLabel>
-              <Select
-                onValueChange={(value) => field.onChange(Number(value))}
-                value={field.value ? String(field.value) : ""}
-                disabled={isLoadingRoutes}
-              >
-                <FormControl>
-                  <SelectTrigger className="w-full">
-                    <SelectValue
-                      placeholder={
-                        isLoadingRoutes ? "Loading routes..." : "Select a route"
-                      }
-                    />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {(activeRoutes ?? []).map((route) => (
-                    <SelectItem key={route.id} value={String(route.id)}>
-                      {route.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormControl>
+                <AsyncSelect<RouteDto>
+                  label="Route"
+                  placeholder="Select a route"
+                  value={field.value ? String(field.value) : ""}
+                  onChange={(val) => field.onChange(val ? Number(val) : 0)}
+                  fetcher={async (query) => {
+                    if (!query) return [];
+                    const result = await searchActiveRoutesAction(query);
+                    return result.success ? result.data : [];
+                  }}
+                  getOptionValue={(r) => String(r.id)}
+                  getDisplayValue={(r) => r.name}
+                  renderOption={(r) => r.name}
+                  noResultsMessage="No routes found"
+                  width="100%"
+                  disabled={isLoading}
+                  initialOption={
+                    initialRouteName && defaultValues?.routeId
+                      ? ({ id: defaultValues.routeId, name: initialRouteName } as RouteDto)
+                      : null
+                  }
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}

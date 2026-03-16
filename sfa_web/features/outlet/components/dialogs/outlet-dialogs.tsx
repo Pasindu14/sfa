@@ -84,13 +84,13 @@ function EditOutletDialog() {
     <Dialog
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open) {
+        if (!open && !isPending) {
           close();
           clearFieldErrors();
         }
       }}
     >
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="min-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Outlet</DialogTitle>
           <DialogDescription>Update outlet information.</DialogDescription>
@@ -102,6 +102,7 @@ function EditOutletDialog() {
         ) : (
           <OutletForm
             mode="edit"
+            initialRouteName={outlet?.routeName}
             defaultValues={
               outlet
                 ? {

@@ -56,6 +56,16 @@ export const getActiveRoutesAction = createAction(
   }
 )
 
+export const searchActiveRoutesAction = createAction(
+  { name: 'searchActiveRoutesAction', requireAuth: true, requiredRole: 'Admin' },
+  async (search: string) => {
+    const res = await client.get('/api/v1/routes', {
+      params: { page: 1, pageSize: 20, search, isActive: true },
+    })
+    return (res.data.data as RoutesListResponse).routes
+  }
+)
+
 export const activateRouteAction = createAction(
   { name: 'activateRouteAction', requireAuth: true, requiredRole: 'Admin' },
   async (id: number) => {
