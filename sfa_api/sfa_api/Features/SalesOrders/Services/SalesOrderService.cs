@@ -575,7 +575,8 @@ public class SalesOrderService(
             ItemCount: o.Items?.Count ?? 0,
             IsActive: o.IsActive,
             CreatedAt: o.CreatedAt,
-            UpdatedAt: o.UpdatedAt
+            UpdatedAt: o.UpdatedAt,
+            SubmittedAt: o.SubmittedAt
         );
     }
 

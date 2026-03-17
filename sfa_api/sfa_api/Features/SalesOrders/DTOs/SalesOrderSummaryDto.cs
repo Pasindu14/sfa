@@ -13,7 +13,8 @@ public record SalesOrderSummaryDto(
     int ItemCount,
     bool IsActive,
     DateTime CreatedAt,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    DateTime? SubmittedAt
 );
 
 public record SalesOrderListDto(
