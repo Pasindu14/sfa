@@ -199,6 +199,10 @@ function OrderActions({ order, role }: OrderActionsProps) {
   )
 }
 
+function formatDate(d: string | null | undefined) {
+  return d ? format(new Date(d), 'dd MMM yyyy HH:mm') : null
+}
+
 interface SalesOrderDetailPageProps {
   orderId: number
 }
@@ -208,12 +212,23 @@ export function SalesOrderDetailPage({ orderId }: SalesOrderDetailPageProps) {
   const router = useRouter()
   const role = session?.user?.role ?? ''
 
-  const { data: order, isLoading } = useSalesOrder(orderId)
+  const { data: order, isLoading, isError } = useSalesOrder(orderId)
 
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
         <Spinner />
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center gap-4 p-6">
+        <p className="text-destructive">Failed to load order. Please try again.</p>
+        <Button variant="outline" onClick={() => router.push('/sales-orders')}>
+          ← Back to Sales Orders
+        </Button>
       </div>
     )
   }
@@ -228,9 +243,6 @@ export function SalesOrderDetailPage({ orderId }: SalesOrderDetailPageProps) {
       </div>
     )
   }
-
-  const formatDate = (d: string | null | undefined) =>
-    d ? format(new Date(d), 'dd MMM yyyy HH:mm') : null
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -334,7 +346,7 @@ export function SalesOrderDetailPage({ orderId }: SalesOrderDetailPageProps) {
                               by {entry.performedByName ?? `User #${entry.performedBy}`}
                             </span>
                             <span className="text-muted-foreground font-normal ml-2 text-xs">
-                              · {format(new Date(entry.performedAt), 'dd MMM yyyy HH:mm')}
+                              · {formatDate(entry.performedAt) ?? ''}
                             </span>
                           </div>
                           {entry.notes && (
