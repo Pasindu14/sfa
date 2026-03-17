@@ -46,9 +46,15 @@ public class SalesOrderRepository(AppDbContext context) : ISalesOrderRepository
             query = query.Where(o => o.DistributorId == distributorId.Value);
 
         if (fromDate.HasValue)
-            query = query.Where(o => o.CreatedAt >= fromDate.Value);
+        {
+            var from = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+            query = query.Where(o => o.CreatedAt >= from);
+        }
         if (toDate.HasValue)
-            query = query.Where(o => o.CreatedAt < toDate.Value.Date.AddDays(1));
+        {
+            var to = DateTime.SpecifyKind(toDate.Value.Date.AddDays(1), DateTimeKind.Utc);
+            query = query.Where(o => o.CreatedAt < to);
+        }
 
         var totalCount = await query.CountAsync(ct);
         var salesOrders = await query
