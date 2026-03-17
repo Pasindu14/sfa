@@ -43,6 +43,8 @@ public class SalesOrdersController(
         [FromQuery] int pageSize = 10,
         [FromQuery] string? search = null,
         [FromQuery] string? status = null,
+        [FromQuery] DateTime? fromDate = null,
+        [FromQuery] DateTime? toDate = null,
         CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
@@ -52,7 +54,8 @@ public class SalesOrdersController(
         if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<SalesOrderStatus>(status, true, out var parsed))
             statusFilter = parsed;
 
-        var result = await _salesOrderService.GetAllAsync(page, pageSize, search, statusFilter, callerId, callerRole, ct);
+        var result = await _salesOrderService.GetAllAsync(
+            page, pageSize, search, statusFilter, fromDate, toDate, callerId, callerRole, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 

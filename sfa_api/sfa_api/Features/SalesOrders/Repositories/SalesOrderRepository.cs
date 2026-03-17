@@ -26,6 +26,8 @@ public class SalesOrderRepository(AppDbContext context) : ISalesOrderRepository
         string? search = null,
         SalesOrderStatus? status = null,
         int? distributorId = null,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
         CancellationToken ct = default)
     {
         var query = _context.SalesOrders
@@ -42,6 +44,11 @@ public class SalesOrderRepository(AppDbContext context) : ISalesOrderRepository
 
         if (distributorId.HasValue)
             query = query.Where(o => o.DistributorId == distributorId.Value);
+
+        if (fromDate.HasValue)
+            query = query.Where(o => o.CreatedAt >= fromDate.Value);
+        if (toDate.HasValue)
+            query = query.Where(o => o.CreatedAt < toDate.Value.Date.AddDays(1));
 
         var totalCount = await query.CountAsync(ct);
         var salesOrders = await query

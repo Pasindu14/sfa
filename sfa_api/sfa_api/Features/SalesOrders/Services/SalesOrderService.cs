@@ -51,6 +51,8 @@ public class SalesOrderService(
         int pageSize,
         string? search,
         SalesOrderStatus? status,
+        DateTime? fromDate,
+        DateTime? toDate,
         int callerId,
         UserRole callerRole,
         CancellationToken ct = default)
@@ -65,7 +67,8 @@ public class SalesOrderService(
             distributorFilter = caller.DistributorId;
         }
 
-        var (orders, totalCount) = await _repo.GetAllAsync(skip, pageSize, search, status, distributorFilter, ct);
+        var (orders, totalCount) = await _repo.GetAllAsync(
+            skip, pageSize, search, status, distributorFilter, fromDate, toDate, ct);
 
         return new SalesOrderListDto(
             SalesOrders: orders.Select(MapToSummaryDto),

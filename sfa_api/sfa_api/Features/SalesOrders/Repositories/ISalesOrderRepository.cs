@@ -13,6 +13,8 @@ public interface ISalesOrderRepository
         string? search = null,
         SalesOrderStatus? status = null,
         int? distributorId = null,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
         CancellationToken ct = default);
     Task<long> GetNextOrderNumberAsync(CancellationToken ct = default);
     Task CreateAsync(SalesOrder order, CancellationToken ct = default);

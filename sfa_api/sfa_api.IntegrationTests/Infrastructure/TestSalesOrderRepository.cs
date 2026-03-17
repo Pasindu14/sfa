@@ -25,8 +25,9 @@ public sealed class TestSalesOrderRepository(ISalesOrderRepository inner) : ISal
     public Task<(IEnumerable<SalesOrder> SalesOrders, int TotalCount)> GetAllAsync(
         int skip, int take, string? search = null,
         SalesOrderStatus? status = null, int? distributorId = null,
+        DateTime? fromDate = null, DateTime? toDate = null,
         CancellationToken ct = default)
-        => inner.GetAllAsync(skip, take, search, status, distributorId, ct);
+        => inner.GetAllAsync(skip, take, search, status, distributorId, fromDate, toDate, ct);
 
     public Task CreateAsync(SalesOrder order, CancellationToken ct = default)
         => inner.CreateAsync(order, ct);
@@ -42,6 +43,9 @@ public sealed class TestSalesOrderRepository(ISalesOrderRepository inner) : ISal
 
     public Task AddHistoryAsync(SalesOrderHistory history, CancellationToken ct = default)
         => inner.AddHistoryAsync(history, ct);
+
+    public Task<IEnumerable<SalesOrderHistory>> GetHistoryAsync(int salesOrderId, CancellationToken ct = default)
+        => inner.GetHistoryAsync(salesOrderId, ct);
 
     public Task SaveChangesAsync(CancellationToken ct = default)
         => inner.SaveChangesAsync(ct);

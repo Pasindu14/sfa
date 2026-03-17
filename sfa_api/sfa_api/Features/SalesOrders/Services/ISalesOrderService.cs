@@ -8,7 +8,7 @@ namespace sfa_api.Features.SalesOrders.Services;
 public interface ISalesOrderService
 {
     Task<SalesOrderDto> GetByIdAsync(int id, int callerId, UserRole callerRole, CancellationToken ct = default);
-    Task<SalesOrderListDto> GetAllAsync(int page, int pageSize, string? search, SalesOrderStatus? status, int callerId, UserRole callerRole, CancellationToken ct = default);
+    Task<SalesOrderListDto> GetAllAsync(int page, int pageSize, string? search, SalesOrderStatus? status, DateTime? fromDate, DateTime? toDate, int callerId, UserRole callerRole, CancellationToken ct = default);
     Task<SalesOrderDto> CreateAsync(CreateSalesOrderRequest request, int callerId, UserRole callerRole, CancellationToken ct = default);
     Task<SalesOrderDto> UpdateAsync(int id, UpdateSalesOrderRequest request, int callerId, UserRole callerRole, CancellationToken ct = default);
     Task<SalesOrderDto> SubmitAsync(int id, int callerId, UserRole callerRole, CancellationToken ct = default);
