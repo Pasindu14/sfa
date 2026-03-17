@@ -60,10 +60,6 @@ const data = {
           title: "Pricing Structures",
           url: "/pricing-structures",
         },
-        {
-          title: "Sales Orders",
-          url: "/sales-orders",
-        },
       ],
     },
     {
