@@ -23,6 +23,15 @@ public class PricingStructureService(
         return MapToDetailDto(structure);
     }
 
+    public async Task<PricingStructureDetailDto> GetDefaultAsync(CancellationToken ct = default)
+    {
+        var structure = await _repo.GetCurrentDefaultAsync(ct)
+            ?? throw new NotFoundException("PricingStructure", "default");
+        var withItems = await _repo.GetByIdWithItemsAsync(structure.Id, ct)
+            ?? throw new NotFoundException("PricingStructure", structure.Id);
+        return MapToDetailDto(withItems);
+    }
+
     public async Task<PricingStructureListDto> GetAllAsync(int page, int pageSize, string? search = null, CancellationToken ct = default)
     {
         var skip = (page - 1) * pageSize;

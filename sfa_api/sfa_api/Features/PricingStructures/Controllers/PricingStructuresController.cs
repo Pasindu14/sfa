@@ -39,6 +39,19 @@ public class PricingStructuresController(
     }
 
     /// <summary>
+    /// GET /api/v1/pricing-structures/default
+    /// All authenticated roles — used by Create Order product selector
+    /// </summary>
+    [HttpGet("default")]
+    [Authorize]
+    public async Task<IActionResult> GetDefaultPricingStructure(CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var result = await _pricingStructureService.GetDefaultAsync(ct);
+        return Ok(ResponseHelper.Ok(result, correlationId));
+    }
+
+    /// <summary>
     /// GET /api/v1/pricing-structures/{id}
     /// </summary>
     [HttpGet("{id}")]
