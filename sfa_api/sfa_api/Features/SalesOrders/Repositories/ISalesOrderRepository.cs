@@ -20,5 +20,6 @@ public interface ISalesOrderRepository
     Task AddItemsAsync(IEnumerable<SalesOrderItem> items, CancellationToken ct = default);
     Task RemoveItemsAsync(int salesOrderId, CancellationToken ct = default);
     Task AddHistoryAsync(SalesOrderHistory history, CancellationToken ct = default);
+    Task<IEnumerable<SalesOrderHistory>> GetHistoryAsync(int salesOrderId, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

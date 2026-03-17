@@ -33,7 +33,17 @@ public class SalesOrderService(
                 throw new AuthorizationException("this sales order");
         }
 
-        return MapToDto(order);
+        // Load history and resolve performer names
+        var history = await _repo.GetHistoryAsync(id, ct);
+        var performerIds = history.Select(h => h.PerformedBy).Distinct().ToList();
+        var performers = new Dictionary<int, string?>();
+        foreach (var pid in performerIds)
+        {
+            var user = await _userRepo.GetUserByIdAsync(pid, ct);
+            performers[pid] = user?.Name;
+        }
+
+        return MapToDto(order, history, performers);
     }
 
     public async Task<SalesOrderListDto> GetAllAsync(
@@ -525,7 +535,10 @@ public class SalesOrderService(
 
     // ── Mapping helpers ────────────────────────────────────────────────────
 
-    private static SalesOrderDto MapToDto(SalesOrder o)
+    private static SalesOrderDto MapToDto(
+        SalesOrder o,
+        IEnumerable<SalesOrderHistory>? history = null,
+        Dictionary<int, string?>? performers = null)
     {
         var items = o.Items?.Select(MapItemToDto) ?? [];
         var total = o.Items?.Sum(i => i.Quantity * i.UnitPrice * (1 - i.Discount / 100)) ?? 0m;
@@ -539,6 +552,16 @@ public class SalesOrderService(
             StatusLabel: o.Status.ToString(),
             Notes: o.Notes,
             Items: items,
+            History: (history ?? Enumerable.Empty<SalesOrderHistory>()).Select(h => new SalesOrderHistoryDto(
+                h.Id,
+                h.Action,
+                h.FromStatus,
+                h.ToStatus,
+                h.PerformedBy,
+                performers?.GetValueOrDefault(h.PerformedBy),
+                h.PerformedAt,
+                h.Notes
+            )),
             TotalAmount: decimal.Round(total, 2),
             SubmittedBy: o.SubmittedBy,
             SubmittedAt: o.SubmittedAt,

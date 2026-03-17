@@ -11,6 +11,7 @@ public record SalesOrderDto(
     string StatusLabel,
     string? Notes,
     IEnumerable<SalesOrderItemDto> Items,
+    IEnumerable<SalesOrderHistoryDto> History,
     decimal TotalAmount,
 
     // Transition audit trail

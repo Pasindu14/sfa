@@ -85,6 +85,14 @@ public class SalesOrderRepository(AppDbContext context) : ISalesOrderRepository
     public async Task AddHistoryAsync(SalesOrderHistory history, CancellationToken ct = default)
         => await _context.SalesOrderHistories.AddAsync(history, ct);
 
+    public async Task<IEnumerable<SalesOrderHistory>> GetHistoryAsync(int salesOrderId, CancellationToken ct = default)
+    {
+        return await _context.SalesOrderHistories
+            .Where(h => h.SalesOrderId == salesOrderId)
+            .OrderBy(h => h.PerformedAt)
+            .ToListAsync(ct);
+    }
+
     public async Task SaveChangesAsync(CancellationToken ct = default)
         => await _context.SaveChangesAsync(ct);
 }
