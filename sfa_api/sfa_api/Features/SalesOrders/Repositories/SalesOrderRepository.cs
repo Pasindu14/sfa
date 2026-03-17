@@ -70,7 +70,7 @@ public class SalesOrderRepository(AppDbContext context) : ISalesOrderRepository
     public async Task<long> GetNextOrderNumberAsync(CancellationToken ct = default)
     {
         var result = await _context.Database
-            .SqlQueryRaw<long>("SELECT nextval('sales_order_number_seq')")
+            .SqlQueryRaw<long>("SELECT nextval('sales_order_number_seq') AS \"Value\"")
             .FirstAsync(ct);
         return result;
     }

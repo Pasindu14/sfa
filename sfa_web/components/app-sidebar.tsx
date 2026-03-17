@@ -3,6 +3,7 @@ import {
   Cog,
   GalleryVerticalEnd,
   Map,
+  ShoppingCart,
 } from "lucide-react";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
@@ -59,6 +60,18 @@ const data = {
         {
           title: "Pricing Structures",
           url: "/pricing-structures",
+        },
+      ],
+    },
+    {
+      title: "Sales",
+      url: "#",
+      icon: ShoppingCart,
+      isActive: false,
+      items: [
+        {
+          title: "Sales Orders",
+          url: "/sales-orders",
         },
       ],
     },
