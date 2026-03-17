@@ -48,8 +48,8 @@ public class PricingStructureServiceTests
         Id = id,
         PricingStructureId = structureId,
         ProductId = productId,
-        UnitPrice = 100m,
-        PackPrice = 950m,
+        DealerPackPrice = 100m,
+        DealerCasePrice = 950m,
         Product = new Product
         {
             Id = productId,
@@ -405,8 +405,8 @@ public class PricingStructureServiceTests
         result.Should().HaveCount(1);
         result[0].ProductCode.Should().Be("PROD-10");
         result[0].ProductItemDescription.Should().Be("Product 10");
-        result[0].UnitPrice.Should().Be(100m);
-        result[0].PackPrice.Should().Be(950m);
+        result[0].DealerPackPrice.Should().Be(100m);
+        result[0].DealerCasePrice.Should().Be(950m);
     }
 
     [Fact]
@@ -431,7 +431,7 @@ public class PricingStructureServiceTests
         {
             Items =
             [
-                new PricingStructureItemRequest { ProductId = 10, UnitPrice = 50m }
+                new PricingStructureItemRequest { ProductId = 10, DealerPackPrice = 50m }
             ]
         };
         _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
@@ -460,7 +460,7 @@ public class PricingStructureServiceTests
 
         var request = new BulkUpdateItemsRequest
         {
-            Items = [new PricingStructureItemRequest { ProductId = 10, UnitPrice = 10m }]
+            Items = [new PricingStructureItemRequest { ProductId = 10, DealerPackPrice = 10m }]
         };
 
         var act = () => _sut.BulkReplaceItemsAsync(99, request, callerId: 1);
@@ -475,7 +475,7 @@ public class PricingStructureServiceTests
         {
             Items =
             [
-                new PricingStructureItemRequest { ProductId = 999, UnitPrice = 50m }
+                new PricingStructureItemRequest { ProductId = 999, DealerPackPrice = 50m }
             ]
         };
         _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
@@ -497,7 +497,7 @@ public class PricingStructureServiceTests
         {
             Items =
             [
-                new PricingStructureItemRequest { ProductId = 10, UnitPrice = 75m, PackPrice = 700m }
+                new PricingStructureItemRequest { ProductId = 10, DealerPackPrice = 75m, DealerCasePrice = 700m }
             ]
         };
         _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))

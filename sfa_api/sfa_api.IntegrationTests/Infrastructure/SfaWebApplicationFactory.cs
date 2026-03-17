@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using System.Threading.RateLimiting;
+using sfa_api.Features.SalesOrders.Repositories;
 using sfa_api.Infrastructure.Persistence;
 
 namespace sfa_api.IntegrationTests.Infrastructure;
@@ -29,11 +30,12 @@ public class SfaWebApplicationFactory : WebApplicationFactory<Program>
         _connection.Open();
 
         // Create the schema BEFORE the app starts, so DataSeeder doesn't crash.
-        // Using a standalone DbContext with the same shared connection.
+        // Use TestAppDbContext (not AppDbContext) to suppress the PostgreSQL sequence
+        // definition that SQLite cannot generate.
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseSqlite(_connection)
             .Options;
-        using var db = new AppDbContext(options);
+        using var db = new TestAppDbContext(options);
         db.Database.EnsureCreated();
     }
 
@@ -72,6 +74,15 @@ public class SfaWebApplicationFactory : WebApplicationFactory<Program>
 
             // Remove background services that use PostgreSQL-specific features
             services.RemoveAll<IHostedService>();
+
+            // Replace ISalesOrderRepository to stub GetNextOrderNumberAsync, which calls
+            // PostgreSQL's nextval() sequence — not supported by SQLite in-memory.
+            services.RemoveAll<ISalesOrderRepository>();
+            services.AddScoped<ISalesOrderRepository>(sp =>
+            {
+                var db = sp.GetRequiredService<AppDbContext>();
+                return new TestSalesOrderRepository(new SalesOrderRepository(db));
+            });
 
             // Disable rate limiting in tests — replace global limiter with no-op
             services.Configure<RateLimiterOptions>(options =>

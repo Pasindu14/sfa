@@ -9,6 +9,7 @@ using sfa_api.Features.Regions.Entities;
 using sfa_api.Features.Territories.Entities;
 using sfa_api.Features.PricingStructures.Entities;
 using sfa_api.Features.Products.Entities;
+using sfa_api.Features.SalesOrders.Entities;
 using sfa_api.Features.Users.Entities;
 using RouteEntity = sfa_api.Features.Routes.Entities.Route;
 
@@ -34,6 +35,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Product> Products => Set<Product>();
     public DbSet<PricingStructure> PricingStructures => Set<PricingStructure>();
     public DbSet<PricingStructureItem> PricingStructureItems => Set<PricingStructureItem>();
+    public DbSet<SalesOrder> SalesOrders => Set<SalesOrder>();
+    public DbSet<SalesOrderItem> SalesOrderItems => Set<SalesOrderItem>();
+    public DbSet<SalesOrderHistory> SalesOrderHistories => Set<SalesOrderHistory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -230,6 +234,63 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(x => x.PricingStructure).WithMany(p => p.Items).HasForeignKey(x => x.PricingStructureId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(x => new { x.PricingStructureId, x.ProductId }).IsUnique();
+        });
+
+        // SalesOrder sequence (used to generate order numbers)
+        modelBuilder.HasSequence<long>("sales_order_number_seq").StartsAt(1).IncrementsBy(1);
+
+        // SalesOrder
+        modelBuilder.Entity<SalesOrder>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.Property(x => x.OrderNumber).IsRequired().HasMaxLength(20);
+            e.HasIndex(x => x.OrderNumber).IsUnique();
+            e.Property(x => x.Status).HasConversion<int>();
+            e.Property(x => x.Notes).HasMaxLength(1000);
+            e.Property(x => x.CancelReason).HasMaxLength(500);
+            e.HasIndex(x => x.DistributorId);
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.CreatedAt);
+            e.HasOne(x => x.Distributor)
+             .WithMany()
+             .HasForeignKey(x => x.DistributorId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasMany(x => x.Items)
+             .WithOne(i => i.SalesOrder)
+             .HasForeignKey(i => i.SalesOrderId)
+             .OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.History)
+             .WithOne(h => h.SalesOrder)
+             .HasForeignKey(h => h.SalesOrderId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // SalesOrderItem
+        modelBuilder.Entity<SalesOrderItem>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.Property(x => x.UnitPrice).HasColumnType("decimal(18,2)");
+            e.Property(x => x.Discount).HasColumnType("decimal(5,2)");
+            e.HasOne(x => x.Product)
+             .WithMany()
+             .HasForeignKey(x => x.ProductId)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // SalesOrderHistory
+        modelBuilder.Entity<SalesOrderHistory>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.Property(x => x.Action).IsRequired().HasMaxLength(50);
+            e.Property(x => x.Notes).HasMaxLength(1000);
+            e.Property(x => x.ItemsSnapshot).HasColumnType("text");
+            e.Property(x => x.FromStatus).HasConversion<int?>();
+            e.Property(x => x.ToStatus).HasConversion<int?>();
+            e.HasIndex(x => x.SalesOrderId);
+            e.HasIndex(x => x.PerformedAt);
         });
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);

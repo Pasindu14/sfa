@@ -54,7 +54,7 @@ public class DuplicateResourceException(string entity) : ConflictException($"{en
 // 422 — Business Rule
 public class BusinessRuleException : SFAException
 {
-    protected BusinessRuleException(string code, string message, object? data = null)
+    public BusinessRuleException(string code, string message, object? data = null)
         : base(code, message, data) { }
 }
 public class InsufficientStockException(Guid productId, int requested, int available) : BusinessRuleException("INSUFFICIENT_STOCK", $"Insufficient stock for product {productId}.",

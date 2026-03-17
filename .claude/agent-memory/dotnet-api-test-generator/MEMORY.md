@@ -82,6 +82,7 @@ Check the service throw site to know which exception is used before writing the 
 - **Regions**: Service, API endpoints (including search + pagination IT tests)
 - **Areas**: API endpoints (including search + pagination IT tests)
 - **PricingStructures**: Service (27 unit tests), API endpoints (26 integration tests incl. default-swap, bulk items, search)
+- **SalesOrders**: Service (33 unit tests), Validators (Create 14 tests / Update 13 tests), API endpoints (21 integration tests)
 
 ## Multi-Repository Services
 `PricingStructureService` takes both `IPricingStructureRepository` AND `IProductRepository`.
@@ -131,6 +132,82 @@ public async Task GetAllXxx_WithSearchParam_Returns200()
 ```
 - The list wrapper key varies by feature: `data.regions`, `data.areas`, `data.distributors`, `data.users`
 
+## PostgreSQL Sequence Workaround for SQLite Tests
+
+`AppDbContext.OnModelCreating` calls `modelBuilder.HasSequence<long>("sales_order_number_seq")`, which
+SQLite's `EnsureCreated()` cannot handle (`NotSupportedException`). Two infrastructure files resolve this:
+
+1. `TestAppDbContext` — subclass of `AppDbContext` that strips the sequence after calling `base.OnModelCreating()`:
+   ```csharp
+   var seq = modelBuilder.Model.FindSequence("sales_order_number_seq");
+   if (seq != null) modelBuilder.Model.RemoveSequence(seq.Name, seq.Schema);
+   ```
+   Used ONLY for `EnsureCreated()` in `SfaWebApplicationFactory` constructor.
+
+2. `TestSalesOrderRepository` — delegating wrapper that replaces `GetNextOrderNumberAsync`
+   (which calls PostgreSQL `nextval()`) with an `Interlocked.Increment` counter.
+   Registered in `SfaWebApplicationFactory.ConfigureServices`:
+   ```csharp
+   services.RemoveAll<ISalesOrderRepository>();
+   services.AddScoped<ISalesOrderRepository>(sp => {
+       var db = sp.GetRequiredService<AppDbContext>();
+       return new TestSalesOrderRepository(new SalesOrderRepository(db));
+   });
+   ```
+   IMPORTANT: Use a **delegating wrapper** pattern — `GetNextOrderNumberAsync` is NOT virtual,
+   so inheritance override (`:SalesOrderRepository`) is not possible.
+
+## Distributor Seed Payload (Current Schema)
+
+`ContactPerson` field has been removed from `CreateDistributorRequest`. `Alias` (int > 0) is now required.
+Correct seed payload for integration tests:
+```csharp
+new { name, address, phone = $"077{alias:D7}", email, alias, tradeDiscount = 5.0, commission = 2.5 }
+```
+Use a static counter (`Interlocked.Increment`) to generate unique alias + phone per test run to avoid 409 conflicts.
+
+## PricingStructureItem Renamed Fields
+
+`PricingStructureItem` entity was renamed during development:
+- `UnitPrice` → `DealerPackPrice`
+- `PackPrice` → `DealerCasePrice`
+
+If older test files reference the old names, they will fail to compile. Update all 5 occurrences in
+`PricingStructureServiceTests.cs` when this is encountered.
+
+## SalesOrder Multi-Status Workflow Tests
+
+`SalesOrderService` takes both `ISalesOrderRepository` and `IUserRepository`.
+Status transitions use role-based authorization:
+- `SubmitForApproval`: SalesRep → Draft to PendingRepApproval
+- `ApproveAsRep`: Manager → PendingRepApproval to PendingManagerApproval
+- `ApproveAsManager`: Admin/Manager → PendingManagerApproval to PendingDistributorFinalization
+- `FinalizeByDistributor`: Distributor (matching distributorId) → PendingDistributorFinalization to Finalized
+- `Reject`: Any approver → any pending status → Rejected
+- `Cancel`: Admin/Manager, only on Draft/Rejected orders → Cancelled
+
+For `.Callback()` pattern when mocking sequential calls to same method:
+```csharp
+var callCount = 0;
+_repoMock.Setup(r => r.GetByIdWithItemsAsync(orderId, It.IsAny<CancellationToken>()))
+         .ReturnsAsync(() => callCount++ == 0 ? order : updatedOrder);
+```
+
+## FluentValidation ChildRules — Item-Level Errors
+
+When validating list items with `ChildRules`, use string-based path in `ShouldHaveValidationErrorFor`:
+```csharp
+result.ShouldHaveValidationErrorFor("Items[0].ProductId");
+result.ShouldHaveValidationErrorFor("Items[0].Quantity");
+```
+NOT lambda form — lambda form only works for top-level properties.
+Item request class name follows the pattern: `Create{Feature}ItemRequest`, `Update{Feature}ItemRequest`.
+
+## Pre-existing Test Failures (Known)
+
+`OutletValidatorTests` — 6 tests fail as of 2026-03-17. These are pre-existing failures unrelated to
+SalesOrder work. Do not investigate unless explicitly asked.
+
 ## Test File Locations
 
 ```
@@ -150,10 +227,16 @@ sfa_api.UnitTests/
       Services/RegionServiceTests.cs
     PricingStructures/
       Services/PricingStructureServiceTests.cs
+    SalesOrders/
+      Services/SalesOrderServiceTests.cs
+      Validators/CreateSalesOrderValidatorTests.cs
+      Validators/UpdateSalesOrderValidatorTests.cs
 
 sfa_api.IntegrationTests/
   Infrastructure/
-    SfaWebApplicationFactory.cs
+    SfaWebApplicationFactory.cs    ← includes TestSalesOrderRepository DI replacement
+    TestAppDbContext.cs            ← suppresses PostgreSQL sequence for SQLite EnsureCreated
+    TestSalesOrderRepository.cs    ← delegating wrapper with Interlocked counter
     AuthHelper.cs
     SfaApiCollection.cs           ← shared collection, add all new IT classes here
   Features/
@@ -164,4 +247,5 @@ sfa_api.IntegrationTests/
     Territories/TerritoriesApiTests.cs
     Divisions/DivisionsApiTests.cs
     PricingStructures/PricingStructuresApiTests.cs
+    SalesOrders/SalesOrdersApiTests.cs
 ```
