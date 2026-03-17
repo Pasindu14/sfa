@@ -91,7 +91,12 @@ export class ProductPage {
 
   async clickDeactivate(code: string) {
     await this.openRowActions(code)
-    await this.page.getByRole('menuitem', { name: 'Deactivate' }).click()
+    await this.page.getByRole('menuitem', { name: 'Deactivate', exact: true }).click()
+  }
+
+  async clickActivate(code: string) {
+    await this.openRowActions(code)
+    await this.page.getByRole('menuitem', { name: 'Activate', exact: true }).click()
   }
 
   // ─── Dialog interactions ──────────────────────────────
@@ -154,6 +159,11 @@ export class ProductPage {
     } else {
       await updateBtn.click()
     }
+  }
+
+  /** Confirm the activate alert dialog */
+  async confirmActivate() {
+    await this.page.getByRole('alertdialog').getByRole('button', { name: 'Activate' }).click()
   }
 
   /** Confirm the deactivate alert dialog */
