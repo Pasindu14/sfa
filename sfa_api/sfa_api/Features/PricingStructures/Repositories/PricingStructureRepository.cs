@@ -44,7 +44,7 @@ public class PricingStructureRepository(AppDbContext context) : IPricingStructur
 
     public async Task<PricingStructure?> GetCurrentDefaultAsync(CancellationToken ct = default)
         => await _context.PricingStructures
-            .FirstOrDefaultAsync(ps => ps.IsDefault, ct);
+            .FirstOrDefaultAsync(ps => ps.IsDefault && ps.IsActive, ct);
 
     public async Task<IEnumerable<PricingStructureItem>> GetItemsAsync(int pricingStructureId, CancellationToken ct = default)
         => await _context.PricingStructureItems
