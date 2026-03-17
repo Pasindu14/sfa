@@ -20,6 +20,7 @@ export const createDistributorSchema = z.object({
   vatRegNo: z.string().optional(),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
+  territoryId: z.number().int().positive('Must select a valid territory').optional(),
 })
 
 // Update schema (same shape as create)
@@ -52,6 +53,10 @@ export type DistributorDto = {
   vatRegNo: string | null
   latitude: number | null
   longitude: number | null
+  territoryId: number | null
+  territoryName: string | null
+  areaId: number | null
+  regionId: number | null
   isActive: boolean
   createdAt: string
   updatedAt: string

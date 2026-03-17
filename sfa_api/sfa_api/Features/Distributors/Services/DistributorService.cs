@@ -3,14 +3,17 @@ using sfa_api.Features.Distributors.DTOs;
 using sfa_api.Features.Distributors.Entities;
 using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.Distributors.Requests;
+using sfa_api.Features.Territories.Repositories;
 
 namespace sfa_api.Features.Distributors.Services;
 
 public class DistributorService(
     IDistributorRepository repo,
+    ITerritoryRepository territoryRepo,
     ILogger<DistributorService> logger) : IDistributorService
 {
     private readonly IDistributorRepository _repo = repo;
+    private readonly ITerritoryRepository _territoryRepo = territoryRepo;
     private readonly ILogger<DistributorService> _logger = logger;
 
     public async Task<DistributorDto> GetByIdAsync(int id, CancellationToken ct = default)
@@ -40,6 +43,16 @@ public class DistributorService(
         if (await _repo.ExistsByPhoneAsync(request.Phone, ct))
             throw new DuplicateResourceException("Phone");
 
+        int? territoryId = null, areaId = null, regionId = null;
+        if (request.TerritoryId.HasValue)
+        {
+            var territory = await _territoryRepo.GetByIdAsync(request.TerritoryId.Value, ct)
+                ?? throw new NotFoundException("Territory", request.TerritoryId.Value);
+            territoryId = territory.Id;
+            areaId = territory.AreaId;
+            regionId = territory.RegionId;
+        }
+
         var distributor = new Distributor
         {
             Name = request.Name,
@@ -53,6 +66,9 @@ public class DistributorService(
             VatRegNo = request.VatRegNo,
             Latitude = request.Latitude,
             Longitude = request.Longitude,
+            TerritoryId = territoryId,
+            AreaId = areaId,
+            RegionId = regionId,
             IsActive = true,
             CreatedBy = callerId,
             UpdatedBy = callerId,
@@ -77,6 +93,24 @@ public class DistributorService(
 
         if (await _repo.ExistsByPhoneAsync(request.Phone, id, ct))
             throw new DuplicateResourceException("Phone");
+
+        if (request.TerritoryId != distributor.TerritoryId)
+        {
+            if (request.TerritoryId.HasValue)
+            {
+                var territory = await _territoryRepo.GetByIdAsync(request.TerritoryId.Value, ct)
+                    ?? throw new NotFoundException("Territory", request.TerritoryId.Value);
+                distributor.TerritoryId = territory.Id;
+                distributor.AreaId = territory.AreaId;
+                distributor.RegionId = territory.RegionId;
+            }
+            else
+            {
+                distributor.TerritoryId = null;
+                distributor.AreaId = null;
+                distributor.RegionId = null;
+            }
+        }
 
         distributor.Name = request.Name;
         distributor.Address = request.Address;
@@ -153,6 +187,10 @@ public class DistributorService(
         VatRegNo: d.VatRegNo,
         Latitude: d.Latitude,
         Longitude: d.Longitude,
+        TerritoryId: d.TerritoryId,
+        TerritoryName: d.Territory?.Name,
+        AreaId: d.AreaId,
+        RegionId: d.RegionId,
         IsActive: d.IsActive,
         CreatedAt: d.CreatedAt,
         UpdatedAt: d.UpdatedAt

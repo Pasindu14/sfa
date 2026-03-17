@@ -65,6 +65,15 @@ export function getDistributorColumns(actions: DistributorColumnActions): Column
       ),
     },
     {
+      id: 'territory',
+      header: 'Territory',
+      cell: ({ row }) => {
+        const { territoryName } = row.original
+        if (!territoryName) return <span className="text-xs text-muted-foreground">—</span>
+        return <span className="text-sm">{territoryName}</span>
+      },
+    },
+    {
       id: 'financials',
       header: 'Discount / Commission',
       cell: ({ row }) => {

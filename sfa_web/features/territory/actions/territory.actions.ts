@@ -20,6 +20,13 @@ export const getActiveTerritoriesAction = createAction(
   }
 )
 
+// Fetcher compatible with AsyncSelect — accepts optional search string
+export const fetchTerritoriesForSelect = async (search?: string): Promise<TerritoryDto[]> => {
+  const res = await getTerritoriesAction(1, 50, search || undefined)
+  if (!res.success) return []
+  return res.data.territories.filter((t) => t.isActive)
+}
+
 export const getTerritoriesAction = createAction(
   { name: 'getTerritoriesAction', requireAuth: true, requiredRole: 'Admin' },
   async (page: number = 1, pageSize: number = 10, search?: string) => {

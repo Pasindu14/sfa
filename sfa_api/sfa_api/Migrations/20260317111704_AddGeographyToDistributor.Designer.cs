@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using sfa_api.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using sfa_api.Infrastructure.Persistence;
 namespace sfa_api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260317111704_AddGeographyToDistributor")]
+    partial class AddGeographyToDistributor
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -227,6 +230,9 @@ namespace sfa_api.Migrations
                     b.Property<int?>("CreatedBy")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("DivisionId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("text");
@@ -257,6 +263,9 @@ namespace sfa_api.Migrations
                     b.Property<string>("Remark")
                         .HasColumnType("text");
 
+                    b.Property<int?>("RouteId")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("TerritoryId")
                         .HasColumnType("integer");
 
@@ -276,6 +285,8 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("AreaId");
 
+                    b.HasIndex("DivisionId");
+
                     b.HasIndex("Email")
                         .IsUnique();
 
@@ -285,6 +296,8 @@ namespace sfa_api.Migrations
                         .IsUnique();
 
                     b.HasIndex("RegionId");
+
+                    b.HasIndex("RouteId");
 
                     b.HasIndex("TerritoryId");
 
@@ -1025,9 +1038,19 @@ namespace sfa_api.Migrations
                         .HasForeignKey("AreaId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("sfa_api.Features.Divisions.Entities.Division", "Division")
+                        .WithMany()
+                        .HasForeignKey("DivisionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("sfa_api.Features.Regions.Entities.Region", "Region")
                         .WithMany()
                         .HasForeignKey("RegionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("sfa_api.Features.Routes.Entities.Route", "Route")
+                        .WithMany()
+                        .HasForeignKey("RouteId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("sfa_api.Features.Territories.Entities.Territory", "Territory")
@@ -1037,7 +1060,11 @@ namespace sfa_api.Migrations
 
                     b.Navigation("Area");
 
+                    b.Navigation("Division");
+
                     b.Navigation("Region");
+
+                    b.Navigation("Route");
 
                     b.Navigation("Territory");
                 });

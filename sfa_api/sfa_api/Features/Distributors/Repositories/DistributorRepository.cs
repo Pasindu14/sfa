@@ -9,7 +9,9 @@ public class DistributorRepository(AppDbContext context) : IDistributorRepositor
     private readonly AppDbContext _context = context;
 
     public async Task<Distributor?> GetByIdAsync(int id, CancellationToken ct = default)
-        => await _context.Distributors.FindAsync([id], ct);
+        => await _context.Distributors
+            .Include(d => d.Territory)
+            .FirstOrDefaultAsync(d => d.Id == id, ct);
 
     public async Task<Distributor?> GetByEmailAsync(string email, CancellationToken ct = default)
         => await _context.Distributors.AsNoTracking().FirstOrDefaultAsync(d => d.Email == email, ct);
@@ -42,6 +44,7 @@ public class DistributorRepository(AppDbContext context) : IDistributorRepositor
         var totalCount = await query.CountAsync(ct);
         var distributors = await query
             .AsNoTracking()
+            .Include(d => d.Territory)
             .OrderBy(d => d.Name)
             .Skip(skip)
             .Take(take)

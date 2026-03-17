@@ -13,6 +13,10 @@ public record DistributorDto(
     string? VatRegNo,
     double? Latitude,
     double? Longitude,
+    int? TerritoryId,
+    string? TerritoryName,
+    int? AreaId,
+    int? RegionId,
     bool IsActive,
     DateTime CreatedAt,
     DateTime UpdatedAt

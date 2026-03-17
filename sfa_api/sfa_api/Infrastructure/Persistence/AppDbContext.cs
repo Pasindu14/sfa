@@ -101,6 +101,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.Phone).IsUnique();
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt);
+            e.HasIndex(x => x.TerritoryId);
+            e.HasIndex(x => x.RegionId);
+            e.HasOne(x => x.Territory).WithMany().HasForeignKey(x => x.TerritoryId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Area).WithMany().HasForeignKey(x => x.AreaId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Region).WithMany().HasForeignKey(x => x.RegionId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
             // NOTE: No HasQueryFilter - we display both active and inactive records
             // Soft delete is for audit purposes only, records are never physically removed
         });

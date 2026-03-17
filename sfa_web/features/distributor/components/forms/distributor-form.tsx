@@ -5,12 +5,11 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   createDistributorSchema,
-  updateDistributorSchema,
   type CreateDistributorInput,
-} from '../../schema/distributor.schema'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+} from "../../schema/distributor.schema";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
   FormControl,
@@ -18,15 +17,18 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form'
-import { Spinner } from '@/components/ui/spinner'
+} from "@/components/ui/form";
+import { Spinner } from "@/components/ui/spinner";
+import { AsyncSelect } from "@/components/async-select";
+import { fetchTerritoriesForSelect } from "@/features/territory/actions/territory.actions";
+import type { TerritoryDto } from "@/features/territory/schema/territory.schema";
 
 interface DistributorFormProps {
-  mode: 'create' | 'edit'
-  defaultValues?: Partial<CreateDistributorInput>
-  onSubmit: (data: CreateDistributorInput) => void
-  isLoading: boolean
-  fieldErrors?: Record<string, string> | null
+  mode: "create" | "edit";
+  defaultValues?: Partial<CreateDistributorInput>;
+  onSubmit: (data: CreateDistributorInput) => void;
+  isLoading: boolean;
+  fieldErrors?: Record<string, string> | null;
 }
 
 export function DistributorForm({
@@ -36,35 +38,34 @@ export function DistributorForm({
   isLoading,
   fieldErrors,
 }: DistributorFormProps) {
-  const schema = mode === 'create' ? createDistributorSchema : updateDistributorSchema
-
   const form = useForm<CreateDistributorInput>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(createDistributorSchema),
     defaultValues: {
-      name: '',
-      address: '',
-      phone: '',
-      email: '',
+      name: "",
+      address: "",
+      phone: "",
+      email: "",
       alias: 0,
       tradeDiscount: 0,
       commission: 0,
-      remark: '',
-      vatRegNo: '',
+      remark: "",
+      vatRegNo: "",
       latitude: undefined,
       longitude: undefined,
+      territoryId: 3,
       ...defaultValues,
     },
-  })
+  });
 
-  const { setError } = form
+  const { setError } = form;
 
   useEffect(() => {
     if (fieldErrors) {
       Object.entries(fieldErrors).forEach(([field, message]) => {
-        setError(field as keyof CreateDistributorInput, { message })
-      })
+        setError(field as keyof CreateDistributorInput, { message });
+      });
     }
-  }, [fieldErrors, setError])
+  }, [fieldErrors, setError]);
 
   return (
     <Form {...form}>
@@ -95,7 +96,11 @@ export function DistributorForm({
                     type="number"
                     placeholder="Enter alias (numbers only)"
                     {...field}
-                    onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : 0)}
+                    onChange={(e) =>
+                      field.onChange(
+                        e.target.value ? parseInt(e.target.value) : 0,
+                      )
+                    }
                   />
                 </FormControl>
                 <FormMessage />
@@ -140,7 +145,11 @@ export function DistributorForm({
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input type="email" placeholder="email@example.com" {...field} />
+                  <Input
+                    type="email"
+                    placeholder="email@example.com"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -163,7 +172,11 @@ export function DistributorForm({
                     max="100"
                     placeholder="0"
                     {...field}
-                    onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
+                    onChange={(e) =>
+                      field.onChange(
+                        e.target.value ? parseFloat(e.target.value) : 0,
+                      )
+                    }
                   />
                 </FormControl>
                 <FormMessage />
@@ -185,7 +198,11 @@ export function DistributorForm({
                     max="100"
                     placeholder="0"
                     {...field}
-                    onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
+                    onChange={(e) =>
+                      field.onChange(
+                        e.target.value ? parseFloat(e.target.value) : 0,
+                      )
+                    }
                   />
                 </FormControl>
                 <FormMessage />
@@ -196,12 +213,48 @@ export function DistributorForm({
 
         <FormField
           control={form.control}
+          name="territoryId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Territory</FormLabel>
+              <FormControl>
+                <AsyncSelect<TerritoryDto>
+                  label="Territory"
+                  placeholder="Select territory..."
+                  fetcher={fetchTerritoriesForSelect}
+                  value={field.value ? String(field.value) : ""}
+                  onChange={(v) => field.onChange(v ? Number(v) : null)}
+                  getOptionValue={(t) => String(t.id)}
+                  getDisplayValue={(t) => t.name}
+                  renderOption={(t) => (
+                    <div>
+                      <span className="font-medium">{t.name}</span>
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {t.areaName}
+                      </span>
+                    </div>
+                  )}
+                  clearable
+                  width="100%"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
           name="vatRegNo"
           render={({ field }) => (
             <FormItem>
               <FormLabel>VAT Registration Number (Optional)</FormLabel>
               <FormControl>
-                <Input placeholder="Enter VAT registration number" {...field} value={field.value || ''} />
+                <Input
+                  placeholder="Enter VAT registration number"
+                  {...field}
+                  value={field.value || ""}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -221,8 +274,12 @@ export function DistributorForm({
                     step="0.000001"
                     placeholder="37.7749"
                     {...field}
-                    value={field.value ?? ''}
-                    onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                    value={field.value ?? ""}
+                    onChange={(e) =>
+                      field.onChange(
+                        e.target.value ? parseFloat(e.target.value) : undefined,
+                      )
+                    }
                   />
                 </FormControl>
                 <FormMessage />
@@ -242,8 +299,12 @@ export function DistributorForm({
                     step="0.000001"
                     placeholder="-122.4194"
                     {...field}
-                    value={field.value ?? ''}
-                    onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                    value={field.value ?? ""}
+                    onChange={(e) =>
+                      field.onChange(
+                        e.target.value ? parseFloat(e.target.value) : undefined,
+                      )
+                    }
                   />
                 </FormControl>
                 <FormMessage />
@@ -259,7 +320,12 @@ export function DistributorForm({
             <FormItem>
               <FormLabel>Remark (Optional)</FormLabel>
               <FormControl>
-                <Textarea placeholder="Enter any additional notes" rows={3} {...field} value={field.value || ''} />
+                <Textarea
+                  placeholder="Enter any additional notes"
+                  rows={3}
+                  {...field}
+                  value={field.value || ""}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -269,13 +335,13 @@ export function DistributorForm({
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading ? (
             <Spinner className="mr-2" />
-          ) : mode === 'create' ? (
-            'Create Distributor'
+          ) : mode === "create" ? (
+            "Create Distributor"
           ) : (
-            'Update Distributor'
+            "Update Distributor"
           )}
         </Button>
       </form>
     </Form>
-  )
+  );
 }

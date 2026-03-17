@@ -52,5 +52,9 @@ public class UpdateDistributorValidator : AbstractValidator<UpdateDistributorReq
         RuleFor(x => x.Longitude)
             .InclusiveBetween(-180, 180).WithMessage("Longitude must be between -180 and 180.")
             .When(x => x.Longitude.HasValue);
+
+        RuleFor(x => x.TerritoryId)
+            .GreaterThan(0).WithMessage("TerritoryId must be greater than 0.")
+            .When(x => x.TerritoryId.HasValue);
     }
 }

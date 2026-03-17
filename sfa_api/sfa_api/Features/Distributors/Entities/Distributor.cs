@@ -1,3 +1,7 @@
+using sfa_api.Features.Areas.Entities;
+using sfa_api.Features.Regions.Entities;
+using sfa_api.Features.Territories.Entities;
+
 namespace sfa_api.Features.Distributors.Entities;
 
 public class Distributor
@@ -14,6 +18,12 @@ public class Distributor
     public string? VatRegNo { get; set; }
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
+
+    // Geographic hierarchy (denormalized — nullable because existing distributors may not be assigned yet)
+    public int? TerritoryId { get; set; }  // direct parent (FK)
+    public int? AreaId { get; set; }       // denormalized ancestor
+    public int? RegionId { get; set; }     // denormalized ancestor
+
     public bool IsActive { get; set; } = true;
 
     // Audit fields
@@ -22,4 +32,9 @@ public class Distributor
     public int? CreatedBy { get; set; }
     public int? UpdatedBy { get; set; }
     public bool IsDeleted { get; set; } = false;
+
+    // Navigation
+    public Territory? Territory { get; set; }
+    public Area? Area { get; set; }
+    public Region? Region { get; set; }
 }

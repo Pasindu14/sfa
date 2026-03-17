@@ -47,15 +47,17 @@ function CreateDistributorDialog() {
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
-          close()
-          clearFieldErrors()
+          close();
+          clearFieldErrors();
         }
       }}
     >
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="min-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Distributor</DialogTitle>
-          <DialogDescription>Add a new distributor to the system.</DialogDescription>
+          <DialogDescription>
+            Add a new distributor to the system.
+          </DialogDescription>
         </DialogHeader>
         <DistributorForm
           mode="create"
@@ -65,7 +67,7 @@ function CreateDistributorDialog() {
         />
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 // --- Edit Dialog ---
@@ -105,6 +107,7 @@ function EditDistributorDialog() {
                     vatRegNo: distributor.vatRegNo ?? undefined,
                     latitude: distributor.latitude ?? undefined,
                     longitude: distributor.longitude ?? undefined,
+                    territoryId: distributor.territoryId ?? undefined,
                   }
                 : undefined
             }
