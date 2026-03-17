@@ -18,7 +18,6 @@ public class SalesOrderRepository(AppDbContext context) : ISalesOrderRepository
         => await _context.SalesOrders
             .Include(o => o.Distributor)
             .Include(o => o.Items).ThenInclude(i => i.Product)
-            .Include(o => o.History)
             .FirstOrDefaultAsync(o => o.Id == id, ct);
 
     public async Task<(IEnumerable<SalesOrder> SalesOrders, int TotalCount)> GetAllAsync(
