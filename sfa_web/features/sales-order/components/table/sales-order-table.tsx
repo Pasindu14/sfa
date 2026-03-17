@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/select'
 import { DataTable } from '@/components/data-table/data-table'
 import { useSalesOrderDataTable } from '../../hooks/sales-order.hooks'
-import { useSalesOrderFilters } from '../../store'
 import { getColumns } from '../columns/sales-order-columns'
 
 const STATUS_OPTIONS = [
@@ -28,10 +27,9 @@ const STATUS_OPTIONS = [
 export function SalesOrderTable() {
   const { data: session } = useSession()
   const role = session?.user?.role ?? ''
-  const filters = useSalesOrderFilters()
 
   const getColumnsCallback = useCallback(
-    () => getColumns(role),
+    (_handleRowDeselection: unknown) => getColumns(role),
     [role],
   )
 
@@ -78,11 +76,10 @@ export function SalesOrderTable() {
         ],
       }}
       idField="id"
-      renderCustomFilters={(_, setFilters) => (
+      renderCustomFilters={(customFilters, setFilters) => (
         <Select
-          value={filters.status}
+          value={(customFilters?.status as string) ?? ''}
           onValueChange={(val) => {
-            filters.setStatus(val)
             setFilters((prev: Record<string, unknown>) => ({ ...prev, status: val }))
           }}
         >
