@@ -46,7 +46,6 @@ export function SalesOrderLineItemsForm({
     const pid = parseInt(productId)
     const pItem = pricingItems.find((p) => p.productId === pid)
     if (!pItem) return
-    setValue(`items.${index}.productId`, pItem.productId)
     setValue(`items.${index}.unitPrice`, pItem.dealerCasePrice ?? 0)
     setValue(`items.${index}.discount`, 0)
   }
@@ -80,7 +79,7 @@ export function SalesOrderLineItemsForm({
             No items added. Click &quot;Add Product&quot; to start.
           </p>
         )}
-        {!isLoadingPricing && fields.length > 0 && (
+        {!isLoadingPricing && !pricingError && fields.length > 0 && (
           <div className="space-y-2">
             <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-2 text-xs font-medium text-muted-foreground px-1">
               <span>Product</span>

@@ -38,7 +38,7 @@ export function SalesOrderEditPage({ orderId }: SalesOrderEditPageProps) {
   const { data: order, isLoading: isLoadingOrder } = useSalesOrder(orderId)
   const { data: pricing, isLoading: isLoadingPricing, isError: pricingError } =
     useDefaultPricingStructure()
-  const { mutate, isPending, fieldErrors } = useUpdateSalesOrder(orderId)
+  const { mutate, isPending } = useUpdateSalesOrder(orderId)
 
   const form = useForm<UpdateSalesOrderInput>({
     resolver: zodResolver(updateSalesOrderSchema),
@@ -65,7 +65,7 @@ export function SalesOrderEditPage({ orderId }: SalesOrderEditPageProps) {
         })),
       })
     }
-  }, [order, form])
+  }, [order, form.reset])
 
   const items = form.watch('items') ?? []
   const total = items.reduce((sum, item) => {
