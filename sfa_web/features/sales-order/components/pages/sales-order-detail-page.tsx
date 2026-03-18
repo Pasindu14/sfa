@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -11,9 +12,13 @@ import {
   AlertCircle,
   Clock,
   Circle,
+  ChevronLeft,
+  Activity,
+  ShoppingCart,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -152,9 +157,9 @@ function HistoryTimeline({ history }: { history: SalesOrderHistoryDto[] }) {
 function AuditRow({ label, value }: { label: string; value: string | null | undefined }) {
   if (!value) return null
   return (
-    <div>
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-orange-600">{label}</p>
-      <p className="text-sm text-foreground mt-0.5">{value}</p>
+    <div className="flex justify-between items-start gap-4">
+      <span className="text-muted-foreground text-sm shrink-0">{label}</span>
+      <span className="text-sm font-medium text-right">{value}</span>
     </div>
   )
 }
@@ -208,6 +213,144 @@ function InlineReasonForm({ label, isPending, onSubmit, onCancel }: InlineReason
   )
 }
 
+// ── Approval Progress ──────────────────────────────────────────────────────
+
+type ProgressStep = {
+  label: string
+  subLabel: string
+  state: 'done' | 'active' | 'pending'
+}
+
+function getApprovalSteps(order: SalesOrderDto): ProgressStep[] {
+  const status = order.status
+
+  const isDone = (s: number) => status > s && status !== SalesOrderStatus.Cancelled
+  const isActive = (s: number) => status === s
+
+  // Map each status to its step index (0 = order created, 1 = rep, 2 = manager, 3 = finalization)
+  const createdDone = true
+  const repDone = isDone(SalesOrderStatus.PendingRepApproval)
+  const repActive = isActive(SalesOrderStatus.PendingRepApproval)
+  const managerDone = isDone(SalesOrderStatus.PendingManagerApproval)
+  const managerActive = isActive(SalesOrderStatus.PendingManagerApproval)
+  const finalizationDone = status === SalesOrderStatus.Finalized
+  const finalizationActive =
+    status === SalesOrderStatus.PendingDistributorFinalization ||
+    status === SalesOrderStatus.PendingDistributorAcknowledgement
+
+  const createdEntry = order.history.find((h) => h.action === 'Created')
+
+  return [
+    {
+      label: 'Order Created',
+      subLabel: createdEntry
+        ? `${formatDateShort(createdEntry.performedAt)} — ${createdEntry.performedByName ?? 'Unknown'}`
+        : 'Created',
+      state: createdDone ? 'done' : 'active',
+    },
+    {
+      label: 'Rep Approval',
+      subLabel: repDone
+        ? `Approved${order.repApprovedAt ? ` — ${formatDateShort(order.repApprovedAt)}` : ''}`
+        : repActive
+        ? 'Awaiting your action'
+        : status === SalesOrderStatus.Draft
+        ? 'Awaiting submission'
+        : 'Pending rep action',
+      state: repDone ? 'done' : repActive ? 'active' : 'pending',
+    },
+    {
+      label: 'Manager Approval',
+      subLabel: managerDone
+        ? `Approved${order.managerApprovedAt ? ` — ${formatDateShort(order.managerApprovedAt)}` : ''}`
+        : managerActive
+        ? 'Awaiting manager action'
+        : 'Pending rep action',
+      state: managerDone ? 'done' : managerActive ? 'active' : 'pending',
+    },
+    {
+      label: 'Finalization',
+      subLabel: finalizationDone
+        ? `Finalized${order.finalizedAt ? ` — ${formatDateShort(order.finalizedAt)}` : ''}`
+        : finalizationActive
+        ? 'Awaiting distributor'
+        : 'Pending approval',
+      state: finalizationDone ? 'done' : finalizationActive ? 'active' : 'pending',
+    },
+  ]
+}
+
+function ApprovalProgress({ order }: { order: SalesOrderDto }) {
+  const steps = getApprovalSteps(order)
+
+  return (
+    <div className="space-y-3">
+      {steps.map((step, idx) => (
+        <div key={idx} className="flex gap-3 items-start">
+          <div className="flex flex-col items-center">
+            <div
+              className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                step.state === 'done'
+                  ? 'bg-orange-500 text-white'
+                  : step.state === 'active'
+                  ? 'border-2 border-orange-500 bg-white'
+                  : 'border-2 border-muted-foreground/30 bg-white'
+              }`}
+            >
+              {step.state === 'done' ? (
+                <CheckCircle className="w-3.5 h-3.5" />
+              ) : step.state === 'active' ? (
+                <div className="w-2 h-2 rounded-full bg-orange-500" />
+              ) : (
+                <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+              )}
+            </div>
+            {idx < steps.length - 1 && (
+              <div className={`w-px h-6 mt-1 ${step.state === 'done' ? 'bg-orange-300' : 'bg-muted-foreground/20'}`} />
+            )}
+          </div>
+          <div className="pb-1">
+            <p className={`text-sm font-medium leading-tight ${step.state === 'pending' ? 'text-muted-foreground' : ''}`}>
+              {step.label}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">{step.subLabel}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Pending Action Banner ──────────────────────────────────────────────────
+
+function getPendingBannerMessage(status: number, stepLabel: string): string | null {
+  switch (status) {
+    case SalesOrderStatus.PendingRepApproval:
+      return 'This order is awaiting your approval as Sales Rep. Review the items below before approving or rejecting.'
+    case SalesOrderStatus.PendingManagerApproval:
+      return 'This order is awaiting manager approval. Review the items below before approving or rejecting.'
+    case SalesOrderStatus.PendingDistributorFinalization:
+      return 'This order has been approved and is awaiting distributor finalization.'
+    case SalesOrderStatus.PendingDistributorAcknowledgement:
+      return 'This order was rejected. The distributor must acknowledge the rejection before it can be cancelled.'
+    default:
+      return null
+  }
+}
+
+function getStepLabel(status: number): string {
+  switch (status) {
+    case SalesOrderStatus.PendingRepApproval:
+      return 'Step 2 of 4'
+    case SalesOrderStatus.PendingManagerApproval:
+      return 'Step 3 of 4'
+    case SalesOrderStatus.PendingDistributorFinalization:
+      return 'Step 4 of 4'
+    default:
+      return ''
+  }
+}
+
 // ── Order Actions Panel ────────────────────────────────────────────────────
 
 function OrderActionsPanel({ order }: { order: SalesOrderDto }) {
@@ -230,12 +373,19 @@ function OrderActionsPanel({ order }: { order: SalesOrderDto }) {
       {/* Draft */}
       {status === SalesOrderStatus.Draft && (
         <>
-          <Button className="w-full" onClick={() => store.openSubmit(order.id)} disabled={isSubmitting}>
+          <Button className="w-full bg-orange-600 hover:bg-orange-700 text-white" onClick={() => store.openSubmit(order.id)} disabled={isSubmitting}>
             {isSubmitting && <Spinner className="mr-2" />}
             Submit for Approval
           </Button>
+          <Button variant="outline" className="w-full" asChild>
+            <Link href={`/sales-orders/${order.id}/edit`} className="flex items-center gap-2">
+              <Pencil className="h-4 w-4" />
+              Edit Order
+            </Link>
+          </Button>
           {!showCancelForm ? (
-            <Button variant="outline" className="w-full" onClick={() => setShowCancelForm(true)}>
+            <Button variant="ghost" className="w-full text-destructive hover:text-destructive" onClick={() => setShowCancelForm(true)}>
+              <XCircle className="h-4 w-4 mr-2" />
               Cancel Order
             </Button>
           ) : (
@@ -252,13 +402,15 @@ function OrderActionsPanel({ order }: { order: SalesOrderDto }) {
       {/* Pending Rep Approval */}
       {status === SalesOrderStatus.PendingRepApproval && (
         <>
-          <Button className="w-full" onClick={() => store.openRepApprove(order.id)} disabled={isRepApproving}>
+          <Button className="w-full bg-orange-600 hover:bg-orange-700 text-white" onClick={() => store.openRepApprove(order.id)} disabled={isRepApproving}>
             {isRepApproving && <Spinner className="mr-2" />}
+            <CheckCircle className="h-4 w-4 mr-2" />
             Approve (Rep)
           </Button>
           {!showRejectForm ? (
-            <Button variant="outline" className="w-full" onClick={() => setShowRejectForm(true)}>
-              Reject
+            <Button variant="ghost" className="w-full text-destructive hover:text-destructive" onClick={() => setShowRejectForm(true)}>
+              <XCircle className="h-4 w-4 mr-2" />
+              Reject Order
             </Button>
           ) : (
             <InlineReasonForm
@@ -274,13 +426,15 @@ function OrderActionsPanel({ order }: { order: SalesOrderDto }) {
       {/* Pending Manager Approval */}
       {status === SalesOrderStatus.PendingManagerApproval && (
         <>
-          <Button className="w-full" onClick={() => store.openApprove(order.id)} disabled={isApproving}>
+          <Button className="w-full bg-orange-600 hover:bg-orange-700 text-white" onClick={() => store.openApprove(order.id)} disabled={isApproving}>
             {isApproving && <Spinner className="mr-2" />}
+            <CheckCircle className="h-4 w-4 mr-2" />
             Approve
           </Button>
           {!showRejectForm ? (
-            <Button variant="outline" className="w-full" onClick={() => setShowRejectForm(true)}>
-              Reject
+            <Button variant="ghost" className="w-full text-destructive hover:text-destructive" onClick={() => setShowRejectForm(true)}>
+              <XCircle className="h-4 w-4 mr-2" />
+              Reject Order
             </Button>
           ) : (
             <InlineReasonForm
@@ -302,10 +456,11 @@ function OrderActionsPanel({ order }: { order: SalesOrderDto }) {
             disabled={isAcknowledging}
           >
             {isAcknowledging && <Spinner className="mr-2" />}
-            + Acknowledge Rejection
+            Acknowledge Rejection
           </Button>
           {!showCancelForm ? (
-            <Button variant="outline" className="w-full" onClick={() => setShowCancelForm(true)}>
+            <Button variant="ghost" className="w-full text-destructive hover:text-destructive" onClick={() => setShowCancelForm(true)}>
+              <XCircle className="h-4 w-4 mr-2" />
               Cancel Order
             </Button>
           ) : (
@@ -324,7 +479,7 @@ function OrderActionsPanel({ order }: { order: SalesOrderDto }) {
 
       {/* Pending Distributor Finalization */}
       {status === SalesOrderStatus.PendingDistributorFinalization && (
-        <Button className="w-full" onClick={() => store.openFinalize(order.id)} disabled={isFinalizing}>
+        <Button className="w-full bg-orange-600 hover:bg-orange-700 text-white" onClick={() => store.openFinalize(order.id)} disabled={isFinalizing}>
           {isFinalizing && <Spinner className="mr-2" />}
           Finalize Order
         </Button>
@@ -347,20 +502,123 @@ interface SalesOrderDetailPageProps {
 }
 
 export function SalesOrderDetailPage({ orderId }: SalesOrderDetailPageProps) {
+  const router = useRouter()
   const { data: order, isLoading, isError } = useSalesOrder(orderId)
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-100">
-        <Spinner className="size-8" />
+      <div className="flex flex-col gap-6 p-6">
+        {/* Header skeleton */}
+        <div className="bg-muted/90 p-10 rounded-lg flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-9 w-48" />
+              <Skeleton className="h-5 w-32 rounded-full" />
+            </div>
+            <Skeleton className="h-4 w-72" />
+          </div>
+          <Skeleton className="h-9 w-20 rounded-md" />
+        </div>
+
+        {/* Two-column skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
+          {/* Left */}
+          <div className="space-y-6">
+            <Card>
+              <CardHeader className="pb-3">
+                <Skeleton className="h-5 w-28" />
+                <Skeleton className="h-4 w-40 mt-1" />
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="border-b bg-muted/40 px-6 py-3 flex gap-8">
+                  {[120, 60, 40, 80, 80].map((w, i) => (
+                    <Skeleton key={i} className="h-3" style={{ width: w }} />
+                  ))}
+                </div>
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex gap-8 px-6 py-4 border-b">
+                    {[140, 48, 32, 72, 72].map((w, j) => (
+                      <Skeleton key={j} className="h-4" style={{ width: w }} />
+                    ))}
+                  </div>
+                ))}
+                <div className="px-6 py-4 space-y-2">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex justify-between">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-4 w-20" />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-4 w-48 mt-1" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex gap-3">
+                    <Skeleton className="h-3 w-3 rounded-full mt-1 shrink-0" />
+                    <div className="space-y-1.5 pb-3">
+                      <Skeleton className="h-4 w-48" />
+                      <Skeleton className="h-3 w-32" />
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right sidebar */}
+          <div className="space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <Skeleton className="h-5 w-24" />
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="flex justify-between">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-28" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <Skeleton className="h-5 w-36" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex gap-3 items-start">
+                    <Skeleton className="h-6 w-6 rounded-full shrink-0" />
+                    <div className="space-y-1.5">
+                      <Skeleton className="h-4 w-28" />
+                      <Skeleton className="h-3 w-40" />
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Skeleton className="h-11 w-full rounded-md" />
+            <Skeleton className="h-9 w-full rounded-md" />
+          </div>
+        </div>
       </div>
     )
   }
 
   if (isError || !order) {
     return (
-      <div className="flex items-center justify-center min-h-100">
-        <p className="text-muted-foreground">Order not found.</p>
+      <div className="flex flex-col gap-6 p-6">
+        <div className="bg-muted/90 p-10 rounded-lg">
+          <p className="text-muted-foreground">Order not found.</p>
+        </div>
       </div>
     )
   }
@@ -368,17 +626,41 @@ export function SalesOrderDetailPage({ orderId }: SalesOrderDetailPageProps) {
   const subtotal = order.items.reduce((s, i) => s + i.lineTotal, 0)
   const tax = order.totalAmount - subtotal
   const rejectedEntry = order.history.findLast((h) => h.action === 'Rejected')
+  const pendingMessage = getPendingBannerMessage(order.status, '')
+  const stepLabel = getStepLabel(order.status)
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6 p-6 md:w-3/4 mx-auto">
 
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">{order.orderNumber}</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Sales order details — {order.distributorName}
-        </p>
+      {/* Header — matches region page pattern */}
+      <div className="flex items-center justify-between bg-muted/90 p-10 rounded-lg">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-3xl font-bold tracking-tight">{order.orderNumber}</h1>
+            <SalesOrderStatusBadge status={order.status} />
+          </div>
+          <p className="text-muted-foreground">
+            Sales order · {order.distributorName} · Created {formatDateShort(order.createdAt)}
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => router.back()} className="gap-2">
+          <ChevronLeft className="h-4 w-4" />
+          Back
+        </Button>
       </div>
+
+      {/* Pending action banner */}
+      {pendingMessage && (
+        <div className="flex items-start justify-between gap-4 bg-orange-50 border border-orange-200 rounded-lg px-4 py-3">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-4 w-4 text-orange-600 mt-0.5 shrink-0" />
+            <p className="text-sm text-orange-800">{pendingMessage}</p>
+          </div>
+          {stepLabel && (
+            <span className="text-sm font-medium text-orange-600 shrink-0">{stepLabel}</span>
+          )}
+        </div>
+      )}
 
       {/* Two-column layout */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 items-start">
@@ -389,7 +671,13 @@ export function SalesOrderDetailPage({ orderId }: SalesOrderDetailPageProps) {
           {/* Order Items */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Order Items</CardTitle>
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-base">Order Items</CardTitle>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {order.items.length} {order.items.length === 1 ? 'product' : 'products'} · {formatCurrency(order.totalAmount)} total
+              </p>
             </CardHeader>
             <CardContent className="p-0">
               <table className="w-full text-sm">
@@ -420,20 +708,29 @@ export function SalesOrderDetailPage({ orderId }: SalesOrderDetailPageProps) {
               </table>
 
               {/* Totals */}
-              <div className="border-t px-6 py-4 space-y-1">
+              <div className="border-t px-6 py-4 space-y-1.5">
                 <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>Subtotal</span>
+                  <span>Subtotal ({order.items.length} {order.items.length === 1 ? 'item' : 'items'})</span>
                   <span className="tabular-nums">{formatCurrency(subtotal)}</span>
                 </div>
-                {tax > 0 && (
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Discount</span>
+                  <span className="tabular-nums">—</span>
+                </div>
+                {tax > 0 ? (
                   <div className="flex justify-between text-sm text-muted-foreground">
                     <span>Tax (8%)</span>
                     <span className="tabular-nums">{formatCurrency(tax)}</span>
                   </div>
+                ) : (
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>Tax (0%)</span>
+                    <span className="tabular-nums">{formatCurrency(0)}</span>
+                  </div>
                 )}
-                <div className="flex justify-between text-base font-bold pt-1 border-t mt-1">
+                <div className="flex justify-between text-base font-bold pt-2 border-t mt-1">
                   <span>Total (LKR)</span>
-                  <span className="tabular-nums">{formatCurrency(order.totalAmount)}</span>
+                  <span className="tabular-nums text-orange-600">{formatCurrency(order.totalAmount)}</span>
                 </div>
               </div>
             </CardContent>
@@ -455,7 +752,11 @@ export function SalesOrderDetailPage({ orderId }: SalesOrderDetailPageProps) {
           {order.history.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Order History</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-base">Order History</CardTitle>
+                </div>
+                <p className="text-sm text-muted-foreground">Activity log for this order</p>
               </CardHeader>
               <CardContent>
                 <HistoryTimeline history={order.history} />
@@ -470,7 +771,10 @@ export function SalesOrderDetailPage({ orderId }: SalesOrderDetailPageProps) {
           {/* Order Info */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Order Info</CardTitle>
+              <div className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-base">Order Info</CardTitle>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div className="flex justify-between">
@@ -482,12 +786,23 @@ export function SalesOrderDetailPage({ orderId }: SalesOrderDetailPageProps) {
                 <span>{formatDateShort(order.createdAt)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Distributor</span>
-                <span className="font-medium">{order.distributorName}</span>
+                <span className="text-muted-foreground">Created by</span>
+                <span className="font-medium">
+                  {order.history.find((h) => h.action === 'Created')?.performedByName ?? '—'}
+                </span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Distributor</span>
+                <span className="font-medium text-right">{order.distributorName}</span>
+              </div>
+
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Status</span>
                 <SalesOrderStatusBadge status={order.status} />
+              </div>
+              <div className="flex justify-between pt-1 border-t">
+                <span className="text-muted-foreground">Total</span>
+                <span className="font-bold text-orange-600 tabular-nums">{formatCurrency(order.totalAmount)}</span>
               </div>
             </CardContent>
           </Card>
@@ -509,13 +824,30 @@ export function SalesOrderDetailPage({ orderId }: SalesOrderDetailPageProps) {
             </Card>
           )}
 
-          {/* Audit Trail */}
+          {/* Approval Progress */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-base">Approval Progress</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ApprovalProgress order={order} />
+            </CardContent>
+          </Card>
+
+          {/* Actions */}
+          <div className="space-y-2">
+            <OrderActionsPanel order={order} />
+          </div>
+
+          {/* Audit Trail (collapsed into a card at bottom) */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Audit Trail</CardTitle>
+              <CardTitle className="text-sm text-muted-foreground">Audit Trail</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <AuditRow label="Created" value={formatDate(order.createdAt)} />
+            <CardContent className="space-y-2 text-xs">
               <AuditRow label="Submitted At" value={formatDate(order.submittedAt)} />
               <AuditRow label="Rep Approved At" value={formatDate(order.repApprovedAt)} />
               <AuditRow label="Manager Approved At" value={formatDate(order.managerApprovedAt)} />
@@ -524,24 +856,6 @@ export function SalesOrderDetailPage({ orderId }: SalesOrderDetailPageProps) {
               <AuditRow label="Cancelled At" value={formatDate(order.cancelledAt)} />
               {order.cancelReason && order.status === SalesOrderStatus.Cancelled && (
                 <AuditRow label="Cancel Reason" value={order.cancelReason} />
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Actions */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <OrderActionsPanel order={order} />
-              {order.status === SalesOrderStatus.Draft && (
-                <Button variant="outline" className="w-full" asChild>
-                  <Link href={`/sales-orders/${order.id}/edit`} className="flex items-center gap-2">
-                    <Pencil className="h-4 w-4" />
-                    Edit Order
-                  </Link>
-                </Button>
               )}
             </CardContent>
           </Card>

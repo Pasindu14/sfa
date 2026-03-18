@@ -142,7 +142,6 @@ export function useSalesOrderDataTable(
 
 export function useCreateSalesOrder() {
   const queryClient = useQueryClient()
-  const router = useRouter()
   const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null)
 
   const mutation = useMutation({
@@ -151,11 +150,9 @@ export function useCreateSalesOrder() {
       if (!result.success) throw result
       return result.data
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: salesOrderKeys.all })
       setFieldErrors(null)
-      toast.success('Sales order created successfully')
-      router.push(`/sales-orders/${data.id}`)
     },
     onError: (error: ActionFailure) => {
       if (error.fields) setFieldErrors(error.fields)

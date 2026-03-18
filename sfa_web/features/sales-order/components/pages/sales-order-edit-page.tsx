@@ -2,7 +2,7 @@
 
 import { useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { useForm, useFieldArray, Controller } from 'react-hook-form'
+import { useForm, useFieldArray, useWatch, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -90,25 +90,28 @@ export function SalesOrderEditPage({ orderId }: SalesOrderEditPageProps) {
 
   const isLoading = isLoadingOrder || isLoadingProducts || isLoadingPricing
 
-  const getUnitPrice = useCallback(
-    (productId: number): number => {
-      if (!pricing?.items) return 0
-      const item = pricing.items.find((i) => i.productId === productId)
-      return item?.dealerCasePrice ?? item?.dealerPackPrice ?? 0
+  const getPricingEntry = useCallback(
+    (productId: number) => {
+      if (!pricing?.items || !productId) return null
+      return pricing.items.find((i) => i.productId === productId) ?? null
     },
     [pricing]
   )
 
+  const getUnitPrice = useCallback(
+    (productId: number): number => {
+      const entry = getPricingEntry(productId)
+      return entry?.dealerCasePrice ?? entry?.dealerPackPrice ?? 0
+    },
+    [getPricingEntry]
+  )
+
   const handleProductChange = (index: number, productId: number) => {
     form.setValue(`items.${index}.productId`, productId)
-    const existingItem = order?.items.find((i) => i.productId === productId)
-    form.setValue(
-      `items.${index}.unitPrice`,
-      existingItem?.unitPrice ?? getUnitPrice(productId)
-    )
+    form.setValue(`items.${index}.unitPrice`, getUnitPrice(productId))
   }
 
-  const watchedItems = form.watch('items')
+  const watchedItems = useWatch({ control: form.control, name: 'items' })
 
   const subtotal = watchedItems.reduce((sum, item) => {
     const line = (item.unitPrice ?? 0) * (item.quantity ?? 0)
@@ -121,8 +124,10 @@ export function SalesOrderEditPage({ orderId }: SalesOrderEditPageProps) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Spinner className="size-8" />
+      <div className="flex flex-col gap-6 p-6">
+        <div className="bg-muted/90 p-10 rounded-lg">
+          <Spinner className="size-6" />
+        </div>
       </div>
     )
   }
@@ -279,21 +284,36 @@ export function SalesOrderEditPage({ orderId }: SalesOrderEditPageProps) {
                             )}
                           />
 
-                          {/* Unit Price */}
-                          <Controller
-                            control={form.control}
-                            name={`items.${index}.unitPrice`}
-                            render={({ field: f }) => (
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min={0}
-                                className="h-8 text-sm text-right"
-                                value={f.value}
-                                onChange={(e) => f.onChange(Number(e.target.value))}
-                              />
-                            )}
-                          />
+                          {/* Unit Price — read-only, from pricing structure */}
+                          {(() => {
+                            const pid = watchedItems[index]?.productId
+                            const entry = getPricingEntry(pid)
+                            const hasCasePrice = entry?.dealerCasePrice != null
+                            const hasPackPrice = entry?.dealerPackPrice != null
+                            const price = entry?.dealerCasePrice ?? entry?.dealerPackPrice ?? null
+                            const priceLabel = hasCasePrice ? 'Case price' : hasPackPrice ? 'Pack price' : null
+
+                            return (
+                              <div className="flex flex-col items-end gap-0.5">
+                                {pid && !entry ? (
+                                  <span className="text-xs text-amber-600 font-medium">No pricing</span>
+                                ) : price != null ? (
+                                  <>
+                                    <span className="text-sm font-medium tabular-nums text-right">
+                                      {formatCurrency(price)}
+                                    </span>
+                                    {priceLabel && (
+                                      <span className="text-[10px] text-muted-foreground leading-none">
+                                        {priceLabel}
+                                      </span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-sm text-muted-foreground">—</span>
+                                )}
+                              </div>
+                            )
+                          })()}
 
                           {/* Line Total */}
                           <span className="text-sm font-semibold text-right tabular-nums">
@@ -357,7 +377,7 @@ export function SalesOrderEditPage({ orderId }: SalesOrderEditPageProps) {
                   </div>
                   <Separator />
                   <p className="text-xs text-muted-foreground">
-                    Prices are pre-filled from the original order. Adjust manually if needed.
+                    Prices are auto-filled from the default price list and cannot be edited.
                   </p>
                 </CardContent>
               </Card>
