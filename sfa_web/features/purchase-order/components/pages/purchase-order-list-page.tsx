@@ -1,8 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-import { Plus, Clock, CheckCircle2, Bell, TrendingUp } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Clock, CheckCircle2, Bell, TrendingUp } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PurchaseOrderTable } from '../table/purchase-order-table'
@@ -45,7 +43,6 @@ function StatCard({ title, value, subtitle, icon, valueClassName, loading }: Sta
 }
 
 export function PurchaseOrderListPage() {
-  const router = useRouter()
   const { fromDate, toDate } = usePurchaseOrderFilters()
   const { data: stats, isLoading: statsLoading } = usePurchaseOrderStats(fromDate, toDate)
 
@@ -57,10 +54,6 @@ export function PurchaseOrderListPage() {
           <h1 className="text-3xl font-bold tracking-tight">Purchase Orders</h1>
           <p className="text-muted-foreground">Manage and track purchase order workflow across all distributors.</p>
         </div>
-        <Button onClick={() => router.push('/purchase-orders/new')} className="gap-2">
-          <Plus className="h-4 w-4" />
-          New Order
-        </Button>
       </div>
 
       {/* KPI Stats */}

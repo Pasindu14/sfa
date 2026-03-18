@@ -1,7 +1,10 @@
 'use client'
 
 import { useCallback } from 'react'
+import { useRouter } from 'next/navigation'
+import { Plus } from 'lucide-react'
 import { DataTable } from '@/components/data-table/data-table'
+import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
@@ -13,6 +16,7 @@ import { usePurchaseOrderDataTable } from '../../hooks/purchase-order.hooks'
 import { getPurchaseOrderColumns } from '../columns/purchase-order-columns'
 
 export function PurchaseOrderTable() {
+  const router = useRouter()
   const getColumns = useCallback(() => getPurchaseOrderColumns(), [])
 
   return (
@@ -42,6 +46,12 @@ export function PurchaseOrderTable() {
         headers: ['Order #', 'Distributor', 'Status', 'Total', 'Created At'],
       }}
       idField="id"
+      renderToolbarContent={() => (
+        <Button onClick={() => router.push('/purchase-orders/new')} className="gap-2">
+          <Plus className="h-4 w-4" />
+          New Order
+        </Button>
+      )}
       renderCustomFilters={(filters, setFilters) => (
         <Select
           value={filters?.status ?? ''}
