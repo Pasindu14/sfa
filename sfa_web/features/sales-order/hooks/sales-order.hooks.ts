@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
@@ -25,6 +25,7 @@ import {
   useAcknowledgeDialog,
   useFinalizeDialog,
 } from '../store'
+import { useSalesOrderFilterStore } from '../store/sales-order.filter-store'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { ActionFailure } from '@/lib/types/actions'
 import type {
@@ -41,6 +42,7 @@ export const salesOrderKeys = {
   list: (filters: object) => [...salesOrderKeys.lists(), filters] as const,
   details: () => [...salesOrderKeys.all, 'detail'] as const,
   detail: (id: number) => [...salesOrderKeys.details(), id] as const,
+  stats: ['salesOrders', 'stats'] as const,
   defaultPricing: ['defaultPricingStructure'] as const,
 }
 
@@ -70,6 +72,27 @@ export function useDefaultPricingStructure() {
   })
 }
 
+// ── Stats hook (aggregates counts by status for the list page KPI cards) ───
+
+export function useSalesOrderStats(fromDate?: string, toDate?: string) {
+  return useQuery({
+    queryKey: [...salesOrderKeys.stats, { fromDate, toDate }],
+    queryFn: async () => {
+      const result = await getSalesOrdersAction(1, 1000, undefined, undefined, fromDate, toDate)
+      if (!result.success) throw new Error(result.error)
+      const orders = result.data.salesOrders
+
+      return {
+        pendingRepApproval: orders.filter((o) => o.status === 1).length,
+        pendingManagerApproval: orders.filter((o) => o.status === 2).length,
+        pendingAcknowledgement: orders.filter((o) => o.status === 6).length,
+        finalized: orders.filter((o) => o.status === 4).length,
+      }
+    },
+    staleTime: 60 * 1000,
+  })
+}
+
 // ── DataTable hook ─────────────────────────────────────────────────────────
 
 export function useSalesOrderDataTable(
@@ -82,6 +105,14 @@ export function useSalesOrderDataTable(
   _caseConfig?: unknown,
   customFilters?: { status?: string },
 ) {
+  const setFromDate = useSalesOrderFilterStore((s) => s.setFromDate)
+  const setToDate = useSalesOrderFilterStore((s) => s.setToDate)
+
+  useEffect(() => {
+    setFromDate(dateRange?.from_date ?? '')
+    setToDate(dateRange?.to_date ?? '')
+  }, [dateRange?.from_date, dateRange?.to_date, setFromDate, setToDate])
+
   return useQuery({
     queryKey: salesOrderKeys.list({ page, pageSize, search, dateRange, customFilters }),
     queryFn: async () => {

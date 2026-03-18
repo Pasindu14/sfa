@@ -39,7 +39,7 @@ export function getSalesOrderColumns(): ColumnDef<SalesOrderSummaryDto>[] {
       cell: ({ row }) => (
         <Link
           href={`/sales-orders/${row.original.id}`}
-          className="font-medium text-primary hover:underline"
+          className="font-mono text-sm font-semibold text-primary hover:underline"
         >
           {row.original.orderNumber}
         </Link>
@@ -48,6 +48,9 @@ export function getSalesOrderColumns(): ColumnDef<SalesOrderSummaryDto>[] {
     {
       accessorKey: 'distributorName',
       header: 'Distributor',
+      cell: ({ row }) => (
+        <span className="font-medium">{row.original.distributorName}</span>
+      ),
     },
     {
       accessorKey: 'status',
@@ -56,9 +59,11 @@ export function getSalesOrderColumns(): ColumnDef<SalesOrderSummaryDto>[] {
     },
     {
       accessorKey: 'totalAmount',
-      header: () => <div className="text-right">Total</div>,
+      header: () => <div className="text-right">Total Amount</div>,
       cell: ({ row }) => (
-        <div className="text-right font-medium">{formatCurrency(row.original.totalAmount)}</div>
+        <div className="text-right font-semibold tabular-nums">
+          {formatCurrency(row.original.totalAmount)}
+        </div>
       ),
     },
     {

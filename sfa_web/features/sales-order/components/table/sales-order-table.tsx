@@ -1,9 +1,7 @@
 'use client'
 
 import { useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 import { DataTable } from '@/components/data-table/data-table'
-import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
@@ -11,12 +9,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus } from 'lucide-react'
 import { useSalesOrderDataTable } from '../../hooks/sales-order.hooks'
 import { getSalesOrderColumns } from '../columns/sales-order-columns'
 
 export function SalesOrderTable() {
-  const router = useRouter()
   const getColumns = useCallback(() => getSalesOrderColumns(), [])
 
   return (
@@ -67,12 +63,6 @@ export function SalesOrderTable() {
             <SelectItem value="Cancelled">Cancelled</SelectItem>
           </SelectContent>
         </Select>
-      )}
-      renderToolbarContent={() => (
-        <Button onClick={() => router.push('/sales-orders/new')} className="gap-2">
-          <Plus className="h-4 w-4" />
-          New Order
-        </Button>
       )}
     />
   )
