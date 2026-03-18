@@ -18,4 +18,5 @@ public interface ISalesOrderService
     Task<SalesOrderDto> AcknowledgeAsync(int id, int callerId, UserRole callerRole, CancellationToken ct = default);
     Task<SalesOrderDto> FinalizeAsync(int id, int callerId, UserRole callerRole, CancellationToken ct = default);
     Task<SalesOrderDto> CancelAsync(int id, RejectSalesOrderRequest request, int callerId, UserRole callerRole, CancellationToken ct = default);
+    Task<SalesOrderStatsDto> GetStatsAsync(int callerId, UserRole callerRole, DateTime? fromDate, DateTime? toDate, CancellationToken ct = default);
 }

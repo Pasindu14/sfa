@@ -536,6 +536,29 @@ public class SalesOrderService(
         return MapToDto(updated!);
     }
 
+    public async Task<SalesOrderStatsDto> GetStatsAsync(
+        int callerId, UserRole callerRole,
+        DateTime? fromDate, DateTime? toDate,
+        CancellationToken ct = default)
+    {
+        int? distributorFilter = null;
+        if (callerRole == UserRole.Distributor)
+        {
+            var caller = await _userRepo.GetUserByIdAsync(callerId, ct)
+                ?? throw new NotFoundException("User", callerId);
+            distributorFilter = caller.DistributorId;
+        }
+
+        var counts = await _repo.GetCountsByStatusAsync(distributorFilter, fromDate, toDate, ct);
+
+        counts.TryGetValue(SalesOrderStatus.PendingRepApproval, out var rep);
+        counts.TryGetValue(SalesOrderStatus.PendingManagerApproval, out var mgr);
+        counts.TryGetValue(SalesOrderStatus.PendingDistributorAcknowledgement, out var ack);
+        counts.TryGetValue(SalesOrderStatus.Finalized, out var fin);
+
+        return new SalesOrderStatsDto(rep, mgr, ack, fin, counts.Values.Sum());
+    }
+
     // ── Mapping helpers ────────────────────────────────────────────────────
 
     private static SalesOrderDto MapToDto(

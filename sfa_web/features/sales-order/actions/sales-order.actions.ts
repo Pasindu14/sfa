@@ -138,3 +138,26 @@ export const cancelSalesOrderAction = createAction(
     return res.data.data as SalesOrderDto
   }
 )
+
+// ── Stats ──────────────────────────────────────────────────────────────────
+
+export type SalesOrderStatsDto = {
+  pendingRepApproval: number
+  pendingManagerApproval: number
+  pendingAcknowledgement: number
+  finalized: number
+  total: number
+}
+
+export const getSalesOrderStatsAction = createAction(
+  { name: 'getSalesOrderStatsAction', requireAuth: true },
+  async (fromDate?: string, toDate?: string) => {
+    const res = await client.get('/api/v1/sales-orders/stats', {
+      params: {
+        fromDate: fromDate || undefined,
+        toDate: toDate || undefined,
+      },
+    })
+    return res.data.data as SalesOrderStatsDto
+  }
+)

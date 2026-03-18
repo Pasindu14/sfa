@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import {
   getSalesOrdersAction,
   getSalesOrderByIdAction,
+  getSalesOrderStatsAction,
   getDefaultPricingStructureAction,
   createSalesOrderAction,
   updateSalesOrderAction,
@@ -78,16 +79,9 @@ export function useSalesOrderStats(fromDate?: string, toDate?: string) {
   return useQuery({
     queryKey: [...salesOrderKeys.stats, { fromDate, toDate }],
     queryFn: async () => {
-      const result = await getSalesOrdersAction(1, 1000, undefined, undefined, fromDate, toDate)
+      const result = await getSalesOrderStatsAction(fromDate, toDate)
       if (!result.success) throw new Error(result.error)
-      const orders = result.data.salesOrders
-
-      return {
-        pendingRepApproval: orders.filter((o) => o.status === 1).length,
-        pendingManagerApproval: orders.filter((o) => o.status === 2).length,
-        pendingAcknowledgement: orders.filter((o) => o.status === 6).length,
-        finalized: orders.filter((o) => o.status === 4).length,
-      }
+      return result.data
     },
     staleTime: 60 * 1000,
   })
@@ -138,6 +132,7 @@ export function useSalesOrderDataTable(
       }
     },
     placeholderData: keepPreviousData,
+    staleTime: 30 * 1000,
   })
 }
 

@@ -75,6 +75,34 @@ public class SalesOrderRepository(AppDbContext context) : ISalesOrderRepository
         return result;
     }
 
+    public async Task<Dictionary<SalesOrderStatus, int>> GetCountsByStatusAsync(
+        int? distributorId = null,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        CancellationToken ct = default)
+    {
+        var query = _context.SalesOrders.AsQueryable();
+
+        if (distributorId.HasValue)
+            query = query.Where(o => o.DistributorId == distributorId.Value);
+
+        if (fromDate.HasValue)
+        {
+            var from = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+            query = query.Where(o => o.CreatedAt >= from);
+        }
+        if (toDate.HasValue)
+        {
+            var to = DateTime.SpecifyKind(toDate.Value.Date.AddDays(1), DateTimeKind.Utc);
+            query = query.Where(o => o.CreatedAt < to);
+        }
+
+        return await query
+            .AsNoTracking()
+            .GroupBy(o => o.Status)
+            .ToDictionaryAsync(g => g.Key, g => g.Count(), ct);
+    }
+
     public async Task CreateAsync(SalesOrder order, CancellationToken ct = default)
         => await _context.SalesOrders.AddAsync(order, ct);
 

@@ -23,5 +23,10 @@ public interface ISalesOrderRepository
     Task RemoveItemsAsync(int salesOrderId, CancellationToken ct = default);
     Task AddHistoryAsync(SalesOrderHistory history, CancellationToken ct = default);
     Task<IEnumerable<SalesOrderHistory>> GetHistoryAsync(int salesOrderId, CancellationToken ct = default);
+    Task<Dictionary<SalesOrderStatus, int>> GetCountsByStatusAsync(
+        int? distributorId = null,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

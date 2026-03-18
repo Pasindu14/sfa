@@ -23,3 +23,11 @@ public record SalesOrderListDto(
     int Page,
     int PageSize
 );
+
+public record SalesOrderStatsDto(
+    int PendingRepApproval,
+    int PendingManagerApproval,
+    int PendingAcknowledgement,
+    int Finalized,
+    int Total
+);

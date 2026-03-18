@@ -18,15 +18,13 @@ interface SalesOrderFilterState {
   resetFilters: () => void
 }
 
-const today = new Date().toISOString().split('T')[0]
-
 const defaultState = {
   page: 1,
   pageSize: 10,
   search: '',
   status: '',
-  fromDate: today,
-  toDate: today,
+  fromDate: '',
+  toDate: '',
 }
 
 export const useSalesOrderFilterStore = create<SalesOrderFilterState>()(

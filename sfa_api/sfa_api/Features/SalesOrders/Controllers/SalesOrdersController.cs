@@ -34,6 +34,23 @@ public class SalesOrdersController(
     }
 
     /// <summary>
+    /// GET /api/v1/sales-orders/stats
+    /// Returns order counts grouped by status for the given date range.
+    /// All roles — Distributor filtered to own orders.
+    /// </summary>
+    [HttpGet("stats")]
+    public async Task<IActionResult> GetStats(
+        [FromQuery] DateTime? fromDate = null,
+        [FromQuery] DateTime? toDate = null,
+        CancellationToken ct = default)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var (callerId, callerRole) = GetCallerInfo();
+        var result = await _salesOrderService.GetStatsAsync(callerId, callerRole, fromDate, toDate, ct);
+        return Ok(ResponseHelper.Ok(result, correlationId));
+    }
+
+    /// <summary>
     /// GET /api/v1/sales-orders
     /// All roles — Distributor filtered to own orders
     /// </summary>

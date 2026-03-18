@@ -120,9 +120,11 @@ export function SalesOrderCreatePage() {
     <div className="flex flex-col gap-6 p-6">
 
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Create Sales Order</h1>
-        <p className="text-muted-foreground text-sm mt-1">Add line items and submit for approval</p>
+      <div className="flex items-center justify-between bg-muted/90 p-10 rounded-lg">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Create Sales Order</h1>
+          <p className="text-muted-foreground">Add line items and submit for approval</p>
+        </div>
       </div>
 
       {/* Form */}
