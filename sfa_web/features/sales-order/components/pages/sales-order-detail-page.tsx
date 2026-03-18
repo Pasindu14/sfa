@@ -485,18 +485,6 @@ export function SalesOrderDetailPage({ orderId }: SalesOrderDetailPageProps) {
                 <span className="text-muted-foreground">Distributor</span>
                 <span className="font-medium">{order.distributorName}</span>
               </div>
-              {order.salesRepName && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Sales Rep</span>
-                  <span className="font-medium">{order.salesRepName}</span>
-                </div>
-              )}
-              {order.managerApprovedBy && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Manager</span>
-                  <span className="font-medium">{order.managerApprovedBy}</span>
-                </div>
-              )}
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Status</span>
                 <SalesOrderStatusBadge status={order.status} />
