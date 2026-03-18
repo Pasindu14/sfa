@@ -56,7 +56,7 @@ import {
   useUpdatePurchaseOrder,
   useDefaultPricingStructure,
 } from "../../hooks/purchase-order.hooks";
-import { usePurchaseOrderDialogStore } from '../../store'
+import { useSubmitDialog, useRepApproveDialog, useApproveDialog, useAcknowledgeDialog, useFinalizeDialog } from '../../store'
 import {
   PurchaseOrderStatus,
   rejectPurchaseOrderSchema,
@@ -66,16 +66,7 @@ import {
   type RejectPurchaseOrderInput,
   type UpdatePurchaseOrderInput,
 } from "../../schema/purchase-order.schema";
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('en-LK', {
-    style: 'currency',
-    currency: 'LKR',
-    minimumFractionDigits: 2,
-  }).format(amount)
-}
+import { formatCurrency } from '../../utils/format'
 
 function formatDate(dateStr: string | null | undefined) {
   if (!dateStr) return null
@@ -410,15 +401,18 @@ function AdminItemsEditor({ order, onClose }: AdminItemsEditorProps) {
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'items' })
   const watchedItems = useWatch({ control: form.control, name: 'items' })
 
-  // When pricing loads, back-fill unit prices for all existing items
+  // When pricing loads, back-fill unit prices for all existing items.
+  // We intentionally only re-run when pricing changes — form and order.items
+  // are stable references that don't need to trigger a re-sync.
+  const pricingItems = pricing?.items
   useEffect(() => {
-    if (!pricing?.items) return
+    if (!pricingItems) return
     order.items.forEach((item, index) => {
-      const entry = pricing.items.find((p) => p.productId === item.productId)
+      const entry = pricingItems.find((p) => p.productId === item.productId)
       const price = entry?.dealerCasePrice ?? entry?.dealerPackPrice ?? item.unitPrice
       form.setValue(`items.${index}.unitPrice`, price)
     })
-  }, [pricing])  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pricingItems, form, order.items])
 
   const getPricingEntry = useCallback(
     (productId: number | undefined) => {
@@ -436,11 +430,11 @@ function AdminItemsEditor({ order, onClose }: AdminItemsEditorProps) {
     [getPricingEntry]
   )
 
-  const handleProductChange = (index: number, productId: number) => {
+  const handleProductChange = useCallback((index: number, productId: number) => {
     const price = getUnitPrice(productId)
     form.setValue(`items.${index}.productId`, productId)
     form.setValue(`items.${index}.unitPrice`, price)
-  }
+  }, [form, getUnitPrice])
 
   const subtotal = watchedItems.reduce((sum, item) => {
     const line = (item.unitPrice ?? 0) * (item.quantity ?? 0)
@@ -603,7 +597,11 @@ function OrderActionsPanel({
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [showCancelForm, setShowCancelForm] = useState(false);
 
-  const store = usePurchaseOrderDialogStore();
+  const submitDialog = useSubmitDialog();
+  const repApproveDialog = useRepApproveDialog();
+  const approveDialog = useApproveDialog();
+  const acknowledgeDialog = useAcknowledgeDialog();
+  const finalizeDialog = useFinalizeDialog();
   const { mutate: submit, isPending: isSubmitting } = useSubmitPurchaseOrder();
   const { mutate: repApprove, isPending: isRepApproving } =
     useRepApprovePurchaseOrder();
@@ -647,7 +645,7 @@ function OrderActionsPanel({
         <>
           <Button
             className="w-full bg-orange-600 hover:bg-orange-700 text-white"
-            onClick={() => store.openSubmit(order.id)}
+            onClick={() => submitDialog.open(order.id)}
             disabled={isSubmitting}
           >
             {isSubmitting && <Spinner className="mr-2" />}
@@ -681,7 +679,7 @@ function OrderActionsPanel({
         <>
           <Button
             className="w-full bg-orange-600 hover:bg-orange-700 text-white"
-            onClick={() => store.openRepApprove(order.id)}
+            onClick={() => repApproveDialog.open(order.id)}
             disabled={isRepApproving}
           >
             {isRepApproving && <Spinner className="mr-2" />}
@@ -716,7 +714,7 @@ function OrderActionsPanel({
         <>
           <Button
             className="w-full bg-orange-600 hover:bg-orange-700 text-white"
-            onClick={() => store.openApprove(order.id)}
+            onClick={() => approveDialog.open(order.id)}
             disabled={isApproving}
           >
             {isApproving && <Spinner className="mr-2" />}
@@ -751,7 +749,7 @@ function OrderActionsPanel({
         <>
           <Button
             className="w-full bg-orange-600 hover:bg-orange-700 text-white"
-            onClick={() => store.openAcknowledge(order.id)}
+            onClick={() => acknowledgeDialog.open(order.id)}
             disabled={isAcknowledging}
           >
             {isAcknowledging && <Spinner className="mr-2" />}
@@ -788,7 +786,7 @@ function OrderActionsPanel({
       {status === PurchaseOrderStatus.PendingDistributorFinalization && (
         <Button
           className="w-full bg-orange-600 hover:bg-orange-700 text-white"
-          onClick={() => store.openFinalize(order.id)}
+          onClick={() => finalizeDialog.open(order.id)}
           disabled={isFinalizing}
         >
           {isFinalizing && <Spinner className="mr-2" />}

@@ -1,7 +1,7 @@
 'use client'
 
 import type { ColumnDef } from '@tanstack/react-table'
-import { MoreHorizontal, Eye, Pencil } from 'lucide-react'
+import { MoreHorizontal, Eye } from "lucide-react";
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import {
@@ -11,8 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { PurchaseOrderStatusBadge } from '../purchase-order-status-badge'
-import type { PurchaseOrderSummaryDto } from '../../schema/purchase-order.schema'
-import { PurchaseOrderStatus } from '../../schema/purchase-order.schema'
+import type { PurchaseOrderSummaryDto } from "../../schema/purchase-order.schema";
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('en-LK', {
@@ -83,9 +82,7 @@ export function getPurchaseOrderColumns(): ColumnDef<PurchaseOrderSummaryDto>[] 
     {
       id: 'actions',
       cell: ({ row }) => {
-        const order = row.original
-        const isDraft = order.status === PurchaseOrderStatus.Draft
-
+        const order = row.original;
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -96,22 +93,17 @@ export function getPurchaseOrderColumns(): ColumnDef<PurchaseOrderSummaryDto>[] 
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
-                <Link href={`/purchase-orders/${order.id}`} className="flex items-center gap-2">
+                <Link
+                  href={`/purchase-orders/${order.id}`}
+                  className="flex items-center gap-2"
+                >
                   <Eye className="h-4 w-4" />
                   View
                 </Link>
               </DropdownMenuItem>
-              {isDraft && (
-                <DropdownMenuItem asChild>
-                  <Link href={`/purchase-orders/${order.id}/edit`} className="flex items-center gap-2">
-                    <Pencil className="h-4 w-4" />
-                    Edit
-                  </Link>
-                </DropdownMenuItem>
-              )}
             </DropdownMenuContent>
           </DropdownMenu>
-        )
+        );
       },
     },
   ]

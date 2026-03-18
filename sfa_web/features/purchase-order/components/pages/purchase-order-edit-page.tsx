@@ -37,16 +37,7 @@ import {
   PurchaseOrderStatus,
   type UpdatePurchaseOrderInput,
 } from '../../schema/purchase-order.schema'
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('en-LK', {
-    style: 'currency',
-    currency: 'LKR',
-    minimumFractionDigits: 2,
-  }).format(amount)
-}
+import { formatCurrency } from '../../utils/format'
 
 // ── Edit Page ──────────────────────────────────────────────────────────────
 
@@ -106,10 +97,10 @@ export function PurchaseOrderEditPage({ orderId }: PurchaseOrderEditPageProps) {
     [getPricingEntry]
   )
 
-  const handleProductChange = (index: number, productId: number) => {
+  const handleProductChange = useCallback((index: number, productId: number) => {
     form.setValue(`items.${index}.productId`, productId)
     form.setValue(`items.${index}.unitPrice`, getUnitPrice(productId))
-  }
+  }, [form, getUnitPrice])
 
   const watchedItems = useWatch({ control: form.control, name: 'items' })
 

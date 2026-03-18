@@ -48,22 +48,13 @@ import {
   createPurchaseOrderSchema,
   type CreatePurchaseOrderInput,
 } from '../../schema/purchase-order.schema'
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('en-LK', {
-    style: 'currency',
-    currency: 'LKR',
-    minimumFractionDigits: 2,
-  }).format(amount)
-}
+import { formatCurrency } from '../../utils/format'
 
 // ── Distributor query ─────────────────────────────────────────────────────
 
 function useDistributors() {
   return useQuery({
-    queryKey: ['distributors', 'active-all'],
+    queryKey: ['distributors', 'list', { pageSize: 1000, activeOnly: true }],
     queryFn: async () => {
       const result = await getDistributorsAction(1, 1000)
       if (!result.success) throw new Error(result.error)
@@ -179,10 +170,10 @@ export function PurchaseOrderCreatePage() {
     [getPricingEntry]
   )
 
-  const handleProductChange = (index: number, productId: number) => {
+  const handleProductChange = useCallback((index: number, productId: number) => {
     form.setValue(`items.${index}.productId`, productId)
     form.setValue(`items.${index}.unitPrice`, getUnitPrice(productId))
-  }
+  }, [form, getUnitPrice])
 
   const watchedItems = useWatch({ control: form.control, name: "items" });
 
