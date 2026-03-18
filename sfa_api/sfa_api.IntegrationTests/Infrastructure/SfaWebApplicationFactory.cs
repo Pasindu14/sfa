@@ -10,7 +10,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using System.Threading.RateLimiting;
-using sfa_api.Features.SalesOrders.Repositories;
+using sfa_api.Features.PurchaseOrders.Repositories;
 using sfa_api.Infrastructure.Persistence;
 
 namespace sfa_api.IntegrationTests.Infrastructure;
@@ -75,13 +75,13 @@ public class SfaWebApplicationFactory : WebApplicationFactory<Program>
             // Remove background services that use PostgreSQL-specific features
             services.RemoveAll<IHostedService>();
 
-            // Replace ISalesOrderRepository to stub GetNextOrderNumberAsync, which calls
+            // Replace IPurchaseOrderRepository to stub GetNextOrderNumberAsync, which calls
             // PostgreSQL's nextval() sequence — not supported by SQLite in-memory.
-            services.RemoveAll<ISalesOrderRepository>();
-            services.AddScoped<ISalesOrderRepository>(sp =>
+            services.RemoveAll<IPurchaseOrderRepository>();
+            services.AddScoped<IPurchaseOrderRepository>(sp =>
             {
                 var db = sp.GetRequiredService<AppDbContext>();
-                return new TestSalesOrderRepository(new SalesOrderRepository(db));
+                return new TestPurchaseOrderRepository(new PurchaseOrderRepository(db));
             });
 
             // Disable rate limiting in tests — replace global limiter with no-op

@@ -70,8 +70,8 @@ const data = {
       isActive: false,
       items: [
         {
-          title: "Sales Orders",
-          url: "/sales-orders",
+          title: "Purchase Orders",
+          url: "/purchase-orders",
         },
       ],
     },

@@ -9,7 +9,7 @@ using sfa_api.Features.Regions.Entities;
 using sfa_api.Features.Territories.Entities;
 using sfa_api.Features.PricingStructures.Entities;
 using sfa_api.Features.Products.Entities;
-using sfa_api.Features.SalesOrders.Entities;
+using sfa_api.Features.PurchaseOrders.Entities;
 using sfa_api.Features.Users.Entities;
 using RouteEntity = sfa_api.Features.Routes.Entities.Route;
 
@@ -35,9 +35,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Product> Products => Set<Product>();
     public DbSet<PricingStructure> PricingStructures => Set<PricingStructure>();
     public DbSet<PricingStructureItem> PricingStructureItems => Set<PricingStructureItem>();
-    public DbSet<SalesOrder> SalesOrders => Set<SalesOrder>();
-    public DbSet<SalesOrderItem> SalesOrderItems => Set<SalesOrderItem>();
-    public DbSet<SalesOrderHistory> SalesOrderHistories => Set<SalesOrderHistory>();
+    public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
+    public DbSet<PurchaseOrderItem> PurchaseOrderItems => Set<PurchaseOrderItem>();
+    public DbSet<PurchaseOrderHistory> PurchaseOrderHistories => Set<PurchaseOrderHistory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -241,11 +241,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => new { x.PricingStructureId, x.ProductId }).IsUnique();
         });
 
-        // SalesOrder sequence (used to generate order numbers)
-        modelBuilder.HasSequence<long>("sales_order_number_seq").StartsAt(1).IncrementsBy(1);
+        // PurchaseOrder sequence (used to generate order numbers)
+        modelBuilder.HasSequence<long>("purchase_order_number_seq").StartsAt(1).IncrementsBy(1);
 
-        // SalesOrder
-        modelBuilder.Entity<SalesOrder>(e =>
+        // PurchaseOrder
+        modelBuilder.Entity<PurchaseOrder>(e =>
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).UseIdentityColumn();
@@ -262,17 +262,17 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .HasForeignKey(x => x.DistributorId)
              .OnDelete(DeleteBehavior.Restrict);
             e.HasMany(x => x.Items)
-             .WithOne(i => i.SalesOrder)
-             .HasForeignKey(i => i.SalesOrderId)
+             .WithOne(i => i.PurchaseOrder)
+             .HasForeignKey(i => i.PurchaseOrderId)
              .OnDelete(DeleteBehavior.Cascade);
             e.HasMany(x => x.History)
-             .WithOne(h => h.SalesOrder)
-             .HasForeignKey(h => h.SalesOrderId)
+             .WithOne(h => h.PurchaseOrder)
+             .HasForeignKey(h => h.PurchaseOrderId)
              .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // SalesOrderItem
-        modelBuilder.Entity<SalesOrderItem>(e =>
+        // PurchaseOrderItem
+        modelBuilder.Entity<PurchaseOrderItem>(e =>
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).UseIdentityColumn();
@@ -284,8 +284,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .OnDelete(DeleteBehavior.Restrict);
         });
 
-        // SalesOrderHistory
-        modelBuilder.Entity<SalesOrderHistory>(e =>
+        // PurchaseOrderHistory
+        modelBuilder.Entity<PurchaseOrderHistory>(e =>
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).UseIdentityColumn();
@@ -294,7 +294,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.ItemsSnapshot).HasColumnType("text");
             e.Property(x => x.FromStatus).HasConversion<int?>();
             e.Property(x => x.ToStatus).HasConversion<int?>();
-            e.HasIndex(x => x.SalesOrderId);
+            e.HasIndex(x => x.PurchaseOrderId);
             e.HasIndex(x => x.PerformedAt);
         });
 

@@ -1,5 +1,0 @@
-export { SalesOrderStatusBadge } from './sales-order-status-badge'
-export { SalesOrderListPage } from './pages/sales-order-list-page'
-export { SalesOrderDetailPage } from './pages/sales-order-detail-page'
-export { SalesOrderCreatePage } from './pages/sales-order-create-page'
-export { SalesOrderEditPage } from './pages/sales-order-edit-page'

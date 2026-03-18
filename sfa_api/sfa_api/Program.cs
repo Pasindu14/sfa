@@ -47,10 +47,10 @@ using sfa_api.Features.PricingStructures.Repositories;
 using sfa_api.Features.PricingStructures.Services;
 using sfa_api.Features.PricingStructures.Validators;
 using sfa_api.Features.PricingStructures.Requests;
-using sfa_api.Features.SalesOrders.Repositories;
-using sfa_api.Features.SalesOrders.Services;
-using sfa_api.Features.SalesOrders.Validators;
-using sfa_api.Features.SalesOrders.Requests;
+using sfa_api.Features.PurchaseOrders.Repositories;
+using sfa_api.Features.PurchaseOrders.Services;
+using sfa_api.Features.PurchaseOrders.Validators;
+using sfa_api.Features.PurchaseOrders.Requests;
 using sfa_api.Features.Auth.Repositories;
 using sfa_api.Features.Auth.Services;
 using sfa_api.Features.Auth.Validators;
@@ -171,11 +171,11 @@ try
     builder.Services.AddScoped<IValidator<UpdatePricingStructureRequest>, UpdatePricingStructureValidator>();
     builder.Services.AddScoped<IValidator<BulkUpdateItemsRequest>, BulkUpdateItemsValidator>();
 
-    // ── SalesOrders Feature ────────────────────────────────────────────────
-    builder.Services.AddScoped<ISalesOrderRepository, SalesOrderRepository>();
-    builder.Services.AddScoped<ISalesOrderService, SalesOrderService>();
-    builder.Services.AddScoped<IValidator<CreateSalesOrderRequest>, CreateSalesOrderValidator>();
-    builder.Services.AddScoped<IValidator<UpdateSalesOrderRequest>, UpdateSalesOrderValidator>();
+    // ── PurchaseOrders Feature ─────────────────────────────────────────────
+    builder.Services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();
+    builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
+    builder.Services.AddScoped<IValidator<CreatePurchaseOrderRequest>, CreatePurchaseOrderValidator>();
+    builder.Services.AddScoped<IValidator<UpdatePurchaseOrderRequest>, UpdatePurchaseOrderValidator>();
 
     var app = builder.Build();
 

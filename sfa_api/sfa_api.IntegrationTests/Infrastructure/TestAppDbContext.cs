@@ -19,8 +19,8 @@ public class TestAppDbContext(DbContextOptions<AppDbContext> options) : AppDbCon
         base.OnModelCreating(modelBuilder);
 
         // After the real model is built, remove the sequence that SQLite cannot handle.
-        // The TestSalesOrderRepository replaces GetNextOrderNumberAsync with an atomic counter.
-        var seq = modelBuilder.Model.FindSequence("sales_order_number_seq");
+        // The TestPurchaseOrderRepository replaces GetNextOrderNumberAsync with an atomic counter.
+        var seq = modelBuilder.Model.FindSequence("purchase_order_number_seq");
         if (seq != null)
             modelBuilder.Model.RemoveSequence(seq.Name, seq.Schema);
     }
