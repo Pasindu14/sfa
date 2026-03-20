@@ -70,7 +70,7 @@ namespace sfa_api.Migrations
                 table: "PurchaseOrderItems",
                 type: "boolean",
                 nullable: false,
-                defaultValue: false);
+                defaultValue: true);  // existing items are all active
 
             migrationBuilder.AddColumn<bool>(
                 name: "IsDeleted",
