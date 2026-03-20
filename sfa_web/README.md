@@ -1,5 +1,17 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Frontend Error Monitoring (Sentry)
+
+Error monitoring is not yet wired up. To add it:
+
+1. Create a project on [sentry.io](https://sentry.io) and obtain a DSN.
+2. Install the SDK: `npm install @sentry/nextjs`
+3. Copy `sentry.client.config.ts.example` → `sentry.client.config.ts` and fill in your DSN.
+4. Add the following environment variables:
+   - `NEXT_PUBLIC_SENTRY_DSN` — your Sentry DSN
+   - `SENTRY_AUTH_TOKEN` — for source map uploads (CI/CD only)
+5. Run `npx @sentry/wizard@latest -i nextjs` to complete the integration (updates `next.config.ts` automatically).
+
 ## Getting Started
 
 First, run the development server:

@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 using sfa_api.Common.Errors;
 using sfa_api.Common.Extensions;
@@ -95,18 +96,12 @@ public class PurchaseOrdersController(
     /// </summary>
     [HttpPost]
     [Authorize(Roles = "Distributor,Admin")]
+    [EnableRateLimiting("user")]
     public async Task<IActionResult> Create([FromBody] CreatePurchaseOrderRequest request, CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
 
-        var validation = await _createValidator.ValidateAsync(request, ct);
-        if (!validation.IsValid)
-        {
-            var fields = validation.Errors
-                .GroupBy(e => e.PropertyName)
-                .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            throw new Common.Errors.ValidationException(fields);
-        }
+        await _createValidator.ValidateOrThrowAsync(request, ct);
 
         var (callerId, callerRole) = GetCallerInfo();
         var result = await _purchaseOrderService.CreateAsync(request, callerId, callerRole, ct);
@@ -120,18 +115,12 @@ public class PurchaseOrdersController(
     /// </summary>
     [HttpPut("{id}")]
     [Authorize(Roles = "Distributor,SalesRep,Manager,Admin")]
+    [EnableRateLimiting("user")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdatePurchaseOrderRequest request, CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
 
-        var validation = await _updateValidator.ValidateAsync(request, ct);
-        if (!validation.IsValid)
-        {
-            var fields = validation.Errors
-                .GroupBy(e => e.PropertyName)
-                .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            throw new Common.Errors.ValidationException(fields);
-        }
+        await _updateValidator.ValidateOrThrowAsync(request, ct);
 
         var (callerId, callerRole) = GetCallerInfo();
         var result = await _purchaseOrderService.UpdateAsync(id, request, callerId, callerRole, ct);

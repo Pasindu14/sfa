@@ -71,6 +71,28 @@ export class ApiError extends Error {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Idempotency key helper
+// Callers generate a stable key BEFORE initiating a mutation and pass it
+// via `config.headers["X-Idempotency-Key"]`.  The interceptor no longer
+// sets a key globally — a per-request UUID defeats the purpose.
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Generate a stable idempotency key for a mutation.
+ * Call this once before the mutation and pass the result in the request
+ * headers so that retries of the same logical operation reuse the key.
+ *
+ * @example
+ * const idempotencyKey = createIdempotencyKey();
+ * await client.post('/api/v1/orders', body, {
+ *   headers: { 'X-Idempotency-Key': idempotencyKey },
+ * });
+ */
+export function createIdempotencyKey(): string {
+  return crypto.randomUUID();
+}
+
+// ─────────────────────────────────────────────────────────────
 // Axios client
 // ─────────────────────────────────────────────────────────────
 
@@ -84,26 +106,23 @@ const client = axios.create({
 });
 
 // Attach Bearer token from Next-Auth session on every request
-// For state-mutating methods, also attach a unique idempotency key so the API
-// can detect and reject duplicate requests (e.g. network retries, double-submits)
 client.interceptors.request.use(async (config) => {
   const session = await auth();
   if (session?.user?.accessToken) {
     config.headers.Authorization = `Bearer ${session.user.accessToken}`;
   }
 
-  const method = (config.method ?? "").toUpperCase();
-  if (["POST", "PUT", "DELETE"].includes(method)) {
-    config.headers["X-Idempotency-Key"] = crypto.randomUUID();
-  }
-
   return config;
 });
 
 // Normalise all non-2xx responses into ApiError
+// For 401 responses with RefreshAccessTokenError, the session error field
+// signals that the refresh failed and the user must re-authenticate.
+// Client-side components should check `session.error === "RefreshAccessTokenError"`
+// and call `signOut()` from `next-auth/react` to redirect to login.
 client.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (axios.isAxiosError(error) && error.response) {
       const status = error.response.status;
       const body = error.response.data as ApiErrorBody | undefined;
@@ -132,6 +151,22 @@ client.interceptors.response.use(
           : status === 503
           ? "SERVICE_UNAVAILABLE"
           : "INTERNAL_ERROR");
+
+      // If token refresh failed, the session carries a RefreshAccessTokenError.
+      // The client-side SessionGuard / layout should detect this and call signOut().
+      // We surface it here as a specific error code so callers can differentiate
+      // an expired-and-unrefreshable token from a plain authorization failure.
+      if (status === 401 && apiErr?.code === "AUTH_TOKEN_EXPIRED") {
+        throw new ApiError(
+          status,
+          "AUTH_TOKEN_EXPIRED",
+          message,
+          undefined,
+          apiErr?.detail ?? undefined,
+          apiErr?.currentData ?? undefined,
+          apiErr?.traceId
+        );
+      }
 
       // Flatten fields and convert PascalCase keys → camelCase to match form field names
       // e.g. { Name: ["msg1", "msg2"] } → { name: "msg1, msg2" }

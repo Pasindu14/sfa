@@ -7,16 +7,19 @@ using sfa_api.Features.PurchaseOrders.Repositories;
 using sfa_api.Features.PurchaseOrders.Requests;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Features.Users.Repositories;
+using sfa_api.Infrastructure.Persistence;
 
 namespace sfa_api.Features.PurchaseOrders.Services;
 
 public class PurchaseOrderService(
     IPurchaseOrderRepository repo,
     IUserRepository userRepo,
+    AppDbContext context,
     ILogger<PurchaseOrderService> logger) : IPurchaseOrderService
 {
     private readonly IPurchaseOrderRepository _repo = repo;
     private readonly IUserRepository _userRepo = userRepo;
+    private readonly AppDbContext _context = context;
     private readonly ILogger<PurchaseOrderService> _logger = logger;
 
     public async Task<PurchaseOrderDto> GetByIdAsync(int id, int callerId, UserRole callerRole, CancellationToken ct = default)
@@ -33,15 +36,10 @@ public class PurchaseOrderService(
                 throw new AuthorizationException("this purchase order");
         }
 
-        // Load history and resolve performer names
+        // Load history and resolve performer names (single batch query)
         var history = await _repo.GetHistoryAsync(id, ct);
-        var performerIds = history.Select(h => h.PerformedBy).Distinct().ToList();
-        var performers = new Dictionary<int, string?>();
-        foreach (var pid in performerIds)
-        {
-            var user = await _userRepo.GetUserByIdAsync(pid, ct);
-            performers[pid] = user?.Name;
-        }
+        var performerIds = history.Select(h => h.PerformedBy).Distinct();
+        var performers = await _userRepo.GetNamesByIdsAsync(performerIds, ct);
 
         return MapToDto(order, history, performers);
     }
@@ -101,6 +99,8 @@ public class PurchaseOrderService(
             distributorId = caller.DistributorId.Value;
         }
 
+        await using var tx = await _context.Database.BeginTransactionAsync(ct);
+
         var seq = await _repo.GetNextOrderNumberAsync(ct);
         var orderNumber = $"PO-{DateTime.UtcNow.Year}-{seq:D5}";
 
@@ -147,6 +147,7 @@ public class PurchaseOrderService(
         }, ct);
 
         await _repo.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
 
         _logger.LogInformation("PurchaseOrder {OrderNumber} created by user {CallerId}", orderNumber, callerId);
 
@@ -179,6 +180,8 @@ public class PurchaseOrderService(
             if (order.DistributorId != caller.DistributorId)
                 throw new AuthorizationException("this purchase order");
         }
+
+        await using var tx = await _context.Database.BeginTransactionAsync(ct);
 
         // Snapshot before replacing items
         var beforeSnapshot = JsonSerializer.Serialize(order.Items.Select(i => new
@@ -222,6 +225,7 @@ public class PurchaseOrderService(
         }, ct);
 
         await _repo.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
 
         _logger.LogInformation("PurchaseOrder {OrderId} updated by user {CallerId}", id, callerId);
 
@@ -248,6 +252,8 @@ public class PurchaseOrderService(
                 throw new AuthorizationException("this purchase order");
         }
 
+        await using var submitTx = await _context.Database.BeginTransactionAsync(ct);
+
         var fromStatus = order.Status;
         order.Status = PurchaseOrderStatus.PendingRepApproval;
         order.SubmittedBy = callerId;
@@ -267,6 +273,7 @@ public class PurchaseOrderService(
         }, ct);
 
         await _repo.SaveChangesAsync(ct);
+        await submitTx.CommitAsync(ct);
 
         _logger.LogInformation("PurchaseOrder {OrderId} submitted by user {CallerId}", id, callerId);
 
@@ -284,6 +291,8 @@ public class PurchaseOrderService(
 
         if (order.Status != PurchaseOrderStatus.PendingRepApproval)
             throw new BusinessRuleException("ORDER_NOT_PENDING_REP_APPROVAL", "Order is not in PendingRepApproval status.");
+
+        await using var repApproveTx = await _context.Database.BeginTransactionAsync(ct);
 
         var fromStatus = order.Status;
         order.Status = PurchaseOrderStatus.PendingManagerApproval;
@@ -304,6 +313,7 @@ public class PurchaseOrderService(
         }, ct);
 
         await _repo.SaveChangesAsync(ct);
+        await repApproveTx.CommitAsync(ct);
 
         _logger.LogInformation("PurchaseOrder {OrderId} rep-approved by user {CallerId}", id, callerId);
 
@@ -321,6 +331,8 @@ public class PurchaseOrderService(
 
         if (order.Status != PurchaseOrderStatus.PendingManagerApproval)
             throw new BusinessRuleException("ORDER_NOT_PENDING_MANAGER_APPROVAL", "Order is not in PendingManagerApproval status.");
+
+        await using var approveTx = await _context.Database.BeginTransactionAsync(ct);
 
         var fromStatus = order.Status;
         order.Status = PurchaseOrderStatus.PendingDistributorFinalization;
@@ -341,6 +353,7 @@ public class PurchaseOrderService(
         }, ct);
 
         await _repo.SaveChangesAsync(ct);
+        await approveTx.CommitAsync(ct);
 
         _logger.LogInformation("PurchaseOrder {OrderId} manager-approved by user {CallerId}", id, callerId);
 
@@ -366,6 +379,8 @@ public class PurchaseOrderService(
             && order.Status != PurchaseOrderStatus.PendingManagerApproval)
             throw new BusinessRuleException("ORDER_NOT_REJECTABLE", "Order cannot be rejected at this stage.");
 
+        await using var rejectTx = await _context.Database.BeginTransactionAsync(ct);
+
         var fromStatus = order.Status;
         order.Status = PurchaseOrderStatus.PendingDistributorAcknowledgement;
         order.CancelReason = request.Reason;
@@ -385,6 +400,7 @@ public class PurchaseOrderService(
         }, ct);
 
         await _repo.SaveChangesAsync(ct);
+        await rejectTx.CommitAsync(ct);
 
         _logger.LogInformation("PurchaseOrder {OrderId} rejected by user {CallerId}", id, callerId);
 
@@ -412,6 +428,8 @@ public class PurchaseOrderService(
                 throw new AuthorizationException("this purchase order");
         }
 
+        await using var ackTx = await _context.Database.BeginTransactionAsync(ct);
+
         var fromStatus = order.Status;
         order.Status = PurchaseOrderStatus.Cancelled;
         order.AcknowledgedBy = callerId;
@@ -433,6 +451,7 @@ public class PurchaseOrderService(
         }, ct);
 
         await _repo.SaveChangesAsync(ct);
+        await ackTx.CommitAsync(ct);
 
         _logger.LogInformation("PurchaseOrder {OrderId} rejection acknowledged by user {CallerId}", id, callerId);
 
@@ -459,6 +478,8 @@ public class PurchaseOrderService(
                 throw new AuthorizationException("this purchase order");
         }
 
+        await using var finalizeTx = await _context.Database.BeginTransactionAsync(ct);
+
         var fromStatus = order.Status;
         order.Status = PurchaseOrderStatus.Finalized;
         order.FinalizedBy = callerId;
@@ -478,6 +499,7 @@ public class PurchaseOrderService(
         }, ct);
 
         await _repo.SaveChangesAsync(ct);
+        await finalizeTx.CommitAsync(ct);
 
         _logger.LogInformation("PurchaseOrder {OrderId} finalized by user {CallerId}", id, callerId);
 
@@ -508,6 +530,8 @@ public class PurchaseOrderService(
                 throw new AuthorizationException("this purchase order");
         }
 
+        await using var cancelTx = await _context.Database.BeginTransactionAsync(ct);
+
         var fromStatus = order.Status;
         order.Status = PurchaseOrderStatus.Cancelled;
         order.CancelledBy = callerId;
@@ -529,6 +553,7 @@ public class PurchaseOrderService(
         }, ct);
 
         await _repo.SaveChangesAsync(ct);
+        await cancelTx.CommitAsync(ct);
 
         _logger.LogInformation("PurchaseOrder {OrderId} cancelled by user {CallerId}", id, callerId);
 

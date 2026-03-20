@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
 using System.Threading.RateLimiting;
 
 namespace sfa_api.Common.Extensions;
@@ -16,8 +17,11 @@ public static class RateLimitExtensions
             options.RejectionStatusCode = 429;
 
             options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
-                RateLimitPartition.GetSlidingWindowLimiter(
-                    ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            {
+                var ip = ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault()?.Split(',')[0].Trim()
+                         ?? ctx.Connection.RemoteIpAddress?.ToString()
+                         ?? "unknown";
+                return RateLimitPartition.GetSlidingWindowLimiter(ip,
                     _ => new SlidingWindowRateLimiterOptions
                     {
                         PermitLimit = globalPermitLimit,
@@ -25,7 +29,8 @@ public static class RateLimitExtensions
                         SegmentsPerWindow = 6,
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         QueueLimit = 0
-                    }));
+                    });
+            });
 
             options.AddSlidingWindowLimiter("global", opt =>
             {
@@ -54,6 +59,21 @@ public static class RateLimitExtensions
                 opt.SegmentsPerWindow = 6;
                 opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
                 opt.QueueLimit = 0;
+            });
+
+            options.AddPolicy("user", ctx =>
+            {
+                var userId = ctx.User?.FindFirstValue(ClaimTypes.NameIdentifier)
+                             ?? ctx.Connection.RemoteIpAddress?.ToString()
+                             ?? "anon";
+                return RateLimitPartition.GetFixedWindowLimiter(userId,
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 30,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0
+                    });
             });
         });
 

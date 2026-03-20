@@ -12,4 +12,6 @@ public class PurchaseOrderItem
     public int Quantity { get; set; }
     public decimal UnitPrice { get; set; }
     public decimal Discount { get; set; }      // 0–100 percentage
+    public bool IsActive { get; set; } = true;
+    public bool IsDeleted { get; set; } = false;
 }

@@ -12,6 +12,7 @@ public class OutletRepository(AppDbContext context) : IOutletRepository
 
     public async Task<Outlet?> GetByIdAsync(int id, CancellationToken ct = default)
         => await _context.Outlets
+            .IgnoreQueryFilters()
             .Include(o => o.Route)
                 .ThenInclude(r => r!.Division)
             .Include(o => o.Route)
@@ -25,11 +26,12 @@ public class OutletRepository(AppDbContext context) : IOutletRepository
     public async Task<(IEnumerable<Outlet> Outlets, int TotalCount)> GetAllAsync(
         int skip, int take, bool? isActive = null, string? search = null, CancellationToken ct = default)
     {
-        var query = _context.Outlets.AsQueryable();
+        take = Math.Clamp(take, 1, 200);
+        var query = _context.Outlets.IgnoreQueryFilters().AsQueryable();
 
         if (isActive.HasValue) query = query.Where(o => o.IsActive == isActive.Value);
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(o => o.Name.ToLower().Contains(search.ToLower()));
+            query = query.Where(o => EF.Functions.ILike(o.Name, $"%{search}%"));
 
         var totalCount = await query.CountAsync(ct);
         var items = await query
@@ -67,6 +69,7 @@ public class OutletRepository(AppDbContext context) : IOutletRepository
 
     public async Task<RouteEntity?> GetRouteWithAncestorsAsync(int routeId, CancellationToken ct = default)
         => await _context.Routes
+            .IgnoreQueryFilters()
             .Include(r => r.Division)
             .Include(r => r.Territory)
             .Include(r => r.Area)
@@ -74,10 +77,10 @@ public class OutletRepository(AppDbContext context) : IOutletRepository
             .FirstOrDefaultAsync(r => r.Id == routeId, ct);
 
     public async Task<bool> ExistsByNicNoAsync(string nicNo, CancellationToken ct = default)
-        => await _context.Outlets.AnyAsync(o => o.NicNo == nicNo, ct);
+        => await _context.Outlets.IgnoreQueryFilters().AnyAsync(o => o.NicNo == nicNo, ct);
 
     public async Task<bool> ExistsByNicNoAsync(string nicNo, int excludeId, CancellationToken ct = default)
-        => await _context.Outlets.AnyAsync(o => o.NicNo == nicNo && o.Id != excludeId, ct);
+        => await _context.Outlets.IgnoreQueryFilters().AnyAsync(o => o.NicNo == nicNo && o.Id != excludeId, ct);
 
     public async Task<IEnumerable<OutletMapPointDto>> GetMapPointsAsync(CancellationToken ct = default)
         => await _context.Outlets
@@ -97,9 +100,12 @@ public class OutletRepository(AppDbContext context) : IOutletRepository
 
     public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
-        var outlet = await _context.Outlets.FindAsync([id], ct);
+        var outlet = await _context.Outlets.IgnoreQueryFilters().FirstOrDefaultAsync(o => o.Id == id, ct);
         if (outlet != null)
-            _context.Outlets.Remove(outlet);
+        {
+            outlet.IsActive = false;
+            _context.Outlets.Update(outlet);
+        }
     }
 
     public async Task SaveChangesAsync(CancellationToken ct = default)

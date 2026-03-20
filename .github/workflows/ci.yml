@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  api-test:
+    name: API — Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore sfa_api/sfa_api.sln
+
+      - name: Build
+        run: dotnet build sfa_api/sfa_api.sln --no-restore --configuration Release
+
+      - name: Run tests
+        run: dotnet test sfa_api/sfa_api.sln --no-build --configuration Release --verbosity normal
+
+  web-build:
+    name: Web — Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: sfa_web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: sfa_web
+        run: npm ci
+
+      - name: Build
+        working-directory: sfa_web
+        run: npm run build
+        env:
+          # Provide dummy values so the build doesn't fail on missing env vars
+          NEXTAUTH_SECRET: ci-placeholder-secret
+          NEXTAUTH_URL: http://localhost:3000
+          SFA_API_DOMAIN: http://localhost:5086
+          NEXT_PUBLIC_API_URL: http://localhost:5086

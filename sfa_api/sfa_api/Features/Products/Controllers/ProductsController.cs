@@ -57,14 +57,7 @@ public class ProductsController(
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
 
-        var validation = await _createProductValidator.ValidateAsync(request, ct);
-        if (!validation.IsValid)
-        {
-            var fields = validation.Errors
-                .GroupBy(e => e.PropertyName)
-                .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            throw new Common.Errors.ValidationException(fields);
-        }
+        await _createProductValidator.ValidateOrThrowAsync(request, ct);
 
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
         var result = await _productService.CreateAsync(request, callerId, ct);
@@ -81,14 +74,7 @@ public class ProductsController(
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
 
-        var validation = await _updateProductValidator.ValidateAsync(request, ct);
-        if (!validation.IsValid)
-        {
-            var fields = validation.Errors
-                .GroupBy(e => e.PropertyName)
-                .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            throw new Common.Errors.ValidationException(fields);
-        }
+        await _updateProductValidator.ValidateOrThrowAsync(request, ct);
 
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
         var result = await _productService.UpdateAsync(id, request, callerId, ct);

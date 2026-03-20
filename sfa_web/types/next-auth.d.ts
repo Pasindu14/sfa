@@ -6,6 +6,9 @@ declare module "next-auth" {
     role: string;
     name: string;
     email?: string | null;
+    accessToken?: string;
+    refreshToken?: string;
+    accessTokenExpiry?: number;
   }
   interface Session {
     user: {
@@ -13,7 +16,11 @@ declare module "next-auth" {
       name: string;
       email?: string | null;
       role: string;
+      accessToken?: string;
     };
+    accessToken?: string;
+    accessTokenExpiry?: number;
+    error?: "RefreshAccessTokenError";
   }
 }
 
@@ -23,5 +30,9 @@ declare module "next-auth/jwt" {
     role: string;
     name: string;
     email?: string | null;
+    accessToken?: string;
+    refreshToken?: string;
+    accessTokenExpiry?: number;
+    error?: "RefreshAccessTokenError";
   }
 }

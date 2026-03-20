@@ -17,7 +17,7 @@ public class PurchaseOrderRepository(AppDbContext context) : IPurchaseOrderRepos
     public async Task<PurchaseOrder?> GetByIdWithItemsAsync(int id, CancellationToken ct = default)
         => await _context.PurchaseOrders
             .Include(o => o.Distributor)
-            .Include(o => o.Items).ThenInclude(i => i.Product)
+            .Include(o => o.Items.Where(i => i.IsActive)).ThenInclude(i => i.Product)
             .FirstOrDefaultAsync(o => o.Id == id, ct);
 
     public async Task<(IEnumerable<PurchaseOrder> PurchaseOrders, int TotalCount)> GetAllAsync(
@@ -30,14 +30,15 @@ public class PurchaseOrderRepository(AppDbContext context) : IPurchaseOrderRepos
         DateTime? toDate = null,
         CancellationToken ct = default)
     {
+        take = Math.Clamp(take, 1, 200);
         var query = _context.PurchaseOrders
             .Include(o => o.Distributor)
-            .Include(o => o.Items)
+            .Include(o => o.Items.Where(i => i.IsActive))
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(o => o.OrderNumber.ToLower().Contains(search.ToLower())
-                || o.Distributor.Name.ToLower().Contains(search.ToLower()));
+            query = query.Where(o => EF.Functions.ILike(o.OrderNumber, $"%{search}%")
+                || EF.Functions.ILike(o.Distributor.Name, $"%{search}%"));
 
         if (status.HasValue)
             query = query.Where(o => o.Status == status.Value);
@@ -115,11 +116,16 @@ public class PurchaseOrderRepository(AppDbContext context) : IPurchaseOrderRepos
     public async Task AddItemsAsync(IEnumerable<PurchaseOrderItem> items, CancellationToken ct = default)
         => await _context.PurchaseOrderItems.AddRangeAsync(items, ct);
 
-    public Task RemoveItemsAsync(int purchaseOrderId, CancellationToken ct = default)
+    public async Task RemoveItemsAsync(int purchaseOrderId, CancellationToken ct = default)
     {
-        var items = _context.PurchaseOrderItems.Where(i => i.PurchaseOrderId == purchaseOrderId);
-        _context.PurchaseOrderItems.RemoveRange(items);
-        return Task.CompletedTask;
+        var items = await _context.PurchaseOrderItems
+            .Where(i => i.PurchaseOrderId == purchaseOrderId && i.IsActive)
+            .ToListAsync(ct);
+        foreach (var item in items)
+        {
+            item.IsActive = false;
+            item.IsDeleted = true;
+        }
     }
 
     public async Task AddHistoryAsync(PurchaseOrderHistory history, CancellationToken ct = default)

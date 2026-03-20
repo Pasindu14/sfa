@@ -1,61 +1,26 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using sfa_api.Common.Audit;
 using sfa_api.Common.Extensions;
 using sfa_api.Common.Middleware;
+using sfa_api.Features.Auth;
+using sfa_api.Features.Areas;
+using sfa_api.Features.Distributors;
+using sfa_api.Features.Divisions;
+using sfa_api.Features.Outlets;
+using sfa_api.Features.PricingStructures;
+using sfa_api.Features.Products;
+using sfa_api.Features.PurchaseOrders;
+using sfa_api.Features.Regions;
+using sfa_api.Features.Routes;
+using sfa_api.Features.Territories;
+using sfa_api.Features.Users;
+using sfa_api.Infrastructure.Audit;
 using sfa_api.Infrastructure.Caching;
 using sfa_api.Infrastructure.Locking;
 using sfa_api.Infrastructure.Logging;
 using sfa_api.Infrastructure.Persistence;
-using sfa_api.Features.Users.Repositories;
-using sfa_api.Features.Users.Services;
-using sfa_api.Features.Users.Validators;
-using sfa_api.Features.Users.Requests;
-using sfa_api.Features.Distributors.Repositories;
-using sfa_api.Features.Distributors.Services;
-using sfa_api.Features.Distributors.Validators;
-using sfa_api.Features.Distributors.Requests;
-using sfa_api.Features.Regions.Repositories;
-using sfa_api.Features.Regions.Services;
-using sfa_api.Features.Regions.Validators;
-using sfa_api.Features.Regions.Requests;
-using sfa_api.Features.Areas.Repositories;
-using sfa_api.Features.Areas.Services;
-using sfa_api.Features.Areas.Validators;
-using sfa_api.Features.Areas.Requests;
-using sfa_api.Features.Territories.Repositories;
-using sfa_api.Features.Territories.Services;
-using sfa_api.Features.Territories.Validators;
-using sfa_api.Features.Territories.Requests;
-using sfa_api.Features.Divisions.Repositories;
-using sfa_api.Features.Divisions.Services;
-using sfa_api.Features.Divisions.Validators;
-using sfa_api.Features.Divisions.Requests;
-using sfa_api.Features.Routes.Repositories;
-using sfa_api.Features.Routes.Services;
-using sfa_api.Features.Routes.Validators;
-using sfa_api.Features.Routes.Requests;
-using sfa_api.Features.Outlets.Repositories;
-using sfa_api.Features.Outlets.Services;
-using sfa_api.Features.Outlets.Validators;
-using sfa_api.Features.Outlets.Requests;
-using sfa_api.Features.Products.Repositories;
-using sfa_api.Features.Products.Services;
-using sfa_api.Features.Products.Validators;
-using sfa_api.Features.Products.Requests;
-using sfa_api.Features.PricingStructures.Repositories;
-using sfa_api.Features.PricingStructures.Services;
-using sfa_api.Features.PricingStructures.Validators;
-using sfa_api.Features.PricingStructures.Requests;
-using sfa_api.Features.PurchaseOrders.Repositories;
-using sfa_api.Features.PurchaseOrders.Services;
-using sfa_api.Features.PurchaseOrders.Validators;
-using sfa_api.Features.PurchaseOrders.Requests;
-using sfa_api.Features.Auth.Repositories;
-using sfa_api.Features.Auth.Services;
-using sfa_api.Features.Auth.Validators;
-using sfa_api.Features.Auth.Requests;
-using FluentValidation;
 
 // Bootstrap logger
 Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger();
@@ -63,6 +28,10 @@ Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger()
 try
 {
     var builder = WebApplication.CreateBuilder(args);
+
+    // ── Request body size limit ───────────────────────────────────────────
+    builder.WebHost.ConfigureKestrel(options =>
+        options.Limits.MaxRequestBodySize = 10 * 1024 * 1024); // 10 MB
 
     // ── Logging ──────────────────────────────────────────────────────────
     SerilogConfig.Apply(builder);
@@ -74,12 +43,23 @@ try
            .AddInterceptors(sp.GetRequiredService<AuditInterceptor>()));
 
     // ── Caching ──────────────────────────────────────────────────────────
-    builder.Services.AddMemoryCache();
-    builder.Services.AddScoped<ICacheService, MemoryCacheService>();
+    var redisConnection = builder.Configuration["REDIS_CONNECTION"];
+    if (!string.IsNullOrWhiteSpace(redisConnection))
+    {
+        builder.Services.AddStackExchangeRedisCache(o => o.Configuration = redisConnection);
+    }
+    else
+    {
+        builder.Services.AddDistributedMemoryCache();
+    }
+    builder.Services.AddScoped<ICacheService, DistributedCacheService>();
 
     // ── Idempotency ───────────────────────────────────────────────────────
     builder.Services.AddScoped<IIdempotencyService, PostgresIdempotencyService>();
     builder.Services.AddHostedService<IdempotencyCleanupService>();
+
+    // ── Audit Log Cleanup ─────────────────────────────────────────────────
+    builder.Services.AddHostedService<AuditLogCleanupService>();
 
     // ── JWT Revocation ────────────────────────────────────────────────────
     builder.Services.AddScoped<ITokenRevocationService, PostgresTokenRevocationService>();
@@ -99,88 +79,27 @@ try
     builder.Services.AddSFASwagger();
     builder.Services.AddSFAHealthChecks(builder.Configuration);
 
-    // ── Features (added here as features are built) ───────────────────────
-
-    // ── Auth Feature ──────────────────────────────────────────────────────
-    builder.Services.AddScoped<IAuthRepository, AuthRepository>();
-    builder.Services.AddScoped<IAuthService, AuthService>();
-    builder.Services.AddScoped<IJwtTokenHelper, JwtTokenHelper>();
-    builder.Services.AddScoped<IValidator<LoginRequest>, LoginValidator>();
-    builder.Services.AddScoped<IValidator<RefreshRequest>, RefreshValidator>();
-
-    // ── Users Feature ─────────────────────────────────────────────────────
-    builder.Services.AddScoped<IUserRepository, UserRepository>();
-    builder.Services.AddScoped<IUserService, UserService>();
-    builder.Services.AddScoped<IValidator<CreateUserRequest>, CreateUserValidator>();
-    builder.Services.AddScoped<IValidator<UpdateUserRequest>, UpdateUserValidator>();
-    builder.Services.AddScoped<IValidator<ChangePasswordRequest>, ChangePasswordValidator>();
-    builder.Services.AddScoped<IValidator<ResetPasswordRequest>, ResetPasswordValidator>();
-
-    // ── Distributors Feature ──────────────────────────────────────────────
-    builder.Services.AddScoped<IDistributorRepository, DistributorRepository>();
-    builder.Services.AddScoped<IDistributorService, DistributorService>();
-    builder.Services.AddScoped<IValidator<CreateDistributorRequest>, CreateDistributorValidator>();
-    builder.Services.AddScoped<IValidator<UpdateDistributorRequest>, UpdateDistributorValidator>();
-
-    // ── Regions Feature ───────────────────────────────────────────────────
-    builder.Services.AddScoped<IRegionRepository, RegionRepository>();
-    builder.Services.AddScoped<IRegionService, RegionService>();
-    builder.Services.AddScoped<IValidator<CreateRegionRequest>, CreateRegionValidator>();
-    builder.Services.AddScoped<IValidator<UpdateRegionRequest>, UpdateRegionValidator>();
-
-    // ── Areas Feature ─────────────────────────────────────────────────────
-    builder.Services.AddScoped<IAreaRepository, AreaRepository>();
-    builder.Services.AddScoped<IAreaService, AreaService>();
-    builder.Services.AddScoped<IValidator<CreateAreaRequest>, CreateAreaValidator>();
-    builder.Services.AddScoped<IValidator<UpdateAreaRequest>, UpdateAreaValidator>();
-
-    // ── Territories Feature ────────────────────────────────────────────
-    builder.Services.AddScoped<ITerritoryRepository, TerritoryRepository>();
-    builder.Services.AddScoped<ITerritoryService, TerritoryService>();
-    builder.Services.AddScoped<IValidator<CreateTerritoryRequest>, CreateTerritoryValidator>();
-    builder.Services.AddScoped<IValidator<UpdateTerritoryRequest>, UpdateTerritoryValidator>();
-
-    // ── Division Feature ──────────────────────────────────────────────────
-    builder.Services.AddScoped<IDivisionRepository, DivisionRepository>();
-    builder.Services.AddScoped<IDivisionService, DivisionService>();
-    builder.Services.AddScoped<IValidator<CreateDivisionRequest>, CreateDivisionValidator>();
-    builder.Services.AddScoped<IValidator<UpdateDivisionRequest>, UpdateDivisionValidator>();
-
-    // ── Routes Feature ────────────────────────────────────────────────────
-    builder.Services.AddScoped<IRouteRepository, RouteRepository>();
-    builder.Services.AddScoped<IRouteService, RouteService>();
-    builder.Services.AddScoped<IValidator<CreateRouteRequest>, CreateRouteValidator>();
-    builder.Services.AddScoped<IValidator<UpdateRouteRequest>, UpdateRouteValidator>();
-
-    // ── Outlets Feature ───────────────────────────────────────────────────
-    builder.Services.AddScoped<IOutletRepository, OutletRepository>();
-    builder.Services.AddScoped<IOutletService, OutletService>();
-    builder.Services.AddScoped<IValidator<CreateOutletRequest>, CreateOutletValidator>();
-    builder.Services.AddScoped<IValidator<UpdateOutletRequest>, UpdateOutletValidator>();
-
-    // ── Products Feature ──────────────────────────────────────────────────
-    builder.Services.AddScoped<IProductRepository, ProductRepository>();
-    builder.Services.AddScoped<IProductService, ProductService>();
-    builder.Services.AddScoped<IValidator<CreateProductRequest>, CreateProductValidator>();
-    builder.Services.AddScoped<IValidator<UpdateProductRequest>, UpdateProductValidator>();
-
-    // ── PricingStructures Feature ──────────────────────────────────────────
-    builder.Services.AddScoped<IPricingStructureRepository, PricingStructureRepository>();
-    builder.Services.AddScoped<IPricingStructureService, PricingStructureService>();
-    builder.Services.AddScoped<IValidator<CreatePricingStructureRequest>, CreatePricingStructureValidator>();
-    builder.Services.AddScoped<IValidator<UpdatePricingStructureRequest>, UpdatePricingStructureValidator>();
-    builder.Services.AddScoped<IValidator<BulkUpdateItemsRequest>, BulkUpdateItemsValidator>();
-
-    // ── PurchaseOrders Feature ─────────────────────────────────────────────
-    builder.Services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();
-    builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
-    builder.Services.AddScoped<IValidator<CreatePurchaseOrderRequest>, CreatePurchaseOrderValidator>();
-    builder.Services.AddScoped<IValidator<UpdatePurchaseOrderRequest>, UpdatePurchaseOrderValidator>();
+    // ── Features ──────────────────────────────────────────────────────────
+    builder.Services.AddAuthFeature();
+    builder.Services.AddUsersFeature();
+    builder.Services.AddDistributorsFeature();
+    builder.Services.AddRegionsFeature();
+    builder.Services.AddAreasFeature();
+    builder.Services.AddTerritoriesFeature();
+    builder.Services.AddDivisionsFeature();
+    builder.Services.AddRoutesFeature();
+    builder.Services.AddOutletsFeature();
+    builder.Services.AddProductsFeature();
+    builder.Services.AddPricingStructuresFeature();
+    builder.Services.AddPurchaseOrdersFeature();
 
     var app = builder.Build();
 
     // ── Seed ──────────────────────────────────────────────────────────────
-    await DataSeeder.SeedAsync(app.Services, app.Logger);
+    if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
+    {
+        await DataSeeder.SeedAsync(app.Services, app.Logger);
+    }
 
     // ── Middleware Pipeline (ORDER MATTERS) ───────────────────────────────
     app.UseMiddleware<CorrelationIdMiddleware>();    // 1. Correlation ID first
@@ -188,9 +107,13 @@ try
     app.UseMiddleware<GlobalExceptionMiddleware>();  // 3. Catch all exceptions
     app.UseHttpsRedirection();                      // 4. HTTPS only
     app.UseCors("SFAPolicy");                       // 5. CORS
-    app.UseRateLimiter();                           // 6. Rate limiting
-    app.UseAuthentication();                        // 7. Validate JWT
-    app.UseAuthorization();                         // 8. Permissions
+    app.UseForwardedHeaders(new ForwardedHeadersOptions // 6. Trust X-Forwarded-For from proxy
+    {
+        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+    });
+    app.UseRateLimiter();                           // 7. Rate limiting
+    app.UseAuthentication();                        // 8. Validate JWT
+    app.UseAuthorization();                         // 9. Permissions
     app.UseMiddleware<IdempotencyMiddleware>();      // 9. Idempotency (after auth — needs User claims)
 
     // ── Endpoints ─────────────────────────────────────────────────────────

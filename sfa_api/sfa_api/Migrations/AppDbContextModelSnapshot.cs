@@ -33,8 +33,8 @@ namespace sfa_api.Migrations
                     b.Property<DateTime>("ChangedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("ChangedBy")
-                        .HasColumnType("uuid");
+                    b.Property<int?>("ChangedBy")
+                        .HasColumnType("integer");
 
                     b.Property<string>("CorrelationId")
                         .HasColumnType("text");
@@ -673,8 +673,9 @@ namespace sfa_api.Migrations
                     b.Property<int?>("RepApprovedBy")
                         .HasColumnType("integer");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<DateTime?>("SubmittedAt")
                         .HasColumnType("timestamp with time zone");
@@ -715,8 +716,8 @@ namespace sfa_api.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<int?>("FromStatus")
-                        .HasColumnType("integer");
+                    b.Property<string>("FromStatus")
+                        .HasColumnType("text");
 
                     b.Property<string>("ItemsSnapshot")
                         .HasColumnType("text");
@@ -734,8 +735,8 @@ namespace sfa_api.Migrations
                     b.Property<int>("PurchaseOrderId")
                         .HasColumnType("integer");
 
-                    b.Property<int?>("ToStatus")
-                        .HasColumnType("integer");
+                    b.Property<string>("ToStatus")
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -756,6 +757,12 @@ namespace sfa_api.Migrations
 
                     b.Property<decimal>("Discount")
                         .HasColumnType("decimal(5,2)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<int>("ProductId")
                         .HasColumnType("integer");

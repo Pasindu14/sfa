@@ -39,14 +39,7 @@ public class AuthController(
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
 
-        var validation = await _loginValidator.ValidateAsync(request, ct);
-        if (!validation.IsValid)
-        {
-            var fields = validation.Errors
-                .GroupBy(e => e.PropertyName)
-                .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            throw new Common.Errors.ValidationException(fields);
-        }
+        await _loginValidator.ValidateOrThrowAsync(request, ct);
 
         var result = await _authService.LoginAsync(request, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
@@ -63,14 +56,7 @@ public class AuthController(
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
 
-        var validation = await _refreshValidator.ValidateAsync(request, ct);
-        if (!validation.IsValid)
-        {
-            var fields = validation.Errors
-                .GroupBy(e => e.PropertyName)
-                .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            throw new Common.Errors.ValidationException(fields);
-        }
+        await _refreshValidator.ValidateOrThrowAsync(request, ct);
 
         var result = await _authService.RefreshAsync(request, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));

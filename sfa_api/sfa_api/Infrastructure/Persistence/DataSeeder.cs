@@ -39,6 +39,6 @@ public static class DataSeeder
         db.Users.Add(admin);
         await db.SaveChangesAsync();
 
-        logger.LogInformation("Admin user seeded — username: admin / password: Admin@1234");
+        logger.LogInformation("Admin user seeded.");
     }
 }

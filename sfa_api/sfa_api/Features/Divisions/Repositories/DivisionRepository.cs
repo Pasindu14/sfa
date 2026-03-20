@@ -11,6 +11,7 @@ public class DivisionRepository(AppDbContext context) : IDivisionRepository
 
     public async Task<Division?> GetByIdAsync(int id, CancellationToken ct = default)
         => await _context.Divisions
+            .IgnoreQueryFilters()
             .Include(d => d.Territory)
                 .ThenInclude(t => t!.Area)
                     .ThenInclude(a => a!.Region)
@@ -24,13 +25,14 @@ public class DivisionRepository(AppDbContext context) : IDivisionRepository
         bool? isActive = null, string? search = null,
         CancellationToken ct = default)
     {
-        var query = _context.Divisions.AsQueryable();
+        take = Math.Clamp(take, 1, 200);
+        var query = _context.Divisions.IgnoreQueryFilters().AsQueryable();
         if (territoryId.HasValue) query = query.Where(d => d.TerritoryId == territoryId.Value);
         if (areaId.HasValue) query = query.Where(d => d.AreaId == areaId.Value);
         if (regionId.HasValue) query = query.Where(d => d.RegionId == regionId.Value);
         if (isActive.HasValue) query = query.Where(d => d.IsActive == isActive.Value);
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(d => d.Name.ToLower().Contains(search.ToLower()));
+            query = query.Where(d => EF.Functions.ILike(d.Name, $"%{search}%"));
 
         var totalCount = await query.CountAsync(ct);
         var divisions = await query
@@ -64,18 +66,19 @@ public class DivisionRepository(AppDbContext context) : IDivisionRepository
 
     public async Task<Territory?> GetTerritoryWithAncestorsAsync(int territoryId, CancellationToken ct = default)
         => await _context.Territories
+            .IgnoreQueryFilters()
             .Include(t => t.Area)
                 .ThenInclude(a => a!.Region)
             .FirstOrDefaultAsync(t => t.Id == territoryId, ct);
 
     public async Task<bool> ExistsByNameAsync(string name, int territoryId, CancellationToken ct = default)
-        => await _context.Divisions.AnyAsync(d => d.Name == name && d.TerritoryId == territoryId, ct);
+        => await _context.Divisions.IgnoreQueryFilters().AnyAsync(d => d.Name == name && d.TerritoryId == territoryId, ct);
 
     public async Task<bool> ExistsByNameAsync(string name, int territoryId, int excludeId, CancellationToken ct = default)
-        => await _context.Divisions.AnyAsync(d => d.Name == name && d.TerritoryId == territoryId && d.Id != excludeId, ct);
+        => await _context.Divisions.IgnoreQueryFilters().AnyAsync(d => d.Name == name && d.TerritoryId == territoryId && d.Id != excludeId, ct);
 
     public async Task<bool> TerritoryExistsAsync(int territoryId, CancellationToken ct = default)
-        => await _context.Territories.AnyAsync(t => t.Id == territoryId, ct);
+        => await _context.Territories.IgnoreQueryFilters().AnyAsync(t => t.Id == territoryId, ct);
 
     public async Task CreateAsync(Division division, CancellationToken ct = default)
         => await _context.Divisions.AddAsync(division, ct);

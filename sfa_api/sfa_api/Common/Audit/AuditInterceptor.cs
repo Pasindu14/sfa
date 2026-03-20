@@ -34,7 +34,7 @@ public class AuditInterceptor(IHttpContextAccessor httpContextAccessor) : SaveCh
 
         // Get user ID from JWT token
         var userIdClaim = httpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
-        var changedBy = Guid.TryParse(userIdClaim, out var userId) ? userId : Guid.Empty;
+        int? changedBy = int.TryParse(userIdClaim, out var userId) ? userId : null;
 
         var excluded = new[] { "Password", "PasswordHash", "RefreshToken", "Pin", "Token" };
 

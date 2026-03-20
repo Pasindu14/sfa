@@ -9,13 +9,14 @@ public class RegionRepository(AppDbContext context) : IRegionRepository
     private readonly AppDbContext _context = context;
 
     public async Task<Region?> GetByIdAsync(int id, CancellationToken ct = default)
-        => await _context.Regions.FindAsync([id], ct);
+        => await _context.Regions.IgnoreQueryFilters().FirstOrDefaultAsync(r => r.Id == id, ct);
 
     public async Task<(IEnumerable<Region> Regions, int TotalCount)> GetAllAsync(int skip, int take, string? search = null, CancellationToken ct = default)
     {
-        var query = _context.Regions.AsQueryable();
+        take = Math.Clamp(take, 1, 200);
+        var query = _context.Regions.IgnoreQueryFilters().AsQueryable();
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(r => r.Name.ToLower().Contains(search.ToLower()));
+            query = query.Where(r => EF.Functions.ILike(r.Name, $"%{search}%"));
 
         var totalCount = await query.CountAsync(ct);
         var regions = await query
@@ -35,10 +36,10 @@ public class RegionRepository(AppDbContext context) : IRegionRepository
             .ToListAsync(ct);
 
     public async Task<bool> ExistsByNameAsync(string name, CancellationToken ct = default)
-        => await _context.Regions.AnyAsync(r => r.Name == name, ct);
+        => await _context.Regions.IgnoreQueryFilters().AnyAsync(r => r.Name == name, ct);
 
     public async Task<bool> ExistsByNameAsync(string name, int excludeId, CancellationToken ct = default)
-        => await _context.Regions.AnyAsync(r => r.Name == name && r.Id != excludeId, ct);
+        => await _context.Regions.IgnoreQueryFilters().AnyAsync(r => r.Name == name && r.Id != excludeId, ct);
 
     public async Task CreateAsync(Region region, CancellationToken ct = default)
         => await _context.Regions.AddAsync(region, ct);

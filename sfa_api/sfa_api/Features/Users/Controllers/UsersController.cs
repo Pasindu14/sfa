@@ -62,14 +62,7 @@ public class UsersController(
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
 
-        var validation = await _createUserValidator.ValidateAsync(request, ct);
-        if (!validation.IsValid)
-        {
-            var fields = validation.Errors
-                .GroupBy(e => e.PropertyName)
-                .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            throw new Common.Errors.ValidationException(fields);
-        }
+        await _createUserValidator.ValidateOrThrowAsync(request, ct);
 
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
         var result = await _userService.CreateUserAsync(request, callerId, ct);
@@ -96,14 +89,7 @@ public class UsersController(
         if (roleClaim != "Admin" && currentUserId != id)
             throw new AuthorizationException("this user");
 
-        var validation = await _updateUserValidator.ValidateAsync(request, ct);
-        if (!validation.IsValid)
-        {
-            var fields = validation.Errors
-                .GroupBy(e => e.PropertyName)
-                .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            throw new Common.Errors.ValidationException(fields);
-        }
+        await _updateUserValidator.ValidateOrThrowAsync(request, ct);
 
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
         var result = await _userService.UpdateUserAsync(id, request, callerId, ct);
@@ -138,14 +124,7 @@ public class UsersController(
         if (currentUserIdForPassword != id)
             throw new AuthorizationException("other users");
 
-        var validation = await _changePasswordValidator.ValidateAsync(request, ct);
-        if (!validation.IsValid)
-        {
-            var fields = validation.Errors
-                .GroupBy(e => e.PropertyName)
-                .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            throw new Common.Errors.ValidationException(fields);
-        }
+        await _changePasswordValidator.ValidateOrThrowAsync(request, ct);
 
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
         await _userService.ChangePasswordAsync(id, request, callerId, ct);
@@ -162,14 +141,7 @@ public class UsersController(
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
 
-        var validation = await _resetPasswordValidator.ValidateAsync(request, ct);
-        if (!validation.IsValid)
-        {
-            var fields = validation.Errors
-                .GroupBy(e => e.PropertyName)
-                .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            throw new Common.Errors.ValidationException(fields);
-        }
+        await _resetPasswordValidator.ValidateOrThrowAsync(request, ct);
 
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
         await _userService.ResetPasswordAsync(id, request, callerId, ct);

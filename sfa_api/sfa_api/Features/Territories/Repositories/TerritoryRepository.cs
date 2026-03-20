@@ -11,17 +11,19 @@ public class TerritoryRepository(AppDbContext context) : ITerritoryRepository
 
     public async Task<Territory?> GetByIdAsync(int id, CancellationToken ct = default)
         => await _context.Territories
+            .IgnoreQueryFilters()
             .Include(t => t.Area)
                 .ThenInclude(a => a!.Region)
             .FirstOrDefaultAsync(t => t.Id == id, ct);
 
     public async Task<(IEnumerable<Territory> Territories, int TotalCount)> GetAllAsync(int skip, int take, int? areaId = null, bool? isActive = null, string? search = null, CancellationToken ct = default)
     {
-        var query = _context.Territories.AsQueryable();
+        take = Math.Clamp(take, 1, 200);
+        var query = _context.Territories.IgnoreQueryFilters().AsQueryable();
         if (areaId.HasValue) query = query.Where(t => t.AreaId == areaId.Value);
         if (isActive.HasValue) query = query.Where(t => t.IsActive == isActive.Value);
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(t => t.Name.ToLower().Contains(search.ToLower()));
+            query = query.Where(t => EF.Functions.ILike(t.Name, $"%{search}%"));
 
         var totalCount = await query.CountAsync(ct);
         var territories = await query
@@ -49,17 +51,18 @@ public class TerritoryRepository(AppDbContext context) : ITerritoryRepository
 
     public async Task<Area?> GetAreaWithRegionAsync(int areaId, CancellationToken ct = default)
         => await _context.Areas
+            .IgnoreQueryFilters()
             .Include(a => a.Region)
             .FirstOrDefaultAsync(a => a.Id == areaId, ct);
 
     public async Task<bool> ExistsByNameAsync(string name, int areaId, CancellationToken ct = default)
-        => await _context.Territories.AnyAsync(t => t.Name == name && t.AreaId == areaId, ct);
+        => await _context.Territories.IgnoreQueryFilters().AnyAsync(t => t.Name == name && t.AreaId == areaId, ct);
 
     public async Task<bool> ExistsByNameAsync(string name, int areaId, int excludeId, CancellationToken ct = default)
-        => await _context.Territories.AnyAsync(t => t.Name == name && t.AreaId == areaId && t.Id != excludeId, ct);
+        => await _context.Territories.IgnoreQueryFilters().AnyAsync(t => t.Name == name && t.AreaId == areaId && t.Id != excludeId, ct);
 
     public async Task<bool> AreaExistsAsync(int areaId, CancellationToken ct = default)
-        => await _context.Areas.AnyAsync(a => a.Id == areaId, ct);
+        => await _context.Areas.IgnoreQueryFilters().AnyAsync(a => a.Id == areaId, ct);
 
     public async Task CreateAsync(Territory territory, CancellationToken ct = default)
         => await _context.Territories.AddAsync(territory, ct);

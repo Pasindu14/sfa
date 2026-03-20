@@ -33,11 +33,12 @@ public class DistributorRepository(AppDbContext context) : IDistributorRepositor
 
     public async Task<(IEnumerable<Distributor> Distributors, int TotalCount)> GetAllAsync(int skip, int take, string? search = null, bool? isActive = null, CancellationToken ct = default)
     {
+        take = Math.Clamp(take, 1, 200);
         var query = _context.Distributors.AsQueryable();
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(d => d.Name.ToLower().Contains(search.ToLower())
-                || d.Email.ToLower().Contains(search.ToLower())
-                || d.Phone.ToLower().Contains(search.ToLower()));
+            query = query.Where(d => EF.Functions.ILike(d.Name, $"%{search}%")
+                || EF.Functions.ILike(d.Email, $"%{search}%")
+                || EF.Functions.ILike(d.Phone, $"%{search}%"));
         if (isActive.HasValue)
             query = query.Where(d => d.IsActive == isActive.Value);
 

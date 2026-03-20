@@ -1,0 +1,36 @@
+// sentry.client.config.ts
+// Copy this file to sentry.client.config.ts and fill in your DSN.
+// Install the package first: npm install @sentry/nextjs
+// Then run: npx @sentry/wizard@latest -i nextjs
+//
+// Required environment variables:
+//   NEXT_PUBLIC_SENTRY_DSN   — your project DSN from sentry.io
+//   SENTRY_AUTH_TOKEN        — for source map uploads (CI only)
+
+import * as Sentry from "@sentry/nextjs";
+
+Sentry.init({
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+
+  // Adjust sample rates for your traffic volume
+  tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1.0,
+
+  // Only enable Sentry in production to avoid noisy dev errors
+  enabled: process.env.NODE_ENV === "production",
+
+  integrations: [
+    Sentry.replayIntegration(),
+  ],
+
+  // Strip sensitive data before sending to Sentry
+  beforeSend(event) {
+    // Remove Authorization headers from breadcrumbs / request context
+    if (event.request?.headers) {
+      delete event.request.headers["Authorization"];
+      delete event.request.headers["authorization"];
+    }
+    return event;
+  },
+});

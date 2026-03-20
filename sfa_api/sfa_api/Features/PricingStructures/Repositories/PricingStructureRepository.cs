@@ -9,22 +9,25 @@ public class PricingStructureRepository(AppDbContext context) : IPricingStructur
     private readonly AppDbContext _context = context;
 
     public async Task<PricingStructure?> GetByIdAsync(int id, CancellationToken ct = default)
-        => await _context.PricingStructures.FindAsync([id], ct);
+        => await _context.PricingStructures.IgnoreQueryFilters().FirstOrDefaultAsync(ps => ps.Id == id, ct);
 
     public async Task<PricingStructure?> GetByIdWithItemsAsync(int id, CancellationToken ct = default)
         => await _context.PricingStructures
+            .IgnoreQueryFilters()
             .Include(ps => ps.Items)
                 .ThenInclude(i => i.Product)
             .FirstOrDefaultAsync(ps => ps.Id == id, ct);
 
     public async Task<(IEnumerable<PricingStructure>, int TotalCount)> GetAllAsync(int skip, int take, string? search = null, CancellationToken ct = default)
     {
+        take = Math.Clamp(take, 1, 200);
         var query = _context.PricingStructures
+            .IgnoreQueryFilters()
             .Include(ps => ps.Items)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(ps => ps.Name.ToLower().Contains(search.ToLower()));
+            query = query.Where(ps => EF.Functions.ILike(ps.Name, $"%{search}%"));
 
         var totalCount = await query.CountAsync(ct);
         var structures = await query
@@ -39,8 +42,9 @@ public class PricingStructureRepository(AppDbContext context) : IPricingStructur
 
     public async Task<PricingStructure?> GetByNameAsync(string name, CancellationToken ct = default)
         => await _context.PricingStructures
+            .IgnoreQueryFilters()
             .AsNoTracking()
-            .FirstOrDefaultAsync(ps => ps.Name.ToLower() == name.ToLower(), ct);
+            .FirstOrDefaultAsync(ps => EF.Functions.ILike(ps.Name, name), ct);
 
     public async Task<PricingStructure?> GetCurrentDefaultAsync(CancellationToken ct = default)
         => await _context.PricingStructures
@@ -74,7 +78,7 @@ public class PricingStructureRepository(AppDbContext context) : IPricingStructur
 
     public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
-        var entity = await _context.PricingStructures.FindAsync([id], ct);
+        var entity = await _context.PricingStructures.IgnoreQueryFilters().FirstOrDefaultAsync(ps => ps.Id == id, ct);
         if (entity != null)
         {
             entity.IsActive = false;
@@ -84,7 +88,7 @@ public class PricingStructureRepository(AppDbContext context) : IPricingStructur
 
     public async Task ActivateAsync(int id, CancellationToken ct = default)
     {
-        var entity = await _context.PricingStructures.FindAsync([id], ct);
+        var entity = await _context.PricingStructures.IgnoreQueryFilters().FirstOrDefaultAsync(ps => ps.Id == id, ct);
         if (entity != null)
         {
             entity.IsActive = true;

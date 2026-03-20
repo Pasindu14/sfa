@@ -42,12 +42,13 @@ public class UserRepository(AppDbContext context) : IUserRepository
 
     public async Task<(IEnumerable<User> Users, int TotalCount)> GetAllUsersAsync(int skip, int take, string? search = null, string? role = null, CancellationToken ct = default)
     {
+        take = Math.Clamp(take, 1, 200);
         var query = _context.Users.Include(u => u.Distributor).AsQueryable();
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(u => u.Name.ToLower().Contains(search.ToLower())
-                || u.Username.ToLower().Contains(search.ToLower())
-                || u.Email.ToLower().Contains(search.ToLower())
-                || u.Phone.ToLower().Contains(search.ToLower()));
+            query = query.Where(u => EF.Functions.ILike(u.Name, $"%{search}%")
+                || EF.Functions.ILike(u.Username, $"%{search}%")
+                || EF.Functions.ILike(u.Email, $"%{search}%")
+                || EF.Functions.ILike(u.Phone, $"%{search}%"));
         if (!string.IsNullOrWhiteSpace(role) && Enum.TryParse<UserRole>(role, out var parsedRole))
             query = query.Where(u => u.Role == parsedRole);
 
@@ -59,6 +60,15 @@ public class UserRepository(AppDbContext context) : IUserRepository
             .Take(take)
             .ToListAsync(ct);
         return (users, totalCount);
+    }
+
+    public async Task<Dictionary<int, string?>> GetNamesByIdsAsync(IEnumerable<int> ids, CancellationToken ct = default)
+    {
+        var idList = ids.ToList();
+        return await _context.Users
+            .Where(u => idList.Contains(u.Id))
+            .AsNoTracking()
+            .ToDictionaryAsync(u => u.Id, u => (string?)u.Name, ct);
     }
 
     public async Task CreateUserAsync(User user, CancellationToken ct = default)

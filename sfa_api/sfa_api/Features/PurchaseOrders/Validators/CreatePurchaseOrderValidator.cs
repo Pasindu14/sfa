@@ -12,7 +12,8 @@ public class CreatePurchaseOrderValidator : AbstractValidator<CreatePurchaseOrde
             .When(x => x.Notes != null);
 
         RuleFor(x => x.Items)
-            .NotEmpty().WithMessage("At least one item is required.");
+            .NotEmpty().WithMessage("At least one item is required.")
+            .Must(i => i.Count <= 500).WithMessage("Maximum 500 items per order.");
 
         RuleForEach(x => x.Items).ChildRules(item =>
         {

@@ -79,14 +79,7 @@ public class AreasController(
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
 
-        var validation = await _createValidator.ValidateAsync(request, ct);
-        if (!validation.IsValid)
-        {
-            var fields = validation.Errors
-                .GroupBy(e => e.PropertyName)
-                .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            throw new Common.Errors.ValidationException(fields);
-        }
+        await _createValidator.ValidateOrThrowAsync(request, ct);
 
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
         var result = await _service.CreateAsync(request, callerId, ct);
@@ -103,14 +96,7 @@ public class AreasController(
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
 
-        var validation = await _updateValidator.ValidateAsync(request, ct);
-        if (!validation.IsValid)
-        {
-            var fields = validation.Errors
-                .GroupBy(e => e.PropertyName)
-                .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-            throw new Common.Errors.ValidationException(fields);
-        }
+        await _updateValidator.ValidateOrThrowAsync(request, ct);
 
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
         var result = await _service.UpdateAsync(id, request, callerId, ct);

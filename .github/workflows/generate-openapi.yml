@@ -1,0 +1,52 @@
+name: Generate OpenAPI Spec
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  generate-openapi:
+    name: Export OpenAPI JSON
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore sfa_api/sfa_api/sfa_api.csproj
+
+      - name: Build
+        run: dotnet build sfa_api/sfa_api/sfa_api.csproj --no-restore --configuration Release
+
+      - name: Install Swashbuckle CLI
+        run: dotnet tool install --global Swashbuckle.AspNetCore.Cli
+
+      - name: Create docs directory
+        run: mkdir -p docs
+
+      - name: Export OpenAPI spec
+        run: |
+          swagger tofile \
+            --output docs/openapi.json \
+            sfa_api/sfa_api/bin/Release/net8.0/sfa_api.dll \
+            v1
+        env:
+          # Provide a dummy connection string so the app can start for spec generation
+          ConnectionStrings__DefaultConnection: "Host=localhost;Database=sfa;Username=sfa;Password=placeholder"
+          ASPNETCORE_ENVIRONMENT: Development
+
+      - name: Commit OpenAPI spec
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update OpenAPI spec [skip ci]"
+          file_pattern: docs/openapi.json
+          commit_user_name: github-actions[bot]
+          commit_user_email: github-actions[bot]@users.noreply.github.com

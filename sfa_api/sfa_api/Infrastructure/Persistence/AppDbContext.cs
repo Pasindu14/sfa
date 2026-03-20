@@ -117,6 +117,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Id).UseIdentityColumn();
             e.HasIndex(x => x.Name).IsUnique();
             e.HasIndex(x => x.UpdatedAt);
+            e.HasQueryFilter(x => x.IsActive);
         });
 
         // Area
@@ -127,6 +128,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => new { x.Name, x.RegionId }).IsUnique();
             e.HasIndex(x => x.RegionId);
             e.HasIndex(x => x.UpdatedAt);
+            e.HasQueryFilter(x => x.IsActive);
             e.HasOne(x => x.Region)
              .WithMany()
              .HasForeignKey(x => x.RegionId)
@@ -142,6 +144,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.AreaId);
             e.HasIndex(x => x.RegionId);
             e.HasIndex(x => x.UpdatedAt);
+            e.HasQueryFilter(x => x.IsActive);
             e.HasOne(x => x.Area)
              .WithMany()
              .HasForeignKey(x => x.AreaId)
@@ -162,6 +165,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.AreaId);
             e.HasIndex(x => x.RegionId);
             e.HasIndex(x => x.UpdatedAt);
+            e.HasQueryFilter(x => x.IsActive);
             e.HasOne(x => x.Territory)
              .WithMany()
              .HasForeignKey(x => x.TerritoryId)
@@ -182,6 +186,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).UseIdentityColumn();
             e.HasIndex(x => x.IsActive);
+            e.HasQueryFilter(x => x.IsActive);
             e.HasIndex(x => x.DivisionId);
             e.HasIndex(x => x.TerritoryId);
             e.HasIndex(x => x.AreaId);
@@ -200,6 +205,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.CreditLimit).HasColumnType("decimal(18,2)");
             e.HasIndex(x => x.NicNo);
             e.HasIndex(x => x.IsActive);
+            e.HasQueryFilter(x => x.IsActive);
             e.HasIndex(x => x.RouteId);
             e.HasIndex(x => x.DivisionId);
             e.HasIndex(x => x.TerritoryId);
@@ -217,7 +223,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.Code).IsUnique();
             e.HasIndex(x => x.IsActive);
             e.HasIndex(x => x.UpdatedAt);
-            // NOTE: No HasQueryFilter - we display both active and inactive records
+            e.HasQueryFilter(x => x.IsActive);
         });
 
         // PricingStructure
@@ -227,6 +233,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.Name).IsUnique();
             e.HasIndex(x => x.IsActive);
             e.HasIndex(x => x.IsDefault);
+            e.HasQueryFilter(x => x.IsActive);
         });
 
         // PricingStructureItem
@@ -251,7 +258,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Id).UseIdentityColumn();
             e.Property(x => x.OrderNumber).IsRequired().HasMaxLength(20);
             e.HasIndex(x => x.OrderNumber).IsUnique();
-            e.Property(x => x.Status).HasConversion<int>();
+            e.Property(x => x.Status).HasConversion<string>();
             e.Property(x => x.Notes).HasMaxLength(1000);
             e.Property(x => x.CancelReason).HasMaxLength(500);
             e.HasIndex(x => x.DistributorId);
@@ -292,8 +299,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Action).IsRequired().HasMaxLength(50);
             e.Property(x => x.Notes).HasMaxLength(1000);
             e.Property(x => x.ItemsSnapshot).HasColumnType("text");
-            e.Property(x => x.FromStatus).HasConversion<int?>();
-            e.Property(x => x.ToStatus).HasConversion<int?>();
+            e.Property(x => x.FromStatus).HasConversion<string?>();
+            e.Property(x => x.ToStatus).HasConversion<string?>();
             e.HasIndex(x => x.PurchaseOrderId);
             e.HasIndex(x => x.PerformedAt);
         });
