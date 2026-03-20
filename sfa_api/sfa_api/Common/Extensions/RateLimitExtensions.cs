@@ -32,23 +32,24 @@ public static class RateLimitExtensions
                     });
             });
 
-            options.AddSlidingWindowLimiter("global", opt =>
-            {
-                opt.PermitLimit = globalPermitLimit;
-                opt.Window = TimeSpan.FromSeconds(globalWindowSeconds);
-                opt.SegmentsPerWindow = 6;
-                opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                opt.QueueLimit = 0;
-            });
+            var authPermitLimit = config.GetValue<int>("RateLimit:AuthPermitLimit");
+            var authWindowSeconds = config.GetValue<int>("RateLimit:AuthWindowSeconds");
 
-            options.AddSlidingWindowLimiter("auth", opt =>
+            // "auth" — per-IP sliding window (brute-force protection on login/refresh)
+            options.AddPolicy("auth", ctx =>
             {
-                opt.PermitLimit = config.GetValue<int>("RateLimit:AuthPermitLimit");
-                opt.Window = TimeSpan.FromSeconds(
-                    config.GetValue<int>("RateLimit:AuthWindowSeconds"));
-                opt.SegmentsPerWindow = 6;
-                opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                opt.QueueLimit = 0;
+                var ip = ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault()?.Split(',')[0].Trim()
+                         ?? ctx.Connection.RemoteIpAddress?.ToString()
+                         ?? "unknown";
+                return RateLimitPartition.GetSlidingWindowLimiter(ip,
+                    _ => new SlidingWindowRateLimiterOptions
+                    {
+                        PermitLimit = authPermitLimit,
+                        Window = TimeSpan.FromSeconds(authWindowSeconds),
+                        SegmentsPerWindow = 6,
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0
+                    });
             });
 
             options.AddSlidingWindowLimiter("test", opt =>
