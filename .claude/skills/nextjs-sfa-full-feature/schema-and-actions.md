@@ -18,8 +18,9 @@ import { z } from 'zod'
 export const statusEnum = z.enum(['Active', 'Inactive'])
 
 // Create schema — all fields required to create the entity
+// Zod v4: use { error: 'message' } object syntax, not positional string
 export const create{Entity}Schema = z.object({
-  name: z.string().min(1, 'Name is required').max(100, 'Name must not exceed 100 characters'),
+  name: z.string().min(1, { error: 'Name is required' }).max(100, { error: 'Name must not exceed 100 characters' }),
   // add more fields with validation error messages
 })
 

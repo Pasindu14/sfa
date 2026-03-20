@@ -313,7 +313,7 @@ function Delete{Entity}Dialog() {
         <AlertDialogHeader>
           <AlertDialogTitle>Delete {Entity}</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. The {entity} will be permanently removed.
+            This will deactivate the {entity}. It will no longer appear in active lists.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
