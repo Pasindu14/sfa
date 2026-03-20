@@ -97,13 +97,13 @@ namespace sfa_api.Migrations
                 oldType: "integer",
                 oldNullable: true);
 
-            migrationBuilder.AlterColumn<int>(
-                name: "ChangedBy",
-                table: "AuditLogs",
-                type: "integer",
-                nullable: true,
-                oldClrType: typeof(Guid),
-                oldType: "uuid");
+            // uuid → integer cannot be cast automatically; null all old Guid.Empty values
+            // (they were always meaningless — this was the bug being fixed)
+            migrationBuilder.Sql(@"
+                ALTER TABLE ""AuditLogs""
+                    ALTER COLUMN ""ChangedBy"" TYPE integer USING NULL::integer,
+                    ALTER COLUMN ""ChangedBy"" DROP NOT NULL;
+            ");
         }
 
         /// <inheritdoc />
