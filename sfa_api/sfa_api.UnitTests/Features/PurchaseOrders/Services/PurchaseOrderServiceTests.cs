@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using sfa_api.Common.Errors;
@@ -9,6 +10,7 @@ using sfa_api.Features.PurchaseOrders.Requests;
 using sfa_api.Features.PurchaseOrders.Services;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Features.Users.Repositories;
+using sfa_api.Infrastructure.Persistence;
 
 namespace sfa_api.UnitTests.Features.PurchaseOrders.Services;
 
@@ -16,15 +18,25 @@ public class PurchaseOrderServiceTests
 {
     private readonly Mock<IPurchaseOrderRepository> _repoMock;
     private readonly Mock<IUserRepository> _userRepoMock;
+    private readonly AppDbContext _dbContext;
     private readonly PurchaseOrderService _sut;
 
-    public SalesOrderServiceTests()
+    public PurchaseOrderServiceTests()
     {
         _repoMock = new Mock<IPurchaseOrderRepository>();
         _userRepoMock = new Mock<IUserRepository>();
+
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlite("DataSource=:memory:")
+            .Options;
+        _dbContext = new AppDbContext(options);
+        _dbContext.Database.OpenConnection();
+        _dbContext.Database.EnsureCreated();
+
         _sut = new PurchaseOrderService(
             _repoMock.Object,
             _userRepoMock.Object,
+            _dbContext,
             NullLogger<PurchaseOrderService>.Instance);
     }
 
@@ -44,11 +56,11 @@ public class PurchaseOrderServiceTests
         IsActive = true,
         CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        Items = new List<SalesOrderItem>
+        Items = new List<PurchaseOrderItem>
         {
-            new() { Id = 1, SalesOrderId = id, ProductId = 5, Quantity = 2, UnitPrice = 100m, Discount = 0m }
+            new() { Id = 1, PurchaseOrderId = id, ProductId = 5, Quantity = 2, UnitPrice = 100m, Discount = 0m }
         },
-        History = new List<SalesOrderHistory>()
+        History = new List<PurchaseOrderHistory>()
     };
 
     private static User CreateFakeUser(
@@ -66,20 +78,20 @@ public class PurchaseOrderServiceTests
         Name = "Test User"
     };
 
-    private static CreateSalesOrderRequest CreateValidRequest(int? distributorId = null) => new()
+    private static CreatePurchaseOrderRequest CreateValidRequest(int? distributorId = null) => new()
     {
         DistributorId = distributorId,
         Notes = "Test order notes",
-        Items = [new CreateSalesOrderItemRequest { ProductId = 5, Quantity = 2, UnitPrice = 100m, Discount = 0m }]
+        Items = [new CreatePurchaseOrderItemRequest { ProductId = 5, Quantity = 2, UnitPrice = 100m, Discount = 0m }]
     };
 
-    private static UpdateSalesOrderRequest CreateValidUpdateRequest() => new()
+    private static UpdatePurchaseOrderRequest CreateValidUpdateRequest() => new()
     {
         Notes = "Updated notes",
-        Items = [new UpdateSalesOrderItemRequest { ProductId = 5, Quantity = 3, UnitPrice = 100m, Discount = 5m }]
+        Items = [new UpdatePurchaseOrderItemRequest { ProductId = 5, Quantity = 3, UnitPrice = 100m, Discount = 5m }]
     };
 
-    private static RejectSalesOrderRequest CreateRejectRequest(string reason = "Not acceptable") => new()
+    private static RejectPurchaseOrderRequest CreateRejectRequest(string reason = "Not acceptable") => new()
     {
         Reason = reason
     };
@@ -92,9 +104,9 @@ public class PurchaseOrderServiceTests
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.AddItemsAsync(It.IsAny<IEnumerable<SalesOrderItem>>(), It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.AddItemsAsync(It.IsAny<IEnumerable<PurchaseOrderItem>>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.AddHistoryAsync(It.IsAny<SalesOrderHistory>(), It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.AddHistoryAsync(It.IsAny<PurchaseOrderHistory>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.GetByIdWithItemsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
                  .ReturnsAsync(CreateFakeOrder(1, PurchaseOrderStatus.Draft, distributorId));
@@ -106,7 +118,7 @@ public class PurchaseOrderServiceTests
                  .ReturnsAsync(order);
         _repoMock.Setup(r => r.UpdateAsync(It.IsAny<PurchaseOrder>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.AddHistoryAsync(It.IsAny<SalesOrderHistory>(), It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.AddHistoryAsync(It.IsAny<PurchaseOrderHistory>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
@@ -182,7 +194,7 @@ public class PurchaseOrderServiceTests
                      .ReturnsAsync(CreateFakeUser(id: callerId, role: UserRole.Distributor, distributorId));
         _repoMock.Setup(r => r.RemoveItemsAsync(order.Id, It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.AddItemsAsync(It.IsAny<IEnumerable<SalesOrderItem>>(), It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.AddItemsAsync(It.IsAny<IEnumerable<PurchaseOrderItem>>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
 
         var result = await _sut.UpdateAsync(order.Id, CreateValidUpdateRequest(), callerId, UserRole.Distributor);
@@ -212,7 +224,7 @@ public class PurchaseOrderServiceTests
         SetupOrderForTransition(order);
         _repoMock.Setup(r => r.RemoveItemsAsync(order.Id, It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.AddItemsAsync(It.IsAny<IEnumerable<SalesOrderItem>>(), It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.AddItemsAsync(It.IsAny<IEnumerable<PurchaseOrderItem>>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
 
         var result = await _sut.UpdateAsync(order.Id, CreateValidUpdateRequest(), callerId, UserRole.SalesRep);
@@ -228,7 +240,7 @@ public class PurchaseOrderServiceTests
         SetupOrderForTransition(order);
         _repoMock.Setup(r => r.RemoveItemsAsync(order.Id, It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.AddItemsAsync(It.IsAny<IEnumerable<SalesOrderItem>>(), It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.AddItemsAsync(It.IsAny<IEnumerable<PurchaseOrderItem>>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
 
         var result = await _sut.UpdateAsync(order.Id, CreateValidUpdateRequest(), callerId, UserRole.Manager);
@@ -244,7 +256,7 @@ public class PurchaseOrderServiceTests
         SetupOrderForTransition(order);
         _repoMock.Setup(r => r.RemoveItemsAsync(order.Id, It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.AddItemsAsync(It.IsAny<IEnumerable<SalesOrderItem>>(), It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.AddItemsAsync(It.IsAny<IEnumerable<PurchaseOrderItem>>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
 
         var result = await _sut.UpdateAsync(order.Id, CreateValidUpdateRequest(), callerId, UserRole.Admin);
@@ -333,7 +345,7 @@ public class PurchaseOrderServiceTests
                               .ReturnsAsync(approvedOrder));
         _repoMock.Setup(r => r.UpdateAsync(It.IsAny<PurchaseOrder>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.AddHistoryAsync(It.IsAny<SalesOrderHistory>(), It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.AddHistoryAsync(It.IsAny<PurchaseOrderHistory>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
@@ -381,7 +393,7 @@ public class PurchaseOrderServiceTests
                               .ReturnsAsync(approvedOrder));
         _repoMock.Setup(r => r.UpdateAsync(It.IsAny<PurchaseOrder>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.AddHistoryAsync(It.IsAny<SalesOrderHistory>(), It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.AddHistoryAsync(It.IsAny<PurchaseOrderHistory>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
@@ -416,7 +428,7 @@ public class PurchaseOrderServiceTests
                               .ReturnsAsync(pendingAckOrder));
         _repoMock.Setup(r => r.UpdateAsync(It.IsAny<PurchaseOrder>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.AddHistoryAsync(It.IsAny<SalesOrderHistory>(), It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.AddHistoryAsync(It.IsAny<PurchaseOrderHistory>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
@@ -439,7 +451,7 @@ public class PurchaseOrderServiceTests
                               .ReturnsAsync(pendingAckOrder));
         _repoMock.Setup(r => r.UpdateAsync(It.IsAny<PurchaseOrder>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.AddHistoryAsync(It.IsAny<SalesOrderHistory>(), It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.AddHistoryAsync(It.IsAny<PurchaseOrderHistory>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
@@ -506,7 +518,7 @@ public class PurchaseOrderServiceTests
                               .ReturnsAsync(cancelledOrder));
         _repoMock.Setup(r => r.UpdateAsync(It.IsAny<PurchaseOrder>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.AddHistoryAsync(It.IsAny<SalesOrderHistory>(), It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.AddHistoryAsync(It.IsAny<PurchaseOrderHistory>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
@@ -529,7 +541,7 @@ public class PurchaseOrderServiceTests
                               .ReturnsAsync(cancelledOrder));
         _repoMock.Setup(r => r.UpdateAsync(It.IsAny<PurchaseOrder>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.AddHistoryAsync(It.IsAny<SalesOrderHistory>(), It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.AddHistoryAsync(It.IsAny<PurchaseOrderHistory>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
@@ -597,7 +609,7 @@ public class PurchaseOrderServiceTests
                               .ReturnsAsync(finalizedOrder));
         _repoMock.Setup(r => r.UpdateAsync(It.IsAny<PurchaseOrder>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.AddHistoryAsync(It.IsAny<SalesOrderHistory>(), It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.AddHistoryAsync(It.IsAny<PurchaseOrderHistory>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
@@ -648,7 +660,7 @@ public class PurchaseOrderServiceTests
                               .ReturnsAsync(cancelledOrder));
         _repoMock.Setup(r => r.UpdateAsync(It.IsAny<PurchaseOrder>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.AddHistoryAsync(It.IsAny<SalesOrderHistory>(), It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.AddHistoryAsync(It.IsAny<PurchaseOrderHistory>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
@@ -684,7 +696,7 @@ public class PurchaseOrderServiceTests
                               .ReturnsAsync(cancelledOrder));
         _repoMock.Setup(r => r.UpdateAsync(It.IsAny<PurchaseOrder>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.AddHistoryAsync(It.IsAny<SalesOrderHistory>(), It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.AddHistoryAsync(It.IsAny<PurchaseOrderHistory>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);

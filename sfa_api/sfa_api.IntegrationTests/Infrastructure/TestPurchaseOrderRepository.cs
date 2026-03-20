@@ -7,7 +7,7 @@ namespace sfa_api.IntegrationTests.Infrastructure;
 /// <summary>
 /// Test-only IPurchaseOrderRepository wrapper that replaces GetNextOrderNumberAsync
 /// (which calls PostgreSQL nextval()) with an in-process atomic counter.
-/// All other calls delegate to the real SalesOrderRepository.
+/// All other calls delegate to the real PurchaseOrderRepository.
 /// </summary>
 public sealed class TestPurchaseOrderRepository(IPurchaseOrderRepository inner) : IPurchaseOrderRepository
 {
@@ -22,7 +22,7 @@ public sealed class TestPurchaseOrderRepository(IPurchaseOrderRepository inner) 
     public Task<PurchaseOrder?> GetByIdWithItemsAsync(int id, CancellationToken ct = default)
         => inner.GetByIdWithItemsAsync(id, ct);
 
-    public Task<(IEnumerable<PurchaseOrder> SalesOrders, int TotalCount)> GetAllAsync(
+    public Task<(IEnumerable<PurchaseOrder> PurchaseOrders, int TotalCount)> GetAllAsync(
         int skip, int take, string? search = null,
         PurchaseOrderStatus? status = null, int? distributorId = null,
         DateTime? fromDate = null, DateTime? toDate = null,
@@ -35,17 +35,24 @@ public sealed class TestPurchaseOrderRepository(IPurchaseOrderRepository inner) 
     public Task UpdateAsync(PurchaseOrder order, CancellationToken ct = default)
         => inner.UpdateAsync(order, ct);
 
-    public Task AddItemsAsync(IEnumerable<SalesOrderItem> items, CancellationToken ct = default)
+    public Task AddItemsAsync(IEnumerable<PurchaseOrderItem> items, CancellationToken ct = default)
         => inner.AddItemsAsync(items, ct);
 
-    public Task RemoveItemsAsync(int salesOrderId, CancellationToken ct = default)
-        => inner.RemoveItemsAsync(salesOrderId, ct);
+    public Task RemoveItemsAsync(int purchaseOrderId, CancellationToken ct = default)
+        => inner.RemoveItemsAsync(purchaseOrderId, ct);
 
-    public Task AddHistoryAsync(SalesOrderHistory history, CancellationToken ct = default)
+    public Task AddHistoryAsync(PurchaseOrderHistory history, CancellationToken ct = default)
         => inner.AddHistoryAsync(history, ct);
 
-    public Task<IEnumerable<SalesOrderHistory>> GetHistoryAsync(int salesOrderId, CancellationToken ct = default)
-        => inner.GetHistoryAsync(salesOrderId, ct);
+    public Task<IEnumerable<PurchaseOrderHistory>> GetHistoryAsync(int purchaseOrderId, CancellationToken ct = default)
+        => inner.GetHistoryAsync(purchaseOrderId, ct);
+
+    public Task<Dictionary<PurchaseOrderStatus, int>> GetCountsByStatusAsync(
+        int? distributorId = null,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        CancellationToken ct = default)
+        => inner.GetCountsByStatusAsync(distributorId, fromDate, toDate, ct);
 
     public Task SaveChangesAsync(CancellationToken ct = default)
         => inner.SaveChangesAsync(ct);

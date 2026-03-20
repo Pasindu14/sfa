@@ -15,7 +15,7 @@ public class PurchaseOrdersApiTests
 
     private const string BaseUrl = "/api/v1/purchase-orders";
 
-    public SalesOrdersApiTests(SfaWebApplicationFactory factory)
+    public PurchaseOrdersApiTests(SfaWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
     }

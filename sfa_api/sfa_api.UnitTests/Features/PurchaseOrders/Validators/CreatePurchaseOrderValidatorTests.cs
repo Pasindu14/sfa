@@ -9,12 +9,12 @@ public class CreatePurchaseOrderValidatorTests
 {
     private readonly CreatePurchaseOrderValidator _validator = new();
 
-    private static CreateSalesOrderRequest CreateValidRequest() => new()
+    private static CreatePurchaseOrderRequest CreateValidRequest() => new()
     {
         Notes = null,
         Items =
         [
-            new CreateSalesOrderItemRequest
+            new CreatePurchaseOrderItemRequest
             {
                 ProductId = 1,
                 Quantity = 2,

@@ -6,18 +6,21 @@ using sfa_api.Features.Distributors.Entities;
 using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.Distributors.Requests;
 using sfa_api.Features.Distributors.Services;
+using sfa_api.Features.Territories.Repositories;
 
 namespace sfa_api.UnitTests.Features.Distributors.Services;
 
 public class DistributorServiceTests
 {
     private readonly Mock<IDistributorRepository> _repoMock;
+    private readonly Mock<ITerritoryRepository> _territoryRepoMock;
     private readonly DistributorService _sut;
 
     public DistributorServiceTests()
     {
         _repoMock = new Mock<IDistributorRepository>();
-        _sut = new DistributorService(_repoMock.Object, NullLogger<DistributorService>.Instance);
+        _territoryRepoMock = new Mock<ITerritoryRepository>();
+        _sut = new DistributorService(_repoMock.Object, _territoryRepoMock.Object, NullLogger<DistributorService>.Instance);
     }
 
     private static Distributor CreateFakeDistributor(int id = 1) => new()
