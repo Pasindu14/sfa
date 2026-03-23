@@ -52,9 +52,11 @@ export default function ProtectedLayout({
 
   const pathSegments = pathname.split("/").filter(Boolean);
   
-  const formatSegment = (segment: string) => {
-    return segment.charAt(0).toUpperCase() + segment.slice(1);
-  };
+  const formatSegment = (segment: string) =>
+    segment
+      .split('-')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
 
   return (
     <TooltipProvider>

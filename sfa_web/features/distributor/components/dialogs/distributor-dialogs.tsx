@@ -82,12 +82,12 @@ function EditDistributorDialog() {
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
-          close()
-          clearFieldErrors()
+          close();
+          clearFieldErrors();
         }
       }}
     >
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="min-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Distributor</DialogTitle>
           <DialogDescription>Update distributor information.</DialogDescription>
@@ -103,7 +103,7 @@ function EditDistributorDialog() {
               distributor
                 ? {
                     ...distributor,
-                    category: distributor.category as 'A' | 'B' | 'C' | 'D',
+                    category: distributor.category as "A" | "B" | "C" | "D",
                     remark: distributor.remark ?? undefined,
                     vatRegNo: distributor.vatRegNo ?? undefined,
                     latitude: distributor.latitude ?? undefined,
@@ -113,8 +113,8 @@ function EditDistributorDialog() {
                 : undefined
             }
             onSubmit={(data) => {
-              if (!selectedId) return
-              mutate({ id: selectedId, data: data as UpdateDistributorInput })
+              if (!selectedId) return;
+              mutate({ id: selectedId, data: data as UpdateDistributorInput });
             }}
             isLoading={isPending}
             fieldErrors={fieldErrors}
@@ -122,7 +122,7 @@ function EditDistributorDialog() {
         )}
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 // --- Delete Dialog ---
