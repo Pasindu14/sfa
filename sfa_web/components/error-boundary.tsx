@@ -1,31 +1,31 @@
 "use client";
 
-import { useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { AlertCircle } from "lucide-react";
+import { Component, ReactNode } from "react";
 
-interface ErrorBoundaryProps {
-  error: Error & { digest?: string };
-  reset: () => void;
+interface Props {
+  fallback: ReactNode;
+  children: ReactNode;
 }
 
-export default function ErrorBoundary({ error, reset }: ErrorBoundaryProps) {
-  useEffect(() => {
-    console.error("Error:", error);
-  }, [error]);
+interface State {
+  hasError: boolean;
+}
 
-  return (
-    <div className="flex min-h-[400px] flex-col items-center justify-center gap-4">
-      <div className="flex items-center gap-2 text-destructive">
-        <AlertCircle className="h-6 w-6" />
-        <h2 className="text-lg font-semibold">Something went wrong</h2>
-      </div>
-      <p className="text-sm text-muted-foreground">
-        {error.message || "An unexpected error occurred"}
-      </p>
-      <Button onClick={reset} variant="outline">
-        Try again
-      </Button>
-    </div>
-  );
+export class ErrorBoundary extends Component<Props, State> {
+  state: State = { hasError: false };
+
+  static getDerivedStateFromError(): State {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, info: { componentStack: string }) {
+    console.error("ErrorBoundary caught:", error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
 }

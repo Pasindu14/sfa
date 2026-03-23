@@ -1,6 +1,8 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { ErrorBoundary } from '@/components/error-boundary'
+import { ErrorState } from '@/components/error-state'
 
 const ProductListPage = dynamic(
   () =>
@@ -11,5 +13,9 @@ const ProductListPage = dynamic(
 )
 
 export default function ProductsPage() {
-  return <ProductListPage />
+  return (
+    <ErrorBoundary fallback={<ErrorState />}>
+      <ProductListPage />
+    </ErrorBoundary>
+  )
 }
