@@ -77,6 +77,13 @@ export type PurchaseOrderItemDto = {
   lineTotal: number
 }
 
+export type SnapshotItem = {
+  productId: number
+  quantity: number
+  unitPrice: number
+  discount: number
+}
+
 export type PurchaseOrderHistoryDto = {
   id: number
   action: string
@@ -86,6 +93,7 @@ export type PurchaseOrderHistoryDto = {
   performedByName: string | null
   performedAt: string
   notes: string | null
+  itemsSnapshot: string | null
 }
 
 export type PurchaseOrderDto = {

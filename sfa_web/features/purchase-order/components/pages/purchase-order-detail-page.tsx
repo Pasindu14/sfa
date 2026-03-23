@@ -65,7 +65,9 @@ import {
   type PurchaseOrderHistoryDto,
   type RejectPurchaseOrderInput,
   type UpdatePurchaseOrderInput,
+  type SnapshotItem,
 } from "../../schema/purchase-order.schema";
+import type { ProductDto } from "@/features/product/schema/product.schema";
 import { formatCurrency } from '../../utils/format'
 
 function formatDate(dateStr: string | null | undefined) {
@@ -122,17 +124,136 @@ function historyActionLabel(action: string): string {
     Finalized: "Finalized",
     PendingDistributorFinalization: "Sent for Finalization",
     PendingDistributorAcknowledgement: "Pending Distributor Acknowledgement",
-    ItemsEdited: "Items Edited by Admin",
+    ItemsEdited: "Items Edited",
   };
   return map[action] ?? action
 }
 
-function HistoryTimeline({ history }: { history: PurchaseOrderHistoryDto[] }) {
+function parseSnapshot(raw: string | null): SnapshotItem[] {
+  if (!raw) return []
+  // Handle legacy rows that were stored with "Before: " prefix
+  const json = raw.startsWith('Before: ') ? raw.slice(8) : raw
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const parsed: any[] = JSON.parse(json)
+    // Normalize PascalCase keys (from .NET JsonSerializer default) to camelCase
+    return parsed.map(item => ({
+      productId: item.productId ?? item.ProductId,
+      quantity:  item.quantity  ?? item.Quantity,
+      unitPrice: item.unitPrice ?? item.UnitPrice,
+      discount:  item.discount  ?? item.Discount,
+    }))
+  } catch { return [] }
+}
+
+function ItemsDiffPanel({
+  notes,
+  itemsSnapshot,
+  products,
+}: {
+  notes: string | null
+  itemsSnapshot: string | null
+  products: ProductDto[]
+}) {
+  const before = parseSnapshot(notes)
+  const after = parseSnapshot(itemsSnapshot)
+
+  if (before.length === 0 && after.length === 0) {
+    return <p className="mt-2 text-xs text-muted-foreground italic">No item snapshot available.</p>
+  }
+
+  const getProductLabel = (productId: number) => {
+    const p = products.find(p => p.id === productId)
+    return p ? `${p.code} — ${p.itemDescription}` : `Product #${productId}`
+  }
+
+  const allProductIds = [...new Set([...before.map(i => i.productId), ...after.map(i => i.productId)])].filter((pid): pid is number => pid != null)
+
+  return (
+    <div className="mt-2 rounded border text-xs overflow-hidden">
+      <table className="w-full">
+        <thead>
+          <tr className="bg-muted/60 text-muted-foreground">
+            <th className="px-2 py-1.5 text-left font-medium">Product</th>
+            <th className="px-2 py-1.5 text-right font-medium">Before Qty</th>
+            <th className="px-2 py-1.5 text-right font-medium">After Qty</th>
+            <th className="px-2 py-1.5 text-right font-medium">Before Price</th>
+            <th className="px-2 py-1.5 text-right font-medium">After Price</th>
+            <th className="px-2 py-1.5 text-right font-medium">Disc%</th>
+            <th className="px-2 py-1.5 text-center font-medium">Change</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y">
+          {allProductIds.map((pid, rowIdx) => {
+            const b = before.find(i => i.productId === pid)
+            const a = after.find(i => i.productId === pid)
+            const isAdded = !b && !!a
+            const isRemoved = !!b && !a
+            const isChanged = !!b && !!a && (
+              b.quantity !== a.quantity ||
+              b.unitPrice !== a.unitPrice ||
+              b.discount !== a.discount
+            )
+            const rowClass = isAdded
+              ? 'bg-green-50 text-green-800'
+              : isRemoved
+                ? 'bg-red-50 text-red-700 opacity-70'
+                : isChanged
+                  ? 'bg-amber-50'
+                  : 'bg-background'
+            return (
+              <tr key={`${pid}-${rowIdx}`} className={rowClass}>
+                <td className={`px-2 py-1.5 ${isRemoved ? 'line-through' : ''}`}>
+                  {getProductLabel(pid)}
+                </td>
+                <td className="px-2 py-1.5 text-right">{b?.quantity ?? '—'}</td>
+                <td className="px-2 py-1.5 text-right">{a?.quantity ?? '—'}</td>
+                <td className="px-2 py-1.5 text-right">{b ? formatCurrency(b.unitPrice) : '—'}</td>
+                <td className="px-2 py-1.5 text-right">{a ? formatCurrency(a.unitPrice) : '—'}</td>
+                <td className="px-2 py-1.5 text-right">{(a ?? b)?.discount}%</td>
+                <td className="px-2 py-1.5 text-center">
+                  {isAdded ? (
+                    <span className="text-green-700 font-medium">+ Added</span>
+                  ) : isRemoved ? (
+                    <span className="text-red-600 font-medium">- Removed</span>
+                  ) : isChanged ? (
+                    <span className="text-amber-700 font-medium">~ Changed</span>
+                  ) : (
+                    <span className="text-muted-foreground">Unchanged</span>
+                  )}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function HistoryTimeline({
+  history,
+  products,
+}: {
+  history: PurchaseOrderHistoryDto[]
+  products: ProductDto[]
+}) {
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
+
+  const toggle = (id: number) =>
+    setExpandedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+
   return (
     <div className="space-y-0">
       {history.map((entry, idx) => {
         const cfg = historyActionConfig[entry.action] ?? { color: 'bg-gray-300', Icon: Circle }
         const isLast = idx === history.length - 1
+        const isItemEdit = entry.action === 'ItemsEdited'
+        const isExpanded = expandedIds.has(entry.id)
 
         return (
           <div key={entry.id} className="flex gap-3">
@@ -142,8 +263,8 @@ function HistoryTimeline({ history }: { history: PurchaseOrderHistoryDto[] }) {
               />
               {!isLast && <div className="w-px flex-1 bg-border mt-1" />}
             </div>
-            <div className="pb-4">
-              <div className="flex items-center gap-2">
+            <div className="pb-4 flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
                 <p className="text-sm font-medium leading-tight">
                   {entry.action === "Rejected"
                     ? `Rejected by ${entry.performedByName ?? "Unknown"}`
@@ -156,16 +277,29 @@ function HistoryTimeline({ history }: { history: PurchaseOrderHistoryDto[] }) {
                     CURRENT
                   </span>
                 )}
+                {isItemEdit && (
+                  <button
+                    onClick={() => toggle(entry.id)}
+                    className="ml-auto text-xs text-indigo-600 hover:text-indigo-800 underline underline-offset-2"
+                  >
+                    {isExpanded ? 'Hide changes' : 'View changes'}
+                  </button>
+                )}
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {formatDate(entry.performedAt)}
               </p>
-              {entry.notes && (
+              {!isItemEdit && entry.notes && (
                 <p className="text-xs text-muted-foreground mt-1 italic bg-muted/50 px-2 py-1 rounded">
-                  {entry.action === "ItemsEdited"
-                    ? "Admin updated order items"
-                    : `Reason: ${entry.notes}`}
+                  Reason: {entry.notes}
                 </p>
+              )}
+              {isItemEdit && isExpanded && (
+                <ItemsDiffPanel
+                  notes={entry.notes}
+                  itemsSnapshot={entry.itemsSnapshot}
+                  products={products}
+                />
               )}
             </div>
           </div>
@@ -816,6 +950,7 @@ interface PurchaseOrderDetailPageProps {
 export function PurchaseOrderDetailPage({ orderId }: PurchaseOrderDetailPageProps) {
   const router = useRouter()
   const { data: order, isLoading, isError } = usePurchaseOrder(orderId)
+  const { data: allProducts } = useAllActiveProducts()
   const [isAdminEditing, setIsAdminEditing] = useState(false);
 
   if (isLoading) {
@@ -1145,7 +1280,7 @@ export function PurchaseOrderDetailPage({ orderId }: PurchaseOrderDetailPageProp
                 </p>
               </CardHeader>
               <CardContent>
-                <HistoryTimeline history={order.history} />
+                <HistoryTimeline history={order.history} products={allProducts ?? []} />
               </CardContent>
             </Card>
           )}

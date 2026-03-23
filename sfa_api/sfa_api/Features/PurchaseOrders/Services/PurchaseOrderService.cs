@@ -220,7 +220,7 @@ public class PurchaseOrderService(
             ToStatus = order.Status,
             PerformedBy = callerId,
             PerformedAt = DateTime.UtcNow,
-            Notes = $"Before: {beforeSnapshot}",
+            Notes = beforeSnapshot,
             ItemsSnapshot = afterSnapshot
         }, ct);
 
@@ -611,7 +611,8 @@ public class PurchaseOrderService(
                 h.PerformedBy,
                 performers?.GetValueOrDefault(h.PerformedBy),
                 h.PerformedAt,
-                h.Notes
+                h.Notes,
+                h.ItemsSnapshot
             )),
             TotalAmount: decimal.Round(total, 2),
             SubmittedBy: o.SubmittedBy,

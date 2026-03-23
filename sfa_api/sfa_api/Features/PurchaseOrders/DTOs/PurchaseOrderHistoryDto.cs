@@ -10,5 +10,6 @@ public record PurchaseOrderHistoryDto(
     int PerformedBy,
     string? PerformedByName,
     DateTime PerformedAt,
-    string? Notes
+    string? Notes,
+    string? ItemsSnapshot
 );
