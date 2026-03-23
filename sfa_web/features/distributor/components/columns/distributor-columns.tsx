@@ -88,6 +88,15 @@ export function getDistributorColumns(actions: DistributorColumnActions): Column
       },
     },
     {
+      accessorKey: 'category',
+      header: 'Category',
+      cell: ({ row }) => (
+        <Badge variant="outline" className="font-semibold">
+          {row.original.category}
+        </Badge>
+      ),
+    },
+    {
       accessorKey: 'isActive',
       header: 'Status',
       cell: ({ row }) => (

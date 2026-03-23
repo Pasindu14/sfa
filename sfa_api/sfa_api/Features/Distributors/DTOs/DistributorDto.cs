@@ -9,6 +9,7 @@ public record DistributorDto(
     int Alias,
     decimal TradeDiscount,
     decimal Commission,
+    string Category,
     string? Remark,
     string? VatRegNo,
     double? Latitude,

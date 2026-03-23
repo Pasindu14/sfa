@@ -7,6 +7,7 @@ using sfa_api.Features.Divisions.Entities;
 using sfa_api.Features.Outlets.Entities;
 using sfa_api.Features.Regions.Entities;
 using sfa_api.Features.Territories.Entities;
+using sfa_api.Features.ProductCategoryPricings.Entities;
 using sfa_api.Features.PricingStructures.Entities;
 using sfa_api.Features.Products.Entities;
 using sfa_api.Features.PurchaseOrders.Entities;
@@ -33,6 +34,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<RouteEntity> Routes => Set<RouteEntity>();
     public DbSet<Outlet> Outlets => Set<Outlet>();
     public DbSet<Product> Products => Set<Product>();
+    public DbSet<ProductCategoryPrice> ProductCategoryPrices => Set<ProductCategoryPrice>();
     public DbSet<PricingStructure> PricingStructures => Set<PricingStructure>();
     public DbSet<PricingStructureItem> PricingStructureItems => Set<PricingStructureItem>();
     public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
@@ -224,6 +226,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.IsActive);
             e.HasIndex(x => x.UpdatedAt);
             e.HasQueryFilter(x => x.IsActive);
+        });
+
+        // ProductCategoryPrice
+        modelBuilder.Entity<ProductCategoryPrice>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.Property(x => x.Price).HasColumnType("decimal(18,4)");
+            e.HasIndex(x => new { x.ProductId, x.Category }).IsUnique();
+            e.HasOne(x => x.Product)
+             .WithMany()
+             .HasForeignKey(x => x.ProductId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
 
         // PricingStructure

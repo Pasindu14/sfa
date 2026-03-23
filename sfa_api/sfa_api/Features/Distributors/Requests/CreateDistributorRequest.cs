@@ -9,6 +9,7 @@ public class CreateDistributorRequest
     public int Alias { get; set; }
     public decimal TradeDiscount { get; set; }
     public decimal Commission { get; set; }
+    public string Category { get; set; } = "A";
     public string? Remark { get; set; }
     public string? VatRegNo { get; set; }
     public double? Latitude { get; set; }

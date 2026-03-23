@@ -103,6 +103,7 @@ function EditDistributorDialog() {
               distributor
                 ? {
                     ...distributor,
+                    category: distributor.category as 'A' | 'B' | 'C' | 'D',
                     remark: distributor.remark ?? undefined,
                     vatRegNo: distributor.vatRegNo ?? undefined,
                     latitude: distributor.latitude ?? undefined,

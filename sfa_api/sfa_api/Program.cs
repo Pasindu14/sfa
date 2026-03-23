@@ -9,6 +9,7 @@ using sfa_api.Features.Areas;
 using sfa_api.Features.Distributors;
 using sfa_api.Features.Divisions;
 using sfa_api.Features.Outlets;
+using sfa_api.Features.ProductCategoryPricings;
 using sfa_api.Features.PricingStructures;
 using sfa_api.Features.Products;
 using sfa_api.Features.PurchaseOrders;
@@ -90,6 +91,7 @@ try
     builder.Services.AddRoutesFeature();
     builder.Services.AddOutletsFeature();
     builder.Services.AddProductsFeature();
+    builder.Services.AddProductCategoryPricingsFeature();
     builder.Services.AddPricingStructuresFeature();
     builder.Services.AddPurchaseOrdersFeature();
 

@@ -61,6 +61,10 @@ const data = {
           title: "Pricing Structures",
           url: "/pricing-structures",
         },
+        {
+          title: "Category Pricing",
+          url: "/product-category-pricings",
+        },
       ],
     },
     {

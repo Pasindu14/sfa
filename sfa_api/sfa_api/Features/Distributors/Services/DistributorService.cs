@@ -62,6 +62,7 @@ public class DistributorService(
             Alias = request.Alias,
             TradeDiscount = request.TradeDiscount,
             Commission = request.Commission,
+            Category = request.Category,
             Remark = request.Remark,
             VatRegNo = request.VatRegNo,
             Latitude = request.Latitude,
@@ -119,6 +120,7 @@ public class DistributorService(
         distributor.Alias = request.Alias;
         distributor.TradeDiscount = request.TradeDiscount;
         distributor.Commission = request.Commission;
+        distributor.Category = request.Category;
         distributor.Remark = request.Remark;
         distributor.VatRegNo = request.VatRegNo;
         distributor.Latitude = request.Latitude;
@@ -183,6 +185,7 @@ public class DistributorService(
         Alias: d.Alias,
         TradeDiscount: d.TradeDiscount,
         Commission: d.Commission,
+        Category: d.Category,
         Remark: d.Remark,
         VatRegNo: d.VatRegNo,
         Latitude: d.Latitude,

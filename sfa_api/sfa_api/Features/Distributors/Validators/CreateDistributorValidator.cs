@@ -37,6 +37,11 @@ public class CreateDistributorValidator : AbstractValidator<CreateDistributorReq
             .GreaterThanOrEqualTo(0).WithMessage("Commission is required and cannot be negative.")
             .LessThanOrEqualTo(100).WithMessage("Commission cannot exceed 100%.");
 
+        RuleFor(x => x.Category)
+            .NotEmpty().WithMessage("Category is required.")
+            .Must(c => new[] { "A", "B", "C", "D" }.Contains(c))
+            .WithMessage("Category must be A, B, C, or D.");
+
         RuleFor(x => x.Remark)
             .MaximumLength(1000).WithMessage("Remark must not exceed 1000 characters.")
             .When(x => x.Remark != null);
