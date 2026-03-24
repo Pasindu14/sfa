@@ -1,7 +1,17 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Upload, ArrowLeft } from "lucide-react";
+import {
+  Upload,
+  ArrowLeft,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  FileText,
+  Package,
+  Banknote,
+  SkipForward,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -11,13 +21,12 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { parseExcelFile } from "../../lib/parse-excel";
 import { InvoicePreview } from "./invoice-preview";
 import { useImportDialog } from "../../store";
-import { useImportSalesInvoices } from "../../hooks/sales-invoice.hooks";
+import { useImportSalesInvoices } from '../../hooks/sales-invoice.hooks';
 import type {
   ImportBatchResult,
   ImportSalesInvoicesPayload,
@@ -34,67 +43,147 @@ function BatchResultView({
   result: ImportBatchResult;
   onClose: () => void;
 }) {
-  const statusVariant =
-    result.status === "Completed"
-      ? "default"
-      : result.status === "PartialFailed"
-        ? "secondary"
-        : "destructive";
+  const isCompleted = result.status === "Completed";
+  const isPartial = result.status === "PartialFailed";
+
+  const StatusIcon = isCompleted
+    ? CheckCircle2
+    : isPartial
+      ? AlertTriangle
+      : XCircle;
+
+  const statusColor = isCompleted
+    ? "text-green-600"
+    : isPartial
+      ? "text-amber-600"
+      : "text-destructive";
+
+  const statusBg = isCompleted
+    ? "bg-green-50 border-green-200"
+    : isPartial
+      ? "bg-amber-50 border-amber-200"
+      : "bg-destructive/5 border-destructive/20";
+
+  const statusLabel = isCompleted
+    ? "All invoices imported successfully"
+    : isPartial
+      ? "Import completed with skipped invoices"
+      : "Import failed";
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-muted-foreground">Batch</span>
-        <code className="rounded bg-muted px-2 py-0.5 text-sm">
-          {result.batchNumber}
-        </code>
-        <Badge variant={statusVariant}>{result.status}</Badge>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 rounded-lg border p-4 text-sm">
-        <div>
-          <p className="text-muted-foreground">Invoices Imported</p>
-          <p className="text-2xl font-bold">
-            {result.importedInvoices}
-            <span className="text-base font-normal text-muted-foreground">
-              {" "}
-              / {result.totalInvoices}
-            </span>
+      {/* Status banner */}
+      <div
+        className={`flex items-center gap-3 rounded-lg border px-4 py-3 ${statusBg}`}
+      >
+        <StatusIcon className={`h-5 w-5 shrink-0 ${statusColor}`} />
+        <div className="min-w-0 flex-1">
+          <p className={`text-sm font-semibold ${statusColor}`}>
+            {statusLabel}
           </p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">Total Items</p>
-          <p className="text-2xl font-bold">{result.totalItems}</p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">Skipped</p>
-          <p className="text-2xl font-bold text-orange-500">
-            {result.skippedInvoices}
-          </p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">Total Amount</p>
-          <p className="text-lg font-bold">
-            {result.totalAmount.toLocaleString("en-LK", {
-              minimumFractionDigits: 2,
-            })}
+          <p className="text-xs text-muted-foreground">
+            Batch{" "}
+            <code className="rounded bg-background/60 px-1.5 py-0.5 font-mono text-xs">
+              {result.batchNumber}
+            </code>
           </p>
         </div>
       </div>
 
+      {/* Stat cards — same pattern as InvoicePreview SummaryCards */}
+      <div className="grid grid-cols-4 gap-3">
+        <div className="flex items-center gap-3 rounded-lg border bg-card p-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-blue-100 text-blue-600">
+            <FileText className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground">Imported</p>
+            <p className="text-xl font-bold leading-tight">
+              {result.importedInvoices}
+              <span className="ml-0.5 text-sm font-normal text-muted-foreground">
+                /{result.totalInvoices}
+              </span>
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 rounded-lg border bg-card p-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-violet-100 text-violet-600">
+            <Package className="h-4 w-4" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Line Items</p>
+            <p className="text-xl font-bold">{result.totalItems}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 rounded-lg border bg-card p-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-amber-100 text-amber-600">
+            <SkipForward className="h-4 w-4" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Skipped</p>
+            <p
+              className={`text-xl font-bold ${result.skippedInvoices > 0 ? "text-amber-600" : ""}`}
+            >
+              {result.skippedInvoices}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 rounded-lg border bg-card p-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-green-100 text-green-600">
+            <Banknote className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground">Total Amount</p>
+            <p className="text-base font-bold leading-tight">
+              {result.totalAmount.toLocaleString("en-LK", {
+                minimumFractionDigits: 2,
+              })}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Skipped invoice table */}
       {result.errors.length > 0 && (
-        <div className="space-y-1.5">
-          <p className="text-sm font-medium text-destructive">
-            {result.errors.length} skipped
-          </p>
-          <ScrollArea className="h-36 rounded-md border">
-            <div className="space-y-1 p-3">
+        <div className="rounded-lg border border-destructive/20 overflow-hidden">
+          {/* Section header */}
+          <div className="flex items-center gap-2 border-b border-destructive/20 bg-destructive/5 px-3 py-2">
+            <XCircle className="h-3.5 w-3.5 shrink-0 text-destructive" />
+            <span className="text-xs font-semibold text-destructive">
+              Skipped Invoices
+            </span>
+            <span className="ml-auto rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+              {result.errors.length}
+            </span>
+          </div>
+
+          {/* Column headers */}
+          <div className="grid grid-cols-[2rem_10rem_1fr] gap-x-3 border-b bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+            <span>#</span>
+            <span>Voucher No</span>
+            <span>Reason</span>
+          </div>
+
+          {/* Rows */}
+          <ScrollArea className="h-96">
+            <div className="divide-y divide-border/60">
               {result.errors.map((err, i) => (
-                <div key={i} className="flex items-start gap-2 text-sm">
-                  <code className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-xs font-medium">
+                <div
+                  key={i}
+                  className="grid grid-cols-[2rem_10rem_1fr] items-start gap-x-3 px-3 py-2 text-sm transition-colors hover:bg-muted/30"
+                >
+                  <span className="text-xs tabular-nums text-muted-foreground/60 pt-0.5">
+                    {i + 1}
+                  </span>
+                  <code className="truncate rounded bg-muted px-1.5 py-0.5 font-mono text-xs font-medium">
                     {err.vchBillNo}
                   </code>
-                  <span className="text-muted-foreground">{err.reason}</span>
+                  <span className="text-xs text-muted-foreground leading-relaxed">
+                    {err.reason}
+                  </span>
                 </div>
               ))}
             </div>
@@ -103,7 +192,9 @@ function BatchResultView({
       )}
 
       <DialogFooter>
-        <Button onClick={onClose}>Done</Button>
+        <Button onClick={onClose} className="min-w-24">
+          Done
+        </Button>
       </DialogFooter>
     </div>
   );
@@ -240,7 +331,7 @@ export function SalesInvoiceImportDialog() {
   const descriptions: Record<View, string> = {
     picker: "Upload a BUSY ERP sales voucher Excel file (.xlsx).",
     preview: "Review the data extracted from the file before importing.",
-    result: "The import batch has been processed.",
+    result: "Review the results of your import batch below.",
   };
 
   return (

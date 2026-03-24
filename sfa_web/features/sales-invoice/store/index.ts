@@ -2,6 +2,9 @@
 
 import { create } from 'zustand'
 import { useShallow } from 'zustand/react/shallow'
+import { useSalesInvoiceDialogStore } from './sales-invoice.dialog-store'
+
+// ── Import dialog (kept as-is — used by SalesInvoiceImportDialog) ─────────
 
 interface ImportDialogStore {
   isOpen: boolean
@@ -20,3 +23,17 @@ export function useImportDialog() {
     useShallow((s) => ({ isOpen: s.isOpen, open: s.open, close: s.close }))
   )
 }
+
+// ── Detail drawer ─────────────────────────────────────────────────────────
+
+export { useSalesInvoiceDialogStore }
+
+export const useDetailDialog = () =>
+  useSalesInvoiceDialogStore(
+    useShallow((s) => ({
+      isOpen: s.isDetailOpen,
+      selectedId: s.selectedSalesInvoiceId,
+      open: s.openDetail,
+      close: s.closeDetail,
+    }))
+  )

@@ -1,1 +1,1 @@
-export { SalesInvoiceImportPage } from './pages/sales-invoice-import-page'
+export { SalesInvoiceListPage } from './pages/sales-invoice-list-page'

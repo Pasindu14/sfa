@@ -4,10 +4,10 @@ import dynamic from "next/dynamic";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ErrorState } from "@/components/error-state";
 
-const SalesInvoiceImportPage = dynamic(
+const SalesInvoiceListPage = dynamic(
   () =>
     import("@/features/sales-invoice/components").then((m) => ({
-      default: m.SalesInvoiceImportPage,
+      default: m.SalesInvoiceListPage,
     })),
   { ssr: false },
 );
@@ -15,7 +15,7 @@ const SalesInvoiceImportPage = dynamic(
 export default function SalesInvoicesPage() {
   return (
     <ErrorBoundary fallback={<ErrorState />}>
-      <SalesInvoiceImportPage />
+      <SalesInvoiceListPage />
     </ErrorBoundary>
   );
 }
