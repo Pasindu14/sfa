@@ -208,7 +208,7 @@ function InvoiceRow({
                     {item.itemErpCode}
                   </td>
                   <td
-                    className="py-1 pr-3 text-muted-foreground max-w-[240px] truncate"
+                    className="py-1 pr-3 text-muted-foreground max-w-60 truncate"
                     title={item.itemDescription}
                   >
                     {item.itemDescription}

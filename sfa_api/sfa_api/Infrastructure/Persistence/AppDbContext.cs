@@ -11,8 +11,12 @@ using sfa_api.Features.ProductCategoryPricings.Entities;
 using sfa_api.Features.PricingStructures.Entities;
 using sfa_api.Features.Products.Entities;
 using sfa_api.Features.PurchaseOrders.Entities;
+using sfa_api.Features.GRNs.Entities;
+using sfa_api.Features.GRNs.Enums;
 using sfa_api.Features.SalesInvoices.Entities;
 using sfa_api.Features.SalesInvoices.Enums;
+using sfa_api.Features.Stock.Entities;
+using sfa_api.Features.Stock.Enums;
 using sfa_api.Features.Users.Entities;
 using RouteEntity = sfa_api.Features.Routes.Entities.Route;
 
@@ -45,6 +49,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<SalesInvoiceImportBatch> SalesInvoiceImportBatches => Set<SalesInvoiceImportBatch>();
     public DbSet<SalesInvoice> SalesInvoices => Set<SalesInvoice>();
     public DbSet<SalesInvoiceItem> SalesInvoiceItems => Set<SalesInvoiceItem>();
+    public DbSet<GRN> GRNs => Set<GRN>();
+    public DbSet<GRNItem> GRNItems => Set<GRNItem>();
+    public DbSet<DistributorStock> DistributorStocks => Set<DistributorStock>();
+    public DbSet<StockTransaction> StockTransactions => Set<StockTransaction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -401,6 +409,103 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(x => x.Product)
              .WithMany()
              .HasForeignKey(x => x.ProductId)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── GRN sequence ──────────────────────────────────────────────────────
+        modelBuilder.HasSequence<long>("grn_number_seq").StartsAt(1).IncrementsBy(1);
+
+        // ── GRN ───────────────────────────────────────────────────────────────
+        modelBuilder.Entity<GRN>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.GrnNumber).IsRequired().HasMaxLength(30);
+            e.HasIndex(x => x.GrnNumber).IsUnique();
+            // Unique FK — enforces 1:1 with SalesInvoice (no double-GRN at DB level)
+            e.HasIndex(x => x.SalesInvoiceId).IsUnique();
+            e.Property(x => x.Status)
+             .HasConversion<string>()
+             .HasMaxLength(20);
+            e.Property(x => x.Notes).HasMaxLength(1000);
+            e.HasOne(x => x.SalesInvoice)
+             .WithMany()
+             .HasForeignKey(x => x.SalesInvoiceId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Distributor)
+             .WithMany()
+             .HasForeignKey(x => x.DistributorId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.ConfirmedByUser)
+             .WithMany()
+             .HasForeignKey(x => x.ConfirmedBy)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasMany(x => x.Items)
+             .WithOne(i => i.GRN)
+             .HasForeignKey(i => i.GrnId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ── GRNItem ───────────────────────────────────────────────────────────
+        modelBuilder.Entity<GRNItem>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Quantity).HasColumnType("decimal(18,4)");
+            e.Property(x => x.Unit).IsRequired().HasMaxLength(20);
+            e.Property(x => x.Notes).HasMaxLength(500);
+            e.HasIndex(x => x.GrnId);
+            e.HasOne(x => x.Product)
+             .WithMany()
+             .HasForeignKey(x => x.ProductId)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── DistributorStock ──────────────────────────────────────────────────
+        modelBuilder.Entity<DistributorStock>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.QuantityOnHand).HasColumnType("decimal(18,4)");
+            // Composite unique — one row per distributor+product
+            e.HasIndex(x => new { x.DistributorId, x.ProductId }).IsUnique();
+            e.HasOne(x => x.Distributor)
+             .WithMany()
+             .HasForeignKey(x => x.DistributorId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Product)
+             .WithMany()
+             .HasForeignKey(x => x.ProductId)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── StockTransaction ──────────────────────────────────────────────────
+        modelBuilder.Entity<StockTransaction>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.TransactionType)
+             .HasConversion<string>()
+             .HasMaxLength(20);
+            e.Property(x => x.Direction)
+             .HasConversion<string>()
+             .HasMaxLength(5);
+            e.Property(x => x.Quantity).HasColumnType("decimal(18,4)");
+            e.Property(x => x.QuantityBefore).HasColumnType("decimal(18,4)");
+            e.Property(x => x.QuantityAfter).HasColumnType("decimal(18,4)");
+            e.Property(x => x.ReferenceType).IsRequired().HasMaxLength(30);
+            e.Property(x => x.Notes).HasMaxLength(500);
+            // Indexed for common queries: by distributor, by product, by reference
+            e.HasIndex(x => x.DistributorId);
+            e.HasIndex(x => x.ProductId);
+            e.HasIndex(x => new { x.ReferenceType, x.ReferenceId });
+            e.HasOne(x => x.Distributor)
+             .WithMany()
+             .HasForeignKey(x => x.DistributorId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Product)
+             .WithMany()
+             .HasForeignKey(x => x.ProductId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.TransactedByUser)
+             .WithMany()
+             .HasForeignKey(x => x.TransactedBy)
              .OnDelete(DeleteBehavior.Restrict);
         });
 

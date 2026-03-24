@@ -2,7 +2,7 @@
 import { ChevronRight, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -18,24 +18,6 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
-
-const STORAGE_KEY = "sidebar:nav-open";
-
-function readStorage(): Record<string, boolean> {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
-  } catch {
-    return {};
-  }
-}
-
-function writeStorage(state: Record<string, boolean>) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {
-    // ignore quota errors
-  }
-}
 
 export function NavMain({
   items,
@@ -53,29 +35,40 @@ export function NavMain({
 }) {
   const pathname = usePathname();
 
-  const [openState, setOpenState] = useState<Record<string, boolean>>(() => {
-    const stored = readStorage();
-    const initial: Record<string, boolean> = {};
-    for (const item of items) {
-      if (item.title in stored) {
-        initial[item.title] = stored[item.title];
-      } else {
-        initial[item.title] =
-          item.items?.some((sub) => pathname.startsWith(sub.url)) ??
-          item.isActive ??
-          false;
-      }
-    }
-    return initial;
-  });
+  function getActiveTitle() {
+    return (
+      items.find((item) =>
+        item.items?.some((sub) => pathname.startsWith(sub.url))
+      )?.title ?? null
+    );
+  }
 
-  const toggle = useCallback((title: string, next: boolean) => {
-    setOpenState((prev) => {
-      const updated = { ...prev, [title]: next };
-      writeStorage(updated);
-      return updated;
+  // Manually opened sections (in addition to the always-open active section)
+  const [manualOpen, setManualOpen] = useState<Set<string>>(new Set());
+
+  // When route changes, clear manual overrides — active section will show on its own
+  useEffect(() => {
+    setManualOpen(new Set());
+  }, [pathname]);
+
+  const activeTitle = getActiveTitle();
+
+  function isOpen(title: string) {
+    return title === activeTitle || manualOpen.has(title);
+  }
+
+  function toggle(title: string) {
+    if (title === activeTitle) return; // active section is always open, never toggle it
+    setManualOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(title)) {
+        next.delete(title);
+      } else {
+        next.add(title);
+      }
+      return next;
     });
-  }, []);
+  }
 
   return (
     <SidebarGroup>
@@ -85,8 +78,8 @@ export function NavMain({
           <Collapsible
             key={item.title}
             asChild
-            open={openState[item.title] ?? false}
-            onOpenChange={(next) => toggle(item.title, next)}
+            open={isOpen(item.title)}
+            onOpenChange={() => toggle(item.title)}
             className="group/collapsible"
           >
             <SidebarMenuItem>

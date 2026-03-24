@@ -26,6 +26,35 @@ public class SalesInvoicesController(
     }
 
     /// <summary>
+    /// GET /api/v1/sales-invoices
+    /// Returns a paginated list with optional search and status filter.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetList(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null,
+        [FromQuery] string? status = null,
+        CancellationToken ct = default)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var (items, total) = await _salesInvoiceService.GetListAsync(page, pageSize, search, status, ct);
+        return Ok(ResponseHelper.Paged(items, page, pageSize, total, correlationId));
+    }
+
+    /// <summary>
+    /// GET /api/v1/sales-invoices/{id}
+    /// Returns full detail for a single invoice including line items.
+    /// </summary>
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetById(int id, CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var invoice = await _salesInvoiceService.GetDetailAsync(id, ct);
+        return Ok(ResponseHelper.Ok(invoice, correlationId));
+    }
+
+    /// <summary>
     /// POST /api/v1/sales-invoices/import
     /// Admin only — imports an Excel-parsed batch of sales invoices from BUSY ERP.
     /// </summary>

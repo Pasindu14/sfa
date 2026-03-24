@@ -13,7 +13,9 @@ using sfa_api.Features.ProductCategoryPricings;
 using sfa_api.Features.PricingStructures;
 using sfa_api.Features.Products;
 using sfa_api.Features.PurchaseOrders;
+using sfa_api.Features.GRNs;
 using sfa_api.Features.SalesInvoices;
+using sfa_api.Features.Stock;
 using sfa_api.Features.Regions;
 using sfa_api.Features.Routes;
 using sfa_api.Features.Territories;
@@ -96,6 +98,8 @@ try
     builder.Services.AddPricingStructuresFeature();
     builder.Services.AddPurchaseOrdersFeature();
     builder.Services.AddSalesInvoicesFeature();
+    builder.Services.AddGrnsFeature();
+    builder.Services.AddStockFeature();
 
     var app = builder.Build();
 

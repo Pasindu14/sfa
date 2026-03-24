@@ -11,6 +11,11 @@ public interface ISalesInvoiceRepository
     Task<HashSet<string>> GetExistingVchBillNosAsync(CancellationToken ct = default);
     Task<long> GetNextBatchNumberAsync(CancellationToken ct = default);
 
+    // Read
+    Task<(List<SalesInvoice> Items, int TotalCount)> GetListAsync(
+        int page, int pageSize, string? search, string? status, CancellationToken ct = default);
+    Task<SalesInvoice?> GetDetailAsync(int id, CancellationToken ct = default);
+
     // Write
     Task AddBatchAsync(SalesInvoiceImportBatch batch, CancellationToken ct = default);
     Task AddInvoicesAsync(IEnumerable<SalesInvoice> invoices, CancellationToken ct = default);

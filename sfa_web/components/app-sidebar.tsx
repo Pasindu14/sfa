@@ -81,6 +81,14 @@ const data = {
           title: "Sales Invoices",
           url: "/sales-invoices",
         },
+        {
+          title: "GRNs",
+          url: "/grns",
+        },
+        {
+          title: "Stock",
+          url: "/stock",
+        },
       ],
     },
     {

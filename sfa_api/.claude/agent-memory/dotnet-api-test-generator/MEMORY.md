@@ -56,6 +56,52 @@ Available transitively via `FluentValidation` package — no need to add an expl
 - Each class MUST be run in isolation with `--filter "FullyQualifiedName~{Feature}"`. This is a pre-existing repo issue — not caused by test code.
 - When paginated list tests check `ids.Should().Contain(x)`, always use `?pageSize=1000` to prevent false negatives when other tests have inserted rows that push the seed data off page 1.
 
+## PostgreSQL-only Features That Need Stubs in SQLite Integration Tests
+
+### Sequences (nextval)
+Three repositories call PostgreSQL `nextval()` sequences — all must be wrapped:
+- `ISalesInvoiceRepository` → `TestSalesInvoiceRepository` stubs `GetNextBatchNumberAsync`
+- `IGrnRepository` → `TestGrnRepository` stubs `GetNextGrnNumberAsync`
+- `IPurchaseOrderRepository` → `TestPurchaseOrderRepository` stubs `GetNextOrderNumberAsync`
+Each stub uses `Interlocked.Increment(ref _counter)`. Remove sequences in `TestAppDbContext.OnModelCreating`.
+
+### Advisory Locks (pg_try_advisory_lock)
+`PostgresAdvisoryLockService.AcquireAsync` calls `pg_try_advisory_lock()` — fails on SQLite.
+Replaced in factory with `NoOpDistributedLockService` that always grants the lock immediately.
+
+### SalesInvoiceImportBatch.ImportedBy FK
+This column has a `DeleteBehavior.Restrict` FK to Users.
+The DataSeeder only runs in Development/Staging — NOT in the "Testing" environment.
+The factory constructor seeds admin user ID=1 manually so import tests can use `GenerateToken(1, "Admin")`.
+
+### Distributor Creation Now Requires TerritoryId
+`CreateDistributorValidator` has `.NotNull()` on `TerritoryId`. Pre-existing integration tests that seed
+distributors without a territory now fail. Seed the full geographic hierarchy (Region→Area→Territory) before
+seeding a distributor. This is a pre-existing failure — it's not caused by test code.
+
+## Test Suite Status (2026-03-24)
+
+After adding SalesInvoices + GRNs tests:
+- **Unit:** 60 new tests (SalesInvoiceServiceTests, GrnServiceTests, validators) — all passing
+- **Integration:** 24 new tests (SalesInvoicesApiTests, GrnsApiTests) — all passing
+- **Pre-existing failures (not caused by our code):**
+  - 46 PurchaseOrderServiceTests unit tests — SQLite EnsureCreated fails due to new sequences in AppDbContext
+  - ~50 integration test failures — SQLite LINQ incompatibilities + missing TerritoryId in old seed helpers
+
+## SalesInvoice List Endpoint — Data Shape
+`GET /api/v1/sales-invoices` returns `data` as a plain JSON **array** (not `data.items`).
+Assert as: `body.GetProperty("data").ValueKind == JsonValueKind.Array` then `data[0].GetProperty("id")`.
+
+## GRN ConfirmAsync — Mock Order
+`ConfirmAsync` calls `GetGrnWithItemsAsync` twice: once to load the GRN, and once after commit to reload.
+Use a call-count-based `ReturnsAsync(() => ...)` factory when both calls need different return values.
+
+## Object Mutation in Moq Callbacks (Critical)
+When a service adds an entity to a collection then mutates it, Moq's callback captures the **object reference**.
+By the time `Verify` runs, the property may have been changed by the service. Do NOT verify `QuantityOnHand == 0`
+after `AddStockAsync` — verify the `StockTransaction.QuantityBefore == 0` instead (it captures the value at
+the time the transaction was built, not the current stock object state).
+
 ## Areas Feature Notes (confirmed)
 - `AreaRepository.GetAllAsync` signature: `(int skip, int take, int? regionId, bool? isActive, CancellationToken)` — both filters are optional.
 - `AreaListDto.Areas` property (not `Items`) — assert as `body.GetProperty("data").GetProperty("areas")`.

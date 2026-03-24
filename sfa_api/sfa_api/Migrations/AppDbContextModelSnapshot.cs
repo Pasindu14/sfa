@@ -22,6 +22,8 @@ namespace sfa_api.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.HasSequence("grn_number_seq");
+
             modelBuilder.HasSequence("purchase_order_number_seq");
 
             modelBuilder.HasSequence("sales_invoice_import_batch_number_seq");
@@ -349,6 +351,108 @@ namespace sfa_api.Migrations
                         .IsUnique();
 
                     b.ToTable("Divisions");
+                });
+
+            modelBuilder.Entity("sfa_api.Features.GRNs.Entities.GRN", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("ConfirmedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DistributorId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("GrnNumber")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("SalesInvoiceId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdatedByUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConfirmedBy");
+
+                    b.HasIndex("DistributorId");
+
+                    b.HasIndex("GrnNumber")
+                        .IsUnique();
+
+                    b.HasIndex("SalesInvoiceId")
+                        .IsUnique();
+
+                    b.ToTable("GRNs");
+                });
+
+            modelBuilder.Entity("sfa_api.Features.GRNs.Entities.GRNItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("GrnId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GrnId");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("GRNItems");
                 });
 
             modelBuilder.Entity("sfa_api.Features.Outlets.Entities.Outlet", b =>
@@ -1128,6 +1232,100 @@ namespace sfa_api.Migrations
                     b.ToTable("SalesInvoiceItems");
                 });
 
+            modelBuilder.Entity("sfa_api.Features.Stock.Entities.DistributorStock", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("DistributorId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("LastUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("QuantityOnHand")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("DistributorId", "ProductId")
+                        .IsUnique();
+
+                    b.ToTable("DistributorStocks");
+                });
+
+            modelBuilder.Entity("sfa_api.Features.Stock.Entities.StockTransaction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Direction")
+                        .IsRequired()
+                        .HasMaxLength(5)
+                        .HasColumnType("character varying(5)");
+
+                    b.Property<int>("DistributorId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("QuantityAfter")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("QuantityBefore")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<int>("ReferenceId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ReferenceType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTime>("TransactedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("TransactedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TransactionType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DistributorId");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("TransactedBy");
+
+                    b.HasIndex("ReferenceType", "ReferenceId");
+
+                    b.ToTable("StockTransactions");
+                });
+
             modelBuilder.Entity("sfa_api.Features.Territories.Entities.Territory", b =>
                 {
                     b.Property<int>("Id")
@@ -1321,6 +1519,51 @@ namespace sfa_api.Migrations
                     b.Navigation("Territory");
                 });
 
+            modelBuilder.Entity("sfa_api.Features.GRNs.Entities.GRN", b =>
+                {
+                    b.HasOne("sfa_api.Features.Users.Entities.User", "ConfirmedByUser")
+                        .WithMany()
+                        .HasForeignKey("ConfirmedBy")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("sfa_api.Features.Distributors.Entities.Distributor", "Distributor")
+                        .WithMany()
+                        .HasForeignKey("DistributorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("sfa_api.Features.SalesInvoices.Entities.SalesInvoice", "SalesInvoice")
+                        .WithMany()
+                        .HasForeignKey("SalesInvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ConfirmedByUser");
+
+                    b.Navigation("Distributor");
+
+                    b.Navigation("SalesInvoice");
+                });
+
+            modelBuilder.Entity("sfa_api.Features.GRNs.Entities.GRNItem", b =>
+                {
+                    b.HasOne("sfa_api.Features.GRNs.Entities.GRN", "GRN")
+                        .WithMany("Items")
+                        .HasForeignKey("GrnId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("sfa_api.Features.Products.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("GRN");
+
+                    b.Navigation("Product");
+                });
+
             modelBuilder.Entity("sfa_api.Features.Outlets.Entities.Outlet", b =>
                 {
                     b.HasOne("sfa_api.Features.Routes.Entities.Route", "Route")
@@ -1494,6 +1737,52 @@ namespace sfa_api.Migrations
                     b.Navigation("SalesInvoice");
                 });
 
+            modelBuilder.Entity("sfa_api.Features.Stock.Entities.DistributorStock", b =>
+                {
+                    b.HasOne("sfa_api.Features.Distributors.Entities.Distributor", "Distributor")
+                        .WithMany()
+                        .HasForeignKey("DistributorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("sfa_api.Features.Products.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Distributor");
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("sfa_api.Features.Stock.Entities.StockTransaction", b =>
+                {
+                    b.HasOne("sfa_api.Features.Distributors.Entities.Distributor", "Distributor")
+                        .WithMany()
+                        .HasForeignKey("DistributorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("sfa_api.Features.Products.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("sfa_api.Features.Users.Entities.User", "TransactedByUser")
+                        .WithMany()
+                        .HasForeignKey("TransactedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Distributor");
+
+                    b.Navigation("Product");
+
+                    b.Navigation("TransactedByUser");
+                });
+
             modelBuilder.Entity("sfa_api.Features.Territories.Entities.Territory", b =>
                 {
                     b.HasOne("sfa_api.Features.Areas.Entities.Area", "Area")
@@ -1520,6 +1809,11 @@ namespace sfa_api.Migrations
                         .HasForeignKey("DistributorId");
 
                     b.Navigation("Distributor");
+                });
+
+            modelBuilder.Entity("sfa_api.Features.GRNs.Entities.GRN", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("sfa_api.Features.PricingStructures.Entities.PricingStructure", b =>

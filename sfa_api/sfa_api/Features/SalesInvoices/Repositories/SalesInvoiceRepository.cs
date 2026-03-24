@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using sfa_api.Features.SalesInvoices.Entities;
+using sfa_api.Features.SalesInvoices.Enums;
 using sfa_api.Infrastructure.Persistence;
 
 namespace sfa_api.Features.SalesInvoices.Repositories;
@@ -42,6 +43,43 @@ public class SalesInvoiceRepository(AppDbContext context) : ISalesInvoiceReposit
             .FirstAsync(ct);
         return result;
     }
+
+    public async Task<(List<SalesInvoice> Items, int TotalCount)> GetListAsync(
+        int page, int pageSize, string? search, string? status, CancellationToken ct = default)
+    {
+        var query = _context.SalesInvoices
+            .AsNoTracking()
+            .Include(x => x.Distributor)
+            .Include(x => x.ImportBatch)
+            .Where(x => x.IsActive);
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(x => x.VchBillNo.Contains(search) ||
+                                     x.Distributor.Name.Contains(search) ||
+                                     (x.SfaPoNumber != null && x.SfaPoNumber.Contains(search)));
+
+        if (!string.IsNullOrWhiteSpace(status) &&
+            Enum.TryParse<SalesInvoiceStatus>(status, true, out var statusEnum))
+            query = query.Where(x => x.Status == statusEnum);
+
+        var total = await query.CountAsync(ct);
+        var items = await query
+            .OrderByDescending(x => x.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        return (items, total);
+    }
+
+    public Task<SalesInvoice?> GetDetailAsync(int id, CancellationToken ct = default)
+        => _context.SalesInvoices
+            .AsNoTracking()
+            .Include(x => x.Distributor)
+            .Include(x => x.ImportBatch)
+            .Include(x => x.Items)
+                .ThenInclude(i => i.Product)
+            .FirstOrDefaultAsync(x => x.Id == id && x.IsActive, ct);
 
     public async Task AddBatchAsync(SalesInvoiceImportBatch batch, CancellationToken ct = default)
         => await _context.SalesInvoiceImportBatches.AddAsync(batch, ct);

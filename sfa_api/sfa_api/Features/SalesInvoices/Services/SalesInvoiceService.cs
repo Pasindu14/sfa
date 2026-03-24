@@ -1,4 +1,5 @@
 using System.Text.Json;
+using sfa_api.Common.Errors;
 using sfa_api.Features.SalesInvoices.DTOs;
 using sfa_api.Features.SalesInvoices.Entities;
 using sfa_api.Features.SalesInvoices.Enums;
@@ -154,5 +155,64 @@ public class SalesInvoiceService(ISalesInvoiceRepository repository) : ISalesInv
             totalAmount,
             finalStatus.ToString(),
             errors);
+    }
+
+    // ── Read ──────────────────────────────────────────────────────────────
+
+    public async Task<(List<SalesInvoiceListDto> Items, int TotalCount)> GetListAsync(
+        int page, int pageSize, string? search, string? status, CancellationToken ct = default)
+    {
+        var (invoices, total) = await _repository.GetListAsync(page, pageSize, search, status, ct);
+        var dtos = invoices.Select(inv => new SalesInvoiceListDto(
+            inv.Id,
+            inv.VchBillNo,
+            inv.BusyOrderRequestNo,
+            inv.SfaPoNumber,
+            inv.DistributorId,
+            inv.Distributor?.Name ?? string.Empty,
+            inv.InvoiceDate.ToString("yyyy-MM-dd"),
+            inv.InvoiceType.ToString(),
+            inv.TotalAmount,
+            inv.Status.ToString(),
+            inv.ImportBatch?.BatchNumber ?? string.Empty,
+            inv.CreatedAt
+        )).ToList();
+        return (dtos, total);
+    }
+
+    public async Task<SalesInvoiceDetailDto> GetDetailAsync(int id, CancellationToken ct = default)
+    {
+        var inv = await _repository.GetDetailAsync(id, ct)
+            ?? throw new NotFoundException("SalesInvoice", id);
+
+        return new SalesInvoiceDetailDto(
+            inv.Id,
+            inv.VchBillNo,
+            inv.BusyOrderRequestNo,
+            inv.SfaPoNumber,
+            inv.PurchaseOrderId,
+            inv.DistributorId,
+            inv.Distributor?.Name ?? string.Empty,
+            inv.InvoiceDate.ToString("yyyy-MM-dd"),
+            inv.InvoiceType.ToString(),
+            inv.TotalAmount,
+            inv.Status.ToString(),
+            inv.ImportBatchId,
+            inv.ImportBatch?.BatchNumber ?? string.Empty,
+            inv.CreatedAt,
+            inv.Items.OrderBy(i => i.LineNumber).Select(i => new SalesInvoiceItemDto(
+                i.Id,
+                i.ProductId,
+                i.Product?.Code ?? string.Empty,
+                i.ItemErpCode,
+                i.ItemDescription,
+                i.Quantity,
+                i.Unit,
+                i.UnitPrice,
+                i.TotalPrice,
+                i.IsFreeIssue,
+                i.LineNumber
+            )).ToList()
+        );
     }
 }

@@ -1,0 +1,27 @@
+namespace sfa_api.Features.Stock.DTOs;
+
+public record DistributorStockDto(
+    int     Id,
+    int     DistributorId,
+    string  DistributorName,
+    int     ProductId,
+    string  ProductCode,
+    string  ProductDescription,
+    decimal QuantityOnHand,
+    DateTime LastUpdatedAt
+);
+
+public record StockTransactionDto(
+    int      Id,
+    int      ProductId,
+    string   ProductCode,
+    string   TransactionType,
+    string   Direction,
+    decimal  Quantity,
+    decimal  QuantityBefore,
+    decimal  QuantityAfter,
+    string   ReferenceType,
+    int      ReferenceId,
+    DateTime TransactedAt,
+    string?  Notes
+);
