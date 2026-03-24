@@ -9,7 +9,13 @@
       "Grep(*)",
       "mcp__plugin_context7_context7__resolve-library-id",
       "mcp__plugin_context7_context7__query-docs",
-      "mcp__ide__executeCode"
+      "mcp__ide__executeCode",
+      "mcp__codebase-memory-mcp__list_projects",
+      "mcp__codebase-memory-mcp__index_repository",
+      "mcp__codebase-memory-mcp__trace_call_path",
+      "mcp__codebase-memory-mcp__search_graph",
+      "mcp__codebase-memory-mcp__query_graph",
+      "mcp__codebase-memory-mcp__get_graph_schema"
     ]
   },
   "outputStyle": "Explanatory"

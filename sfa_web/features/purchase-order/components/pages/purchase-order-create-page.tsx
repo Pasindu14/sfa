@@ -43,7 +43,8 @@ import {
 } from '@/components/ui/form'
 import { useAllActiveProducts } from '@/features/product/hooks/product.hooks'
 import { getDistributorsAction } from '@/features/distributor/actions/distributor.actions'
-import { useDefaultPricingStructure, useCreatePurchaseOrder, useSubmitPurchaseOrder } from '../../hooks/purchase-order.hooks'
+import { useProductCategoryPricings } from '@/features/product-category-pricing/hooks/product-category-pricing.hooks'
+import { useCreatePurchaseOrder, useSubmitPurchaseOrder } from '../../hooks/purchase-order.hooks'
 import {
   createPurchaseOrderSchema,
   type CreatePurchaseOrderInput,
@@ -132,7 +133,7 @@ export function PurchaseOrderCreatePage() {
   const isAdmin = session?.user?.role === 'Admin'
 
   const { data: products, isLoading: isLoadingProducts } = useAllActiveProducts()
-  const { data: pricing, isLoading: isLoadingPricing } = useDefaultPricingStructure()
+  const { data: categoryPricings = [], isLoading: isLoadingCategoryPricings } = useProductCategoryPricings()
   const { data: distributors, isLoading: isLoadingDistributors } = useDistributors()
   const router = useRouter()
   const { mutate: createOrder, isPending, fieldErrors } = useCreatePurchaseOrder()
@@ -152,30 +153,52 @@ export function PurchaseOrderCreatePage() {
     name: 'items',
   })
 
-  const isLoading = isLoadingProducts || isLoadingPricing || isLoadingDistributors
+  const watchedItems = useWatch({ control: form.control, name: 'items' })
+  const watchedDistributorId = useWatch({ control: form.control, name: 'distributorId' })
 
-  const getPricingEntry = useCallback(
-    (productId: number) => {
-      if (!pricing?.items || !productId) return null
-      return pricing.items.find((i) => i.productId === productId) ?? null
-    },
-    [pricing]
-  )
+  const isLoading = isLoadingProducts || isLoadingCategoryPricings || isLoadingDistributors
 
-  const getUnitPrice = useCallback(
+  // Derive the selected distributor's category (A/B/C/D)
+  const selectedDistributor = distributors?.find((d) => d.id === watchedDistributorId)
+  const distributorCategory = selectedDistributor?.category ?? null
+
+  // Look up the category-specific price for a product
+  const getCategoryPrice = useCallback(
     (productId: number): number => {
-      const entry = getPricingEntry(productId)
-      return entry?.dealerCasePrice ?? entry?.dealerPackPrice ?? 0
+      if (!distributorCategory || !productId) return 0
+      const row = categoryPricings.find((r) => r.productId === productId)
+      if (!row) return 0
+      const fieldMap: Record<string, keyof typeof row> = {
+        A: 'priceA', B: 'priceB', C: 'priceC', D: 'priceD',
+      }
+      return (row[fieldMap[distributorCategory]] as number) ?? 0
     },
-    [getPricingEntry]
+    [categoryPricings, distributorCategory]
   )
 
   const handleProductChange = useCallback((index: number, productId: number) => {
     form.setValue(`items.${index}.productId`, productId)
-    form.setValue(`items.${index}.unitPrice`, getUnitPrice(productId))
-  }, [form, getUnitPrice])
+    form.setValue(`items.${index}.unitPrice`, getCategoryPrice(productId))
+  }, [form, getCategoryPrice])
 
-  const watchedItems = useWatch({ control: form.control, name: "items" });
+  // When the distributor changes, re-price every already-selected item
+  const handleDistributorChange = useCallback((newDistributorId: number | null) => {
+    if (!newDistributorId) return
+    const newDist = distributors?.find((d) => d.id === newDistributorId)
+    const newCategory = newDist?.category ?? null
+    if (!newCategory) return
+    const currentItems = form.getValues('items')
+    currentItems.forEach((item, index) => {
+      if ((item.productId ?? 0) > 0) {
+        const row = categoryPricings.find((r) => r.productId === item.productId)
+        const fieldMap: Record<string, keyof NonNullable<typeof row>> = {
+          A: 'priceA', B: 'priceB', C: 'priceC', D: 'priceD',
+        }
+        const price = row ? ((row[fieldMap[newCategory]] as number) ?? 0) : 0
+        form.setValue(`items.${index}.unitPrice`, price)
+      }
+    })
+  }, [distributors, categoryPricings, form])
 
   const subtotal = watchedItems.reduce((sum, item) => {
     const line = (item.unitPrice ?? 0) * (item.quantity ?? 0)
@@ -185,13 +208,15 @@ export function PurchaseOrderCreatePage() {
   const totalCases = watchedItems.reduce(
     (sum, item) => sum + (item.quantity ?? 0),
     0,
-  );
-
-  const watchedDistributorId = useWatch({ control: form.control, name: 'distributorId' })
+  )
 
   const hasValidItem = watchedItems.some((i) => (i.productId ?? 0) > 0)
   const hasDistributor = !isAdmin || !!watchedDistributorId
-  const canSubmit = hasValidItem && hasDistributor
+  // Block submission if any selected product has no price in the distributor's category
+  const hasUnpricedItems =
+    !!watchedDistributorId &&
+    watchedItems.some((i) => (i.productId ?? 0) > 0 && getCategoryPrice(i.productId) === 0)
+  const canSubmit = hasValidItem && hasDistributor && !hasUnpricedItems
 
   const onSubmitForApproval = (data: CreatePurchaseOrderInput) => {
     createOrder(
@@ -286,9 +311,11 @@ export function PurchaseOrderCreatePage() {
                           </FormLabel>
                           <Select
                             value={field.value ? String(field.value) : ""}
-                            onValueChange={(v) =>
-                              field.onChange(v ? Number(v) : null)
-                            }
+                            onValueChange={(v) => {
+                              const newId = v ? Number(v) : null
+                              field.onChange(newId)
+                              handleDistributorChange(newId)
+                            }}
                           >
                             <FormControl>
                               <SelectTrigger className="w-full">
@@ -376,8 +403,10 @@ export function PurchaseOrderCreatePage() {
                         <CardTitle className="text-base">Order Items</CardTitle>
                         <p className="text-xs text-muted-foreground">
                           {fields.length} product
-                          {fields.length !== 1 ? "s" : ""} · prices from default
-                          price list
+                          {fields.length !== 1 ? "s" : ""} · prices from{" "}
+                          {distributorCategory
+                            ? `category ${distributorCategory} pricing`
+                            : "category pricing"}
                         </p>
                       </div>
                     </div>
@@ -509,32 +538,31 @@ export function PurchaseOrderCreatePage() {
                             )}
                           />
 
-                          {/* Unit Price — read-only, auto-filled from pricing structure */}
+                          {/* Unit Price — read-only, auto-filled from category pricing */}
                           {(() => {
-                            const pid = watchedItems[index]?.productId
-                            const entry = getPricingEntry(pid)
-                            const hasCasePrice = entry?.dealerCasePrice != null
-                            const hasPackPrice = entry?.dealerPackPrice != null
-                            const price = entry?.dealerCasePrice ?? entry?.dealerPackPrice ?? null
-                            const priceLabel = hasCasePrice ? 'Case price' : hasPackPrice ? 'Pack price' : null
-
+                            const pid = watchedItems[index]?.productId ?? 0
+                            if (!pid) return <span className="text-sm text-muted-foreground">—</span>
+                            if (!distributorCategory) return (
+                              <span className="text-xs text-muted-foreground text-right">
+                                Select distributor
+                              </span>
+                            )
+                            const price = getCategoryPrice(pid)
                             return (
                               <div className="flex flex-col items-end gap-0.5">
-                                {pid && !entry ? (
-                                  <span className="text-xs text-amber-600 font-medium">No pricing</span>
-                                ) : price != null ? (
+                                {price === 0 ? (
+                                  <span className="text-xs text-destructive font-medium">
+                                    No price (Cat {distributorCategory})
+                                  </span>
+                                ) : (
                                   <>
                                     <span className="text-sm font-medium tabular-nums text-right">
                                       {formatCurrency(price)}
                                     </span>
-                                    {priceLabel && (
-                                      <span className="text-[10px] text-muted-foreground leading-none">
-                                        {priceLabel}
-                                      </span>
-                                    )}
+                                    <span className="text-[10px] text-muted-foreground leading-none">
+                                      Cat {distributorCategory} price
+                                    </span>
                                   </>
-                                ) : (
-                                  <span className="text-sm text-muted-foreground">—</span>
                                 )}
                               </div>
                             )
@@ -642,8 +670,15 @@ export function PurchaseOrderCreatePage() {
                   </div>
                   <Separator />
                   <p className="text-xs text-muted-foreground">
-                    Prices are auto-filled from the default price list and cannot be edited.
+                    Prices are auto-filled from category pricing based on the distributor&apos;s
+                    category and cannot be edited.
                   </p>
+                  {hasUnpricedItems && (
+                    <p className="text-xs text-destructive font-medium">
+                      Some products have no price set for category {distributorCategory}. Submission is
+                      disabled until all selected items have a category price.
+                    </p>
+                  )}
                 </CardContent>
               </Card>
 
