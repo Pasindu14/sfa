@@ -45,7 +45,8 @@ public class SalesInvoiceRepository(AppDbContext context) : ISalesInvoiceReposit
     }
 
     public async Task<(List<SalesInvoice> Items, int TotalCount)> GetListAsync(
-        int page, int pageSize, string? search, string? status, CancellationToken ct = default)
+        int page, int pageSize, string? search, string? status,
+        DateOnly? date, int? distributorId, CancellationToken ct = default)
     {
         var query = _context.SalesInvoices
             .AsNoTracking()
@@ -61,6 +62,12 @@ public class SalesInvoiceRepository(AppDbContext context) : ISalesInvoiceReposit
         if (!string.IsNullOrWhiteSpace(status) &&
             Enum.TryParse<SalesInvoiceStatus>(status, true, out var statusEnum))
             query = query.Where(x => x.Status == statusEnum);
+
+        if (date.HasValue)
+            query = query.Where(x => x.InvoiceDate == date.Value);
+
+        if (distributorId.HasValue)
+            query = query.Where(x => x.DistributorId == distributorId.Value);
 
         var total = await query.CountAsync(ct);
         var items = await query

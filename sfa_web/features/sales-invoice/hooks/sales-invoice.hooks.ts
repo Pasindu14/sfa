@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import { importSalesInvoicesAction } from '../actions/sales-invoice.actions'
 import { getSalesInvoicesAction, getSalesInvoiceByIdAction } from '../actions/sales-invoice-list.actions'
-import { useImportDialog } from '../store'
+import { useImportDialog, useSalesInvoiceFilterStore } from '../store'
 import type { ImportBatchResult, ImportSalesInvoicesPayload } from '../schema/sales-invoice.schema'
 import type { SalesInvoiceListItem } from '../schema/sales-invoice-list.schema'
 
@@ -65,14 +65,19 @@ export function useSalesInvoiceDataTable(
   _caseConfig?: unknown,
   customFilters?: { status?: string },
 ) {
+  // Direct selector — no useShallow needed for a single value
+  const appliedFilters = useSalesInvoiceFilterStore((s) => s.appliedFilters)
+
   return useQuery({
-    queryKey: salesInvoiceKeys.list({ page, pageSize, search, customFilters }),
+    queryKey: salesInvoiceKeys.list({ page, pageSize, search, customFilters, appliedFilters }),
     queryFn: async () => {
       const result = await getSalesInvoicesAction(
         page,
         pageSize,
         search || undefined,
         customFilters?.status || undefined,
+        appliedFilters?.date,
+        appliedFilters?.distributorId ?? undefined,
       )
       if (!result.success) throw new Error(result.error)
       const { invoices, totalCount, page: p, pageSize: ps } = result.data
@@ -87,7 +92,8 @@ export function useSalesInvoiceDataTable(
         },
       }
     },
-    placeholderData: keepPreviousData,
+    // No keepPreviousData — we want the table to show a fresh loading state
+    // when the user changes date/distributor and clicks Reload, not stale rows.
   })
 }
 

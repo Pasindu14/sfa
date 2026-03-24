@@ -7,6 +7,8 @@ namespace sfa_api.Features.SalesInvoices.Services;
 public interface ISalesInvoiceService
 {
     Task<ImportBatchResultDto> ImportAsync(ImportSalesInvoicesRequest request, int callerId, CancellationToken ct = default);
-    Task<(List<SalesInvoiceListDto> Items, int TotalCount)> GetListAsync(int page, int pageSize, string? search, string? status, CancellationToken ct = default);
+    Task<(List<SalesInvoiceListDto> Items, int TotalCount)> GetListAsync(
+        int page, int pageSize, string? search, string? status,
+        DateOnly? date, int? distributorId, CancellationToken ct = default);
     Task<SalesInvoiceDetailDto> GetDetailAsync(int id, CancellationToken ct = default);
 }

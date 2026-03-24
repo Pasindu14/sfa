@@ -35,10 +35,14 @@ public class SalesInvoicesController(
         [FromQuery] int pageSize = 20,
         [FromQuery] string? search = null,
         [FromQuery] string? status = null,
+        [FromQuery] string? date = null,
+        [FromQuery] int? distributorId = null,
         CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
-        var (items, total) = await _salesInvoiceService.GetListAsync(page, pageSize, search, status, ct);
+        DateOnly? parsedDate = DateOnly.TryParse(date, out var d) ? d : null;
+        var (items, total) = await _salesInvoiceService.GetListAsync(
+            page, pageSize, search, status, parsedDate, distributorId, ct);
         return Ok(ResponseHelper.Paged(items, page, pageSize, total, correlationId));
     }
 

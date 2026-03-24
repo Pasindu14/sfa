@@ -3,6 +3,7 @@
 import { create } from 'zustand'
 import { useShallow } from 'zustand/react/shallow'
 import { useSalesInvoiceDialogStore } from './sales-invoice.dialog-store'
+import { useSalesInvoiceFilterStore } from './sales-invoice.filter-store'
 
 // ── Import dialog (kept as-is — used by SalesInvoiceImportDialog) ─────────
 
@@ -24,7 +25,7 @@ export function useImportDialog() {
   )
 }
 
-// ── Detail drawer ─────────────────────────────────────────────────────────
+// ── Detail dialog ─────────────────────────────────────────────────────────
 
 export { useSalesInvoiceDialogStore }
 
@@ -35,5 +36,22 @@ export const useDetailDialog = () =>
       selectedId: s.selectedSalesInvoiceId,
       open: s.openDetail,
       close: s.closeDetail,
+    }))
+  )
+
+// ── Filter store ───────────────────────────────────────────────────────────
+
+export { useSalesInvoiceFilterStore }
+
+export const useSalesInvoiceFilters = () =>
+  useSalesInvoiceFilterStore(
+    useShallow((s) => ({
+      date: s.date,
+      distributorId: s.distributorId,
+      appliedFilters: s.appliedFilters,
+      setDate: s.setDate,
+      setDistributorId: s.setDistributorId,
+      applyFilters: s.applyFilters,
+      reset: s.reset,
     }))
   )
