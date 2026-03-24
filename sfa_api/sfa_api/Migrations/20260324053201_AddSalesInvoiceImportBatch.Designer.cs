@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using sfa_api.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using sfa_api.Infrastructure.Persistence;
 namespace sfa_api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260324053201_AddSalesInvoiceImportBatch")]
+    partial class AddSalesInvoiceImportBatch
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -927,87 +930,6 @@ namespace sfa_api.Migrations
                     b.ToTable("Routes");
                 });
 
-            modelBuilder.Entity("sfa_api.Features.SalesInvoices.Entities.SalesInvoice", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("BusyOrderRequestNo")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int?>("CreatedBy")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("DistributorId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ImportBatchId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateOnly>("InvoiceDate")
-                        .HasColumnType("date");
-
-                    b.Property<string>("InvoiceType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<int?>("PurchaseOrderId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("SfaPoNumber")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<decimal>("TotalAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int?>("UpdatedBy")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("VchBillNo")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DistributorId");
-
-                    b.HasIndex("ImportBatchId");
-
-                    b.HasIndex("InvoiceDate");
-
-                    b.HasIndex("PurchaseOrderId");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("VchBillNo")
-                        .IsUnique();
-
-                    b.ToTable("SalesInvoices");
-                });
-
             modelBuilder.Entity("sfa_api.Features.SalesInvoices.Entities.SalesInvoiceImportBatch", b =>
                 {
                     b.Property<int>("Id")
@@ -1073,59 +995,6 @@ namespace sfa_api.Migrations
                     b.HasIndex("Status");
 
                     b.ToTable("SalesInvoiceImportBatches");
-                });
-
-            modelBuilder.Entity("sfa_api.Features.SalesInvoices.Entities.SalesInvoiceItem", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("IsFreeIssue")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("ItemDescription")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("ItemErpCode")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<int>("LineNumber")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ProductId")
-                        .HasColumnType("integer");
-
-                    b.Property<decimal>("Quantity")
-                        .HasColumnType("decimal(18,4)");
-
-                    b.Property<int>("SalesInvoiceId")
-                        .HasColumnType("integer");
-
-                    b.Property<decimal>("TotalPrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Unit")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<decimal>("UnitPrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProductId");
-
-                    b.HasIndex("SalesInvoiceId");
-
-                    b.ToTable("SalesInvoiceItems");
                 });
 
             modelBuilder.Entity("sfa_api.Features.Territories.Entities.Territory", b =>
@@ -1438,32 +1307,6 @@ namespace sfa_api.Migrations
                     b.Navigation("Territory");
                 });
 
-            modelBuilder.Entity("sfa_api.Features.SalesInvoices.Entities.SalesInvoice", b =>
-                {
-                    b.HasOne("sfa_api.Features.Distributors.Entities.Distributor", "Distributor")
-                        .WithMany()
-                        .HasForeignKey("DistributorId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("sfa_api.Features.SalesInvoices.Entities.SalesInvoiceImportBatch", "ImportBatch")
-                        .WithMany()
-                        .HasForeignKey("ImportBatchId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("sfa_api.Features.PurchaseOrders.Entities.PurchaseOrder", "PurchaseOrder")
-                        .WithMany()
-                        .HasForeignKey("PurchaseOrderId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Distributor");
-
-                    b.Navigation("ImportBatch");
-
-                    b.Navigation("PurchaseOrder");
-                });
-
             modelBuilder.Entity("sfa_api.Features.SalesInvoices.Entities.SalesInvoiceImportBatch", b =>
                 {
                     b.HasOne("sfa_api.Features.Users.Entities.User", "Importer")
@@ -1473,25 +1316,6 @@ namespace sfa_api.Migrations
                         .IsRequired();
 
                     b.Navigation("Importer");
-                });
-
-            modelBuilder.Entity("sfa_api.Features.SalesInvoices.Entities.SalesInvoiceItem", b =>
-                {
-                    b.HasOne("sfa_api.Features.Products.Entities.Product", "Product")
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("sfa_api.Features.SalesInvoices.Entities.SalesInvoice", "SalesInvoice")
-                        .WithMany("Items")
-                        .HasForeignKey("SalesInvoiceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Product");
-
-                    b.Navigation("SalesInvoice");
                 });
 
             modelBuilder.Entity("sfa_api.Features.Territories.Entities.Territory", b =>
@@ -1531,11 +1355,6 @@ namespace sfa_api.Migrations
                 {
                     b.Navigation("History");
 
-                    b.Navigation("Items");
-                });
-
-            modelBuilder.Entity("sfa_api.Features.SalesInvoices.Entities.SalesInvoice", b =>
-                {
                     b.Navigation("Items");
                 });
 

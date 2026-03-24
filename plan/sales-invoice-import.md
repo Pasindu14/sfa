@@ -20,9 +20,9 @@ Source file format: `UGB_ListofSalesVouchers510.xlsx`
 | 2 | Vch/Bill No | BUSY invoice number — **idempotency key** | `BIS/25/4752` |
 | 3 | BUSY Order Request | BUSY internal order ref | `SOR-26-00010` |
 | 4 | SFA PO | SFA purchase order number | `PO-2026-00001` |
-| 5 | Alias | BUSY distributor numeric code | `350032` |
+| 5 | Alias | BUSY distributor numeric code → maps directly to `Distributor.Alias` | `350032` |
 | 6 | Party Name | Distributor name (display only) | `UGB DISTRIBUTORS` |
-| 7 | Item Alias | BUSY product code | `CF01` |
+| 7 | Item Alias | BUSY product code → maps to `Product.Code` | `CF01` |
 | 8 | Item Description | Product name | `CLOUD 9 FRESH MINT 20S X 60P` |
 | 9 | QTY | Quantity | `200` |
 | 10 | Unit | Unit of measure | `CTN` |
@@ -50,11 +50,10 @@ Source file format: `UGB_ListofSalesVouchers510.xlsx`
 
 | SFA Entity | ERP Bridge Field | Notes |
 |---|---|---|
-| `Distributor` | `Alias` (int, already exists) | BUSY numeric code e.g. `350032` |
-| `Product` | `ErpCode` (string, **add this**) | BUSY item alias e.g. `CF01` |
+| `Distributor` | `Alias` (int, already exists) | Excel col 5 "Alias" = `Distributor.Alias` — same name, same value, direct match |
+| `Product` | `Code` (string, already exists) | Excel col 7 "Item Alias" — BUSY product code e.g. `CF01` |
 
-`Distributor.Alias` is already an `int` field on the entity — no migration needed.
-`Product.ErpCode` must be added as `string?`, nullable, unique index.
+Both fields already exist — no migration needed for ERP code resolution.
 
 ---
 
@@ -83,16 +82,7 @@ StockTransactions          ←─ immutable append-only ledger (never updated)
 
 ### Modified Entities
 
-#### `Product` — add `ErpCode`
-
-```csharp
-public string? ErpCode { get; set; }  // BUSY item alias e.g. "CF01" — nullable, unique
-```
-
-AppDbContext:
-```csharp
-e.HasIndex(x => x.ErpCode).IsUnique().HasFilter("\"ErpCode\" IS NOT NULL");
-```
+No entity modifications required — `Product.Code` and `Distributor.Alias` already serve as ERP bridge fields.
 
 ---
 
@@ -401,36 +391,33 @@ Body: `{ receivedAt: "2025-01-20T10:00:00Z", notes?: "..." }`
 ## Implementation Order
 
 ```
-Step 1   Product.ErpCode — add field + migration
-         (prerequisite for all product resolution logic)
+Step 1   SalesInvoiceImportBatch entity + migration
 
-Step 2   SalesInvoiceImportBatch entity + migration
+Step 2   SalesInvoice + SalesInvoiceItem entities + migration
 
-Step 3   SalesInvoice + SalesInvoiceItem entities + migration
+Step 3   GRN + GRNItem entities + migration
 
-Step 4   GRN + GRNItem entities + migration
+Step 4   DistributorStock + StockTransaction entities + migration
 
-Step 5   DistributorStock + StockTransaction entities + migration
-
-Step 6   .NET API — SalesInvoices import feature
+Step 5   .NET API — SalesInvoices import feature
          (ImportController, ImportService, ImportRepository)
 
-Step 7   .NET API — GRNs feature
+Step 6   .NET API — GRNs feature
          (create endpoint + confirm endpoint)
 
-Step 8   .NET API — Stock update logic
+Step 7   .NET API — Stock update logic
          (inside GRN confirm service method)
 
-Step 9   Next.js — SheetJS Server Action
+Step 8   Next.js — SheetJS Server Action
          (parse sparse Excel, build payload, POST to API)
 
-Step 10  Next.js — Import dialog + batch result UI
+Step 9   Next.js — Import dialog + batch result UI
 
-Step 11  Next.js — SalesInvoice list page + detail drawer
+Step 10  Next.js — SalesInvoice list page + detail drawer
 
-Step 12  Next.js — GRN list + confirm flow
+Step 11  Next.js — GRN list + confirm flow
 
-Step 13  Next.js — Stock dashboard per distributor
+Step 12  Next.js — Stock dashboard per distributor
 ```
 
 ---

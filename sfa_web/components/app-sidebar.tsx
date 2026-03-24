@@ -77,6 +77,10 @@ const data = {
           title: "Purchase Orders",
           url: "/purchase-orders",
         },
+        {
+          title: "Sales Invoices",
+          url: "/sales-invoices",
+        },
       ],
     },
     {

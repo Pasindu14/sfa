@@ -11,6 +11,8 @@ using sfa_api.Features.ProductCategoryPricings.Entities;
 using sfa_api.Features.PricingStructures.Entities;
 using sfa_api.Features.Products.Entities;
 using sfa_api.Features.PurchaseOrders.Entities;
+using sfa_api.Features.SalesInvoices.Entities;
+using sfa_api.Features.SalesInvoices.Enums;
 using sfa_api.Features.Users.Entities;
 using RouteEntity = sfa_api.Features.Routes.Entities.Route;
 
@@ -40,6 +42,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
     public DbSet<PurchaseOrderItem> PurchaseOrderItems => Set<PurchaseOrderItem>();
     public DbSet<PurchaseOrderHistory> PurchaseOrderHistories => Set<PurchaseOrderHistory>();
+    public DbSet<SalesInvoiceImportBatch> SalesInvoiceImportBatches => Set<SalesInvoiceImportBatch>();
+    public DbSet<SalesInvoice> SalesInvoices => Set<SalesInvoice>();
+    public DbSet<SalesInvoiceItem> SalesInvoiceItems => Set<SalesInvoiceItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -318,6 +323,85 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.ToStatus).HasConversion<string?>();
             e.HasIndex(x => x.PurchaseOrderId);
             e.HasIndex(x => x.PerformedAt);
+        });
+
+        // SalesInvoiceImportBatch sequence (used to generate batch numbers)
+        modelBuilder.HasSequence<long>("sales_invoice_import_batch_number_seq").StartsAt(1).IncrementsBy(1);
+
+        // SalesInvoiceImportBatch
+        modelBuilder.Entity<SalesInvoiceImportBatch>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.Property(x => x.BatchNumber).IsRequired().HasMaxLength(20);
+            e.HasIndex(x => x.BatchNumber).IsUnique();
+            e.Property(x => x.FileName).IsRequired().HasMaxLength(500);
+            e.Property(x => x.TotalAmount).HasColumnType("decimal(18,2)");
+            e.Property(x => x.Status).HasConversion<string>();
+            e.Property(x => x.ErrorSummary).HasColumnType("text");
+            e.Property(x => x.Notes).HasMaxLength(1000);
+            e.HasIndex(x => x.ImportedBy);
+            e.HasIndex(x => x.ImportedAt);
+            e.HasIndex(x => x.Status);
+            e.HasOne(x => x.Importer)
+             .WithMany()
+             .HasForeignKey(x => x.ImportedBy)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // SalesInvoice
+        modelBuilder.Entity<SalesInvoice>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.Property(x => x.VchBillNo).IsRequired().HasMaxLength(50);
+            e.HasIndex(x => x.VchBillNo).IsUnique();
+            e.Property(x => x.BusyOrderRequestNo).HasMaxLength(50);
+            e.Property(x => x.SfaPoNumber).HasMaxLength(50);
+            e.Property(x => x.TotalAmount).HasColumnType("decimal(18,2)");
+            e.Property(x => x.InvoiceType).HasConversion<string>();
+            e.Property(x => x.Status).HasConversion<string>();
+            e.Property(x => x.Notes).HasMaxLength(1000);
+            e.HasIndex(x => x.DistributorId);
+            e.HasIndex(x => x.ImportBatchId);
+            e.HasIndex(x => x.PurchaseOrderId);
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.InvoiceDate);
+            e.HasOne(x => x.Distributor)
+             .WithMany()
+             .HasForeignKey(x => x.DistributorId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.PurchaseOrder)
+             .WithMany()
+             .HasForeignKey(x => x.PurchaseOrderId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.ImportBatch)
+             .WithMany()
+             .HasForeignKey(x => x.ImportBatchId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasMany(x => x.Items)
+             .WithOne(i => i.SalesInvoice)
+             .HasForeignKey(i => i.SalesInvoiceId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // SalesInvoiceItem
+        modelBuilder.Entity<SalesInvoiceItem>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.Property(x => x.ItemErpCode).IsRequired().HasMaxLength(50);
+            e.Property(x => x.ItemDescription).IsRequired().HasMaxLength(500);
+            e.Property(x => x.Quantity).HasColumnType("decimal(18,4)");
+            e.Property(x => x.Unit).IsRequired().HasMaxLength(20);
+            e.Property(x => x.UnitPrice).HasColumnType("decimal(18,2)");
+            e.Property(x => x.TotalPrice).HasColumnType("decimal(18,2)");
+            e.HasIndex(x => x.SalesInvoiceId);
+            e.HasOne(x => x.Product)
+             .WithMany()
+             .HasForeignKey(x => x.ProductId)
+             .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
