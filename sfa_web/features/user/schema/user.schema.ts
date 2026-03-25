@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const roleEnum = z.enum(['Admin', 'SalesRep', 'Manager', 'Distributor'])
+export const roleEnum = z.enum(['Admin', 'NSM', 'RSM', 'ASM', 'Supervisor', 'SalesRep', 'Distributor'])
 
 const passwordRules = z
   .string()
@@ -83,7 +83,7 @@ export type UserDto = {
   username: string
   email: string
   phone: string
-  role: 'Admin' | 'SalesRep' | 'Manager' | 'Distributor'
+  role: 'Admin' | 'NSM' | 'RSM' | 'ASM' | 'Supervisor' | 'SalesRep' | 'Distributor'
   distributorId?: number
   distributorName?: string
   deviceId?: string

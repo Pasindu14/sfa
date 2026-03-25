@@ -238,7 +238,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.Code).IsUnique();
             e.HasIndex(x => x.IsActive);
             e.HasIndex(x => x.UpdatedAt);
-            e.HasQueryFilter(x => x.IsActive);
+            // NOTE: No HasQueryFilter — repositories use IgnoreQueryFilters() throughout and
+            // filter IsActive explicitly. A global filter here causes EF warnings because
+            // GRNItem, PurchaseOrderItem, SalesInvoiceItem, DistributorStock, StockTransaction
+            // all have required FKs to Product.
         });
 
         // ProductCategoryPrice
@@ -261,7 +264,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.Name).IsUnique();
             e.HasIndex(x => x.IsActive);
             e.HasIndex(x => x.IsDefault);
-            e.HasQueryFilter(x => x.IsActive);
+            // NOTE: No HasQueryFilter — repositories use IgnoreQueryFilters() throughout and
+            // filter IsActive explicitly. A global filter here causes EF warnings because
+            // PricingStructureItem has a required FK to PricingStructure.
         });
 
         // PricingStructureItem

@@ -45,6 +45,10 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
 
     public async Task<GrnDto> CreateAsync(CreateGrnRequest request, int callerId, CancellationToken ct = default)
     {
+        // 0. Prevent two concurrent GRN creates for the same invoice
+        await using var advisoryLock = await _lockService.AcquireAsync($"grn:create:{request.SalesInvoiceId}", ct)
+            ?? throw new ConcurrencyConflictException(new { salesInvoiceId = request.SalesInvoiceId, message = "Another GRN creation is already in progress for this invoice." });
+
         // 1. Load invoice + items
         var invoice = await _repository.GetSalesInvoiceWithItemsAsync(request.SalesInvoiceId, ct)
             ?? throw new NotFoundException("SalesInvoice", request.SalesInvoiceId);

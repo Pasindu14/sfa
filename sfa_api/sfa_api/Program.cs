@@ -68,8 +68,10 @@ try
     // ── JWT Revocation ────────────────────────────────────────────────────
     builder.Services.AddScoped<ITokenRevocationService, PostgresTokenRevocationService>();
 
-    // ── Distributed Locking ───────────────────────────────────────────────
-    builder.Services.AddSingleton<IDistributedLockService, PostgresAdvisoryLockService>();
+    // ── Distributed Locking (Redis / Upstash Redlock) ─────────────────────
+    builder.Services.AddSingleton<RedLockNet.IDistributedLockFactory>(
+        _ => RedisDistributedLockService.CreateFactory(builder.Configuration));
+    builder.Services.AddSingleton<IDistributedLockService, RedisDistributedLockService>();
 
     // ── Auth ──────────────────────────────────────────────────────────────
     builder.Services.AddJwtAuthentication(builder.Configuration);

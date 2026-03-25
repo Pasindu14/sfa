@@ -150,8 +150,11 @@ export function UserForm({
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="Admin">Admin</SelectItem>
-                  <SelectItem value="SalesRep">Sales Rep</SelectItem>
-                  <SelectItem value="Manager">Manager</SelectItem>
+                  <SelectItem value="NSM">NSM (Head of Sales)</SelectItem>
+                  <SelectItem value="RSM">RSM (Regional Sales Manager)</SelectItem>
+                  <SelectItem value="ASM">ASM (Area Sales Manager)</SelectItem>
+                  <SelectItem value="Supervisor">Supervisor (Manager)</SelectItem>
+                  <SelectItem value="SalesRep">Sales Rep (Rep)</SelectItem>
                   <SelectItem value="Distributor">Distributor</SelectItem>
                 </SelectContent>
               </Select>

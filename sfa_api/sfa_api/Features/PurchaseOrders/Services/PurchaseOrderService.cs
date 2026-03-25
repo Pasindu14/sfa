@@ -7,6 +7,7 @@ using sfa_api.Features.PurchaseOrders.Repositories;
 using sfa_api.Features.PurchaseOrders.Requests;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Features.Users.Repositories;
+using sfa_api.Infrastructure.Locking;
 using sfa_api.Infrastructure.Persistence;
 
 namespace sfa_api.Features.PurchaseOrders.Services;
@@ -15,11 +16,13 @@ public class PurchaseOrderService(
     IPurchaseOrderRepository repo,
     IUserRepository userRepo,
     AppDbContext context,
+    IDistributedLockService lockService,
     ILogger<PurchaseOrderService> logger) : IPurchaseOrderService
 {
     private readonly IPurchaseOrderRepository _repo = repo;
     private readonly IUserRepository _userRepo = userRepo;
     private readonly AppDbContext _context = context;
+    private readonly IDistributedLockService _lockService = lockService;
     private readonly ILogger<PurchaseOrderService> _logger = logger;
 
     public async Task<PurchaseOrderDto> GetByIdAsync(int id, int callerId, UserRole callerRole, CancellationToken ct = default)
@@ -164,7 +167,7 @@ public class PurchaseOrderService(
         {
             UserRole.Distributor => new[] { PurchaseOrderStatus.Draft },
             UserRole.SalesRep    => new[] { PurchaseOrderStatus.PendingRepApproval },
-            UserRole.Manager     => new[] { PurchaseOrderStatus.PendingManagerApproval },
+            UserRole.Supervisor     => new[] { PurchaseOrderStatus.PendingManagerApproval },
             UserRole.Admin       => new[] { PurchaseOrderStatus.Draft, PurchaseOrderStatus.PendingRepApproval, PurchaseOrderStatus.PendingManagerApproval },
             _                    => Array.Empty<PurchaseOrderStatus>()
         };
@@ -235,6 +238,9 @@ public class PurchaseOrderService(
 
     public async Task<PurchaseOrderDto> SubmitAsync(int id, int callerId, UserRole callerRole, CancellationToken ct = default)
     {
+        await using var @lock = await _lockService.AcquireAsync($"po:transition:{id}", ct)
+            ?? throw new ConcurrencyConflictException(new { orderId = id, message = "Another operation is already in progress for this purchase order." });
+
         if (callerRole != UserRole.Distributor && callerRole != UserRole.Admin)
             throw new AuthorizationException("submit purchase orders");
 
@@ -283,6 +289,9 @@ public class PurchaseOrderService(
 
     public async Task<PurchaseOrderDto> RepApproveAsync(int id, int callerId, UserRole callerRole, CancellationToken ct = default)
     {
+        await using var @lock = await _lockService.AcquireAsync($"po:transition:{id}", ct)
+            ?? throw new ConcurrencyConflictException(new { orderId = id, message = "Another operation is already in progress for this purchase order." });
+
         if (callerRole != UserRole.SalesRep && callerRole != UserRole.Admin)
             throw new AuthorizationException("rep-approve purchase orders");
 
@@ -323,7 +332,10 @@ public class PurchaseOrderService(
 
     public async Task<PurchaseOrderDto> ApproveAsync(int id, int callerId, UserRole callerRole, CancellationToken ct = default)
     {
-        if (callerRole != UserRole.Manager && callerRole != UserRole.Admin)
+        await using var @lock = await _lockService.AcquireAsync($"po:transition:{id}", ct)
+            ?? throw new ConcurrencyConflictException(new { orderId = id, message = "Another operation is already in progress for this purchase order." });
+
+        if (callerRole != UserRole.Supervisor && callerRole != UserRole.Admin)
             throw new AuthorizationException("approve purchase orders");
 
         var order = await _repo.GetByIdWithItemsAsync(id, ct)
@@ -363,6 +375,9 @@ public class PurchaseOrderService(
 
     public async Task<PurchaseOrderDto> RejectAsync(int id, RejectPurchaseOrderRequest request, int callerId, UserRole callerRole, CancellationToken ct = default)
     {
+        await using var @lock = await _lockService.AcquireAsync($"po:transition:{id}", ct)
+            ?? throw new ConcurrencyConflictException(new { orderId = id, message = "Another operation is already in progress for this purchase order." });
+
         var order = await _repo.GetByIdWithItemsAsync(id, ct)
             ?? throw new NotFoundException("PurchaseOrder", id);
 
@@ -372,7 +387,7 @@ public class PurchaseOrderService(
             throw new AuthorizationException("reject orders at this stage (SalesRep or Admin only)");
 
         if (order.Status == PurchaseOrderStatus.PendingManagerApproval
-            && callerRole != UserRole.Manager && callerRole != UserRole.Admin)
+            && callerRole != UserRole.Supervisor && callerRole != UserRole.Admin)
             throw new AuthorizationException("reject orders at this stage (Manager or Admin only)");
 
         if (order.Status != PurchaseOrderStatus.PendingRepApproval
@@ -410,6 +425,9 @@ public class PurchaseOrderService(
 
     public async Task<PurchaseOrderDto> AcknowledgeAsync(int id, int callerId, UserRole callerRole, CancellationToken ct = default)
     {
+        await using var @lock = await _lockService.AcquireAsync($"po:transition:{id}", ct)
+            ?? throw new ConcurrencyConflictException(new { orderId = id, message = "Another operation is already in progress for this purchase order." });
+
         if (callerRole != UserRole.Distributor && callerRole != UserRole.Admin)
             throw new AuthorizationException("acknowledge purchase order rejections");
 
@@ -461,6 +479,9 @@ public class PurchaseOrderService(
 
     public async Task<PurchaseOrderDto> FinalizeAsync(int id, int callerId, UserRole callerRole, CancellationToken ct = default)
     {
+        await using var @lock = await _lockService.AcquireAsync($"po:transition:{id}", ct)
+            ?? throw new ConcurrencyConflictException(new { orderId = id, message = "Another operation is already in progress for this purchase order." });
+
         if (callerRole != UserRole.Distributor && callerRole != UserRole.Admin)
             throw new AuthorizationException("finalize purchase orders");
 
@@ -509,6 +530,9 @@ public class PurchaseOrderService(
 
     public async Task<PurchaseOrderDto> CancelAsync(int id, RejectPurchaseOrderRequest request, int callerId, UserRole callerRole, CancellationToken ct = default)
     {
+        await using var @lock = await _lockService.AcquireAsync($"po:transition:{id}", ct)
+            ?? throw new ConcurrencyConflictException(new { orderId = id, message = "Another operation is already in progress for this purchase order." });
+
         var order = await _repo.GetByIdWithItemsAsync(id, ct)
             ?? throw new NotFoundException("PurchaseOrder", id);
 

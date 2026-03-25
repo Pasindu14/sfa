@@ -2,7 +2,11 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using sfa_api.Common.Errors;
+using sfa_api.Features.Areas.Repositories;
 using sfa_api.Features.Distributors.Repositories;
+using sfa_api.Features.Divisions.Repositories;
+using sfa_api.Features.Regions.Repositories;
+using sfa_api.Features.Territories.Repositories;
 using sfa_api.Features.Users.DTOs;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Features.Users.Repositories;
@@ -21,7 +25,14 @@ public class UserServiceTests
     {
         _repoMock = new Mock<IUserRepository>();
         _distributorRepoMock = new Mock<IDistributorRepository>();
-        _sut = new UserService(_repoMock.Object, _distributorRepoMock.Object, NullLogger<UserService>.Instance);
+        _sut = new UserService(
+            _repoMock.Object,
+            _distributorRepoMock.Object,
+            new Mock<IRegionRepository>().Object,
+            new Mock<IAreaRepository>().Object,
+            new Mock<ITerritoryRepository>().Object,
+            new Mock<IDivisionRepository>().Object,
+            NullLogger<UserService>.Instance);
     }
 
     private static User CreateFakeUser(int id = 1, string role = "Admin") => new()

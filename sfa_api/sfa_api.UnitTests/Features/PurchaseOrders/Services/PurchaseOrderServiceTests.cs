@@ -10,6 +10,7 @@ using sfa_api.Features.PurchaseOrders.Requests;
 using sfa_api.Features.PurchaseOrders.Services;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Features.Users.Repositories;
+using sfa_api.Infrastructure.Locking;
 using sfa_api.Infrastructure.Persistence;
 
 namespace sfa_api.UnitTests.Features.PurchaseOrders.Services;
@@ -18,6 +19,7 @@ public class PurchaseOrderServiceTests
 {
     private readonly Mock<IPurchaseOrderRepository> _repoMock;
     private readonly Mock<IUserRepository> _userRepoMock;
+    private readonly Mock<IDistributedLockService> _lockMock;
     private readonly AppDbContext _dbContext;
     private readonly PurchaseOrderService _sut;
 
@@ -25,6 +27,12 @@ public class PurchaseOrderServiceTests
     {
         _repoMock = new Mock<IPurchaseOrderRepository>();
         _userRepoMock = new Mock<IUserRepository>();
+
+        // Always grant the lock — unit tests don't test locking behaviour
+        _lockMock = new Mock<IDistributedLockService>();
+        _lockMock
+            .Setup(l => l.AcquireAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Mock<IAsyncDisposable>().Object);
 
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseSqlite("DataSource=:memory:")
@@ -37,6 +45,7 @@ public class PurchaseOrderServiceTests
             _repoMock.Object,
             _userRepoMock.Object,
             _dbContext,
+            _lockMock.Object,
             NullLogger<PurchaseOrderService>.Instance);
     }
 

@@ -28,8 +28,9 @@ public sealed class TestSalesInvoiceRepository(ISalesInvoiceRepository inner) : 
         => inner.GetExistingVchBillNosAsync(ct);
 
     public Task<(List<SalesInvoice> Items, int TotalCount)> GetListAsync(
-        int page, int pageSize, string? search, string? status, CancellationToken ct = default)
-        => inner.GetListAsync(page, pageSize, search, status, ct);
+        int page, int pageSize, string? search, string? status,
+        DateOnly? date, int? distributorId, CancellationToken ct = default)
+        => inner.GetListAsync(page, pageSize, search, status, date, distributorId, ct);
 
     public Task<SalesInvoice?> GetDetailAsync(int id, CancellationToken ct = default)
         => inner.GetDetailAsync(id, ct);
