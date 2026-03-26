@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using sfa_api.Features.PurchaseOrders.Enums;
 using sfa_api.Features.SalesInvoices.Entities;
 using sfa_api.Features.SalesInvoices.Enums;
 using sfa_api.Infrastructure.Persistence;
@@ -22,10 +23,10 @@ public class SalesInvoiceRepository(AppDbContext context) : ISalesInvoiceReposit
             .Where(p => p.Code != null)
             .ToDictionaryAsync(p => p.Code!, p => p.Id, ct);
 
-    public async Task<Dictionary<string, int>> GetPurchaseOrderNumberDictionaryAsync(CancellationToken ct = default)
+    public async Task<Dictionary<string, (int Id, PurchaseOrderStatus Status)>> GetPurchaseOrderNumberDictionaryAsync(CancellationToken ct = default)
         => await _context.PurchaseOrders
             .AsNoTracking()
-            .ToDictionaryAsync(po => po.OrderNumber, po => po.Id, ct);
+            .ToDictionaryAsync(po => po.OrderNumber, po => (po.Id, po.Status), ct);
 
     public async Task<HashSet<string>> GetExistingVchBillNosAsync(CancellationToken ct = default)
     {

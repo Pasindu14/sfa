@@ -260,6 +260,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .HasForeignKey(x => x.RegionId)
              .IsRequired(false)
              .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Route)
+             .WithMany()
+             .HasForeignKey(x => x.RouteId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => x.RouteId);
         });
 
         // Route

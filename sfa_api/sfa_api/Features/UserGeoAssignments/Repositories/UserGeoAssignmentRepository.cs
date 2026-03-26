@@ -4,6 +4,7 @@ using sfa_api.Features.UserGeoAssignments.Entities;
 using sfa_api.Features.UserReportingLines.Entities;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Infrastructure.Persistence;
+using RouteEntity = sfa_api.Features.Routes.Entities.Route;
 
 namespace sfa_api.Features.UserGeoAssignments.Repositories;
 
@@ -18,6 +19,7 @@ public class UserGeoAssignmentRepository(AppDbContext context) : IUserGeoAssignm
             .Include(g => g.Territory)
             .Include(g => g.Area)
             .Include(g => g.Region)
+            .Include(g => g.Route)
             .FirstOrDefaultAsync(g => g.Id == id, ct);
 
     public async Task<UserGeoAssignment?> GetActiveByUserIdAsync(int userId, CancellationToken ct = default)
@@ -30,6 +32,10 @@ public class UserGeoAssignmentRepository(AppDbContext context) : IUserGeoAssignm
         string? search = null,
         string? role = null,
         int? regionId = null,
+        int? areaId = null,
+        int? territoryId = null,
+        int? divisionId = null,
+        int? routeId = null,
         bool? isActive = null,
         CancellationToken ct = default)
     {
@@ -41,6 +47,7 @@ public class UserGeoAssignmentRepository(AppDbContext context) : IUserGeoAssignm
             .Include(g => g.Territory)
             .Include(g => g.Area)
             .Include(g => g.Region)
+            .Include(g => g.Route)
             .AsQueryable();
 
         if (isActive.HasValue)
@@ -54,6 +61,18 @@ public class UserGeoAssignmentRepository(AppDbContext context) : IUserGeoAssignm
 
         if (regionId.HasValue)
             query = query.Where(g => g.RegionId == regionId.Value);
+
+        if (areaId.HasValue)
+            query = query.Where(g => g.AreaId == areaId.Value);
+
+        if (territoryId.HasValue)
+            query = query.Where(g => g.TerritoryId == territoryId.Value);
+
+        if (divisionId.HasValue)
+            query = query.Where(g => g.DivisionId == divisionId.Value);
+
+        if (routeId.HasValue)
+            query = query.Where(g => g.RouteId == routeId.Value);
 
         var total = await query.CountAsync(ct);
         var items = await query
@@ -102,6 +121,16 @@ public class UserGeoAssignmentRepository(AppDbContext context) : IUserGeoAssignm
             .Include(d => d.Region)
             .IgnoreQueryFilters()                        // load even if division is inactive
             .FirstOrDefaultAsync(d => d.Id == divisionId, ct);
+
+    public async Task<IEnumerable<RouteEntity>> GetActiveRoutesByDivisionIdAsync(int divisionId, CancellationToken ct = default)
+        => await _context.Routes
+            .Where(r => r.IsActive && r.DivisionId == divisionId)
+            .AsNoTracking()
+            .OrderBy(r => r.Name)
+            .ToListAsync(ct);
+
+    public async Task<bool> RouteExistsAsync(int routeId, CancellationToken ct = default)
+        => await _context.Routes.AnyAsync(r => r.Id == routeId && r.IsActive, ct);
 
     public async Task<bool> UserExistsAsync(int userId, CancellationToken ct = default)
         => await _context.Users.AnyAsync(u => u.Id == userId && !u.IsDeleted, ct);

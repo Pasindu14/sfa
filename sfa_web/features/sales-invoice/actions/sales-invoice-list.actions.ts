@@ -28,7 +28,7 @@ export const getSalesInvoicesAction = createAction(
     const body = res.data
     return {
       invoices: body.data as SalesInvoiceListResponse['invoices'],
-      totalCount: body.pagination?.totalCount ?? 0,
+      totalCount: body.pagination?.total ?? 0,
       page: body.pagination?.page ?? page,
       pageSize: body.pagination?.pageSize ?? pageSize,
     } satisfies SalesInvoiceListResponse

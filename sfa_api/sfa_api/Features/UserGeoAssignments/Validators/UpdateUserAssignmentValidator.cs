@@ -7,9 +7,6 @@ public class UpdateUserAssignmentValidator : AbstractValidator<UpdateUserAssignm
 {
     public UpdateUserAssignmentValidator()
     {
-        RuleFor(x => x.ReportsToUserId)
-            .GreaterThan(0).WithMessage("ReportsToUserId must be a valid user ID.");
-
         RuleFor(x => x.DivisionId)
             .GreaterThan(0).WithMessage("DivisionId must be a valid division ID.")
             .When(x => x.DivisionId.HasValue);

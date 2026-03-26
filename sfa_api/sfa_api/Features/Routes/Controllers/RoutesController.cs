@@ -68,6 +68,18 @@ public class RoutesController(
     }
 
     /// <summary>
+    /// GET /api/v1/routes/by-division/{divisionId} — active routes for a specific division
+    /// </summary>
+    [HttpGet("by-division/{divisionId:int}")]
+    [Authorize]
+    public async Task<IActionResult> GetByDivision(int divisionId, CancellationToken ct = default)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var result = await _service.GetActiveByDivisionIdAsync(divisionId, ct);
+        return Ok(ResponseHelper.Ok(result, correlationId));
+    }
+
+    /// <summary>
     /// POST /api/v1/routes
     /// </summary>
     [HttpPost]

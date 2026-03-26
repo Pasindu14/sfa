@@ -8,6 +8,7 @@ public interface IRouteService
     Task<RouteDto> GetByIdAsync(int id, CancellationToken ct = default);
     Task<RouteListDto> GetAllAsync(int page, int pageSize, bool? isActive = null, string? search = null, CancellationToken ct = default);
     Task<IEnumerable<RouteDto>> GetAllActiveAsync(CancellationToken ct = default);
+    Task<IEnumerable<RouteDto>> GetActiveByDivisionIdAsync(int divisionId, CancellationToken ct = default);
     Task<RouteDto> CreateAsync(CreateRouteRequest request, int? callerId, CancellationToken ct = default);
     Task<RouteDto> UpdateAsync(int id, UpdateRouteRequest request, int? callerId, CancellationToken ct = default);
     Task ActivateAsync(int id, int? callerId, CancellationToken ct = default);

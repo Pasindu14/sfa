@@ -10,14 +10,6 @@ public class CreateUserAssignmentValidator : AbstractValidator<CreateUserAssignm
         RuleFor(x => x.UserId)
             .GreaterThan(0).WithMessage("UserId must be a valid user ID.");
 
-        RuleFor(x => x.ReportsToUserId)
-            .GreaterThan(0).WithMessage("ReportsToUserId must be a valid user ID.");
-
-        RuleFor(x => x)
-            .Must(x => x.UserId != x.ReportsToUserId)
-            .WithName("ReportsToUserId")
-            .WithMessage("A user cannot report to themselves.");
-
         RuleFor(x => x.DivisionId)
             .GreaterThan(0).WithMessage("DivisionId must be a valid division ID.")
             .When(x => x.DivisionId.HasValue);

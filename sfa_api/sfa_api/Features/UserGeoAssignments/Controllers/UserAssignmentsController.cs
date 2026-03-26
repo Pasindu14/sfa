@@ -50,11 +50,15 @@ public class UserAssignmentsController(
         [FromQuery] string? search = null,
         [FromQuery] string? role = null,
         [FromQuery] int? regionId = null,
+        [FromQuery] int? areaId = null,
+        [FromQuery] int? territoryId = null,
+        [FromQuery] int? divisionId = null,
+        [FromQuery] int? routeId = null,
         [FromQuery] bool? isActive = null,
         CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
-        var result = await _service.GetAllAsync(page, pageSize, search, role, regionId, isActive, ct);
+        var result = await _service.GetAllAsync(page, pageSize, search, role, regionId, areaId, territoryId, divisionId, routeId, isActive, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 
@@ -85,12 +89,22 @@ public class UserAssignmentsController(
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 
-    /// <summary>DELETE /api/v1/user-assignments/{id} — soft delete (IsActive = false on both rows)</summary>
+    /// <summary>DELETE /api/v1/user-assignments/{id} — deactivate (IsActive = false)</summary>
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
     {
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
         await _service.DeleteAsync(id, callerId, ct);
         return NoContent();
+    }
+
+    /// <summary>POST /api/v1/user-assignments/{id}/activate — reactivate a deactivated assignment</summary>
+    [HttpPost("{id:int}/activate")]
+    public async Task<IActionResult> Activate(int id, CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
+        var result = await _service.ActivateAsync(id, callerId, ct);
+        return Ok(ResponseHelper.Ok(result, correlationId));
     }
 }

@@ -15,6 +15,8 @@ public record UserAssignmentDto(
     string? AreaName,
     int? RegionId,
     string? RegionName,
+    int? RouteId,
+    string? RouteName,
     DateOnly EffectiveFrom,
     bool IsActive,
     DateTime CreatedAt,

@@ -4,6 +4,7 @@ import {
   GalleryVerticalEnd,
   Map,
   ShoppingCart,
+  UserCheck,
 } from "lucide-react";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
@@ -46,10 +47,6 @@ const data = {
           url: "/users",
         },
         {
-          title: "User Assignments",
-          url: "/user-reporting-lines",
-        },
-        {
           title: "Distributors",
           url: "/distributors",
         },
@@ -68,6 +65,22 @@ const data = {
         {
           title: "Category Pricing",
           url: "/product-category-pricings",
+        },
+      ],
+    },
+    {
+      title: "Assignments",
+      url: "#",
+      icon: UserCheck,
+      isActive: false,
+      items: [
+        {
+          title: "User Assignments",
+          url: "/user-reporting-lines",
+        },
+        {
+          title: "Geo Assignments",
+          url: "/geo-assignments",
         },
       ],
     },

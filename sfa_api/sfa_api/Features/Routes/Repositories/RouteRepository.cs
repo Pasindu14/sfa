@@ -63,6 +63,13 @@ public class RouteRepository(AppDbContext context) : IRouteRepository
             .OrderBy(r => r.Name)
             .ToListAsync(ct);
 
+    public async Task<IEnumerable<RouteEntity>> GetActiveByDivisionIdAsync(int divisionId, CancellationToken ct = default)
+        => await _context.Routes
+            .Where(r => r.IsActive && r.DivisionId == divisionId)
+            .AsNoTracking()
+            .OrderBy(r => r.Name)
+            .ToListAsync(ct);
+
     public async Task<Division?> GetDivisionWithAncestorsAsync(int divisionId, CancellationToken ct = default)
         => await _context.Divisions
             .IgnoreQueryFilters()

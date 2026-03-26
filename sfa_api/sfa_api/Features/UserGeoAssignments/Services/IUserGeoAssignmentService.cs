@@ -13,6 +13,10 @@ public interface IUserGeoAssignmentService
         string? search = null,
         string? role = null,
         int? regionId = null,
+        int? areaId = null,
+        int? territoryId = null,
+        int? divisionId = null,
+        int? routeId = null,
         bool? isActive = null,
         CancellationToken ct = default);
 
@@ -30,4 +34,6 @@ public interface IUserGeoAssignmentService
         CancellationToken ct = default);
 
     Task DeleteAsync(int id, int? callerId, CancellationToken ct = default);
+
+    Task<UserAssignmentDto> ActivateAsync(int id, int? callerId, CancellationToken ct = default);
 }

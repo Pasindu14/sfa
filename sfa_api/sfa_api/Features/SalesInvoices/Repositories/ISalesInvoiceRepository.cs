@@ -1,3 +1,4 @@
+using sfa_api.Features.PurchaseOrders.Enums;
 using sfa_api.Features.SalesInvoices.Entities;
 
 namespace sfa_api.Features.SalesInvoices.Repositories;
@@ -7,7 +8,7 @@ public interface ISalesInvoiceRepository
     // Bulk lookup helpers for import
     Task<Dictionary<int, int>> GetDistributorAliasDictionaryAsync(CancellationToken ct = default);
     Task<Dictionary<string, int>> GetProductErpCodeDictionaryAsync(CancellationToken ct = default);
-    Task<Dictionary<string, int>> GetPurchaseOrderNumberDictionaryAsync(CancellationToken ct = default);
+    Task<Dictionary<string, (int Id, PurchaseOrderStatus Status)>> GetPurchaseOrderNumberDictionaryAsync(CancellationToken ct = default);
     Task<HashSet<string>> GetExistingVchBillNosAsync(CancellationToken ct = default);
     Task<long> GetNextBatchNumberAsync(CancellationToken ct = default);
 

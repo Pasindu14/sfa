@@ -38,6 +38,28 @@ public class RouteService(
         return routes.Select(MapToDto);
     }
 
+    public async Task<IEnumerable<RouteDto>> GetActiveByDivisionIdAsync(int divisionId, CancellationToken ct = default)
+    {
+        var routes = await _repo.GetActiveByDivisionIdAsync(divisionId, ct);
+        return routes.Select(r => new RouteDto(
+            Id: r.Id,
+            Name: r.Name,
+            PinColor: r.PinColor,
+            Description: r.Description,
+            DivisionId: r.DivisionId,
+            DivisionName: string.Empty,
+            TerritoryId: r.TerritoryId,
+            TerritoryName: string.Empty,
+            AreaId: r.AreaId,
+            AreaName: string.Empty,
+            RegionId: r.RegionId,
+            RegionName: string.Empty,
+            IsActive: r.IsActive,
+            CreatedAt: r.CreatedAt,
+            UpdatedAt: r.UpdatedAt
+        ));
+    }
+
     public async Task<RouteDto> CreateAsync(CreateRouteRequest request, int? callerId, CancellationToken ct = default)
     {
         var division = await _repo.GetDivisionWithAncestorsAsync(request.DivisionId, ct)

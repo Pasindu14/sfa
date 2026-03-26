@@ -8,6 +8,7 @@ public interface IRouteRepository
     Task<RouteEntity?> GetByIdAsync(int id, CancellationToken ct = default);
     Task<(IEnumerable<RouteEntity> Routes, int TotalCount)> GetAllAsync(int skip, int take, bool? isActive = null, string? search = null, CancellationToken ct = default);
     Task<IEnumerable<RouteEntity>> GetAllActiveAsync(CancellationToken ct = default);
+    Task<IEnumerable<RouteEntity>> GetActiveByDivisionIdAsync(int divisionId, CancellationToken ct = default);
     Task<Division?> GetDivisionWithAncestorsAsync(int divisionId, CancellationToken ct = default);
     Task<bool> ExistsByNameAsync(string name, int divisionId, CancellationToken ct = default);
     Task<bool> ExistsByNameAsync(string name, int divisionId, int excludeId, CancellationToken ct = default);

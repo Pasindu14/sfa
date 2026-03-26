@@ -1,5 +1,6 @@
 using System.Text.Json;
 using sfa_api.Common.Errors;
+using sfa_api.Features.PurchaseOrders.Enums;
 using sfa_api.Features.SalesInvoices.DTOs;
 using sfa_api.Features.SalesInvoices.Entities;
 using sfa_api.Features.SalesInvoices.Enums;
@@ -58,11 +59,22 @@ public class SalesInvoiceService(ISalesInvoiceRepository repository) : ISalesInv
                 continue;
             }
 
-            // c. Resolve PO (nullable)
+            // c. Resolve PO — must exist and be Finalized when SfaPoNumber is provided
             int? purchaseOrderId = null;
-            if (!string.IsNullOrWhiteSpace(inv.SfaPoNumber) &&
-                purchaseOrderMap.TryGetValue(inv.SfaPoNumber, out var resolvedPoId))
-                purchaseOrderId = resolvedPoId;
+            if (!string.IsNullOrWhiteSpace(inv.SfaPoNumber))
+            {
+                if (!purchaseOrderMap.TryGetValue(inv.SfaPoNumber, out var po))
+                {
+                    errors.Add(new ImportBatchErrorDto(inv.VchBillNo, $"SFA PO number '{inv.SfaPoNumber}' not found"));
+                    continue;
+                }
+                if (po.Status != PurchaseOrderStatus.Finalized)
+                {
+                    errors.Add(new ImportBatchErrorDto(inv.VchBillNo, $"SFA PO '{inv.SfaPoNumber}' is not acknowledged (status: {po.Status})"));
+                    continue;
+                }
+                purchaseOrderId = po.Id;
+            }
 
             // d. Resolve items — skip invoice if any product is unresolvable
             var itemEntities = new List<SalesInvoiceItem>();
