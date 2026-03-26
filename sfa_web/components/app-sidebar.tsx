@@ -46,6 +46,10 @@ const data = {
           url: "/users",
         },
         {
+          title: "User Assignments",
+          url: "/user-reporting-lines",
+        },
+        {
           title: "Distributors",
           url: "/distributors",
         },

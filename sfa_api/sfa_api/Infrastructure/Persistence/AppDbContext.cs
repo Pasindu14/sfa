@@ -17,6 +17,8 @@ using sfa_api.Features.SalesInvoices.Entities;
 using sfa_api.Features.SalesInvoices.Enums;
 using sfa_api.Features.Stock.Entities;
 using sfa_api.Features.Stock.Enums;
+using sfa_api.Features.UserGeoAssignments.Entities;
+using sfa_api.Features.UserReportingLines.Entities;
 using sfa_api.Features.Users.Entities;
 using RouteEntity = sfa_api.Features.Routes.Entities.Route;
 
@@ -53,6 +55,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<GRNItem> GRNItems => Set<GRNItem>();
     public DbSet<DistributorStock> DistributorStocks => Set<DistributorStock>();
     public DbSet<StockTransaction> StockTransactions => Set<StockTransaction>();
+    public DbSet<UserReportingLine> UserReportingLines => Set<UserReportingLine>();
+    public DbSet<UserGeoAssignment> UserGeoAssignments => Set<UserGeoAssignment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -193,6 +197,69 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .WithMany()
              .HasForeignKey(x => x.RegionId)
              .IsRequired();
+        });
+
+        // UserReportingLine
+        modelBuilder.Entity<UserReportingLine>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.HasIndex(x => x.UserId);
+            e.HasIndex(x => x.ReportsToUserId);
+            e.HasIndex(x => new { x.UserId, x.IsActive });
+            e.HasIndex(x => x.IsActive);
+            e.HasIndex(x => x.EffectiveFrom);
+            // Both FKs point to Users — restrict delete to protect audit trail
+            e.HasOne(x => x.User)
+             .WithMany()
+             .HasForeignKey(x => x.UserId)
+             .IsRequired()
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.ReportsToUser)
+             .WithMany()
+             .HasForeignKey(x => x.ReportsToUserId)
+             .IsRequired()
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // UserGeoAssignment
+        modelBuilder.Entity<UserGeoAssignment>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.HasIndex(x => x.UserId);
+            e.HasIndex(x => x.RegionId);
+            e.HasIndex(x => x.TerritoryId);
+            e.HasIndex(x => x.DivisionId);
+            e.HasIndex(x => new { x.UserId, x.IsActive });
+            e.HasIndex(x => x.IsActive);
+            e.HasIndex(x => x.EffectiveFrom);
+            // All FKs use Restrict — no cascades, preserving full audit history
+            e.HasOne(x => x.User)
+             .WithMany()
+             .HasForeignKey(x => x.UserId)
+             .IsRequired()
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Division)
+             .WithMany()
+             .HasForeignKey(x => x.DivisionId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Territory)
+             .WithMany()
+             .HasForeignKey(x => x.TerritoryId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Area)
+             .WithMany()
+             .HasForeignKey(x => x.AreaId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Region)
+             .WithMany()
+             .HasForeignKey(x => x.RegionId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.Restrict);
         });
 
         // Route

@@ -252,7 +252,7 @@ public class PurchaseOrderServiceTests
         _repoMock.Setup(r => r.AddItemsAsync(It.IsAny<IEnumerable<PurchaseOrderItem>>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
 
-        var result = await _sut.UpdateAsync(order.Id, CreateValidUpdateRequest(), callerId, UserRole.Manager);
+        var result = await _sut.UpdateAsync(order.Id, CreateValidUpdateRequest(), callerId, UserRole.Supervisor);
 
         result.Should().NotBeNull();
     }
@@ -302,7 +302,7 @@ public class PurchaseOrderServiceTests
     [Fact]
     public async Task SubmitAsync_ManagerRole_ThrowsAuthorizationException()
     {
-        Func<Task> act = () => _sut.SubmitAsync(1, callerId: 300, callerRole: UserRole.Manager);
+        Func<Task> act = () => _sut.SubmitAsync(1, callerId: 300, callerRole: UserRole.Supervisor);
 
         await act.Should().ThrowAsync<AuthorizationException>();
     }
@@ -407,7 +407,7 @@ public class PurchaseOrderServiceTests
         _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
 
-        var result = await _sut.ApproveAsync(order.Id, callerId, UserRole.Manager);
+        var result = await _sut.ApproveAsync(order.Id, callerId, UserRole.Supervisor);
 
         result.Status.Should().Be(PurchaseOrderStatus.PendingDistributorFinalization);
     }
@@ -465,7 +465,7 @@ public class PurchaseOrderServiceTests
         _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
 
-        var result = await _sut.RejectAsync(order.Id, CreateRejectRequest(), callerId, UserRole.Manager);
+        var result = await _sut.RejectAsync(order.Id, CreateRejectRequest(), callerId, UserRole.Supervisor);
 
         result.Status.Should().Be(PurchaseOrderStatus.PendingDistributorAcknowledgement);
     }
@@ -489,7 +489,7 @@ public class PurchaseOrderServiceTests
         _repoMock.Setup(r => r.GetByIdWithItemsAsync(order.Id, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(order);
 
-        Func<Task> act = () => _sut.RejectAsync(order.Id, CreateRejectRequest(), callerId: 300, callerRole: UserRole.Manager);
+        Func<Task> act = () => _sut.RejectAsync(order.Id, CreateRejectRequest(), callerId: 300, callerRole: UserRole.Supervisor);
 
         await act.Should().ThrowAsync<AuthorizationException>();
     }

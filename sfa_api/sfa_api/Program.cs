@@ -19,6 +19,8 @@ using sfa_api.Features.Stock;
 using sfa_api.Features.Regions;
 using sfa_api.Features.Routes;
 using sfa_api.Features.Territories;
+using sfa_api.Features.UserGeoAssignments;
+using sfa_api.Features.UserReportingLines;
 using sfa_api.Features.Users;
 using sfa_api.Infrastructure.Audit;
 using sfa_api.Infrastructure.Caching;
@@ -93,6 +95,8 @@ try
     builder.Services.AddAreasFeature();
     builder.Services.AddTerritoriesFeature();
     builder.Services.AddDivisionsFeature();
+    builder.Services.AddUserReportingLinesFeature();
+    builder.Services.AddUserGeoAssignmentsFeature();
     builder.Services.AddRoutesFeature();
     builder.Services.AddOutletsFeature();
     builder.Services.AddProductsFeature();

@@ -29,8 +29,6 @@ export function NavUser() {
     await signOut({ callbackUrl: "/sign-in" });
   };
 
-console.log(session);
-
   if (!session?.user) {
     return null;
   }
