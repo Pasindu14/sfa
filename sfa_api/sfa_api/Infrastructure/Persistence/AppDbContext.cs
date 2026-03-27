@@ -135,7 +135,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).UseIdentityColumn();
             e.HasIndex(x => x.Name).IsUnique();
-            e.HasIndex(x => x.UpdatedAt);
+            e.HasIndex(x => x.UpdatedAt).HasFilter("\"IsActive\" = true");
             e.HasQueryFilter(x => x.IsActive);
         });
 
@@ -146,7 +146,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Id).UseIdentityColumn();
             e.HasIndex(x => new { x.Name, x.RegionId }).IsUnique();
             e.HasIndex(x => x.RegionId);
-            e.HasIndex(x => x.UpdatedAt);
+            e.HasIndex(x => x.UpdatedAt).HasFilter("\"IsActive\" = true");
             e.HasQueryFilter(x => x.IsActive);
             e.HasOne(x => x.Region)
              .WithMany()
@@ -162,7 +162,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => new { x.Name, x.AreaId }).IsUnique();
             e.HasIndex(x => x.AreaId);
             e.HasIndex(x => x.RegionId);
-            e.HasIndex(x => x.UpdatedAt);
+            e.HasIndex(x => x.UpdatedAt).HasFilter("\"IsActive\" = true");
             e.HasQueryFilter(x => x.IsActive);
             e.HasOne(x => x.Area)
              .WithMany()
@@ -183,7 +183,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.TerritoryId);
             e.HasIndex(x => x.AreaId);
             e.HasIndex(x => x.RegionId);
-            e.HasIndex(x => x.UpdatedAt);
+            e.HasIndex(x => x.UpdatedAt).HasFilter("\"IsActive\" = true");
             e.HasQueryFilter(x => x.IsActive);
             e.HasOne(x => x.Territory)
              .WithMany()
@@ -274,6 +274,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).UseIdentityColumn();
             e.HasIndex(x => x.IsActive);
+            e.HasIndex(x => x.Name).HasFilter("\"IsActive\" = true");
             e.HasQueryFilter(x => x.IsActive);
             e.HasIndex(x => x.DivisionId);
             e.HasIndex(x => x.TerritoryId);
@@ -293,13 +294,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.CreditLimit).HasColumnType("decimal(18,2)");
             e.HasIndex(x => x.NicNo);
             e.HasIndex(x => x.IsActive);
+            e.HasIndex(x => x.Name).HasFilter("\"IsActive\" = true");
             e.HasQueryFilter(x => x.IsActive);
             e.HasIndex(x => x.RouteId);
             e.HasIndex(x => x.DivisionId);
             e.HasIndex(x => x.TerritoryId);
             e.HasIndex(x => x.AreaId);
             e.HasIndex(x => x.RegionId);
-            e.HasIndex(x => x.UpdatedAt);
+            e.HasIndex(x => x.UpdatedAt).HasFilter("\"IsActive\" = true");
             e.HasOne(x => x.Route).WithMany().HasForeignKey(x => x.RouteId).IsRequired();
         });
 
@@ -391,6 +393,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Id).UseIdentityColumn();
             e.Property(x => x.UnitPrice).HasColumnType("decimal(18,2)");
             e.Property(x => x.Discount).HasColumnType("decimal(5,2)");
+            e.HasIndex(x => x.ProductId);
             e.HasOne(x => x.Product)
              .WithMany()
              .HasForeignKey(x => x.ProductId)
@@ -484,6 +487,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.UnitPrice).HasColumnType("decimal(18,2)");
             e.Property(x => x.TotalPrice).HasColumnType("decimal(18,2)");
             e.HasIndex(x => x.SalesInvoiceId);
+            e.HasIndex(x => x.ProductId);
             e.HasOne(x => x.Product)
              .WithMany()
              .HasForeignKey(x => x.ProductId)
@@ -531,6 +535,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Unit).IsRequired().HasMaxLength(20);
             e.Property(x => x.Notes).HasMaxLength(500);
             e.HasIndex(x => x.GrnId);
+            e.HasIndex(x => x.ProductId);
             e.HasOne(x => x.Product)
              .WithMany()
              .HasForeignKey(x => x.ProductId)
@@ -573,6 +578,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.DistributorId);
             e.HasIndex(x => x.ProductId);
             e.HasIndex(x => new { x.ReferenceType, x.ReferenceId });
+            // Composite covering index for transaction history queries (DistributorId + ProductId, sorted by date desc)
+            e.HasIndex(x => new { x.DistributorId, x.ProductId, x.TransactedAt })
+             .IsDescending(false, false, true);
             e.HasOne(x => x.Distributor)
              .WithMany()
              .HasForeignKey(x => x.DistributorId)

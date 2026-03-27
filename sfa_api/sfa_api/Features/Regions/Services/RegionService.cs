@@ -3,15 +3,20 @@ using sfa_api.Features.Regions.DTOs;
 using sfa_api.Features.Regions.Entities;
 using sfa_api.Features.Regions.Repositories;
 using sfa_api.Features.Regions.Requests;
+using sfa_api.Infrastructure.Caching;
 
 namespace sfa_api.Features.Regions.Services;
 
 public class RegionService(
     IRegionRepository repo,
+    ICacheService cache,
     ILogger<RegionService> logger) : IRegionService
 {
     private readonly IRegionRepository _repo = repo;
+    private readonly ICacheService _cache = cache;
     private readonly ILogger<RegionService> _logger = logger;
+
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
 
     public async Task<RegionDto> GetByIdAsync(int id, CancellationToken ct = default)
     {
@@ -22,14 +27,21 @@ public class RegionService(
 
     public async Task<RegionListDto> GetAllAsync(int page, int pageSize, string? search = null, CancellationToken ct = default)
     {
+        var cacheKey = $"regions:list:{page}:{pageSize}:{search}";
+        var cached = await _cache.GetAsync<RegionListDto>(cacheKey);
+        if (cached is not null) return cached;
+
         var skip = (page - 1) * pageSize;
         var (regions, totalCount) = await _repo.GetAllAsync(skip, pageSize, search, ct);
-        return new RegionListDto(
+        var result = new RegionListDto(
             Regions: regions.Select(MapToDto),
             TotalCount: totalCount,
             Page: page,
             PageSize: pageSize
         );
+
+        await _cache.SetAsync(cacheKey, result, CacheTtl);
+        return result;
     }
 
     public async Task<IEnumerable<RegionDto>> GetAllActiveAsync(CancellationToken ct = default)

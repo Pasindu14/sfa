@@ -3,15 +3,20 @@ using sfa_api.Features.Territories.DTOs;
 using sfa_api.Features.Territories.Entities;
 using sfa_api.Features.Territories.Repositories;
 using sfa_api.Features.Territories.Requests;
+using sfa_api.Infrastructure.Caching;
 
 namespace sfa_api.Features.Territories.Services;
 
 public class TerritoryService(
     ITerritoryRepository repo,
+    ICacheService cache,
     ILogger<TerritoryService> logger) : ITerritoryService
 {
     private readonly ITerritoryRepository _repo = repo;
+    private readonly ICacheService _cache = cache;
     private readonly ILogger<TerritoryService> _logger = logger;
+
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
 
     public async Task<TerritoryDto> GetByIdAsync(int id, CancellationToken ct = default)
     {
@@ -22,14 +27,21 @@ public class TerritoryService(
 
     public async Task<TerritoryListDto> GetAllAsync(int page, int pageSize, int? areaId = null, bool? isActive = null, string? search = null, CancellationToken ct = default)
     {
+        var cacheKey = $"territories:list:{page}:{pageSize}:{areaId}:{isActive}:{search}";
+        var cached = await _cache.GetAsync<TerritoryListDto>(cacheKey);
+        if (cached is not null) return cached;
+
         var skip = (page - 1) * pageSize;
         var (territories, totalCount) = await _repo.GetAllAsync(skip, pageSize, areaId, isActive, search, ct);
-        return new TerritoryListDto(
+        var result = new TerritoryListDto(
             Territories: territories.Select(MapToDto),
             TotalCount: totalCount,
             Page: page,
             PageSize: pageSize
         );
+
+        await _cache.SetAsync(cacheKey, result, CacheTtl);
+        return result;
     }
 
     public async Task<IEnumerable<TerritoryDto>> GetAllActiveAsync(int? areaId = null, CancellationToken ct = default)

@@ -3,15 +3,20 @@ using sfa_api.Features.Divisions.DTOs;
 using sfa_api.Features.Divisions.Entities;
 using sfa_api.Features.Divisions.Repositories;
 using sfa_api.Features.Divisions.Requests;
+using sfa_api.Infrastructure.Caching;
 
 namespace sfa_api.Features.Divisions.Services;
 
 public class DivisionService(
     IDivisionRepository repo,
+    ICacheService cache,
     ILogger<DivisionService> logger) : IDivisionService
 {
     private readonly IDivisionRepository _repo = repo;
+    private readonly ICacheService _cache = cache;
     private readonly ILogger<DivisionService> _logger = logger;
+
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
 
     public async Task<DivisionDto> GetByIdAsync(int id, CancellationToken ct = default)
     {
@@ -22,14 +27,21 @@ public class DivisionService(
 
     public async Task<DivisionListDto> GetAllAsync(int page, int pageSize, int? territoryId = null, int? areaId = null, int? regionId = null, bool? isActive = null, string? search = null, CancellationToken ct = default)
     {
+        var cacheKey = $"divisions:list:{page}:{pageSize}:{territoryId}:{areaId}:{regionId}:{isActive}:{search}";
+        var cached = await _cache.GetAsync<DivisionListDto>(cacheKey);
+        if (cached is not null) return cached;
+
         var skip = (page - 1) * pageSize;
         var (divisions, totalCount) = await _repo.GetAllAsync(skip, pageSize, territoryId, areaId, regionId, isActive, search, ct);
-        return new DivisionListDto(
+        var result = new DivisionListDto(
             Divisions: divisions.Select(MapToDto),
             TotalCount: totalCount,
             Page: page,
             PageSize: pageSize
         );
+
+        await _cache.SetAsync(cacheKey, result, CacheTtl);
+        return result;
     }
 
     public async Task<IEnumerable<DivisionDto>> GetAllActiveAsync(int? territoryId = null, CancellationToken ct = default)

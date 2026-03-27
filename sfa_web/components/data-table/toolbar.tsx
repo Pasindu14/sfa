@@ -3,7 +3,7 @@
 import { Cross2Icon } from "@radix-ui/react-icons";
 import type { Table } from "@tanstack/react-table";
 import { useEffect, useState, useRef, useCallback } from "react";
-import { Settings, Undo2, TrashIcon, EyeOff, CheckSquare, MoveHorizontal } from "lucide-react";
+import { Settings, Undo2, TrashIcon, EyeOff, CheckSquare, MoveHorizontal, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -139,35 +139,23 @@ export function DataTableToolbar<TData extends ExportableData>({
   const currentSearchFromTable =
     (table.getState().globalFilter as string) || "";
 
-  // Local (debounced) search input state. Source of truth is the parent `search` state.
+  // Local search input state — only committed to parent when user clicks Search or presses Enter.
   const [localSearch, setLocalSearch] = useState(search || currentSearchFromTable);
 
-  // Track if the search is being updated locally
-  const isLocallyUpdatingSearch = useRef(false);
-
-  // Update local search when external state changes (URL state / parent state)
+  // Sync local input when external search state changes (e.g. URL navigation / reset)
   useEffect(() => {
-    // Skip if local update is in progress
-    if (isLocallyUpdatingSearch.current) {
-      return;
-    }
     if (search !== localSearch) {
       setLocalSearch(search);
     }
-  }, [search, localSearch]);
+  }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const tableSearch = (table.getState().globalFilter as string) || "";
-  // Also update local search when table globalFilter changes
+  // Sync local input when table globalFilter is set externally
   useEffect(() => {
-    // Skip if local update is in progress
-    if (isLocallyUpdatingSearch.current) {
-      return;
-    }
-
     if (tableSearch !== localSearch && tableSearch !== "") {
       setLocalSearch(tableSearch);
     }
-  }, [tableSearch, localSearch]);
+  }, [tableSearch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reference to track if we're currently updating dates
   const isUpdatingDates = useRef(false);
@@ -210,45 +198,14 @@ export function DataTableToolbar<TData extends ExportableData>({
   // Determine if any filters are active
   const isFiltered = tableFiltered || !!localSearch || datesModified;
 
-  // Create a ref to store the debounce timer
-  const searchDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Cleanup timers when component unmounts
-  useEffect(() => {
-    return () => {
-      // Clear debounce timer
-      if (searchDebounceTimerRef.current) {
-        clearTimeout(searchDebounceTimerRef.current);
-      }
-    };
-  }, []);
-
-  // Handle search with improved debounce to prevent character loss
+  // Update the local input value only — search is not sent to the API until submitted
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
+    setLocalSearch(e.target.value);
+  };
 
-    // Mark that search is being updated locally
-    isLocallyUpdatingSearch.current = true;
-    setLocalSearch(value);
-
-    // Clear any existing timer to prevent race conditions
-    if (searchDebounceTimerRef.current) {
-      clearTimeout(searchDebounceTimerRef.current);
-    }
-
-    // Set a new debounce timer to update the actual search state
-    searchDebounceTimerRef.current = setTimeout(() => {
-      // Trim whitespace before sending to backend API
-      const trimmedValue = value.trim();
-      setSearch(trimmedValue);
-      searchDebounceTimerRef.current = null;
-
-      // Reset the local update flag after a short delay
-      // This ensures URL changes don't override the input immediately
-      setTimeout(() => {
-        isLocallyUpdatingSearch.current = false;
-      }, 100);
-    }, 500);
+  // Commit the current input value to the parent search state (triggers API fetch)
+  const handleSearchSubmit = () => {
+    setSearch(localSearch.trim());
   };
 
   // Listen for URL parameter changes and update local state if needed
@@ -320,13 +277,6 @@ export function DataTableToolbar<TData extends ExportableData>({
     // Reset table filters
     table.resetColumnFilters();
 
-    // Cancel any in-flight debounced search update so reset can't be overridden later.
-    if (searchDebounceTimerRef.current) {
-      clearTimeout(searchDebounceTimerRef.current);
-      searchDebounceTimerRef.current = null;
-    }
-    isLocallyUpdatingSearch.current = false;
-
     // Reset search
     setLocalSearch("");
     setSearch("");
@@ -362,12 +312,25 @@ export function DataTableToolbar<TData extends ExportableData>({
     <div className="flex flex-wrap items-center justify-between">
       <div className="flex flex-1 flex-wrap items-center gap-2">
         {config.enableSearch && (
-          <Input
-            placeholder={config.searchPlaceholder || `Search ${entityName}...`}
-            value={localSearch}
-            onChange={handleSearchChange}
-            className={`w-[150px] lg:w-[250px] ${getInputSizeClass(config.size)}`}
-          />
+          <>
+            <Input
+              placeholder={config.searchPlaceholder || `Search ${entityName}...`}
+              value={localSearch}
+              onChange={handleSearchChange}
+              onKeyDown={(e) => e.key === "Enter" && handleSearchSubmit()}
+              className={`w-[150px] lg:w-[250px] ${getInputSizeClass(config.size)}`}
+            />
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleSearchSubmit}
+              className={getButtonSizeClass(config.size, true)}
+              title="Search"
+            >
+              <Search className="h-4 w-4" />
+              <span className="sr-only">Search</span>
+            </Button>
+          </>
         )}
 
         {config.enableDateFilter && (

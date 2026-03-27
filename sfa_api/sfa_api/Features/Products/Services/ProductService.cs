@@ -3,15 +3,20 @@ using sfa_api.Features.Products.DTOs;
 using sfa_api.Features.Products.Entities;
 using sfa_api.Features.Products.Repositories;
 using sfa_api.Features.Products.Requests;
+using sfa_api.Infrastructure.Caching;
 
 namespace sfa_api.Features.Products.Services;
 
 public class ProductService(
     IProductRepository repo,
+    ICacheService cache,
     ILogger<ProductService> logger) : IProductService
 {
     private readonly IProductRepository _repo = repo;
+    private readonly ICacheService _cache = cache;
     private readonly ILogger<ProductService> _logger = logger;
+
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
 
     public async Task<ProductDto> GetByIdAsync(int id, CancellationToken ct = default)
     {
@@ -22,14 +27,21 @@ public class ProductService(
 
     public async Task<ProductListDto> GetAllAsync(int page, int pageSize, string? search = null, CancellationToken ct = default)
     {
+        var cacheKey = $"products:list:{page}:{pageSize}:{search}";
+        var cached = await _cache.GetAsync<ProductListDto>(cacheKey);
+        if (cached is not null) return cached;
+
         var skip = (page - 1) * pageSize;
         var (products, totalCount) = await _repo.GetAllAsync(skip, pageSize, search, ct);
-        return new ProductListDto(
+        var result = new ProductListDto(
             Products: products.Select(MapToDto),
             TotalCount: totalCount,
             Page: page,
             PageSize: pageSize
         );
+
+        await _cache.SetAsync(cacheKey, result, CacheTtl);
+        return result;
     }
 
     public async Task<ProductDto> CreateAsync(CreateProductRequest request, int? callerId, CancellationToken ct = default)

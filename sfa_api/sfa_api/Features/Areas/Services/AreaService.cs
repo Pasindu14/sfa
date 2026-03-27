@@ -3,15 +3,20 @@ using sfa_api.Features.Areas.DTOs;
 using sfa_api.Features.Areas.Entities;
 using sfa_api.Features.Areas.Repositories;
 using sfa_api.Features.Areas.Requests;
+using sfa_api.Infrastructure.Caching;
 
 namespace sfa_api.Features.Areas.Services;
 
 public class AreaService(
     IAreaRepository repo,
+    ICacheService cache,
     ILogger<AreaService> logger) : IAreaService
 {
     private readonly IAreaRepository _repo = repo;
+    private readonly ICacheService _cache = cache;
     private readonly ILogger<AreaService> _logger = logger;
+
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
 
     public async Task<AreaDto> GetByIdAsync(int id, CancellationToken ct = default)
     {
@@ -22,14 +27,21 @@ public class AreaService(
 
     public async Task<AreaListDto> GetAllAsync(int page, int pageSize, int? regionId = null, bool? isActive = null, string? search = null, CancellationToken ct = default)
     {
+        var cacheKey = $"areas:list:{page}:{pageSize}:{regionId}:{isActive}:{search}";
+        var cached = await _cache.GetAsync<AreaListDto>(cacheKey);
+        if (cached is not null) return cached;
+
         var skip = (page - 1) * pageSize;
         var (areas, totalCount) = await _repo.GetAllAsync(skip, pageSize, regionId, isActive, search, ct);
-        return new AreaListDto(
+        var result = new AreaListDto(
             Areas: areas.Select(MapToDto),
             TotalCount: totalCount,
             Page: page,
             PageSize: pageSize
         );
+
+        await _cache.SetAsync(cacheKey, result, CacheTtl);
+        return result;
     }
 
     public async Task<IEnumerable<AreaDto>> GetAllActiveAsync(int? regionId = null, CancellationToken ct = default)

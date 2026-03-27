@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using sfa_api.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using sfa_api.Infrastructure.Persistence;
 namespace sfa_api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260327075203_AddTrigramSearchIndexes")]
+    partial class AddTrigramSearchIndexes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -152,8 +155,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("RegionId");
 
-                    b.HasIndex("UpdatedAt")
-                        .HasFilter("\"IsActive\" = true");
+                    b.HasIndex("UpdatedAt");
 
                     b.HasIndex("Name", "RegionId")
                         .IsUnique();
@@ -346,8 +348,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("TerritoryId");
 
-                    b.HasIndex("UpdatedAt")
-                        .HasFilter("\"IsActive\" = true");
+                    b.HasIndex("UpdatedAt");
 
                     b.HasIndex("Name", "TerritoryId")
                         .IsUnique();
@@ -561,9 +562,6 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("IsActive");
 
-                    b.HasIndex("Name")
-                        .HasFilter("\"IsActive\" = true");
-
                     b.HasIndex("NicNo");
 
                     b.HasIndex("RegionId");
@@ -572,8 +570,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("TerritoryId");
 
-                    b.HasIndex("UpdatedAt")
-                        .HasFilter("\"IsActive\" = true");
+                    b.HasIndex("UpdatedAt");
 
                     b.ToTable("Outlets");
                 });
@@ -971,8 +968,7 @@ namespace sfa_api.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.HasIndex("UpdatedAt")
-                        .HasFilter("\"IsActive\" = true");
+                    b.HasIndex("UpdatedAt");
 
                     b.ToTable("Regions");
                 });
@@ -1030,9 +1026,6 @@ namespace sfa_api.Migrations
                     b.HasIndex("DivisionId");
 
                     b.HasIndex("IsActive");
-
-                    b.HasIndex("Name")
-                        .HasFilter("\"IsActive\" = true");
 
                     b.HasIndex("RegionId");
 
@@ -1333,9 +1326,6 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("ReferenceType", "ReferenceId");
 
-                    b.HasIndex("DistributorId", "ProductId", "TransactedAt")
-                        .IsDescending(false, false, true);
-
                     b.ToTable("StockTransactions");
                 });
 
@@ -1378,8 +1368,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("RegionId");
 
-                    b.HasIndex("UpdatedAt")
-                        .HasFilter("\"IsActive\" = true");
+                    b.HasIndex("UpdatedAt");
 
                     b.HasIndex("Name", "AreaId")
                         .IsUnique();

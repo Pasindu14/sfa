@@ -61,26 +61,26 @@
   - File: `sfa_api/Features/PurchaseOrders/Repositories/PurchaseOrderRepository.cs` lines 17–21, 34–37
   - Both queries use multiple `Include` chains — EF Core generates Cartesian product joins without `AsSplitQuery`
 
-- [ ] **11. [M5] Add trigram GIN indexes for all `ILike('%term%')` search columns**
+- [x] **11. [M5] Add trigram GIN indexes for all `ILike('%term%')` search columns**
   - Files: Multiple repositories (Regions, Areas, Territories, Divisions, Users, Distributors, Products, PurchaseOrders, Outlets, Routes, PricingStructures)
   - Add migration: `CREATE EXTENSION IF NOT EXISTS pg_trgm` + GIN indexes on all searched Name/Email/Code columns
   - Without `pg_trgm`, every search request is a sequential scan
 
-- [ ] **12. [M6] Add composite covering index on `StockTransaction (DistributorId, ProductId, TransactedAt DESC)`**
+- [x] **12. [M6] Add composite covering index on `StockTransaction (DistributorId, ProductId, TransactedAt DESC)`**
   - File: `AppDbContext.cs` lines 572–575 — current indexes are three separate single-column indexes
   - Migration: `CREATE INDEX IX_StockTransactions_Distributor_Product_Date ON "StockTransactions" ("DistributorId", "ProductId", "TransactedAt" DESC)`
 
-- [ ] **13. [M7] Add `ProductId` index to `PurchaseOrderItem`, `GRNItem`, `SalesInvoiceItem`**
+- [x] **13. [M7] Add `ProductId` index to `PurchaseOrderItem`, `GRNItem`, `SalesInvoiceItem`**
   - File: `AppDbContext.cs` lines 387–398, 526–538, 476–491
   - Three separate `e.HasIndex(x => x.ProductId)` additions in `OnModelCreating`
   - Needed for product reverse-navigation queries (discontinuation checks, ERP reconciliation)
 
-- [ ] **14. [M8] Add partial `IsActive = true` indexes for query-filtered entities**
+- [x] **14. [M8] Add partial `IsActive = true` indexes for query-filtered entities**
   - Affected entities: Region, Area, Territory, Division, Route, Outlet (all have `HasQueryFilter(x => x.IsActive)`)
   - Migration: replace full B-tree indexes with `WHERE "IsActive" = true` partial indexes on Name and UpdatedAt columns
   - Reduces index size and speeds up the active-records query path (the only path EF ever uses for these entities)
 
-- [ ] **15. [M9] Connect `ICacheService` to reference-data list endpoints**
+- [x] **15. [M9] Connect `ICacheService` to reference-data list endpoints**
   - File: All service files under Regions, Areas, Territories, Divisions, Products, Distributors
   - Apply cache-aside pattern: check cache → on miss, query DB → store with 5-minute TTL → invalidate on write
   - `ICacheService` is fully built and registered in DI but has zero callers in the Features layer
