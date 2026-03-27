@@ -28,12 +28,12 @@
   - Add migration: `CREATE UNIQUE INDEX IX_Users_Email_Lower ON "Users" (LOWER("Email")) WHERE "IsActive" = true`
   - Current code translates to `LOWER("Email") = LOWER(@p)` → prevents B-tree index use → sequential scan on every login
 
-- [ ] **5. [H4] Wrap `RedisDistributedLockService.AcquireAsync` in try/catch for `RedisConnectionException`**
+- [x] **5. [H4] Wrap `RedisDistributedLockService.AcquireAsync` in try/catch for `RedisConnectionException`**
   - File: `sfa_api/Infrastructure/Locking/RedisDistributedLockService.cs` line 14
   - Catch `RedisConnectionException` / `SocketException` and throw `InfrastructureException("LOCK_SERVICE_UNAVAILABLE", ...)`
   - Currently propagates as HTTP 500 `INTERNAL_ERROR` instead of HTTP 503 — compare `DistributedCacheService` which already does this correctly
 
-- [ ] **6. [H5] Wire OpenTelemetry in `Program.cs`**
+- [x] **6. [H5] Wire OpenTelemetry in `Program.cs`**
   - File: `sfa_api/Program.cs` — packages installed, `AddOpenTelemetry()` never called
   - Add `builder.Services.AddOpenTelemetry().WithTracing(...).WithMetrics(...)` with `AddAspNetCoreInstrumentation`, `AddEntityFrameworkCoreInstrumentation`, `AddOtlpExporter`
   - Zero distributed traces or metrics emitted to any backend in production
@@ -42,12 +42,12 @@
 
 ## Medium
 
-- [ ] **7. [M1] Add `ILogger<SalesInvoiceService>` to `SalesInvoiceService`**
+- [x] **7. [M1] Add `ILogger<SalesInvoiceService>` to `SalesInvoiceService`**
   - File: `sfa_api/Features/SalesInvoices/Services/SalesInvoiceService.cs` line 12
   - Inject logger and add log events for import start, partial failure, and batch completion
   - Currently all import logic (including `PartialFailed` status) is completely silent in application logs
 
-- [ ] **8. [M2] Add `CommandTimeout(30)` and `EnableRetryOnFailure(3)` to `UseNpgsql`**
+- [x] **8. [M2] Add `CommandTimeout(30)` and `EnableRetryOnFailure(3)` to `UseNpgsql`**
   - File: `sfa_api/Program.cs` line 47–49
   - Add `npgsql => npgsql.CommandTimeout(30).EnableRetryOnFailure(3)` to `UseNpgsql`
   - Without a timeout, runaway queries hold thread-pool threads indefinitely

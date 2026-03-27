@@ -94,3 +94,8 @@ public class DatabaseUnavailableException : InfrastructureException
     public DatabaseUnavailableException()
         : base("SERVICE_UNAVAILABLE", "Database is temporarily unavailable.") { }
 }
+public class LockServiceUnavailableException : InfrastructureException
+{
+    public LockServiceUnavailableException()
+        : base("LOCK_SERVICE_UNAVAILABLE", "Lock service is temporarily unavailable.") { }
+}

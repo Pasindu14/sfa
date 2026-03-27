@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using OpenTelemetry.Metrics;
 using Serilog;
 using sfa_api.Common.Audit;
 using sfa_api.Common.Extensions;
@@ -45,7 +48,11 @@ try
     // ── Database ─────────────────────────────────────────────────────────
     builder.Services.AddScoped<AuditInterceptor>();
     builder.Services.AddDbContext<AppDbContext>((sp, opt) =>
-        opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+        opt.UseNpgsql(
+               builder.Configuration.GetConnectionString("DefaultConnection"),
+               npgsql => npgsql
+                   .CommandTimeout(30)
+                   .EnableRetryOnFailure(3))
            .AddInterceptors(sp.GetRequiredService<AuditInterceptor>()));
 
     // ── Caching ──────────────────────────────────────────────────────────
@@ -74,6 +81,19 @@ try
     builder.Services.AddSingleton<RedLockNet.IDistributedLockFactory>(
         _ => RedisDistributedLockService.CreateFactory(builder.Configuration));
     builder.Services.AddSingleton<IDistributedLockService, RedisDistributedLockService>();
+
+    // ── OpenTelemetry ─────────────────────────────────────────────────────
+    builder.Services.AddOpenTelemetry()
+        .ConfigureResource(r => r.AddService("sfa-api"))
+        .WithTracing(tracing => tracing
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddEntityFrameworkCoreInstrumentation()
+            .AddOtlpExporter())
+        .WithMetrics(metrics => metrics
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddOtlpExporter());
 
     // ── Auth ──────────────────────────────────────────────────────────────
     builder.Services.AddJwtAuthentication(builder.Configuration);

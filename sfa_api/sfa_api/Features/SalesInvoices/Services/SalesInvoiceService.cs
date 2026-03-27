@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using sfa_api.Common.Errors;
 using sfa_api.Features.PurchaseOrders.Enums;
 using sfa_api.Features.SalesInvoices.DTOs;
@@ -9,15 +10,22 @@ using sfa_api.Features.SalesInvoices.Requests;
 
 namespace sfa_api.Features.SalesInvoices.Services;
 
-public class SalesInvoiceService(ISalesInvoiceRepository repository) : ISalesInvoiceService
+public class SalesInvoiceService(
+    ISalesInvoiceRepository repository,
+    ILogger<SalesInvoiceService> logger) : ISalesInvoiceService
 {
     private readonly ISalesInvoiceRepository _repository = repository;
+    private readonly ILogger<SalesInvoiceService> _logger = logger;
 
     public async Task<ImportBatchResultDto> ImportAsync(
         ImportSalesInvoicesRequest request,
         int callerId,
         CancellationToken ct = default)
     {
+        _logger.LogInformation(
+            "Sales invoice import started: {InvoiceCount} invoice(s) in file {FileName} by caller {CallerId}",
+            request.Invoices.Count, request.FileName, callerId);
+
         // ── Step 1: Create ImportBatch (Processing) ────────────────────────
         var seqNo = await _repository.GetNextBatchNumberAsync(ct);
         var batchNumber = $"IMP-{DateTime.UtcNow.Year}-{seqNo:D5}";
@@ -163,6 +171,17 @@ public class SalesInvoiceService(ISalesInvoiceRepository repository) : ISalesInv
             ? JsonSerializer.Serialize(errors)
             : null;
         batch.UpdatedAt = DateTime.UtcNow;
+
+        if (finalStatus == SalesInvoiceImportBatchStatus.PartialFailed)
+            _logger.LogWarning(
+                "Sales invoice import {BatchNumber} completed with partial failures: " +
+                "{ImportedCount} imported, {SkippedCount} skipped out of {TotalCount}",
+                batchNumber, importedCount, skippedCount, request.Invoices.Count);
+        else
+            _logger.LogInformation(
+                "Sales invoice import {BatchNumber} completed: status={Status}, " +
+                "imported={ImportedCount}, items={TotalItems}, amount={TotalAmount}",
+                batchNumber, finalStatus, importedCount, totalItems, totalAmount);
 
         await _repository.SaveChangesAsync(ct);
 

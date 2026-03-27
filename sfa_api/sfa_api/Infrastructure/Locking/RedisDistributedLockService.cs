@@ -1,7 +1,9 @@
+using System.Net.Sockets;
 using RedLockNet;
 using RedLockNet.SERedis;
 using RedLockNet.SERedis.Configuration;
 using StackExchange.Redis;
+using sfa_api.Common.Errors;
 
 namespace sfa_api.Infrastructure.Locking;
 
@@ -13,12 +15,26 @@ public class RedisDistributedLockService(
 
     public async Task<IAsyncDisposable?> AcquireAsync(string resource, CancellationToken ct = default)
     {
-        var redLock = await factory.CreateLockAsync(
-            resource: resource,
-            expiryTime: LockExpiry,
-            waitTime: TimeSpan.Zero,
-            retryTime: TimeSpan.Zero,
-            cancellationToken: ct);
+        IRedLock redLock;
+        try
+        {
+            redLock = await factory.CreateLockAsync(
+                resource: resource,
+                expiryTime: LockExpiry,
+                waitTime: TimeSpan.Zero,
+                retryTime: TimeSpan.Zero,
+                cancellationToken: ct);
+        }
+        catch (RedisConnectionException ex)
+        {
+            logger.LogError(ex, "Redis connection failed while acquiring lock for resource {Resource}", resource);
+            throw new LockServiceUnavailableException();
+        }
+        catch (SocketException ex)
+        {
+            logger.LogError(ex, "Socket error while acquiring lock for resource {Resource}", resource);
+            throw new LockServiceUnavailableException();
+        }
 
         if (!redLock.IsAcquired)
         {
