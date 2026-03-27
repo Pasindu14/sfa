@@ -10,23 +10,33 @@ public class SalesInvoiceRepository(AppDbContext context) : ISalesInvoiceReposit
 {
     private readonly AppDbContext _context = context;
 
-    public async Task<Dictionary<int, int>> GetDistributorAliasDictionaryAsync(CancellationToken ct = default)
-        => await _context.Distributors
+    public async Task<Dictionary<int, int>> GetDistributorAliasDictionaryAsync(IEnumerable<int> aliases, CancellationToken ct = default)
+    {
+        var aliasList = aliases.ToList();
+        return await _context.Distributors
             .AsNoTracking()
-            .Where(d => d.IsActive)
+            .Where(d => d.IsActive && aliasList.Contains(d.Alias))
             .ToDictionaryAsync(d => d.Alias, d => d.Id, ct);
+    }
 
-    public async Task<Dictionary<string, int>> GetProductErpCodeDictionaryAsync(CancellationToken ct = default)
-        => await _context.Products
+    public async Task<Dictionary<string, int>> GetProductErpCodeDictionaryAsync(IEnumerable<string> erpCodes, CancellationToken ct = default)
+    {
+        var codeList = erpCodes.ToList();
+        return await _context.Products
             .AsNoTracking()
             .IgnoreQueryFilters()   // load all — import should resolve even inactive products
-            .Where(p => p.Code != null)
+            .Where(p => p.Code != null && codeList.Contains(p.Code))
             .ToDictionaryAsync(p => p.Code!, p => p.Id, ct);
+    }
 
-    public async Task<Dictionary<string, (int Id, PurchaseOrderStatus Status)>> GetPurchaseOrderNumberDictionaryAsync(CancellationToken ct = default)
-        => await _context.PurchaseOrders
+    public async Task<Dictionary<string, (int Id, PurchaseOrderStatus Status)>> GetPurchaseOrderNumberDictionaryAsync(IEnumerable<string> poNumbers, CancellationToken ct = default)
+    {
+        var poList = poNumbers.ToList();
+        return await _context.PurchaseOrders
             .AsNoTracking()
+            .Where(po => poList.Contains(po.OrderNumber))
             .ToDictionaryAsync(po => po.OrderNumber, po => (po.Id, po.Status), ct);
+    }
 
     public async Task<HashSet<string>> GetExistingVchBillNosAsync(IEnumerable<string> vchBillNosToCheck, CancellationToken ct = default)
     {

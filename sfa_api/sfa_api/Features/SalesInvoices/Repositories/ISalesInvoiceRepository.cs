@@ -6,9 +6,9 @@ namespace sfa_api.Features.SalesInvoices.Repositories;
 public interface ISalesInvoiceRepository
 {
     // Bulk lookup helpers for import
-    Task<Dictionary<int, int>> GetDistributorAliasDictionaryAsync(CancellationToken ct = default);
-    Task<Dictionary<string, int>> GetProductErpCodeDictionaryAsync(CancellationToken ct = default);
-    Task<Dictionary<string, (int Id, PurchaseOrderStatus Status)>> GetPurchaseOrderNumberDictionaryAsync(CancellationToken ct = default);
+    Task<Dictionary<int, int>> GetDistributorAliasDictionaryAsync(IEnumerable<int> aliases, CancellationToken ct = default);
+    Task<Dictionary<string, int>> GetProductErpCodeDictionaryAsync(IEnumerable<string> erpCodes, CancellationToken ct = default);
+    Task<Dictionary<string, (int Id, PurchaseOrderStatus Status)>> GetPurchaseOrderNumberDictionaryAsync(IEnumerable<string> poNumbers, CancellationToken ct = default);
     Task<HashSet<string>> GetExistingVchBillNosAsync(IEnumerable<string> vchBillNosToCheck, CancellationToken ct = default);
     Task<long> GetNextBatchNumberAsync(CancellationToken ct = default);
 

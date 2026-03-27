@@ -1,3 +1,4 @@
+using sfa_api.Features.PurchaseOrders.Enums;
 using sfa_api.Features.SalesInvoices.Entities;
 using sfa_api.Features.SalesInvoices.Repositories;
 
@@ -15,14 +16,14 @@ public sealed class TestSalesInvoiceRepository(ISalesInvoiceRepository inner) : 
     public Task<long> GetNextBatchNumberAsync(CancellationToken ct = default)
         => Task.FromResult(Interlocked.Increment(ref _counter));
 
-    public Task<Dictionary<int, int>> GetDistributorAliasDictionaryAsync(CancellationToken ct = default)
-        => inner.GetDistributorAliasDictionaryAsync(ct);
+    public Task<Dictionary<int, int>> GetDistributorAliasDictionaryAsync(IEnumerable<int> aliases, CancellationToken ct = default)
+        => inner.GetDistributorAliasDictionaryAsync(aliases, ct);
 
-    public Task<Dictionary<string, int>> GetProductErpCodeDictionaryAsync(CancellationToken ct = default)
-        => inner.GetProductErpCodeDictionaryAsync(ct);
+    public Task<Dictionary<string, int>> GetProductErpCodeDictionaryAsync(IEnumerable<string> erpCodes, CancellationToken ct = default)
+        => inner.GetProductErpCodeDictionaryAsync(erpCodes, ct);
 
-    public Task<Dictionary<string, int>> GetPurchaseOrderNumberDictionaryAsync(CancellationToken ct = default)
-        => inner.GetPurchaseOrderNumberDictionaryAsync(ct);
+    public Task<Dictionary<string, (int Id, PurchaseOrderStatus Status)>> GetPurchaseOrderNumberDictionaryAsync(IEnumerable<string> poNumbers, CancellationToken ct = default)
+        => inner.GetPurchaseOrderNumberDictionaryAsync(poNumbers, ct);
 
     public Task<HashSet<string>> GetExistingVchBillNosAsync(IEnumerable<string> vchBillNosToCheck, CancellationToken ct = default)
         => inner.GetExistingVchBillNosAsync(vchBillNosToCheck, ct);

@@ -9,18 +9,17 @@ public class AuthRepository(AppDbContext db) : IAuthRepository
 {
     private readonly AppDbContext _db = db;
 
-    #pragma warning disable CA1862
     public async Task<User?> GetUserByEmailAsync(
         string email, CancellationToken ct = default)
         => await _db.Users
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Email.ToLower() == email.ToLower() && x.IsActive, ct);
+            .FirstOrDefaultAsync(x => EF.Functions.ILike(x.Email, email) && x.IsActive, ct);
 
     public async Task<User?> GetUserByUsernameAsync(
         string username, CancellationToken ct = default)
         => await _db.Users
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Username.ToLower() == username.ToLower() && x.IsActive, ct);
+            .FirstOrDefaultAsync(x => EF.Functions.ILike(x.Username, username) && x.IsActive, ct);
 
     public async Task<User?> GetUserByIdAsync(
         int userId, CancellationToken ct = default)

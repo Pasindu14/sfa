@@ -32,11 +32,19 @@ public class SalesInvoiceService(ISalesInvoiceRepository repository) : ISalesInv
         await _repository.AddBatchAsync(batch, ct);
         await _repository.SaveChangesAsync(ct);   // flush to get batch.Id
 
-        // ── Steps 2–5: Load lookup tables into memory ──────────────────────
-        var distributorAliasMap = await _repository.GetDistributorAliasDictionaryAsync(ct);
-        var productErpCodeMap   = await _repository.GetProductErpCodeDictionaryAsync(ct);
-        var purchaseOrderMap    = await _repository.GetPurchaseOrderNumberDictionaryAsync(ct);
-        var batchVchBillNos     = request.Invoices.Select(i => i.VchBillNo).ToList();
+        // ── Steps 2–5: Load lookup tables into memory (scoped to batch) ──────
+        var batchAliases   = request.Invoices.Select(i => i.DistributorAlias).Distinct().ToList();
+        var batchErpCodes  = request.Invoices.SelectMany(i => i.Items).Select(i => i.ItemErpCode).Distinct().ToList();
+        var batchPoNumbers = request.Invoices
+            .Where(i => !string.IsNullOrWhiteSpace(i.SfaPoNumber))
+            .Select(i => i.SfaPoNumber!)
+            .Distinct()
+            .ToList();
+        var batchVchBillNos = request.Invoices.Select(i => i.VchBillNo).ToList();
+
+        var distributorAliasMap = await _repository.GetDistributorAliasDictionaryAsync(batchAliases, ct);
+        var productErpCodeMap   = await _repository.GetProductErpCodeDictionaryAsync(batchErpCodes, ct);
+        var purchaseOrderMap    = await _repository.GetPurchaseOrderNumberDictionaryAsync(batchPoNumbers, ct);
         var existingVchBillNos  = await _repository.GetExistingVchBillNosAsync(batchVchBillNos, ct);
 
         // ── Step 6: Process each invoice ──────────────────────────────────

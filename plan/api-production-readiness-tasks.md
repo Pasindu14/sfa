@@ -17,12 +17,12 @@
   - Change signature to accept `IEnumerable<string> vchBillNosToCheck` and filter with `WHERE VchBillNo IN (...)`
   - Currently loads ALL historical VchBillNos into a `HashSet<string>` on every import → OOM at scale
 
-- [ ] **3. [H2] Scope import lookup dictionaries to batch identifiers**
+- [x] **3. [H2] Scope import lookup dictionaries to batch identifiers**
   - File: `sfa_api/Features/SalesInvoices/Services/SalesInvoiceService.cs` lines 36–38
   - `GetDistributorAliasDictionaryAsync`, `GetProductErpCodeDictionaryAsync`, `GetPurchaseOrderNumberDictionaryAsync` all load full tables
   - Extract batch aliases/codes/PO numbers before calling; pass as filter parameters to each repo method
 
-- [ ] **4. [H3] Fix `AuthRepository` email/username comparison to restore index use**
+- [x] **4. [H3] Fix `AuthRepository` email/username comparison to restore index use**
   - File: `sfa_api/Features/Auth/Repositories/AuthRepository.cs` lines 17, 23
   - Replace `x.Email.ToLower() == email.ToLower()` with `EF.Functions.ILike(x.Email, email)`
   - Add migration: `CREATE UNIQUE INDEX IX_Users_Email_Lower ON "Users" (LOWER("Email")) WHERE "IsActive" = true`

@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Moq;
 using sfa_api.Common.Errors;
+using sfa_api.Features.PurchaseOrders.Enums;
 using sfa_api.Features.SalesInvoices.DTOs;
 using sfa_api.Features.SalesInvoices.Entities;
 using sfa_api.Features.SalesInvoices.Enums;
@@ -82,19 +83,19 @@ public class SalesInvoiceServiceTests
             .Returns(Task.CompletedTask);
 
         _repoMock
-            .Setup(r => r.GetDistributorAliasDictionaryAsync(It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetDistributorAliasDictionaryAsync(It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<int, int> { [DistributorAlias] = DistributorId });
 
         _repoMock
-            .Setup(r => r.GetProductErpCodeDictionaryAsync(It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetProductErpCodeDictionaryAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<string, int> { [ErpCode] = ProductId });
 
-        var poMap = new Dictionary<string, int>();
+        var poMap = new Dictionary<string, (int Id, PurchaseOrderStatus Status)>();
         if (purchaseOrderId.HasValue && sfaPoNumber is not null)
-            poMap[sfaPoNumber] = purchaseOrderId.Value;
+            poMap[sfaPoNumber] = (purchaseOrderId.Value, PurchaseOrderStatus.Finalized);
 
         _repoMock
-            .Setup(r => r.GetPurchaseOrderNumberDictionaryAsync(It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetPurchaseOrderNumberDictionaryAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(poMap);
 
         var existing = new HashSet<string>();
@@ -207,7 +208,7 @@ public class SalesInvoiceServiceTests
         SetupHappyPathLookups();
         // Override alias map to be empty
         _repoMock
-            .Setup(r => r.GetDistributorAliasDictionaryAsync(It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetDistributorAliasDictionaryAsync(It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<int, int>());
         var request = SingleInvoiceRequest();
 
@@ -226,7 +227,7 @@ public class SalesInvoiceServiceTests
     {
         SetupHappyPathLookups();
         _repoMock
-            .Setup(r => r.GetProductErpCodeDictionaryAsync(It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetProductErpCodeDictionaryAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<string, int>());
         var request = SingleInvoiceRequest();
 
@@ -371,7 +372,7 @@ public class SalesInvoiceServiceTests
     {
         SetupHappyPathLookups();
         _repoMock
-            .Setup(r => r.GetDistributorAliasDictionaryAsync(It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetDistributorAliasDictionaryAsync(It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<int, int>());
         var request = SingleInvoiceRequest();
 
