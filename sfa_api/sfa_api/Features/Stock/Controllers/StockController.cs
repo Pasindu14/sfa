@@ -18,10 +18,15 @@ public class StockController(IStockRepository stockRepository) : ControllerBase
     /// Returns all current stock levels for a given distributor.
     /// </summary>
     [HttpGet("distributors/{distributorId:int}")]
-    public async Task<IActionResult> GetByDistributor(int distributorId, CancellationToken ct)
+    public async Task<IActionResult> GetByDistributor(
+        int distributorId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50,
+        CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
-        var stocks = await _stockRepository.GetStockByDistributorAsync(distributorId, ct);
+        var skip = (page - 1) * pageSize;
+        var (stocks, total) = await _stockRepository.GetStockByDistributorAsync(distributorId, skip, pageSize, ct);
         var dtos = stocks.Select(s => new DistributorStockDto(
             s.Id,
             s.DistributorId,
@@ -32,7 +37,7 @@ public class StockController(IStockRepository stockRepository) : ControllerBase
             s.QuantityOnHand,
             s.LastUpdatedAt
         )).ToList();
-        return Ok(ResponseHelper.Ok(dtos, correlationId));
+        return Ok(ResponseHelper.Paged(dtos, page, pageSize, total, correlationId));
     }
 
     /// <summary>

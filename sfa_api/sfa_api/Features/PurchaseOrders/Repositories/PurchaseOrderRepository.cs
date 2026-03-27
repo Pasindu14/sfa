@@ -18,6 +18,7 @@ public class PurchaseOrderRepository(AppDbContext context) : IPurchaseOrderRepos
         => await _context.PurchaseOrders
             .Include(o => o.Distributor)
             .Include(o => o.Items.Where(i => i.IsActive)).ThenInclude(i => i.Product)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(o => o.Id == id, ct);
 
     public async Task<(IEnumerable<PurchaseOrder> PurchaseOrders, int TotalCount)> GetAllAsync(
@@ -34,6 +35,7 @@ public class PurchaseOrderRepository(AppDbContext context) : IPurchaseOrderRepos
         var query = _context.PurchaseOrders
             .Include(o => o.Distributor)
             .Include(o => o.Items.Where(i => i.IsActive))
+            .AsSplitQuery()
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))

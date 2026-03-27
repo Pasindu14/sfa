@@ -8,14 +8,25 @@ public class StockRepository(AppDbContext db) : IStockRepository
 {
     private readonly AppDbContext _db = db;
 
-    public Task<List<DistributorStock>> GetStockByDistributorAsync(int distributorId, CancellationToken ct = default)
-        => _db.DistributorStocks
-              .AsNoTracking()
-              .Include(x => x.Product)
-              .Include(x => x.Distributor)
-              .Where(x => x.DistributorId == distributorId)
-              .OrderBy(x => x.Product.Code)
-              .ToListAsync(ct);
+    public async Task<(List<DistributorStock> Items, int TotalCount)> GetStockByDistributorAsync(
+        int distributorId, int skip, int take, CancellationToken ct = default)
+    {
+        take = Math.Clamp(take, 1, 200);
+        var query = _db.DistributorStocks
+            .Where(x => x.DistributorId == distributorId);
+
+        var totalCount = await query.CountAsync(ct);
+        var items = await query
+            .AsNoTracking()
+            .Include(x => x.Product)
+            .Include(x => x.Distributor)
+            .OrderBy(x => x.Product.Code)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(ct);
+
+        return (items, totalCount);
+    }
 
     public Task<List<StockTransaction>> GetTransactionsByDistributorAndProductAsync(
         int distributorId, int productId, int page, int pageSize, CancellationToken ct = default)

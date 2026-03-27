@@ -52,12 +52,12 @@
   - Add `npgsql => npgsql.CommandTimeout(30).EnableRetryOnFailure(3)` to `UseNpgsql`
   - Without a timeout, runaway queries hold thread-pool threads indefinitely
 
-- [ ] **9. [M3] Add pagination to `StockRepository.GetStockByDistributorAsync`**
+- [x] **9. [M3] Add pagination to `StockRepository.GetStockByDistributorAsync`**
   - File: `sfa_api/Features/Stock/Repositories/StockRepository.cs` line 11
   - Add `page`/`pageSize` with `Math.Clamp(pageSize, 1, 200)` — matches pattern used by all other list repositories
   - Currently returns all DistributorStock rows for a distributor with no limit
 
-- [ ] **10. [M4] Add `.AsSplitQuery()` to `PurchaseOrderRepository.GetByIdWithItemsAsync` and `GetAllAsync`**
+- [x] **10. [M4] Add `.AsSplitQuery()` to `PurchaseOrderRepository.GetByIdWithItemsAsync` and `GetAllAsync`**
   - File: `sfa_api/Features/PurchaseOrders/Repositories/PurchaseOrderRepository.cs` lines 17–21, 34–37
   - Both queries use multiple `Include` chains — EF Core generates Cartesian product joins without `AsSplitQuery`
 
