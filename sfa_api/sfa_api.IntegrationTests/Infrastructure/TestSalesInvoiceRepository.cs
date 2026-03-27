@@ -24,8 +24,8 @@ public sealed class TestSalesInvoiceRepository(ISalesInvoiceRepository inner) : 
     public Task<Dictionary<string, int>> GetPurchaseOrderNumberDictionaryAsync(CancellationToken ct = default)
         => inner.GetPurchaseOrderNumberDictionaryAsync(ct);
 
-    public Task<HashSet<string>> GetExistingVchBillNosAsync(CancellationToken ct = default)
-        => inner.GetExistingVchBillNosAsync(ct);
+    public Task<HashSet<string>> GetExistingVchBillNosAsync(IEnumerable<string> vchBillNosToCheck, CancellationToken ct = default)
+        => inner.GetExistingVchBillNosAsync(vchBillNosToCheck, ct);
 
     public Task<(List<SalesInvoice> Items, int TotalCount)> GetListAsync(
         int page, int pageSize, string? search, string? status,
@@ -40,9 +40,6 @@ public sealed class TestSalesInvoiceRepository(ISalesInvoiceRepository inner) : 
 
     public Task AddInvoicesAsync(IEnumerable<SalesInvoice> invoices, CancellationToken ct = default)
         => inner.AddInvoicesAsync(invoices, ct);
-
-    public Task AddItemsAsync(IEnumerable<SalesInvoiceItem> items, CancellationToken ct = default)
-        => inner.AddItemsAsync(items, ct);
 
     public Task SaveChangesAsync(CancellationToken ct = default)
         => inner.SaveChangesAsync(ct);

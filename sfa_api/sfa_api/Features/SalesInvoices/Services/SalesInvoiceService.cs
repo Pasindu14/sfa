@@ -36,7 +36,8 @@ public class SalesInvoiceService(ISalesInvoiceRepository repository) : ISalesInv
         var distributorAliasMap = await _repository.GetDistributorAliasDictionaryAsync(ct);
         var productErpCodeMap   = await _repository.GetProductErpCodeDictionaryAsync(ct);
         var purchaseOrderMap    = await _repository.GetPurchaseOrderNumberDictionaryAsync(ct);
-        var existingVchBillNos  = await _repository.GetExistingVchBillNosAsync(ct);
+        var batchVchBillNos     = request.Invoices.Select(i => i.VchBillNo).ToList();
+        var existingVchBillNos  = await _repository.GetExistingVchBillNosAsync(batchVchBillNos, ct);
 
         // ── Step 6: Process each invoice ──────────────────────────────────
         var errors = new List<ImportBatchErrorDto>();

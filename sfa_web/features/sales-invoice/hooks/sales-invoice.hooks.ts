@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useQuery, useMutation, keepPreviousData } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import { importSalesInvoicesAction } from '../actions/sales-invoice.actions'
@@ -18,25 +18,6 @@ export const salesInvoiceKeys = {
   list: (filters: object) => [...salesInvoiceKeys.lists(), filters] as const,
   details: () => [...salesInvoiceKeys.all, 'detail'] as const,
   detail: (id: number) => [...salesInvoiceKeys.details(), id] as const,
-}
-
-// ── List query hook ────────────────────────────────────────────────────────
-
-export function useSalesInvoices(
-  page: number,
-  pageSize: number,
-  search: string,
-  status?: string,
-) {
-  return useQuery({
-    queryKey: salesInvoiceKeys.list({ page, pageSize, search, status }),
-    queryFn: async () => {
-      const result = await getSalesInvoicesAction(page, pageSize, search || undefined, status || undefined)
-      if (!result.success) throw new Error(result.error)
-      return result.data
-    },
-    placeholderData: keepPreviousData,
-  })
 }
 
 // ── Detail query hook ──────────────────────────────────────────────────────

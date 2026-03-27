@@ -9,7 +9,7 @@ public interface ISalesInvoiceRepository
     Task<Dictionary<int, int>> GetDistributorAliasDictionaryAsync(CancellationToken ct = default);
     Task<Dictionary<string, int>> GetProductErpCodeDictionaryAsync(CancellationToken ct = default);
     Task<Dictionary<string, (int Id, PurchaseOrderStatus Status)>> GetPurchaseOrderNumberDictionaryAsync(CancellationToken ct = default);
-    Task<HashSet<string>> GetExistingVchBillNosAsync(CancellationToken ct = default);
+    Task<HashSet<string>> GetExistingVchBillNosAsync(IEnumerable<string> vchBillNosToCheck, CancellationToken ct = default);
     Task<long> GetNextBatchNumberAsync(CancellationToken ct = default);
 
     // Read
@@ -21,6 +21,5 @@ public interface ISalesInvoiceRepository
     // Write
     Task AddBatchAsync(SalesInvoiceImportBatch batch, CancellationToken ct = default);
     Task AddInvoicesAsync(IEnumerable<SalesInvoice> invoices, CancellationToken ct = default);
-    Task AddItemsAsync(IEnumerable<SalesInvoiceItem> items, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

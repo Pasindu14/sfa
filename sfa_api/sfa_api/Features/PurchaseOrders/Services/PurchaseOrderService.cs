@@ -160,6 +160,9 @@ public class PurchaseOrderService(
 
     public async Task<PurchaseOrderDto> UpdateAsync(int id, UpdatePurchaseOrderRequest request, int callerId, UserRole callerRole, CancellationToken ct = default)
     {
+        await using var @lock = await _lockService.AcquireAsync($"po:transition:{id}", ct)
+            ?? throw new ConcurrencyConflictException(new { orderId = id, message = "Another operation is already in progress for this purchase order." });
+
         var order = await _repo.GetByIdWithItemsAsync(id, ct)
             ?? throw new NotFoundException("PurchaseOrder", id);
 

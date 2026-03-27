@@ -28,10 +28,12 @@ public class SalesInvoiceRepository(AppDbContext context) : ISalesInvoiceReposit
             .AsNoTracking()
             .ToDictionaryAsync(po => po.OrderNumber, po => (po.Id, po.Status), ct);
 
-    public async Task<HashSet<string>> GetExistingVchBillNosAsync(CancellationToken ct = default)
+    public async Task<HashSet<string>> GetExistingVchBillNosAsync(IEnumerable<string> vchBillNosToCheck, CancellationToken ct = default)
     {
+        var toCheck = vchBillNosToCheck.ToList();
         var nos = await _context.SalesInvoices
             .AsNoTracking()
+            .Where(si => toCheck.Contains(si.VchBillNo))
             .Select(si => si.VchBillNo)
             .ToListAsync(ct);
         return [.. nos];
@@ -94,9 +96,6 @@ public class SalesInvoiceRepository(AppDbContext context) : ISalesInvoiceReposit
 
     public async Task AddInvoicesAsync(IEnumerable<SalesInvoice> invoices, CancellationToken ct = default)
         => await _context.SalesInvoices.AddRangeAsync(invoices, ct);
-
-    public async Task AddItemsAsync(IEnumerable<SalesInvoiceItem> items, CancellationToken ct = default)
-        => await _context.SalesInvoiceItems.AddRangeAsync(items, ct);
 
     public async Task SaveChangesAsync(CancellationToken ct = default)
         => await _context.SaveChangesAsync(ct);

@@ -102,7 +102,7 @@ public class SalesInvoiceServiceTests
             existing.Add(existingVchBillNo);
 
         _repoMock
-            .Setup(r => r.GetExistingVchBillNosAsync(It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetExistingVchBillNosAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(existing);
 
         _repoMock
