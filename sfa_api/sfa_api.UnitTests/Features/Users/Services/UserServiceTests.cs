@@ -301,7 +301,7 @@ public class UserServiceTests
             Username = "updateduser",
             Email = "updated@example.com",
             Phone = "5555555555",
-            Role = "Manager"
+            Role = "NSM"
         };
 
         var result = await _sut.UpdateUserAsync(1, request, callerId: 2);
@@ -309,7 +309,7 @@ public class UserServiceTests
         result.Name.Should().Be("Updated Name");
         result.Username.Should().Be("updateduser");
         result.Email.Should().Be("updated@example.com");
-        result.Role.Should().Be("Manager");
+        result.Role.Should().Be("NSM");
     }
 
     [Fact]

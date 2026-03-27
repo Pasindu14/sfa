@@ -31,7 +31,12 @@ public class OutletRepository(AppDbContext context) : IOutletRepository
 
         if (isActive.HasValue) query = query.Where(o => o.IsActive == isActive.Value);
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(o => EF.Functions.ILike(o.Name, $"%{search}%"));
+        {
+            var pattern = $"%{search}%";
+            query = _context.Database.ProviderName?.Contains("Npgsql") == true
+                ? query.Where(o => EF.Functions.ILike(o.Name, pattern))
+                : query.Where(o => EF.Functions.Like(o.Name, pattern));
+        }
 
         var totalCount = await query.CountAsync(ct);
         var items = await query

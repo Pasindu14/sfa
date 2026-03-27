@@ -89,6 +89,17 @@ public class UserAssignmentsApiTests
         return await CreateDivisionAsync($"UA Division {uid}", territoryId);
     }
 
+    /// <summary>Seeds the full geo hierarchy and returns all IDs.</summary>
+    private async Task<(int RegionId, int AreaId, int TerritoryId, int DivisionId)> SeedFullHierarchyAsync()
+    {
+        var uid = Uid();
+        var regionId = await CreateRegionAsync($"UA Region {uid}");
+        var areaId = await CreateAreaAsync($"UA Area {uid}", regionId);
+        var territoryId = await CreateTerritoryAsync($"UA Territory {uid}", areaId);
+        var divisionId = await CreateDivisionAsync($"UA Division {uid}", territoryId);
+        return (regionId, areaId, territoryId, divisionId);
+    }
+
     private static object AssignPayload(int userId, int managerId, int? divisionId = null,
         string effectiveFrom = "2026-03-26")
         => new { userId, reportsToUserId = managerId, divisionId, effectiveFrom };
@@ -226,28 +237,25 @@ public class UserAssignmentsApiTests
     // ─────────────────────────────────────────────────
 
     [Fact]
-    public async Task Create_WithDivision_Returns201WithDenormalizedGeoFields()
+    public async Task Create_WithAllGeoIds_Returns201WithStoredIds()
     {
         var userId = await CreateSalesRepAsync("AsgCreate");
-        var managerId = await CreateSalesRepAsync("AsgMgr");
-        var divisionId = await SeedDivisionAsync();
+        var (regionId, areaId, territoryId, divisionId) = await SeedFullHierarchyAsync();
 
         SetToken(AuthHelper.AdminToken);
         var response = await _client.PostAsJsonAsync("/api/v1/user-assignments",
-            AssignPayload(userId, managerId, divisionId));
+            new { userId, regionId, areaId, territoryId, divisionId, effectiveFrom = "2026-03-26" });
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
         body.GetProperty("success").GetBoolean().Should().BeTrue();
         var data = body.GetProperty("data");
         data.GetProperty("userId").GetInt32().Should().Be(userId);
-        data.GetProperty("reportsToUserId").GetInt32().Should().Be(managerId);
         data.GetProperty("divisionId").GetInt32().Should().Be(divisionId);
+        data.GetProperty("territoryId").GetInt32().Should().Be(territoryId);
+        data.GetProperty("areaId").GetInt32().Should().Be(areaId);
+        data.GetProperty("regionId").GetInt32().Should().Be(regionId);
         data.GetProperty("isActive").GetBoolean().Should().BeTrue();
-        // Denormalized ancestors must be non-null
-        data.GetProperty("territoryId").ValueKind.Should().NotBe(JsonValueKind.Null);
-        data.GetProperty("areaId").ValueKind.Should().NotBe(JsonValueKind.Null);
-        data.GetProperty("regionId").ValueKind.Should().NotBe(JsonValueKind.Null);
     }
 
     [Fact]
@@ -292,23 +300,21 @@ public class UserAssignmentsApiTests
     public async Task Update_ValidPayload_Returns200WithUpdatedData()
     {
         var userId = await CreateSalesRepAsync("AsgUpdate");
-        var mgr1 = await CreateSalesRepAsync("AsgUpdateMgr1");
-        var mgr2 = await CreateSalesRepAsync("AsgUpdateMgr2");
-        var divisionId = await SeedDivisionAsync();
+        var (regionId, areaId, territoryId, divisionId) = await SeedFullHierarchyAsync();
 
         SetToken(AuthHelper.AdminToken);
         var createResp = await _client.PostAsJsonAsync("/api/v1/user-assignments",
-            AssignPayload(userId, mgr1, divisionId));
+            new { userId, regionId, areaId, territoryId, divisionId, effectiveFrom = "2026-03-26" });
         var id = (await createResp.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
             .GetProperty("data").GetProperty("id").GetInt32();
 
         var updateResp = await _client.PutAsJsonAsync($"/api/v1/user-assignments/{id}",
-            new { reportsToUserId = mgr2, divisionId = (int?)null, effectiveFrom = "2026-04-01" });
+            new { divisionId = (int?)null, effectiveFrom = "2026-04-01" });
 
         updateResp.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await updateResp.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
-        body.GetProperty("data").GetProperty("reportsToUserId").GetInt32().Should().Be(mgr2);
         body.GetProperty("data").GetProperty("divisionId").ValueKind.Should().Be(JsonValueKind.Null);
+        body.GetProperty("data").GetProperty("effectiveFrom").GetString().Should().Be("2026-04-01");
     }
 
     [Fact]
@@ -407,15 +413,15 @@ public class UserAssignmentsApiTests
     }
 
     [Fact]
-    public async Task Create_SelfReport_Returns400()
+    public async Task Create_MinimalPayload_Returns201()
     {
-        var userId = await CreateSalesRepAsync("SelfAsgRep");
+        var userId = await CreateSalesRepAsync("MinAsgRep");
         SetToken(AuthHelper.AdminToken);
 
         var response = await _client.PostAsJsonAsync("/api/v1/user-assignments",
-            new { userId, reportsToUserId = userId, effectiveFrom = "2026-03-26" });
+            new { userId, effectiveFrom = "2026-03-26" });
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
 
     // ─────────────────────────────────────────────────
@@ -466,11 +472,10 @@ public class UserAssignmentsApiTests
     public async Task Create_NonExistentDivision_Returns404()
     {
         var userId = await CreateSalesRepAsync("BadDivRep");
-        var managerId = await CreateSalesRepAsync("BadDivMgr");
 
         SetToken(AuthHelper.AdminToken);
         var response = await _client.PostAsJsonAsync("/api/v1/user-assignments",
-            AssignPayload(userId, managerId, divisionId: 99999));
+            new { userId, divisionId = 99999, effectiveFrom = "2026-03-26" });
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);

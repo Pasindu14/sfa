@@ -10,7 +10,6 @@ public class UpdateUserAssignmentValidatorTests
 
     private static UpdateUserAssignmentRequest ValidRequest() => new()
     {
-        ReportsToUserId = 20,
         DivisionId = null,
         EffectiveFrom = new DateOnly(2026, 4, 1)
     };
@@ -31,20 +30,6 @@ public class UpdateUserAssignmentValidatorTests
         var result = _validator.Validate(request);
 
         result.IsValid.Should().BeTrue();
-    }
-
-    [Theory]
-    [InlineData(0)]
-    [InlineData(-1)]
-    public void Validate_InvalidReportsToUserId_FailsWithReportsToUserIdError(int managerId)
-    {
-        var request = ValidRequest();
-        request.ReportsToUserId = managerId;
-
-        var result = _validator.Validate(request);
-
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName == "ReportsToUserId");
     }
 
     [Theory]

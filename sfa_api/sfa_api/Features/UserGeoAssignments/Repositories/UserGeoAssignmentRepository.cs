@@ -54,7 +54,12 @@ public class UserGeoAssignmentRepository(AppDbContext context) : IUserGeoAssignm
             query = query.Where(g => g.IsActive == isActive.Value);
 
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(g => EF.Functions.ILike(g.User!.Name, $"%{search}%"));
+        {
+            var pattern = $"%{search}%";
+            query = _context.Database.ProviderName?.Contains("Npgsql") == true
+                ? query.Where(g => EF.Functions.ILike(g.User!.Name, pattern))
+                : query.Where(g => EF.Functions.Like(g.User!.Name, pattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(role) && Enum.TryParse<UserRole>(role, out var parsedRole))
             query = query.Where(g => g.User!.Role == parsedRole);

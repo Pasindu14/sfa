@@ -23,7 +23,12 @@ public class TerritoryRepository(AppDbContext context) : ITerritoryRepository
         if (areaId.HasValue) query = query.Where(t => t.AreaId == areaId.Value);
         if (isActive.HasValue) query = query.Where(t => t.IsActive == isActive.Value);
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(t => EF.Functions.ILike(t.Name, $"%{search}%"));
+        {
+            var pattern = $"%{search}%";
+            query = _context.Database.ProviderName?.Contains("Npgsql") == true
+                ? query.Where(t => EF.Functions.ILike(t.Name, pattern))
+                : query.Where(t => EF.Functions.Like(t.Name, pattern));
+        }
 
         var totalCount = await query.CountAsync(ct);
         var territories = await query

@@ -59,7 +59,7 @@ public class CreateDistributorValidator : AbstractValidator<CreateDistributorReq
             .When(x => x.Longitude.HasValue);
 
         RuleFor(x => x.TerritoryId)
-            .NotNull().WithMessage("Territory is required.")
-            .GreaterThan(0).WithMessage("Territory is required.");
+            .GreaterThan(0).WithMessage("TerritoryId must be greater than 0.")
+            .When(x => x.TerritoryId.HasValue);
     }
 }

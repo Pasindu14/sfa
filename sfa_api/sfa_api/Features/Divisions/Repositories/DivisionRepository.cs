@@ -32,7 +32,12 @@ public class DivisionRepository(AppDbContext context) : IDivisionRepository
         if (regionId.HasValue) query = query.Where(d => d.RegionId == regionId.Value);
         if (isActive.HasValue) query = query.Where(d => d.IsActive == isActive.Value);
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(d => EF.Functions.ILike(d.Name, $"%{search}%"));
+        {
+            var pattern = $"%{search}%";
+            query = _context.Database.ProviderName?.Contains("Npgsql") == true
+                ? query.Where(d => EF.Functions.ILike(d.Name, pattern))
+                : query.Where(d => EF.Functions.Like(d.Name, pattern));
+        }
 
         var totalCount = await query.CountAsync(ct);
         var divisions = await query

@@ -29,7 +29,12 @@ public class RouteRepository(AppDbContext context) : IRouteRepository
 
         if (isActive.HasValue) query = query.Where(r => r.IsActive == isActive.Value);
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(r => EF.Functions.ILike(r.Name, $"%{search}%"));
+        {
+            var pattern = $"%{search}%";
+            query = _context.Database.ProviderName?.Contains("Npgsql") == true
+                ? query.Where(r => EF.Functions.ILike(r.Name, pattern))
+                : query.Where(r => EF.Functions.Like(r.Name, pattern));
+        }
 
         var totalCount = await query.CountAsync(ct);
         var items = await query

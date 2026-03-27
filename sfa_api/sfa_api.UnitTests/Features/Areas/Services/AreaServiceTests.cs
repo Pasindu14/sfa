@@ -7,18 +7,21 @@ using sfa_api.Features.Areas.Repositories;
 using sfa_api.Features.Areas.Requests;
 using sfa_api.Features.Areas.Services;
 using sfa_api.Features.Regions.Entities;
+using sfa_api.Infrastructure.Caching;
 
 namespace sfa_api.UnitTests.Features.Areas.Services;
 
 public class AreaServiceTests
 {
     private readonly Mock<IAreaRepository> _repoMock;
+    private readonly Mock<ICacheService> _cacheMock;
     private readonly AreaService _sut;
 
     public AreaServiceTests()
     {
         _repoMock = new Mock<IAreaRepository>();
-        _sut = new AreaService(_repoMock.Object, NullLogger<AreaService>.Instance);
+        _cacheMock = new Mock<ICacheService>();
+        _sut = new AreaService(_repoMock.Object, _cacheMock.Object, NullLogger<AreaService>.Instance);
     }
 
     private static Region CreateFakeRegion(int id = 1, string name = "Test Region") => new()

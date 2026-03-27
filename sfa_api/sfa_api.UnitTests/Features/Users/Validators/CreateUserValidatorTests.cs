@@ -325,7 +325,7 @@ public class CreateUserValidatorTests
 
     [Theory]
     [InlineData("Admin")]
-    [InlineData("Manager")]
+    [InlineData("NSM")]
     [InlineData("SalesRep")]
     public void Role_ValidValues_Pass(string role)
     {
@@ -382,10 +382,10 @@ public class CreateUserValidatorTests
     }
 
     [Fact]
-    public void DeviceId_ManagerWithoutDeviceId_Passes()
+    public void DeviceId_NsmWithoutDeviceId_Passes()
     {
         var req = ValidRequest();
-        req.Role = "Manager";
+        req.Role = "NSM";
         req.DeviceId = null;
         var result = _validator.TestValidate(req);
         result.ShouldNotHaveValidationErrorFor(x => x.DeviceId);

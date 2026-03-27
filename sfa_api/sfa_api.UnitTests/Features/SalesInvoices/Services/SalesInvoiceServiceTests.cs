@@ -7,6 +7,7 @@ using sfa_api.Features.SalesInvoices.Entities;
 using sfa_api.Features.SalesInvoices.Enums;
 using sfa_api.Features.SalesInvoices.Repositories;
 using sfa_api.Features.SalesInvoices.Requests;
+using Microsoft.Extensions.Logging.Abstractions;
 using sfa_api.Features.SalesInvoices.Services;
 
 namespace sfa_api.UnitTests.Features.SalesInvoices.Services;
@@ -27,7 +28,7 @@ public class SalesInvoiceServiceTests
     public SalesInvoiceServiceTests()
     {
         _repoMock = new Mock<ISalesInvoiceRepository>();
-        _sut = new SalesInvoiceService(_repoMock.Object);
+        _sut = new SalesInvoiceService(_repoMock.Object, NullLogger<SalesInvoiceService>.Instance);
     }
 
     // ── Factory helpers ────────────────────────────────────────────────────
@@ -300,25 +301,19 @@ public class SalesInvoiceServiceTests
         capturedInvoice!.PurchaseOrderId.Should().Be(poId);
     }
 
-    // ── PO number not found → purchaseOrderId null, not a skip ───────────
+    // ── PO number not found → invoice is skipped with an error ───────────
 
     [Fact]
-    public async Task ImportAsync_SfaPoNumberNotInMap_InvoiceImportedWithNullPurchaseOrderId()
+    public async Task ImportAsync_SfaPoNumberNotInMap_InvoiceSkippedWithError()
     {
         SetupHappyPathLookups();   // PO map is empty by default
-        SalesInvoice? capturedInvoice = null;
-        _repoMock
-            .Setup(r => r.AddInvoicesAsync(It.IsAny<IEnumerable<SalesInvoice>>(), It.IsAny<CancellationToken>()))
-            .Callback<IEnumerable<SalesInvoice>, CancellationToken>((invoices, _) =>
-                capturedInvoice = invoices.FirstOrDefault())
-            .Returns(Task.CompletedTask);
 
         var request = SingleInvoiceRequest(ValidInvoice(sfaPoNumber: "PO-MISSING"));
 
         var result = await _sut.ImportAsync(request, CallerId);
 
-        result.ImportedInvoices.Should().Be(1, "missing PO number is not a skip reason");
-        capturedInvoice!.PurchaseOrderId.Should().BeNull();
+        result.ImportedInvoices.Should().Be(0, "invoice with unknown SFA PO number must be skipped");
+        result.Errors.Should().HaveCount(1);
     }
 
     // ── SaveChangesAsync call count ───────────────────────────────────────

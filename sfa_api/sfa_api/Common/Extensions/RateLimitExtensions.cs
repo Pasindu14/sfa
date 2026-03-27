@@ -62,6 +62,9 @@ public static class RateLimitExtensions
                 opt.QueueLimit = 0;
             });
 
+            var userPermitLimit = config.GetValue<int>("RateLimit:UserPermitLimit", 30);
+            var userWindowSeconds = config.GetValue<int>("RateLimit:UserWindowSeconds", 60);
+
             options.AddPolicy("user", ctx =>
             {
                 var userId = ctx.User?.FindFirstValue(ClaimTypes.NameIdentifier)
@@ -70,8 +73,8 @@ public static class RateLimitExtensions
                 return RateLimitPartition.GetFixedWindowLimiter(userId,
                     _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 30,
-                        Window = TimeSpan.FromMinutes(1),
+                        PermitLimit = userPermitLimit,
+                        Window = TimeSpan.FromSeconds(userWindowSeconds),
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         QueueLimit = 0
                     });

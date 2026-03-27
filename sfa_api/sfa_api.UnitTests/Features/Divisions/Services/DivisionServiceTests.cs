@@ -9,18 +9,21 @@ using sfa_api.Features.Divisions.Requests;
 using sfa_api.Features.Divisions.Services;
 using sfa_api.Features.Regions.Entities;
 using sfa_api.Features.Territories.Entities;
+using sfa_api.Infrastructure.Caching;
 
 namespace sfa_api.UnitTests.Features.Divisions.Services;
 
 public class DivisionServiceTests
 {
     private readonly Mock<IDivisionRepository> _repoMock;
+    private readonly Mock<ICacheService> _cacheMock;
     private readonly DivisionService _sut;
 
     public DivisionServiceTests()
     {
         _repoMock = new Mock<IDivisionRepository>();
-        _sut = new DivisionService(_repoMock.Object, NullLogger<DivisionService>.Instance);
+        _cacheMock = new Mock<ICacheService>();
+        _sut = new DivisionService(_repoMock.Object, _cacheMock.Object, NullLogger<DivisionService>.Instance);
     }
 
     private static Region CreateFakeRegion(int id = 10, string name = "Test Region") => new()

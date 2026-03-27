@@ -11,7 +11,6 @@ using sfa_api.Features.UserGeoAssignments.Repositories;
 using sfa_api.Features.UserGeoAssignments.Requests;
 using sfa_api.Features.UserGeoAssignments.Services;
 using sfa_api.Features.UserReportingLines.Entities;
-using sfa_api.Features.UserReportingLines.Repositories;
 using sfa_api.Features.Users.Entities;
 
 namespace sfa_api.UnitTests.Features.UserGeoAssignments.Services;
@@ -19,16 +18,13 @@ namespace sfa_api.UnitTests.Features.UserGeoAssignments.Services;
 public class UserGeoAssignmentServiceTests
 {
     private readonly Mock<IUserGeoAssignmentRepository> _repoMock;
-    private readonly Mock<IUserReportingLineRepository> _rlRepoMock;
     private readonly UserGeoAssignmentService _sut;
 
     public UserGeoAssignmentServiceTests()
     {
         _repoMock = new Mock<IUserGeoAssignmentRepository>();
-        _rlRepoMock = new Mock<IUserReportingLineRepository>();
         _sut = new UserGeoAssignmentService(
             _repoMock.Object,
-            _rlRepoMock.Object,
             NullLogger<UserGeoAssignmentService>.Instance);
     }
 
@@ -106,19 +102,15 @@ public class UserGeoAssignmentServiceTests
         UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)
     };
 
-    private static CreateUserAssignmentRequest CreateValidRequest(
-        int userId = 10, int managerId = 20, int? divisionId = 5) => new()
+    private static CreateUserAssignmentRequest CreateValidRequest(int userId = 10, int? divisionId = 5) => new()
     {
         UserId = userId,
-        ReportsToUserId = managerId,
         DivisionId = divisionId,
         EffectiveFrom = new DateOnly(2026, 3, 26)
     };
 
-    private static UpdateUserAssignmentRequest CreateValidUpdateRequest(
-        int managerId = 20, int? divisionId = 5) => new()
+    private static UpdateUserAssignmentRequest CreateValidUpdateRequest(int? divisionId = 5) => new()
     {
-        ReportsToUserId = managerId,
         DivisionId = divisionId,
         EffectiveFrom = new DateOnly(2026, 4, 1)
     };
@@ -188,7 +180,7 @@ public class UserGeoAssignmentServiceTests
     public async Task GetAllAsync_ReturnsPaginatedListDto()
     {
         var geos = new[] { CreateFakeGeo(1, userId: 10), CreateFakeGeo(2, userId: 11) };
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, null, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, null, null, null, null, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((geos.AsEnumerable(), 2));
         _repoMock.Setup(r => r.GetActiveReportingLinesByUserIdsAsync(
                      It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()))
@@ -205,7 +197,7 @@ public class UserGeoAssignmentServiceTests
     [Fact]
     public async Task GetAllAsync_Page2_CalculatesCorrectSkip()
     {
-        _repoMock.Setup(r => r.GetAllAsync(10, 10, null, null, null, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(10, 10, null, null, null, null, null, null, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<UserGeoAssignment>(), 0));
         _repoMock.Setup(r => r.GetActiveReportingLinesByUserIdsAsync(
                      It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()))
@@ -213,7 +205,7 @@ public class UserGeoAssignmentServiceTests
 
         await _sut.GetAllAsync(2, 10);
 
-        _repoMock.Verify(r => r.GetAllAsync(10, 10, null, null, null, null, It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.GetAllAsync(10, 10, null, null, null, null, null, null, null, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     // ─────────────────────────────────────────────────
@@ -241,23 +233,8 @@ public class UserGeoAssignmentServiceTests
     [Fact]
     public async Task CreateAsync_UserNotFound_ThrowsNotFoundException()
     {
-        var request = CreateValidRequest(userId: 10, managerId: 20);
+        var request = CreateValidRequest(userId: 10);
         _repoMock.Setup(r => r.UserExistsAsync(10, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(false);
-
-        var act = () => _sut.CreateAsync(request, callerId: 1);
-
-        var ex = await act.Should().ThrowAsync<NotFoundException>();
-        ex.Which.ErrorCode.Should().Be("USER_NOT_FOUND");
-    }
-
-    [Fact]
-    public async Task CreateAsync_ManagerNotFound_ThrowsNotFoundException()
-    {
-        var request = CreateValidRequest(userId: 10, managerId: 20);
-        _repoMock.Setup(r => r.UserExistsAsync(10, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(true);
-        _repoMock.Setup(r => r.UserExistsAsync(20, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(false);
 
         var act = () => _sut.CreateAsync(request, callerId: 1);
@@ -269,7 +246,7 @@ public class UserGeoAssignmentServiceTests
     [Fact]
     public async Task CreateAsync_AdminUserAsSubordinate_ThrowsBusinessRuleException()
     {
-        var request = CreateValidRequest(userId: 10, managerId: 20);
+        var request = CreateValidRequest(userId: 10);
         _repoMock.Setup(r => r.UserExistsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
                  .ReturnsAsync(true);
         _repoMock.Setup(r => r.IsAdminOrDistributorAsync(10, It.IsAny<CancellationToken>()))
@@ -279,59 +256,6 @@ public class UserGeoAssignmentServiceTests
 
         var ex = await act.Should().ThrowAsync<BusinessRuleException>();
         ex.Which.ErrorCode.Should().Be("USER_ROLE_NOT_ASSIGNABLE");
-    }
-
-    [Fact]
-    public async Task CreateAsync_DivisionNotFound_ThrowsNotFoundException()
-    {
-        var request = CreateValidRequest(divisionId: 99);
-        _repoMock.Setup(r => r.UserExistsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(true);
-        _repoMock.Setup(r => r.IsAdminOrDistributorAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(false);
-        _repoMock.Setup(r => r.GetDivisionWithAncestorsAsync(99, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync((Division?)null);
-
-        var act = () => _sut.CreateAsync(request, callerId: 1);
-
-        var ex = await act.Should().ThrowAsync<NotFoundException>();
-        ex.Which.ErrorCode.Should().Be("DIVISION_NOT_FOUND");
-    }
-
-    [Fact]
-    public async Task CreateAsync_WithDivision_DenormalizesAncestorIds()
-    {
-        var request = CreateValidRequest(divisionId: 5);
-        SetupSuccessfulCreate(request);
-        UserGeoAssignment? captured = null;
-        _repoMock.Setup(r => r.CreateAsync(It.IsAny<UserGeoAssignment>(), It.IsAny<CancellationToken>()))
-                 .Callback<UserGeoAssignment, CancellationToken>((g, _) => captured = g)
-                 .Returns(Task.CompletedTask);
-
-        await _sut.CreateAsync(request, callerId: 1);
-
-        captured!.DivisionId.Should().Be(5);
-        captured.TerritoryId.Should().Be(30);
-        captured.AreaId.Should().Be(20);
-        captured.RegionId.Should().Be(10);
-    }
-
-    [Fact]
-    public async Task CreateAsync_WithoutDivision_AllGeoIdsAreNull()
-    {
-        var request = CreateValidRequest(divisionId: null);
-        SetupSuccessfulCreate(request);
-        UserGeoAssignment? captured = null;
-        _repoMock.Setup(r => r.CreateAsync(It.IsAny<UserGeoAssignment>(), It.IsAny<CancellationToken>()))
-                 .Callback<UserGeoAssignment, CancellationToken>((g, _) => captured = g)
-                 .Returns(Task.CompletedTask);
-
-        await _sut.CreateAsync(request, callerId: 1);
-
-        captured!.DivisionId.Should().BeNull();
-        captured.TerritoryId.Should().BeNull();
-        captured.AreaId.Should().BeNull();
-        captured.RegionId.Should().BeNull();
     }
 
     [Fact]
@@ -350,25 +274,6 @@ public class UserGeoAssignmentServiceTests
         deactivated.Should().NotBeNull();
         deactivated!.Id.Should().Be(50);
         deactivated.IsActive.Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task CreateAsync_WithExistingRl_DeactivatesOldRl()
-    {
-        var request = CreateValidRequest();
-        var existingRl = CreateFakeRl(userId: 10, managerId: 99);
-        existingRl.IsActive = true;
-        SetupSuccessfulCreate(request, existingRl: existingRl);
-        UserReportingLine? deactivatedRl = null;
-        _rlRepoMock.Setup(r => r.UpdateAsync(It.IsAny<UserReportingLine>(), It.IsAny<CancellationToken>()))
-                   .Callback<UserReportingLine, CancellationToken>((l, _) => deactivatedRl = l)
-                   .Returns(Task.CompletedTask);
-
-        await _sut.CreateAsync(request, callerId: 1);
-
-        deactivatedRl.Should().NotBeNull();
-        deactivatedRl!.UserId.Should().Be(10);
-        deactivatedRl.IsActive.Should().BeFalse();
     }
 
     [Fact]
@@ -396,10 +301,31 @@ public class UserGeoAssignmentServiceTests
 
         await _sut.CreateAsync(request, callerId: 1);
 
-        // SaveChanges is called once on the geo repo — this is the atomic commit
         _repoMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
-        // The RL repo must NOT call SaveChanges independently
-        _rlRepoMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateAsync_SetsGeoIdsFromRequest()
+    {
+        var request = new CreateUserAssignmentRequest
+        {
+            UserId = 10,
+            RegionId = 1, AreaId = 2, TerritoryId = 3, DivisionId = 4, RouteId = 5,
+            EffectiveFrom = new DateOnly(2026, 3, 26)
+        };
+        SetupSuccessfulCreate(request);
+        UserGeoAssignment? captured = null;
+        _repoMock.Setup(r => r.CreateAsync(It.IsAny<UserGeoAssignment>(), It.IsAny<CancellationToken>()))
+                 .Callback<UserGeoAssignment, CancellationToken>((g, _) => captured = g)
+                 .Returns(Task.CompletedTask);
+
+        await _sut.CreateAsync(request, callerId: 1);
+
+        captured!.RegionId.Should().Be(1);
+        captured.AreaId.Should().Be(2);
+        captured.TerritoryId.Should().Be(3);
+        captured.DivisionId.Should().Be(4);
+        captured.RouteId.Should().Be(5);
     }
 
     // ─────────────────────────────────────────────────
@@ -416,72 +342,6 @@ public class UserGeoAssignmentServiceTests
 
         var ex = await act.Should().ThrowAsync<NotFoundException>();
         ex.Which.ErrorCode.Should().Be("USERASSIGNMENT_NOT_FOUND");
-    }
-
-    [Fact]
-    public async Task UpdateAsync_ManagerNotFound_ThrowsNotFoundException()
-    {
-        var geo = CreateFakeGeo();
-        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(geo);
-        _repoMock.Setup(r => r.UserExistsAsync(20, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(false);
-
-        var act = () => _sut.UpdateAsync(1, CreateValidUpdateRequest(), callerId: 1);
-
-        var ex = await act.Should().ThrowAsync<NotFoundException>();
-        ex.Which.ErrorCode.Should().Be("USER_NOT_FOUND");
-    }
-
-    [Fact]
-    public async Task UpdateAsync_SelfReport_ThrowsBusinessRuleException()
-    {
-        var geo = CreateFakeGeo(userId: 10);
-        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(geo);
-        _repoMock.Setup(r => r.UserExistsAsync(10, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(true);
-
-        var request = new UpdateUserAssignmentRequest { ReportsToUserId = 10, DivisionId = 5, EffectiveFrom = new DateOnly(2026, 4, 1) };
-        var act = () => _sut.UpdateAsync(1, request, callerId: 1);
-
-        var ex = await act.Should().ThrowAsync<BusinessRuleException>();
-        ex.Which.ErrorCode.Should().Be("SELF_REPORTING_NOT_ALLOWED");
-    }
-
-    [Fact]
-    public async Task UpdateAsync_DivisionNotFound_ThrowsNotFoundException()
-    {
-        var geo = CreateFakeGeo();
-        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(geo);
-        _repoMock.Setup(r => r.UserExistsAsync(20, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(true);
-        _repoMock.Setup(r => r.GetDivisionWithAncestorsAsync(99, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync((Division?)null);
-
-        var request = new UpdateUserAssignmentRequest { ReportsToUserId = 20, DivisionId = 99, EffectiveFrom = new DateOnly(2026, 4, 1) };
-        var act = () => _sut.UpdateAsync(1, request, callerId: 1);
-
-        var ex = await act.Should().ThrowAsync<NotFoundException>();
-        ex.Which.ErrorCode.Should().Be("DIVISION_NOT_FOUND");
-    }
-
-    [Fact]
-    public async Task UpdateAsync_DenormalizesAncestorIdsFromNewDivision()
-    {
-        var geo = CreateFakeGeo();
-        var newDivision = CreateFakeDivision(id: 7, territoryId: 40, areaId: 50, regionId: 60);
-        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(geo);
-        SetupSuccessfulUpdate(geo, new UpdateUserAssignmentRequest { ReportsToUserId = 20, DivisionId = 7, EffectiveFrom = new DateOnly(2026, 4, 1) }, 1, newDivision);
-
-        await _sut.UpdateAsync(1, new UpdateUserAssignmentRequest { ReportsToUserId = 20, DivisionId = 7, EffectiveFrom = new DateOnly(2026, 4, 1) }, callerId: 1);
-
-        geo.DivisionId.Should().Be(7);
-        geo.TerritoryId.Should().Be(40);
-        geo.AreaId.Should().Be(50);
-        geo.RegionId.Should().Be(60);
     }
 
     [Fact]
@@ -509,7 +369,28 @@ public class UserGeoAssignmentServiceTests
         await _sut.UpdateAsync(1, CreateValidUpdateRequest(), callerId: 1);
 
         _repoMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
-        _rlRepoMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_SetsGeoIdsFromRequest()
+    {
+        var geo = CreateFakeGeo();
+        var request = new UpdateUserAssignmentRequest
+        {
+            RegionId = 11, AreaId = 22, TerritoryId = 33, DivisionId = 44, RouteId = 55,
+            EffectiveFrom = new DateOnly(2026, 4, 1)
+        };
+        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(geo);
+        SetupSuccessfulUpdate(geo, request, 1);
+
+        await _sut.UpdateAsync(1, request, callerId: 1);
+
+        geo.RegionId.Should().Be(11);
+        geo.AreaId.Should().Be(22);
+        geo.TerritoryId.Should().Be(33);
+        geo.DivisionId.Should().Be(44);
+        geo.RouteId.Should().Be(55);
     }
 
     // ─────────────────────────────────────────────────
@@ -534,8 +415,6 @@ public class UserGeoAssignmentServiceTests
         var geo = CreateFakeGeo(isActive: true);
         _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(geo);
-        _rlRepoMock.Setup(r => r.GetActiveByUserIdAsync(geo.UserId, It.IsAny<CancellationToken>()))
-                   .ReturnsAsync((UserReportingLine?)null);
         _repoMock.Setup(r => r.UpdateAsync(geo, It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
@@ -548,35 +427,11 @@ public class UserGeoAssignmentServiceTests
     }
 
     [Fact]
-    public async Task DeleteAsync_WithActiveRl_DeactivatesRlToo()
-    {
-        var geo = CreateFakeGeo(userId: 10, isActive: true);
-        var rl = CreateFakeRl(userId: 10);
-        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(geo);
-        _rlRepoMock.Setup(r => r.GetActiveByUserIdAsync(10, It.IsAny<CancellationToken>()))
-                   .ReturnsAsync(rl);
-        _rlRepoMock.Setup(r => r.UpdateAsync(rl, It.IsAny<CancellationToken>()))
-                   .Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.UpdateAsync(geo, It.IsAny<CancellationToken>()))
-                 .Returns(Task.CompletedTask);
-        _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
-                 .Returns(Task.CompletedTask);
-
-        await _sut.DeleteAsync(1, callerId: 1);
-
-        rl.IsActive.Should().BeFalse();
-        _rlRepoMock.Verify(r => r.UpdateAsync(rl, It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    [Fact]
     public async Task DeleteAsync_CallsSaveChangesOnce()
     {
         var geo = CreateFakeGeo(isActive: true);
         _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(geo);
-        _rlRepoMock.Setup(r => r.GetActiveByUserIdAsync(geo.UserId, It.IsAny<CancellationToken>()))
-                   .ReturnsAsync((UserReportingLine?)null);
         _repoMock.Setup(r => r.UpdateAsync(It.IsAny<UserGeoAssignment>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
@@ -585,7 +440,6 @@ public class UserGeoAssignmentServiceTests
         await _sut.DeleteAsync(1, callerId: 1);
 
         _repoMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
-        _rlRepoMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // ─────────────────────────────────────────────────
@@ -594,26 +448,14 @@ public class UserGeoAssignmentServiceTests
 
     private void SetupSuccessfulCreate(
         CreateUserAssignmentRequest request,
-        UserGeoAssignment? existingGeo = null,
-        UserReportingLine? existingRl = null)
+        UserGeoAssignment? existingGeo = null)
     {
         _repoMock.Setup(r => r.UserExistsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
                  .ReturnsAsync(true);
         _repoMock.Setup(r => r.IsAdminOrDistributorAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
                  .ReturnsAsync(false);
-
-        if (request.DivisionId.HasValue)
-            _repoMock.Setup(r => r.GetDivisionWithAncestorsAsync(request.DivisionId.Value, It.IsAny<CancellationToken>()))
-                     .ReturnsAsync(CreateFakeDivision(request.DivisionId.Value));
-
-        _rlRepoMock.Setup(r => r.GetActiveByUserIdAsync(request.UserId, It.IsAny<CancellationToken>()))
-                   .ReturnsAsync(existingRl);
-        if (existingRl is not null)
-            _rlRepoMock.Setup(r => r.UpdateAsync(existingRl, It.IsAny<CancellationToken>()))
-                       .Returns(Task.CompletedTask);
-
-        _rlRepoMock.Setup(r => r.CreateAsync(It.IsAny<UserReportingLine>(), It.IsAny<CancellationToken>()))
-                   .Returns(Task.CompletedTask);
+        _repoMock.Setup(r => r.DivisionExistsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(true);
 
         _repoMock.Setup(r => r.GetActiveByUserIdAsync(request.UserId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(existingGeo);
@@ -635,21 +477,8 @@ public class UserGeoAssignmentServiceTests
     private void SetupSuccessfulUpdate(
         UserGeoAssignment geo,
         UpdateUserAssignmentRequest request,
-        int geoId,
-        Division? division = null)
+        int geoId)
     {
-        _repoMock.Setup(r => r.UserExistsAsync(request.ReportsToUserId, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(true);
-
-        if (request.DivisionId.HasValue)
-            _repoMock.Setup(r => r.GetDivisionWithAncestorsAsync(request.DivisionId.Value, It.IsAny<CancellationToken>()))
-                     .ReturnsAsync(division ?? CreateFakeDivision(request.DivisionId.Value));
-
-        _rlRepoMock.Setup(r => r.GetActiveByUserIdAsync(geo.UserId, It.IsAny<CancellationToken>()))
-                   .ReturnsAsync((UserReportingLine?)null);
-        _rlRepoMock.Setup(r => r.CreateAsync(It.IsAny<UserReportingLine>(), It.IsAny<CancellationToken>()))
-                   .Returns(Task.CompletedTask);
-
         _repoMock.Setup(r => r.UpdateAsync(geo, It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))

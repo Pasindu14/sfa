@@ -16,7 +16,12 @@ public class RegionRepository(AppDbContext context) : IRegionRepository
         take = Math.Clamp(take, 1, 200);
         var query = _context.Regions.IgnoreQueryFilters().AsQueryable();
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(r => EF.Functions.ILike(r.Name, $"%{search}%"));
+        {
+            var pattern = $"%{search}%";
+            query = _context.Database.ProviderName?.Contains("Npgsql") == true
+                ? query.Where(r => EF.Functions.ILike(r.Name, pattern))
+                : query.Where(r => EF.Functions.Like(r.Name, pattern));
+        }
 
         var totalCount = await query.CountAsync(ct);
         var regions = await query

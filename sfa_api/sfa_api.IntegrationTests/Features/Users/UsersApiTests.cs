@@ -29,7 +29,7 @@ public class UsersApiTests
         string email = "testuser@example.com",
         string phone = "1234567890",
         string password = "Str0ng@Pass1",
-        string role = "Manager",
+        string role = "NSM",
         string? deviceId = null)
     {
         return new { name, username, email, phone, password, role, deviceId };
@@ -208,7 +208,7 @@ public class UsersApiTests
             username: "integration_user",
             email: "integration@test.com",
             phone: "5551112222",
-            role: "Manager");
+            role: "NSM");
 
         var createResponse = await _client.PostAsJsonAsync("/api/v1/users", payload);
 
@@ -226,7 +226,7 @@ public class UsersApiTests
 
         var getBody = await getResponse.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
         getBody.GetProperty("data").GetProperty("username").GetString().Should().Be("integration_user");
-        getBody.GetProperty("data").GetProperty("role").GetString().Should().Be("Manager");
+        getBody.GetProperty("data").GetProperty("role").GetString().Should().Be("NSM");
         getBody.GetProperty("data").GetProperty("isActive").GetBoolean().Should().BeTrue();
     }
 
@@ -275,7 +275,7 @@ public class UsersApiTests
             username: "duplicate_test",
             email: "first@dup.com",
             phone: "7771110001",
-            role: "Manager");
+            role: "NSM");
 
         var first = await _client.PostAsJsonAsync("/api/v1/users", payload);
         first.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -286,7 +286,7 @@ public class UsersApiTests
             username: "duplicate_test",  // same username
             email: "second@dup.com",
             phone: "7771110002",
-            role: "Manager");
+            role: "NSM");
 
         var second = await _client.PostAsJsonAsync("/api/v1/users", duplicate);
         second.StatusCode.Should().Be(HttpStatusCode.Conflict);
@@ -325,7 +325,7 @@ public class UsersApiTests
             username: "update_target",
             email: "update@test.com",
             phone: "6661110001",
-            role: "Manager");
+            role: "NSM");
 
         var createResponse = await _client.PostAsJsonAsync("/api/v1/users", payload);
         var createBody = await createResponse.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
@@ -364,7 +364,7 @@ public class UsersApiTests
             username: "delete_target",
             email: "delete@test.com",
             phone: "8881110001",
-            role: "Manager");
+            role: "NSM");
 
         var createResponse = await _client.PostAsJsonAsync("/api/v1/users", payload);
         var createBody = await createResponse.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
@@ -390,7 +390,7 @@ public class UsersApiTests
             username: "toggle_user",
             email: "toggle@test.com",
             phone: "4441110001",
-            role: "Manager");
+            role: "NSM");
 
         var createResponse = await _client.PostAsJsonAsync("/api/v1/users", payload);
         var createBody = await createResponse.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
@@ -430,7 +430,7 @@ public class UsersApiTests
             username: "resetpw_user",
             email: "resetpw@test.com",
             phone: "3331110001",
-            role: "Manager");
+            role: "NSM");
 
         var createResponse = await _client.PostAsJsonAsync("/api/v1/users", payload);
         var createBody = await createResponse.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);

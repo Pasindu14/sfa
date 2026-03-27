@@ -15,7 +15,7 @@ public class UpdateUserValidatorTests
         Username = "janedoe",
         Email = "jane@example.com",
         Phone = "1234567890",
-        Role = "Manager"
+        Role = "NSM"
     };
 
     // ─────────────────────────────────────────────────
@@ -171,7 +171,7 @@ public class UpdateUserValidatorTests
 
     [Theory]
     [InlineData("Admin")]
-    [InlineData("Manager")]
+    [InlineData("NSM")]
     [InlineData("SalesRep")]
     public void Role_ValidValues_Pass(string role)
     {

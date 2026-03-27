@@ -11,7 +11,6 @@ public class CreateUserAssignmentValidatorTests
     private static CreateUserAssignmentRequest ValidRequest() => new()
     {
         UserId = 10,
-        ReportsToUserId = 20,
         DivisionId = null,
         EffectiveFrom = new DateOnly(2026, 3, 26)
     };
@@ -46,33 +45,6 @@ public class CreateUserAssignmentValidatorTests
 
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.PropertyName == "UserId");
-    }
-
-    [Theory]
-    [InlineData(0)]
-    [InlineData(-5)]
-    public void Validate_InvalidReportsToUserId_FailsWithReportsToUserIdError(int managerId)
-    {
-        var request = ValidRequest();
-        request.ReportsToUserId = managerId;
-
-        var result = _validator.Validate(request);
-
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName == "ReportsToUserId");
-    }
-
-    [Fact]
-    public void Validate_SelfReport_FailsWithReportsToUserIdError()
-    {
-        var request = ValidRequest();
-        request.UserId = 10;
-        request.ReportsToUserId = 10;
-
-        var result = _validator.Validate(request);
-
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName == "ReportsToUserId");
     }
 
     [Theory]

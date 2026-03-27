@@ -702,7 +702,7 @@ public class OutletsApiTests
         var id = await CreateOutletAsync("Soft Delete Outlet UniqueOT999", routeId, "916001001V");
         await _client.DeleteAsync($"/api/v1/outlets/{id}");
 
-        var listResponse = await _client.GetAsync("/api/v1/outlets?pageSize=200");
+        var listResponse = await _client.GetAsync("/api/v1/outlets?pageSize=200&status=active");
         var listBody = await listResponse.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
         var ids = listBody.GetProperty("data").GetProperty("outlets").EnumerateArray()
             .Select(o => o.GetProperty("id").GetInt32()).ToList();

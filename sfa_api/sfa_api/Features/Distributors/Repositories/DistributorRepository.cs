@@ -36,9 +36,12 @@ public class DistributorRepository(AppDbContext context) : IDistributorRepositor
         take = Math.Clamp(take, 1, 200);
         var query = _context.Distributors.AsQueryable();
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(d => EF.Functions.ILike(d.Name, $"%{search}%")
-                || EF.Functions.ILike(d.Email, $"%{search}%")
-                || EF.Functions.ILike(d.Phone, $"%{search}%"));
+        {
+            var pattern = $"%{search}%";
+            query = _context.Database.ProviderName?.Contains("Npgsql") == true
+                ? query.Where(d => EF.Functions.ILike(d.Name, pattern) || EF.Functions.ILike(d.Email, pattern) || EF.Functions.ILike(d.Phone, pattern))
+                : query.Where(d => EF.Functions.Like(d.Name, pattern) || EF.Functions.Like(d.Email, pattern) || EF.Functions.Like(d.Phone, pattern));
+        }
         if (isActive.HasValue)
             query = query.Where(d => d.IsActive == isActive.Value);
 

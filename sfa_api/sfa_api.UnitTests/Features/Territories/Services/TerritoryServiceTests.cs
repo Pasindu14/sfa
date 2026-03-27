@@ -7,18 +7,21 @@ using sfa_api.Features.Territories.Entities;
 using sfa_api.Features.Territories.Repositories;
 using sfa_api.Features.Territories.Requests;
 using sfa_api.Features.Territories.Services;
+using sfa_api.Infrastructure.Caching;
 
 namespace sfa_api.UnitTests.Features.Territories.Services;
 
 public class TerritoryServiceTests
 {
     private readonly Mock<ITerritoryRepository> _repoMock;
+    private readonly Mock<ICacheService> _cacheMock;
     private readonly TerritoryService _sut;
 
     public TerritoryServiceTests()
     {
         _repoMock = new Mock<ITerritoryRepository>();
-        _sut = new TerritoryService(_repoMock.Object, NullLogger<TerritoryService>.Instance);
+        _cacheMock = new Mock<ICacheService>();
+        _sut = new TerritoryService(_repoMock.Object, _cacheMock.Object, NullLogger<TerritoryService>.Instance);
     }
 
     private static Area CreateFakeArea(int id = 1, string name = "Test Area") => new()

@@ -17,9 +17,12 @@ public class ProductRepository(AppDbContext context) : IProductRepository
         var query = _context.Products.IgnoreQueryFilters().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(p =>
-                EF.Functions.ILike(p.ItemDescription, $"%{search}%") ||
-                EF.Functions.ILike(p.Code, $"%{search}%"));
+        {
+            var pattern = $"%{search}%";
+            query = _context.Database.ProviderName?.Contains("Npgsql") == true
+                ? query.Where(p => EF.Functions.ILike(p.ItemDescription, pattern) || EF.Functions.ILike(p.Code, pattern))
+                : query.Where(p => EF.Functions.Like(p.ItemDescription, pattern) || EF.Functions.Like(p.Code, pattern));
+        }
 
         var totalCount = await query.CountAsync(ct);
         var products = await query

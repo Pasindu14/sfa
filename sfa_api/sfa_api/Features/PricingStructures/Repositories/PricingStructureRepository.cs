@@ -27,7 +27,12 @@ public class PricingStructureRepository(AppDbContext context) : IPricingStructur
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(ps => EF.Functions.ILike(ps.Name, $"%{search}%"));
+        {
+            var pattern = $"%{search}%";
+            query = _context.Database.ProviderName?.Contains("Npgsql") == true
+                ? query.Where(ps => EF.Functions.ILike(ps.Name, pattern))
+                : query.Where(ps => EF.Functions.Like(ps.Name, pattern));
+        }
 
         var totalCount = await query.CountAsync(ct);
         var structures = await query
@@ -41,10 +46,12 @@ public class PricingStructureRepository(AppDbContext context) : IPricingStructur
     }
 
     public async Task<PricingStructure?> GetByNameAsync(string name, CancellationToken ct = default)
-        => await _context.PricingStructures
-            .IgnoreQueryFilters()
-            .AsNoTracking()
-            .FirstOrDefaultAsync(ps => EF.Functions.ILike(ps.Name, name), ct);
+    {
+        var base_ = _context.PricingStructures.IgnoreQueryFilters().AsNoTracking();
+        return _context.Database.ProviderName?.Contains("Npgsql") == true
+            ? await base_.FirstOrDefaultAsync(ps => EF.Functions.ILike(ps.Name, name), ct)
+            : await base_.FirstOrDefaultAsync(ps => EF.Functions.Like(ps.Name, name), ct);
+    }
 
     public async Task<PricingStructure?> GetCurrentDefaultAsync(CancellationToken ct = default)
         => await _context.PricingStructures

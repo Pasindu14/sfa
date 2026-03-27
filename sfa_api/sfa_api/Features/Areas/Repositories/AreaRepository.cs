@@ -21,7 +21,12 @@ public class AreaRepository(AppDbContext context) : IAreaRepository
         if (regionId.HasValue) query = query.Where(a => a.RegionId == regionId.Value);
         if (isActive.HasValue) query = query.Where(a => a.IsActive == isActive.Value);
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(a => EF.Functions.ILike(a.Name, $"%{search}%"));
+        {
+            var pattern = $"%{search}%";
+            query = _context.Database.ProviderName?.Contains("Npgsql") == true
+                ? query.Where(a => EF.Functions.ILike(a.Name, pattern))
+                : query.Where(a => EF.Functions.Like(a.Name, pattern));
+        }
 
         var totalCount = await query.CountAsync(ct);
         var areas = await query

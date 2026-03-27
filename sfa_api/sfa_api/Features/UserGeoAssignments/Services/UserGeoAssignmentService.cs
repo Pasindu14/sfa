@@ -73,6 +73,11 @@ public class UserGeoAssignmentService(
                 "USER_ROLE_NOT_ASSIGNABLE",
                 "Admin and Distributor users cannot be given a geo assignment.");
 
+        // Validate division if provided
+        if (request.DivisionId.HasValue &&
+            !await _repo.DivisionExistsAsync(request.DivisionId.Value, ct))
+            throw new NotFoundException("Division", request.DivisionId.Value);
+
         var now = DateTime.UtcNow;
 
         // Deactivate existing geo assignment for this user

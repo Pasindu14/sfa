@@ -33,7 +33,12 @@ public class UserReportingLineRepository(AppDbContext context) : IUserReportingL
         var query = _context.UserReportingLines.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(rl => EF.Functions.ILike(rl.User!.Name, $"%{search}%"));
+        {
+            var pattern = $"%{search}%";
+            query = _context.Database.ProviderName?.Contains("Npgsql") == true
+                ? query.Where(rl => EF.Functions.ILike(rl.User!.Name, pattern))
+                : query.Where(rl => EF.Functions.Like(rl.User!.Name, pattern));
+        }
 
         if (!string.IsNullOrWhiteSpace(role) && Enum.TryParse<UserRole>(role, out var parsedRole))
             query = query.Where(rl => rl.User!.Role == parsedRole);

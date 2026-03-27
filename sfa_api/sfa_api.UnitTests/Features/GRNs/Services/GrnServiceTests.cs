@@ -37,6 +37,12 @@ public class GrnServiceTests
 
         _sut = new GrnService(_repoMock.Object, _lockServiceMock.Object);
 
+        // Default: lock is acquired successfully (individual tests can override to return null)
+        _lockServiceMock
+            .Setup(l => l.AcquireAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(_lockMock.Object);
+        _lockMock.Setup(l => l.DisposeAsync()).Returns(ValueTask.CompletedTask);
+
         // Default: transaction commits/rolls back cleanly
         _txMock.Setup(t => t.CommitAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         _txMock.Setup(t => t.RollbackAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);

@@ -43,7 +43,8 @@ public class PurchaseOrdersApiTests
             email = $"dist{alias}@test.com",
             alias,
             tradeDiscount = 5.0m,
-            commission = 2.0m
+            commission = 2.0m,
+            category = "A"
         };
         var response = await _client.PostAsJsonAsync("/api/v1/distributors", payload);
         response.StatusCode.Should().Be(HttpStatusCode.Created,
@@ -527,7 +528,7 @@ public class PurchaseOrdersApiTests
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
         body.GetProperty("success").GetBoolean().Should().BeTrue();
-        var orders = body.GetProperty("data").GetProperty("salesOrders");
+        var orders = body.GetProperty("data").GetProperty("purchaseOrders");
         orders.ValueKind.Should().Be(JsonValueKind.Array);
         foreach (var order in orders.EnumerateArray())
             order.GetProperty("status").GetInt32().Should().Be(1);
@@ -545,7 +546,7 @@ public class PurchaseOrdersApiTests
         var orderNumber = getBody.GetProperty("data").GetProperty("orderNumber").GetString()!;
         SetToken(AuthHelper.AdminToken);
 
-        var response = await _client.GetAsync($"{BaseUrl}?search=SO-");
+        var response = await _client.GetAsync($"{BaseUrl}?search=PO-");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);

@@ -76,7 +76,9 @@ public class SfaWebApplicationFactory : WebApplicationFactory<Program>
                 ["RateLimit:AuthPermitLimit"]           = "100000",
                 ["RateLimit:AuthWindowSeconds"]         = "3600",
                 ["RateLimit:TestPermitLimit"]           = "100000",
-                ["RateLimit:TestWindowSeconds"]         = "3600"
+                ["RateLimit:TestWindowSeconds"]         = "3600",
+                ["RateLimit:UserPermitLimit"]           = "100000",
+                ["RateLimit:UserWindowSeconds"]         = "3600"
             });
         });
 

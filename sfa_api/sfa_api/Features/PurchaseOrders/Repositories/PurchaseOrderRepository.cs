@@ -39,8 +39,12 @@ public class PurchaseOrderRepository(AppDbContext context) : IPurchaseOrderRepos
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(o => EF.Functions.ILike(o.OrderNumber, $"%{search}%")
-                || EF.Functions.ILike(o.Distributor.Name, $"%{search}%"));
+        {
+            var pattern = $"%{search}%";
+            query = _context.Database.ProviderName?.Contains("Npgsql") == true
+                ? query.Where(o => EF.Functions.ILike(o.OrderNumber, pattern) || EF.Functions.ILike(o.Distributor.Name, pattern))
+                : query.Where(o => EF.Functions.Like(o.OrderNumber, pattern) || EF.Functions.Like(o.Distributor.Name, pattern));
+        }
 
         if (status.HasValue)
             query = query.Where(o => o.Status == status.Value);

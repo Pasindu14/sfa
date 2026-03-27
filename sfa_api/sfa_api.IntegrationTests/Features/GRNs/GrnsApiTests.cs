@@ -80,7 +80,8 @@ public class GrnsApiTests
             alias,
             territoryId,
             tradeDiscount = 0.0m,
-            commission    = 0.0m
+            commission    = 0.0m,
+            category      = "A"
         };
         var response = await _client.PostAsJsonAsync("/api/v1/distributors", payload);
         response.StatusCode.Should().Be(HttpStatusCode.Created,

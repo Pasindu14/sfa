@@ -39,7 +39,9 @@ public class PurchaseOrderServiceTests
             .Options;
         _dbContext = new AppDbContext(options);
         _dbContext.Database.OpenConnection();
-        _dbContext.Database.EnsureCreated();
+        // Note: EnsureCreated() is intentionally omitted — SQLite does not support
+        // sequences (used by purchase_order_number_seq). The context is only used for
+        // BeginTransactionAsync in unit tests, which works without schema creation.
 
         _sut = new PurchaseOrderService(
             _repoMock.Object,
