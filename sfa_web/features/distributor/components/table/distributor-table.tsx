@@ -8,6 +8,7 @@ import {
   useEditDialog,
   useActivateDialog,
   useDeactivateDialog,
+  useDeleteDialog,
   useDistributorDialogStore,
 } from "../../store";
 import { useDistributorDataTable } from "../../hooks/distributor.hooks";
@@ -18,10 +19,11 @@ export function DistributorTable() {
   const { open: openEdit } = useEditDialog();
   const { open: openActivate } = useActivateDialog();
   const { open: openDeactivate } = useDeactivateDialog();
+  const { open: openDelete } = useDeleteDialog();
 
   const getColumns = useCallback(
-    () => getDistributorColumns({ openEdit, openActivate, openDeactivate }),
-    [openEdit, openActivate, openDeactivate],
+    () => getDistributorColumns({ openEdit, openActivate, openDeactivate, openDelete }),
+    [openEdit, openActivate, openDeactivate, openDelete],
   );
 
   return (

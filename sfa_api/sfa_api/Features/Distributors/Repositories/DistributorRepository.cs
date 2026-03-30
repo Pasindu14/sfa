@@ -34,7 +34,7 @@ public class DistributorRepository(AppDbContext context) : IDistributorRepositor
     public async Task<(IEnumerable<Distributor> Distributors, int TotalCount)> GetAllAsync(int skip, int take, string? search = null, bool? isActive = null, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, 200);
-        var query = _context.Distributors.AsQueryable();
+        var query = _context.Distributors.Where(d => !d.IsDeleted).AsQueryable();
         if (!string.IsNullOrWhiteSpace(search))
         {
             var pattern = $"%{search}%";
@@ -66,14 +66,12 @@ public class DistributorRepository(AppDbContext context) : IDistributorRepositor
     }
 
     public async Task DeleteAsync(int id, CancellationToken ct = default)
-    {
-        var distributor = await _context.Distributors.FindAsync([id], ct);
-        if (distributor != null)
-        {
-            distributor.IsDeleted = true;
-            _context.Distributors.Update(distributor);
-        }
-    }
+        => await _context.Distributors
+            .Where(d => d.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(d => d.IsActive, false)
+                .SetProperty(d => d.IsDeleted, true)
+                .SetProperty(d => d.UpdatedAt, DateTime.UtcNow), ct);
 
     public async Task SaveChangesAsync(CancellationToken ct = default)
         => await _context.SaveChangesAsync(ct);

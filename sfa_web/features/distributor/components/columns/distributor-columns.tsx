@@ -8,6 +8,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { DistributorDto } from '../types/distributor.types'
@@ -16,10 +17,11 @@ export interface DistributorColumnActions {
   openEdit: (id: number) => void
   openActivate: (id: number) => void
   openDeactivate: (id: number) => void
+  openDelete: (id: number) => void
 }
 
 export function getDistributorColumns(actions: DistributorColumnActions): ColumnDef<DistributorDto>[] {
-  const { openEdit, openActivate, openDeactivate } = actions
+  const { openEdit, openActivate, openDeactivate, openDelete } = actions
 
   return [
     {
@@ -121,7 +123,10 @@ export function getDistributorColumns(actions: DistributorColumnActions): Column
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => openEdit(item.id)}>Edit</DropdownMenuItem>
               {item.isActive ? (
-                <DropdownMenuItem onClick={() => openDeactivate(item.id)}>
+                <DropdownMenuItem
+                  onClick={() => openDeactivate(item.id)}
+                  className="text-destructive focus:text-destructive"
+                >
                   Deactivate
                 </DropdownMenuItem>
               ) : (
@@ -129,6 +134,13 @@ export function getDistributorColumns(actions: DistributorColumnActions): Column
                   Activate
                 </DropdownMenuItem>
               )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => openDelete(item.id)}
+              >
+                Delete
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )

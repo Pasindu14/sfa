@@ -4,22 +4,17 @@ using sfa_api.Features.Distributors.Entities;
 using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.Distributors.Requests;
 using sfa_api.Features.Territories.Repositories;
-using sfa_api.Infrastructure.Caching;
 
 namespace sfa_api.Features.Distributors.Services;
 
 public class DistributorService(
     IDistributorRepository repo,
     ITerritoryRepository territoryRepo,
-    ICacheService cache,
     ILogger<DistributorService> logger) : IDistributorService
 {
     private readonly IDistributorRepository _repo = repo;
     private readonly ITerritoryRepository _territoryRepo = territoryRepo;
-    private readonly ICacheService _cache = cache;
     private readonly ILogger<DistributorService> _logger = logger;
-
-    private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
 
     public async Task<DistributorDto> GetByIdAsync(int id, CancellationToken ct = default)
     {
@@ -30,21 +25,14 @@ public class DistributorService(
 
     public async Task<DistributorListDto> GetAllAsync(int page, int pageSize, string? search = null, bool? isActive = null, CancellationToken ct = default)
     {
-        var cacheKey = $"distributors:list:{page}:{pageSize}:{search}:{isActive}";
-        var cached = await _cache.GetAsync<DistributorListDto>(cacheKey);
-        if (cached is not null) return cached;
-
         var skip = (page - 1) * pageSize;
         var (distributors, totalCount) = await _repo.GetAllAsync(skip, pageSize, search, isActive, ct);
-        var result = new DistributorListDto(
+        return new DistributorListDto(
             Distributors: distributors.Select(MapToDto),
             TotalCount: totalCount,
             Page: page,
             PageSize: pageSize
         );
-
-        await _cache.SetAsync(cacheKey, result, CacheTtl);
-        return result;
     }
 
     public async Task<DistributorDto> CreateAsync(CreateDistributorRequest request, int? callerId, CancellationToken ct = default)
