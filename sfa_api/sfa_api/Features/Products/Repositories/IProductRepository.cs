@@ -10,6 +10,7 @@ public interface IProductRepository
     Task<bool> ExistsByCodeAsync(string code, int excludeProductId, CancellationToken ct = default);
     Task CreateAsync(Product product, CancellationToken ct = default);
     Task UpdateAsync(Product product, CancellationToken ct = default);
+    Task DeactivateAsync(int id, CancellationToken ct = default);
     Task DeleteAsync(int id, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

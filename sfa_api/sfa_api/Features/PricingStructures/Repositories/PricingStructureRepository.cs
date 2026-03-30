@@ -23,6 +23,7 @@ public class PricingStructureRepository(AppDbContext context) : IPricingStructur
         take = Math.Clamp(take, 1, 200);
         var query = _context.PricingStructures
             .IgnoreQueryFilters()
+            .Where(x => !x.IsDeleted)
             .Include(ps => ps.Items)
             .AsQueryable();
 
@@ -82,6 +83,14 @@ public class PricingStructureRepository(AppDbContext context) : IPricingStructur
         _context.PricingStructures.Update(entity);
         return Task.CompletedTask;
     }
+
+    public async Task DeactivateAsync(int id, CancellationToken ct = default)
+        => await _context.PricingStructures
+            .IgnoreQueryFilters()
+            .Where(ps => ps.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(ps => ps.IsActive, false)
+                .SetProperty(ps => ps.UpdatedAt, DateTime.UtcNow), ct);
 
     public async Task DeleteAsync(int id, CancellationToken ct = default)
         => await _context.PricingStructures

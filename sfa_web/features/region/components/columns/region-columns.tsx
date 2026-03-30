@@ -8,18 +8,20 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { RegionDto } from '../types/region.types'
 
 export interface RegionColumnActions {
   openEdit: (id: number) => void
+  openDelete: (id: number) => void
   openActivate: (id: number) => void
   openDeactivate: (id: number) => void
 }
 
 export function getRegionColumns(actions: RegionColumnActions): ColumnDef<RegionDto>[] {
-  const { openEdit, openActivate, openDeactivate } = actions
+  const { openEdit, openDelete, openActivate, openDeactivate } = actions
 
   return [
     {
@@ -83,7 +85,13 @@ export function getRegionColumns(actions: RegionColumnActions): ColumnDef<Region
                   Activate
                 </DropdownMenuItem>
               )}
-
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => openDelete(region.id)}
+              >
+                Delete
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )

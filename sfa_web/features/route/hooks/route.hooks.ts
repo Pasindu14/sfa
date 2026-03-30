@@ -8,6 +8,7 @@ import {
   getRouteByIdAction,
   createRouteAction,
   updateRouteAction,
+  deleteRouteAction,
   activateRouteAction,
   deactivateRouteAction,
   getActiveRoutesAction,
@@ -16,6 +17,7 @@ import {
 import {
   useCreateDialog,
   useEditDialog,
+  useDeleteDialog,
   useActivateDialog,
   useDeactivateDialog,
 } from '../store'
@@ -180,6 +182,26 @@ export function useUpdateRoute() {
   })
 
   return { ...mutation, fieldErrors, clearFieldErrors: () => setFieldErrors(null) }
+}
+
+export function useDeleteRoute() {
+  const queryClient = useQueryClient()
+  const { close } = useDeleteDialog()
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const result = await deleteRouteAction(id)
+      if (!result.success) throw result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: routeKeys.all })
+      close()
+      toast.success('Route deleted successfully')
+    },
+    onError: (error: ActionFailure) => {
+      handleErrorToast(error, 'route', 'delete')
+    },
+  })
 }
 
 export function useActivateRoute() {

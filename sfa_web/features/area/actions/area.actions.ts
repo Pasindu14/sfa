@@ -69,3 +69,11 @@ export const deactivateAreaAction = createAction(
     revalidatePath('/areas')
   }
 )
+
+export const deleteAreaAction = createAction(
+  { name: 'deleteAreaAction', requireAuth: true, requiredRole: 'Admin' },
+  async (id: number) => {
+    await client.delete(`/api/v1/areas/${id}`)
+    revalidatePath('/areas')
+  }
+)

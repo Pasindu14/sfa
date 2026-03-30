@@ -21,12 +21,14 @@ import { Spinner } from '@/components/ui/spinner'
 import {
   useCreateDialog,
   useEditDialog,
+  useDeleteDialog,
   useActivateDialog,
   useDeactivateDialog,
 } from '../../store'
 import {
   useCreateRegion,
   useUpdateRegion,
+  useDeleteRegion,
   useActivateRegion,
   useDeactivateRegion,
   useRegion,
@@ -103,6 +105,37 @@ function EditRegionDialog() {
   )
 }
 
+// --- Delete ---
+
+function DeleteRegionDialog() {
+  const { isOpen, selectedId, close } = useDeleteDialog()
+  const { mutate, isPending } = useDeleteRegion()
+
+  return (
+    <AlertDialog open={isOpen} onOpenChange={(open) => !open && close()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Region</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently delete the region and cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={isPending}
+            onClick={() => selectedId && mutate(selectedId)}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {isPending ? <Spinner className="mr-2" /> : null}
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
 // --- Activate ---
 
 function ActivateRegionDialog() {
@@ -171,6 +204,7 @@ export function RegionDialogs() {
     <>
       <CreateRegionDialog />
       <EditRegionDialog />
+      <DeleteRegionDialog />
       <ActivateRegionDialog />
       <DeactivateRegionDialog />
     </>

@@ -57,6 +57,14 @@ export const deletePricingStructureAction = createAction(
   }
 )
 
+export const deactivatePricingStructureAction = createAction(
+  { name: 'deactivatePricingStructureAction', requireAuth: true, requiredRole: 'Admin' },
+  async (id: number) => {
+    await client.post(`/api/v1/pricing-structures/${id}/deactivate`)
+    revalidatePath('/pricing-structures')
+  }
+)
+
 export const activatePricingStructureAction = createAction(
   { name: 'activatePricingStructureAction', requireAuth: true, requiredRole: 'Admin' },
   async (id: number) => {

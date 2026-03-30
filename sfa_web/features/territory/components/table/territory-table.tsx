@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import {
   useEditDialog,
+  useDeleteDialog,
   useActivateDialog,
   useDeactivateDialog,
   useTerritoryDialogStore,
@@ -16,12 +17,13 @@ import { getTerritoryColumns } from "../columns/territory-columns";
 export function TerritoryTable() {
   const openCreate = useTerritoryDialogStore((s) => s.openCreate);
   const { open: openEdit } = useEditDialog();
+  const { open: openDelete } = useDeleteDialog();
   const { open: openActivate } = useActivateDialog();
   const { open: openDeactivate } = useDeactivateDialog();
 
   const getColumns = useCallback(
-    () => getTerritoryColumns({ openEdit, openActivate, openDeactivate }),
-    [openEdit, openActivate, openDeactivate],
+    () => getTerritoryColumns({ openEdit, openDelete, openActivate, openDeactivate }),
+    [openEdit, openDelete, openActivate, openDeactivate],
   );
 
   return (

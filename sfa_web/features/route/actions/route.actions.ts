@@ -81,3 +81,11 @@ export const deactivateRouteAction = createAction(
     revalidatePath('/routes')
   }
 )
+
+export const deleteRouteAction = createAction(
+  { name: 'deleteRouteAction', requireAuth: true, requiredRole: 'Admin' },
+  async (id: number) => {
+    await client.delete(`/api/v1/routes/${id}`)
+    revalidatePath('/routes')
+  }
+)

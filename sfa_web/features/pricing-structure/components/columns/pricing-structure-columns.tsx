@@ -15,6 +15,7 @@ import type { PricingStructureDto } from '../types/pricing-structure.types'
 
 export interface PricingStructureColumnActions {
   openEdit: (id: number) => void
+  openDeactivate: (id: number) => void
   openDelete: (id: number) => void
   openActivate: (id: number) => void
   openManageItems: (id: number) => void
@@ -23,7 +24,7 @@ export interface PricingStructureColumnActions {
 export function getPricingStructureColumns(
   actions: PricingStructureColumnActions
 ): ColumnDef<PricingStructureDto>[] {
-  const { openEdit, openDelete, openActivate, openManageItems } = actions
+  const { openEdit, openDeactivate, openDelete, openActivate, openManageItems } = actions
 
   return [
     {
@@ -99,7 +100,7 @@ export function getPricingStructureColumns(
               <DropdownMenuItem onClick={() => openEdit(item.id)}>Edit</DropdownMenuItem>
               {item.isActive ? (
                 <DropdownMenuItem
-                  onClick={() => openDelete(item.id)}
+                  onClick={() => openDeactivate(item.id)}
                   className="text-destructive focus:text-destructive"
                 >
                   Deactivate
@@ -109,6 +110,13 @@ export function getPricingStructureColumns(
                   Activate
                 </DropdownMenuItem>
               )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => openDelete(item.id)}
+              >
+                Delete
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )

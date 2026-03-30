@@ -21,12 +21,14 @@ import { Spinner } from '@/components/ui/spinner'
 import {
   useCreateDialog,
   useEditDialog,
+  useDeactivateDialog,
   useDeleteDialog,
   useActivateDialog,
 } from '../../store'
 import {
   useCreateProduct,
   useUpdateProduct,
+  useDeactivateProduct,
   useDeleteProduct,
   useActivateProduct,
   useProduct,
@@ -120,11 +122,11 @@ function EditProductDialog() {
   )
 }
 
-// --- Delete (Deactivate) Dialog ---
+// --- Deactivate Dialog ---
 
-function DeleteProductDialog() {
-  const { isOpen, selectedId, close } = useDeleteDialog()
-  const { mutate, isPending } = useDeleteProduct()
+function DeactivateProductDialog() {
+  const { isOpen, selectedId, close } = useDeactivateDialog()
+  const { mutate, isPending } = useDeactivateProduct()
 
   return (
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && close()}>
@@ -133,7 +135,7 @@ function DeleteProductDialog() {
           <AlertDialogTitle>Deactivate Product</AlertDialogTitle>
           <AlertDialogDescription>
             This will mark the product as inactive. It will no longer appear as an active catalogue
-            item. You can re-activate it by editing the record.
+            item. You can re-activate it at any time.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -145,6 +147,37 @@ function DeleteProductDialog() {
           >
             {isPending ? <Spinner className="mr-2" /> : null}
             Deactivate
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
+// --- Delete Dialog ---
+
+function DeleteProductDialog() {
+  const { isOpen, selectedId, close } = useDeleteDialog()
+  const { mutate, isPending } = useDeleteProduct()
+
+  return (
+    <AlertDialog open={isOpen} onOpenChange={(open) => !open && close()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Product</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently delete the product and cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={isPending}
+            onClick={() => selectedId && mutate(selectedId)}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {isPending ? <Spinner className="mr-2" /> : null}
+            Delete
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -189,6 +222,7 @@ export function ProductDialogs() {
     <>
       <CreateProductDialog />
       <EditProductDialog />
+      <DeactivateProductDialog />
       <DeleteProductDialog />
       <ActivateProductDialog />
     </>

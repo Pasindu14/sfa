@@ -3,6 +3,7 @@
 import { SalesInvoiceTable } from '../table/sales-invoice-table'
 import { SalesInvoiceImportDialog } from '../dialogs/sales-invoice-import-dialog'
 import { SalesInvoiceDetailDialog } from '../dialogs/sales-invoice-detail-dialog'
+import { DeleteSalesInvoiceDialog } from '../dialogs/sales-invoice-delete-dialog'
 
 export function SalesInvoiceListPage() {
   return (
@@ -17,6 +18,7 @@ export function SalesInvoiceListPage() {
       <SalesInvoiceTable />
       <SalesInvoiceImportDialog />
       <SalesInvoiceDetailDialog />
+      <DeleteSalesInvoiceDialog />
     </div>
   )
 }

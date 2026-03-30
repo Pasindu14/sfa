@@ -76,3 +76,11 @@ export const deactivateTerritoryAction = createAction(
     revalidatePath('/territories')
   }
 )
+
+export const deleteTerritoryAction = createAction(
+  { name: 'deleteTerritoryAction', requireAuth: true, requiredRole: 'Admin' },
+  async (id: number) => {
+    await client.delete(`/api/v1/territories/${id}`)
+    revalidatePath('/territories')
+  }
+)

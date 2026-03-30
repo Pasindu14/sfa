@@ -8,18 +8,20 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { TerritoryDto } from '../types/territory.types'
 
 export interface TerritoryColumnActions {
   openEdit: (id: number) => void
+  openDelete: (id: number) => void
   openActivate: (id: number) => void
   openDeactivate: (id: number) => void
 }
 
 export function getTerritoryColumns(actions: TerritoryColumnActions): ColumnDef<TerritoryDto>[] {
-  const { openEdit, openActivate, openDeactivate } = actions
+  const { openEdit, openDelete, openActivate, openDeactivate } = actions
 
   return [
     {
@@ -90,6 +92,13 @@ export function getTerritoryColumns(actions: TerritoryColumnActions): ColumnDef<
                   Activate
                 </DropdownMenuItem>
               )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => openDelete(territory.id)}
+              >
+                Delete
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )

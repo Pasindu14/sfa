@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import {
   useEditDialog,
+  useDeleteDialog,
   useActivateDialog,
   useDeactivateDialog,
   useRouteDialogStore,
@@ -16,12 +17,13 @@ import { getRouteColumns } from '../columns/route-columns'
 export function RouteTable() {
   const openCreate = useRouteDialogStore((s) => s.openCreate)
   const { open: openEdit } = useEditDialog()
+  const { open: openDelete } = useDeleteDialog()
   const { open: openActivate } = useActivateDialog()
   const { open: openDeactivate } = useDeactivateDialog()
 
   const getColumns = useCallback(
-    () => getRouteColumns({ openEdit, openActivate, openDeactivate }),
-    [openEdit, openActivate, openDeactivate],
+    () => getRouteColumns({ openEdit, openDelete, openActivate, openDeactivate }),
+    [openEdit, openDelete, openActivate, openDeactivate],
   );
 
   return (

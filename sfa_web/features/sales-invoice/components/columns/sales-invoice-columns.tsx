@@ -1,13 +1,21 @@
 'use client'
 
 import type { ColumnDef } from '@tanstack/react-table'
-import { Eye } from 'lucide-react'
+import { MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import type { SalesInvoiceListItem } from '../types/sales-invoice.types'
 
 export interface SalesInvoiceColumnActions {
   openDetail: (id: number) => void
+  openDelete: (id: number) => void
 }
 
 function formatCurrency(amount: number) {
@@ -21,7 +29,7 @@ function formatCurrency(amount: number) {
 export function getSalesInvoiceColumns(
   actions: SalesInvoiceColumnActions,
 ): ColumnDef<SalesInvoiceListItem>[] {
-  const { openDetail } = actions
+  const { openDetail, openDelete } = actions
 
   return [
     {
@@ -93,17 +101,29 @@ export function getSalesInvoiceColumns(
     {
       id: 'actions',
       header: '',
-      cell: ({ row }) => (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => openDetail(row.original.id)}
-        >
-          <Eye className="h-4 w-4" />
-          <span className="sr-only">View invoice</span>
-        </Button>
-      ),
+      cell: ({ row }) => {
+        const item = row.original
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreHorizontal className="h-4 w-4" />
+                <span className="sr-only">Open menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => openDetail(item.id)}>View</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => openDelete(item.id)}
+              >
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )
+      },
     },
   ]
 }

@@ -21,12 +21,14 @@ import { Spinner } from '@/components/ui/spinner'
 import {
   useCreateDialog,
   useEditDialog,
+  useDeleteDialog,
   useActivateDialog,
   useDeactivateDialog,
 } from '../../store'
 import {
   useCreateTerritory,
   useUpdateTerritory,
+  useDeleteTerritory,
   useActivateTerritory,
   useDeactivateTerritory,
   useTerritory,
@@ -103,6 +105,37 @@ function EditTerritoryDialog() {
   )
 }
 
+// --- Delete ---
+
+function DeleteTerritoryDialog() {
+  const { isOpen, selectedId, close } = useDeleteDialog()
+  const { mutate, isPending } = useDeleteTerritory()
+
+  return (
+    <AlertDialog open={isOpen} onOpenChange={(open) => !open && close()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Territory</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently delete the territory and cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={isPending}
+            onClick={() => selectedId && mutate(selectedId)}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {isPending ? <Spinner className="mr-2" /> : null}
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
 // --- Activate ---
 
 function ActivateTerritoryDialog() {
@@ -171,6 +204,7 @@ export function TerritoryDialogs() {
     <>
       <CreateTerritoryDialog />
       <EditTerritoryDialog />
+      <DeleteTerritoryDialog />
       <ActivateTerritoryDialog />
       <DeactivateTerritoryDialog />
     </>

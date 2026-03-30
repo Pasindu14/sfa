@@ -60,6 +60,14 @@ export const deleteProductAction = createAction(
   }
 )
 
+export const deactivateProductAction = createAction(
+  { name: 'deactivateProductAction', requireAuth: true, requiredRole: 'Admin' },
+  async (id: number) => {
+    await client.post(`/api/v1/products/${id}/deactivate`)
+    revalidatePath('/products')
+  }
+)
+
 export const activateProductAction = createAction(
   { name: 'activateProductAction', requireAuth: true, requiredRole: 'Admin' },
   async (id: number) => {

@@ -21,12 +21,14 @@ import { Spinner } from '@/components/ui/spinner'
 import {
   useCreateDialog,
   useEditDialog,
+  useDeleteDialog,
   useActivateDialog,
   useDeactivateDialog,
 } from '../../store'
 import {
   useCreateArea,
   useUpdateArea,
+  useDeleteArea,
   useActivateArea,
   useDeactivateArea,
   useArea,
@@ -103,6 +105,37 @@ function EditAreaDialog() {
   )
 }
 
+// --- Delete ---
+
+function DeleteAreaDialog() {
+  const { isOpen, selectedId, close } = useDeleteDialog()
+  const { mutate, isPending } = useDeleteArea()
+
+  return (
+    <AlertDialog open={isOpen} onOpenChange={(open) => !open && close()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Area</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently delete the area and cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={isPending}
+            onClick={() => selectedId && mutate(selectedId)}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {isPending ? <Spinner className="mr-2" /> : null}
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
 // --- Activate ---
 
 function ActivateAreaDialog() {
@@ -171,6 +204,7 @@ export function AreaDialogs() {
     <>
       <CreateAreaDialog />
       <EditAreaDialog />
+      <DeleteAreaDialog />
       <ActivateAreaDialog />
       <DeactivateAreaDialog />
     </>

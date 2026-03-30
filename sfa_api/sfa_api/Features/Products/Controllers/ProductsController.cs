@@ -94,6 +94,18 @@ public class ProductsController(
     }
 
     /// <summary>
+    /// POST /api/v1/products/{id}/deactivate
+    /// Sets IsActive = false.
+    /// </summary>
+    [HttpPost("{id}/deactivate")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> DeactivateProduct(int id, CancellationToken ct)
+    {
+        await _productService.DeactivateAsync(id, ct);
+        return NoContent();
+    }
+
+    /// <summary>
     /// POST /api/v1/products/{id}/activate
     /// Sets IsActive = true.
     /// </summary>

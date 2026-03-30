@@ -14,7 +14,7 @@ public class ProductRepository(AppDbContext context) : IProductRepository
     public async Task<(IEnumerable<Product> Products, int TotalCount)> GetAllAsync(int skip, int take, string? search = null, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, 200);
-        var query = _context.Products.IgnoreQueryFilters().AsQueryable();
+        var query = _context.Products.IgnoreQueryFilters().Where(x => !x.IsDeleted).AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -49,6 +49,14 @@ public class ProductRepository(AppDbContext context) : IProductRepository
         _context.Products.Update(product);
         return Task.CompletedTask;
     }
+
+    public async Task DeactivateAsync(int id, CancellationToken ct = default)
+        => await _context.Products
+            .IgnoreQueryFilters()
+            .Where(p => p.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(p => p.IsActive, false)
+                .SetProperty(p => p.UpdatedAt, DateTime.UtcNow), ct);
 
     public async Task DeleteAsync(int id, CancellationToken ct = default)
         => await _context.Products

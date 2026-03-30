@@ -15,12 +15,13 @@ import type { ProductDto } from '../types/product.types'
 
 export interface ProductColumnActions {
   openEdit: (id: number) => void
+  openDeactivate: (id: number) => void
   openDelete: (id: number) => void
   openActivate: (id: number) => void
 }
 
 export function getProductColumns(actions: ProductColumnActions): ColumnDef<ProductDto>[] {
-  const { openEdit, openDelete, openActivate } = actions
+  const { openEdit, openDeactivate, openDelete, openActivate } = actions
 
   return [
     {
@@ -81,7 +82,7 @@ export function getProductColumns(actions: ProductColumnActions): ColumnDef<Prod
               <DropdownMenuSeparator />
               {item.isActive ? (
                 <DropdownMenuItem
-                  onClick={() => openDelete(item.id)}
+                  onClick={() => openDeactivate(item.id)}
                   className="text-destructive focus:text-destructive"
                 >
                   Deactivate
@@ -91,6 +92,13 @@ export function getProductColumns(actions: ProductColumnActions): ColumnDef<Prod
                   Activate
                 </DropdownMenuItem>
               )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => openDelete(item.id)}
+              >
+                Delete
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )

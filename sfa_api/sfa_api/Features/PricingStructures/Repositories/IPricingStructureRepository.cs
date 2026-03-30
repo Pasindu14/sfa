@@ -13,6 +13,7 @@ public interface IPricingStructureRepository
     Task<IEnumerable<PricingStructure>> GetAllActiveWithItemsAsync(CancellationToken ct = default);
     Task CreateAsync(PricingStructure entity, CancellationToken ct = default);
     Task UpdateAsync(PricingStructure entity, CancellationToken ct = default);
+    Task DeactivateAsync(int id, CancellationToken ct = default);
     Task DeleteAsync(int id, CancellationToken ct = default);
     Task ActivateAsync(int id, CancellationToken ct = default);
     Task BulkReplaceItemsAsync(int pricingStructureId, IEnumerable<PricingStructureItem> newItems, CancellationToken ct = default);

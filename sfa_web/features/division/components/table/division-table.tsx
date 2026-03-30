@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import {
   useEditDialog,
+  useDeleteDialog,
   useActivateDialog,
   useDeactivateDialog,
   useDivisionDialogStore,
@@ -16,12 +17,13 @@ import { getDivisionColumns } from '../columns/division-columns'
 export function DivisionTable() {
   const openCreate = useDivisionDialogStore((s) => s.openCreate)
   const { open: openEdit } = useEditDialog()
+  const { open: openDelete } = useDeleteDialog()
   const { open: openActivate } = useActivateDialog()
   const { open: openDeactivate } = useDeactivateDialog()
 
   const getColumns = useCallback(
-    () => getDivisionColumns({ openEdit, openActivate, openDeactivate }),
-    [openEdit, openActivate, openDeactivate],
+    () => getDivisionColumns({ openEdit, openDelete, openActivate, openDeactivate }),
+    [openEdit, openDelete, openActivate, openDeactivate],
   )
 
   return (

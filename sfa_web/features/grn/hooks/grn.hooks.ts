@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { getGrnsAction, getGrnByIdAction, createGrnAction, confirmGrnAction } from '../actions/grn.actions'
-import { useConfirmDialog } from '../store'
+import { getGrnsAction, getGrnByIdAction, createGrnAction, confirmGrnAction, deleteGrnAction } from '../actions/grn.actions'
+import { useConfirmDialog, useDeleteDialog } from '../store'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { ActionFailure } from '@/lib/types/actions'
 import type { CreateGrnInput, ConfirmGrnInput } from '../schema/grn.schema'
@@ -76,6 +76,28 @@ export function useCreateGrn() {
   })
 
   return { ...mutation, fieldErrors, clearFieldErrors: () => setFieldErrors(null) }
+}
+
+// ── Delete GRN mutation ────────────────────────────────────────────────────
+
+export function useDeleteGrn() {
+  const queryClient = useQueryClient()
+  const { close } = useDeleteDialog()
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const result = await deleteGrnAction(id)
+      if (!result.success) throw result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: grnKeys.all })
+      close()
+      toast.success('GRN deleted successfully')
+    },
+    onError: (error: ActionFailure) => {
+      handleErrorToast(error, 'GRN', 'delete')
+    },
+  })
 }
 
 // ── Confirm GRN mutation ───────────────────────────────────────────────────

@@ -14,7 +14,7 @@ public class RegionRepository(AppDbContext context) : IRegionRepository
     public async Task<(IEnumerable<Region> Regions, int TotalCount)> GetAllAsync(int skip, int take, string? search = null, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, 200);
-        var query = _context.Regions.IgnoreQueryFilters().AsQueryable();
+        var query = _context.Regions.IgnoreQueryFilters().Where(x => !x.IsDeleted).AsQueryable();
         if (!string.IsNullOrWhiteSpace(search))
         {
             var pattern = $"%{search}%";

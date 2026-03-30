@@ -1,12 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
-import { importSalesInvoicesAction } from '../actions/sales-invoice.actions'
+import { importSalesInvoicesAction, deleteSalesInvoiceAction } from '../actions/sales-invoice.actions'
 import { getSalesInvoicesAction, getSalesInvoiceByIdAction } from '../actions/sales-invoice-list.actions'
-import { useImportDialog, useSalesInvoiceFilterStore } from '../store'
+import { useImportDialog, useDeleteDialog, useSalesInvoiceFilterStore } from '../store'
 import type { ImportBatchResult, ImportSalesInvoicesPayload } from '../schema/sales-invoice.schema'
 import type { SalesInvoiceListItem } from '../schema/sales-invoice-list.schema'
 
@@ -79,6 +79,28 @@ export function useSalesInvoiceDataTable(
 }
 
 ;(useSalesInvoiceDataTable as unknown as Record<string, unknown>).isQueryHook = true
+
+// ── Delete mutation hook ───────────────────────────────────────────────────
+
+export function useDeleteSalesInvoice() {
+  const queryClient = useQueryClient()
+  const { close } = useDeleteDialog()
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const result = await deleteSalesInvoiceAction(id)
+      if (!result.success) throw result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: salesInvoiceKeys.all })
+      close()
+      toast.success('Sales invoice deleted successfully')
+    },
+    onError: (error: unknown) => {
+      handleErrorToast(error as any, 'sales invoice', 'delete')
+    },
+  })
+}
 
 // ── Import mutation hook ───────────────────────────────────────────────────
 

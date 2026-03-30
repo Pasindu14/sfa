@@ -111,6 +111,17 @@ public class PricingStructuresController(
     }
 
     /// <summary>
+    /// POST /api/v1/pricing-structures/{id}/deactivate
+    /// </summary>
+    [HttpPost("{id}/deactivate")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> DeactivatePricingStructure(int id, CancellationToken ct)
+    {
+        await _pricingStructureService.DeactivateAsync(id, ct);
+        return NoContent();
+    }
+
+    /// <summary>
     /// POST /api/v1/pricing-structures/{id}/activate
     /// </summary>
     [HttpPost("{id}/activate")]

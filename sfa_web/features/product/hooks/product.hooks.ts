@@ -8,6 +8,7 @@ import {
   getProductByIdAction,
   createProductAction,
   updateProductAction,
+  deactivateProductAction,
   deleteProductAction,
   activateProductAction,
   getAllActiveProductsAction,
@@ -15,6 +16,7 @@ import {
 import {
   useCreateDialog,
   useEditDialog,
+  useDeactivateDialog,
   useDeleteDialog,
   useActivateDialog,
 } from '../store'
@@ -165,6 +167,26 @@ export function useUpdateProduct() {
   return { ...mutation, fieldErrors, clearFieldErrors: () => setFieldErrors(null) }
 }
 
+export function useDeactivateProduct() {
+  const queryClient = useQueryClient()
+  const { close } = useDeactivateDialog()
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const result = await deactivateProductAction(id)
+      if (!result.success) throw result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productKeys.all })
+      close()
+      toast.success('Product deactivated successfully')
+    },
+    onError: (error: ActionFailure) => {
+      handleErrorToast(error, 'product', 'deactivate')
+    },
+  })
+}
+
 export function useDeleteProduct() {
   const queryClient = useQueryClient()
   const { close } = useDeleteDialog()
@@ -177,7 +199,7 @@ export function useDeleteProduct() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: productKeys.all })
       close()
-      toast.success('Product deactivated successfully')
+      toast.success('Product deleted successfully')
     },
     onError: (error: ActionFailure) => {
       handleErrorToast(error, 'product', 'delete')

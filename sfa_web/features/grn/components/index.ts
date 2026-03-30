@@ -1,2 +1,3 @@
 export { GrnPage } from './pages/grn-page'
 export { GrnConfirmDialog } from './dialogs/grn-confirm-dialog'
+export { GrnDeleteDialog } from './dialogs/grn-delete-dialog'

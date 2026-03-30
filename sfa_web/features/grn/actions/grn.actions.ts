@@ -61,3 +61,11 @@ export const confirmGrnAction = createAction(
     return res.data.data as GrnListItem
   }
 )
+
+export const deleteGrnAction = createAction(
+  { name: 'deleteGrnAction', requireAuth: true, requiredRole: 'Admin' },
+  async (id: number) => {
+    await client.delete(`/api/v1/grns/${id}`)
+    revalidatePath('/grns')
+  }
+)

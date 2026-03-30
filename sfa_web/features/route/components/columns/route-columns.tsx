@@ -8,18 +8,20 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { RouteDto } from '../types/route.types'
 
 export interface RouteColumnActions {
   openEdit: (id: number) => void
+  openDelete: (id: number) => void
   openActivate: (id: number) => void
   openDeactivate: (id: number) => void
 }
 
 export function getRouteColumns(actions: RouteColumnActions): ColumnDef<RouteDto>[] {
-  const { openEdit, openActivate, openDeactivate } = actions
+  const { openEdit, openDelete, openActivate, openDeactivate } = actions
 
   return [
     {
@@ -114,6 +116,13 @@ export function getRouteColumns(actions: RouteColumnActions): ColumnDef<RouteDto
                   Activate
                 </DropdownMenuItem>
               )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => openDelete(route.id)}
+              >
+                Delete
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )

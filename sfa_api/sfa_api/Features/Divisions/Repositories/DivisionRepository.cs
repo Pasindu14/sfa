@@ -26,7 +26,7 @@ public class DivisionRepository(AppDbContext context) : IDivisionRepository
         CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, 200);
-        var query = _context.Divisions.IgnoreQueryFilters().AsQueryable();
+        var query = _context.Divisions.IgnoreQueryFilters().Where(x => !x.IsDeleted).AsQueryable();
         if (territoryId.HasValue) query = query.Where(d => d.TerritoryId == territoryId.Value);
         if (areaId.HasValue) query = query.Where(d => d.AreaId == areaId.Value);
         if (regionId.HasValue) query = query.Where(d => d.RegionId == regionId.Value);

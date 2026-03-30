@@ -8,6 +8,7 @@ import {
   getAreaByIdAction,
   createAreaAction,
   updateAreaAction,
+  deleteAreaAction,
   activateAreaAction,
   deactivateAreaAction,
   getActiveAreasAction,
@@ -15,6 +16,7 @@ import {
 import {
   useCreateDialog,
   useEditDialog,
+  useDeleteDialog,
   useActivateDialog,
   useDeactivateDialog,
 } from '../store'
@@ -163,6 +165,26 @@ export function useUpdateArea() {
   })
 
   return { ...mutation, fieldErrors, clearFieldErrors: () => setFieldErrors(null) }
+}
+
+export function useDeleteArea() {
+  const queryClient = useQueryClient()
+  const { close } = useDeleteDialog()
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const result = await deleteAreaAction(id)
+      if (!result.success) throw result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: areaKeys.all })
+      close()
+      toast.success('Area deleted successfully')
+    },
+    onError: (error: ActionFailure) => {
+      handleErrorToast(error, 'area', 'delete')
+    },
+  })
 }
 
 export function useActivateArea() {

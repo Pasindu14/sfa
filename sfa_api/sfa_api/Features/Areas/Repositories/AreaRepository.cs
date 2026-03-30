@@ -17,7 +17,7 @@ public class AreaRepository(AppDbContext context) : IAreaRepository
     public async Task<(IEnumerable<Area> Areas, int TotalCount)> GetAllAsync(int skip, int take, int? regionId = null, bool? isActive = null, string? search = null, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, 200);
-        var query = _context.Areas.IgnoreQueryFilters().AsQueryable();
+        var query = _context.Areas.IgnoreQueryFilters().Where(x => !x.IsDeleted).AsQueryable();
         if (regionId.HasValue) query = query.Where(a => a.RegionId == regionId.Value);
         if (isActive.HasValue) query = query.Where(a => a.IsActive == isActive.Value);
         if (!string.IsNullOrWhiteSpace(search))

@@ -25,7 +25,7 @@ public class RouteRepository(AppDbContext context) : IRouteRepository
         int skip, int take, bool? isActive = null, string? search = null, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, 200);
-        var query = _context.Routes.IgnoreQueryFilters().AsQueryable();
+        var query = _context.Routes.IgnoreQueryFilters().Where(x => !x.IsDeleted).AsQueryable();
 
         if (isActive.HasValue) query = query.Where(r => r.IsActive == isActive.Value);
         if (!string.IsNullOrWhiteSpace(search))

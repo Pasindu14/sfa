@@ -25,6 +25,16 @@ export const useEditDialog = () =>
     }))
   )
 
+export const useDeleteDialog = () =>
+  useAreaDialogStore(
+    useShallow((s) => ({
+      isOpen: s.isDeleteOpen,
+      selectedId: s.selectedAreaId,
+      open: s.openDelete,
+      close: s.closeDelete,
+    }))
+  )
+
 export const useActivateDialog = () =>
   useAreaDialogStore(
     useShallow((s) => ({

@@ -21,12 +21,14 @@ import { Spinner } from '@/components/ui/spinner'
 import {
   useCreateDialog,
   useEditDialog,
+  useDeactivateDialog,
   useDeleteDialog,
   useActivateDialog,
 } from '../../store'
 import {
   useCreatePricingStructure,
   useUpdatePricingStructure,
+  useDeactivatePricingStructure,
   useDeletePricingStructure,
   useActivatePricingStructure,
   usePricingStructure,
@@ -108,11 +110,11 @@ function EditPricingStructureDialog() {
   )
 }
 
-// --- Delete Dialog ---
+// --- Deactivate Dialog ---
 
-function DeletePricingStructureDialog() {
-  const { isOpen, selectedId, close } = useDeleteDialog()
-  const { mutate, isPending } = useDeletePricingStructure()
+function DeactivatePricingStructureDialog() {
+  const { isOpen, selectedId, close } = useDeactivateDialog()
+  const { mutate, isPending } = useDeactivatePricingStructure()
 
   return (
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && close()}>
@@ -133,6 +135,37 @@ function DeletePricingStructureDialog() {
           >
             {isPending && <Spinner className="mr-2" />}
             Deactivate
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
+// --- Delete Dialog ---
+
+function DeletePricingStructureDialog() {
+  const { isOpen, selectedId, close } = useDeleteDialog()
+  const { mutate, isPending } = useDeletePricingStructure()
+
+  return (
+    <AlertDialog open={isOpen} onOpenChange={(open) => !open && close()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Pricing Structure</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently delete the pricing structure and cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={isPending}
+            onClick={() => selectedId && mutate(selectedId)}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {isPending && <Spinner className="mr-2" />}
+            Delete
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -177,6 +210,7 @@ export function PricingStructureDialogs() {
     <>
       <CreatePricingStructureDialog />
       <EditPricingStructureDialog />
+      <DeactivatePricingStructureDialog />
       <DeletePricingStructureDialog />
       <ActivatePricingStructureDialog />
       <ManageItemsDialog />

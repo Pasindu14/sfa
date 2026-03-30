@@ -1,15 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { CheckCircle } from 'lucide-react'
+import { CheckCircle, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { GrnConfirmDialog } from '../dialogs/grn-confirm-dialog'
+import { GrnDeleteDialog } from '../dialogs/grn-delete-dialog'
 import { useGrns } from '../../hooks/grn.hooks'
-import { useConfirmDialog } from '../../store'
+import { useConfirmDialog, useDeleteDialog } from '../../store'
 import type { GrnStatus } from '../../schema/grn.schema'
 
 // ── Badge helper ───────────────────────────────────────────────────────────
@@ -30,6 +31,7 @@ export function GrnPage() {
   const [page, setPage] = useState(1)
   const [status, setStatus] = useState<string>('')
   const { open: openConfirm } = useConfirmDialog()
+  const { open: openDelete } = useDeleteDialog()
 
   const pageSize = 20
   const { data, isLoading, isFetching } = useGrns(page, pageSize, status || undefined)
@@ -130,17 +132,27 @@ export function GrnPage() {
                       {new Date(grn.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {grn.status === 'Pending' && (
+                      <div className="flex items-center justify-end gap-2">
+                        {grn.status === 'Pending' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-green-700 border-green-300 hover:bg-green-50"
+                            onClick={() => openConfirm(grn.id)}
+                          >
+                            <CheckCircle className="mr-1 h-3.5 w-3.5" />
+                            Confirm
+                          </Button>
+                        )}
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
-                          className="text-green-700 border-green-300 hover:bg-green-50"
-                          onClick={() => openConfirm(grn.id)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => openDelete(grn.id)}
                         >
-                          <CheckCircle className="mr-1 h-3.5 w-3.5" />
-                          Confirm
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
-                      )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -178,6 +190,7 @@ export function GrnPage() {
       </div>
 
       <GrnConfirmDialog />
+      <GrnDeleteDialog />
     </div>
   )
 }

@@ -27,7 +27,7 @@ public class OutletRepository(AppDbContext context) : IOutletRepository
         int skip, int take, bool? isActive = null, string? search = null, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, 200);
-        var query = _context.Outlets.IgnoreQueryFilters().AsQueryable();
+        var query = _context.Outlets.IgnoreQueryFilters().Where(x => !x.IsDeleted).AsQueryable();
 
         if (isActive.HasValue) query = query.Where(o => o.IsActive == isActive.Value);
         if (!string.IsNullOrWhiteSpace(search))

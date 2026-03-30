@@ -8,6 +8,7 @@ import {
   getPricingStructureByIdAction,
   createPricingStructureAction,
   updatePricingStructureAction,
+  deactivatePricingStructureAction,
   deletePricingStructureAction,
   activatePricingStructureAction,
   getPricingStructureItemsAction,
@@ -16,6 +17,7 @@ import {
 import {
   useCreateDialog,
   useEditDialog,
+  useDeactivateDialog,
   useDeleteDialog,
   useActivateDialog,
   useManageItemsDialog,
@@ -170,6 +172,26 @@ export function useUpdatePricingStructure() {
   return { ...mutation, fieldErrors, clearFieldErrors: () => setFieldErrors(null) }
 }
 
+export function useDeactivatePricingStructure() {
+  const queryClient = useQueryClient()
+  const { close } = useDeactivateDialog()
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const result = await deactivatePricingStructureAction(id)
+      if (!result.success) throw result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pricingStructureKeys.all })
+      close()
+      toast.success('Pricing structure deactivated successfully')
+    },
+    onError: (error: any) => {
+      handleErrorToast(error, 'pricing structure', 'deactivate')
+    },
+  })
+}
+
 export function useDeletePricingStructure() {
   const queryClient = useQueryClient()
   const { close } = useDeleteDialog()
@@ -182,7 +204,7 @@ export function useDeletePricingStructure() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pricingStructureKeys.all })
       close()
-      toast.success('Pricing structure deactivated successfully')
+      toast.success('Pricing structure deleted successfully')
     },
     onError: (error: any) => {
       handleErrorToast(error, 'pricing structure', 'delete')

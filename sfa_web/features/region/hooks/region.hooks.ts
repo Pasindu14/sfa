@@ -8,6 +8,7 @@ import {
   getRegionByIdAction,
   createRegionAction,
   updateRegionAction,
+  deleteRegionAction,
   activateRegionAction,
   deactivateRegionAction,
   getActiveRegionsAction,
@@ -15,6 +16,7 @@ import {
 import {
   useCreateDialog,
   useEditDialog,
+  useDeleteDialog,
   useActivateDialog,
   useDeactivateDialog,
 } from '../store'
@@ -163,6 +165,26 @@ export function useUpdateRegion() {
   })
 
   return { ...mutation, fieldErrors, clearFieldErrors: () => setFieldErrors(null) }
+}
+
+export function useDeleteRegion() {
+  const queryClient = useQueryClient()
+  const { close } = useDeleteDialog()
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const result = await deleteRegionAction(id)
+      if (!result.success) throw result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: regionKeys.all })
+      close()
+      toast.success('Region deleted successfully')
+    },
+    onError: (error: ActionFailure) => {
+      handleErrorToast(error, 'region', 'delete')
+    },
+  })
 }
 
 export function useActivateRegion() {

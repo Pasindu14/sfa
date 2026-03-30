@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import {
   useEditDialog,
+  useDeleteDialog,
   useActivateDialog,
   useDeactivateDialog,
   useAreaDialogStore,
@@ -16,12 +17,13 @@ import { getAreaColumns } from '../columns/area-columns'
 export function AreaTable() {
   const openCreate = useAreaDialogStore((s) => s.openCreate)
   const { open: openEdit } = useEditDialog()
+  const { open: openDelete } = useDeleteDialog()
   const { open: openActivate } = useActivateDialog()
   const { open: openDeactivate } = useDeactivateDialog()
 
   const getColumns = useCallback(
-    () => getAreaColumns({ openEdit, openActivate, openDeactivate }),
-    [openEdit, openActivate, openDeactivate],
+    () => getAreaColumns({ openEdit, openDelete, openActivate, openDeactivate }),
+    [openEdit, openDelete, openActivate, openDeactivate],
   )
 
   return (

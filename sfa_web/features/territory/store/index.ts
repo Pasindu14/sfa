@@ -25,6 +25,16 @@ export const useEditDialog = () =>
     }))
   )
 
+export const useDeleteDialog = () =>
+  useTerritoryDialogStore(
+    useShallow((s) => ({
+      isOpen: s.isDeleteOpen,
+      selectedId: s.selectedTerritoryId,
+      open: s.openDelete,
+      close: s.closeDelete,
+    }))
+  )
+
 export const useActivateDialog = () =>
   useTerritoryDialogStore(
     useShallow((s) => ({

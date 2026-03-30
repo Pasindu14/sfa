@@ -39,6 +39,16 @@ export const useDetailDialog = () =>
     }))
   )
 
+export const useDeleteDialog = () =>
+  useSalesInvoiceDialogStore(
+    useShallow((s) => ({
+      isOpen: s.isDeleteOpen,
+      selectedId: s.selectedSalesInvoiceId,
+      open: s.openDelete,
+      close: s.closeDelete,
+    }))
+  )
+
 // ── Filter store ───────────────────────────────────────────────────────────
 
 export { useSalesInvoiceFilterStore }

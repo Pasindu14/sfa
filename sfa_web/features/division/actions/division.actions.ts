@@ -69,3 +69,11 @@ export const deactivateDivisionAction = createAction(
     revalidatePath('/divisions')
   }
 )
+
+export const deleteDivisionAction = createAction(
+  { name: 'deleteDivisionAction', requireAuth: true, requiredRole: 'Admin' },
+  async (id: number) => {
+    await client.delete(`/api/v1/divisions/${id}`)
+    revalidatePath('/divisions')
+  }
+)

@@ -8,6 +8,7 @@ import {
   getDivisionByIdAction,
   createDivisionAction,
   updateDivisionAction,
+  deleteDivisionAction,
   activateDivisionAction,
   deactivateDivisionAction,
   getActiveDivisionsAction,
@@ -15,6 +16,7 @@ import {
 import {
   useCreateDialog,
   useEditDialog,
+  useDeleteDialog,
   useActivateDialog,
   useDeactivateDialog,
 } from '../store'
@@ -163,6 +165,26 @@ export function useUpdateDivision() {
   })
 
   return { ...mutation, fieldErrors, clearFieldErrors: () => setFieldErrors(null) }
+}
+
+export function useDeleteDivision() {
+  const queryClient = useQueryClient()
+  const { close } = useDeleteDialog()
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const result = await deleteDivisionAction(id)
+      if (!result.success) throw result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: divisionKeys.all })
+      close()
+      toast.success('Division deleted successfully')
+    },
+    onError: (error: ActionFailure) => {
+      handleErrorToast(error, 'division', 'delete')
+    },
+  })
 }
 
 export function useActivateDivision() {

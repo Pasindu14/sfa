@@ -8,12 +8,14 @@ import {
   getTerritoryByIdAction,
   createTerritoryAction,
   updateTerritoryAction,
+  deleteTerritoryAction,
   activateTerritoryAction,
   deactivateTerritoryAction,
 } from '../actions/territory.actions'
 import {
   useCreateDialog,
   useEditDialog,
+  useDeleteDialog,
   useActivateDialog,
   useDeactivateDialog,
 } from '../store'
@@ -149,6 +151,26 @@ export function useUpdateTerritory() {
   })
 
   return { ...mutation, fieldErrors, clearFieldErrors: () => setFieldErrors(null) }
+}
+
+export function useDeleteTerritory() {
+  const queryClient = useQueryClient()
+  const { close } = useDeleteDialog()
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const result = await deleteTerritoryAction(id)
+      if (!result.success) throw result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: territoryKeys.all })
+      close()
+      toast.success('Territory deleted successfully')
+    },
+    onError: (error: ActionFailure) => {
+      handleErrorToast(error, 'territory', 'delete')
+    },
+  })
 }
 
 export function useActivateTerritory() {

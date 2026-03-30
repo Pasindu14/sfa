@@ -115,15 +115,22 @@ public class PricingStructureService(
         return MapToDto(structure);
     }
 
+    public async Task DeactivateAsync(int id, CancellationToken ct = default)
+    {
+        _ = await _repo.GetByIdAsync(id, ct)
+            ?? throw new NotFoundException("PricingStructure", id);
+
+        await _repo.DeactivateAsync(id, ct);
+        _logger.LogInformation("PricingStructure {PricingStructureId} deactivated", id);
+    }
+
     public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
         _ = await _repo.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("PricingStructure", id);
 
         await _repo.DeleteAsync(id, ct);
-        await _repo.SaveChangesAsync(ct);
-
-        _logger.LogInformation("PricingStructure {PricingStructureId} deactivated", id);
+        _logger.LogInformation("PricingStructure {PricingStructureId} deleted", id);
     }
 
     public async Task ActivateAsync(int id, CancellationToken ct = default)

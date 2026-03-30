@@ -10,6 +10,7 @@ public interface IPricingStructureService
     Task<PricingStructureListDto> GetAllAsync(int page, int pageSize, string? search = null, CancellationToken ct = default);
     Task<PricingStructureDto> CreateAsync(CreatePricingStructureRequest request, int? callerId, CancellationToken ct = default);
     Task<PricingStructureDto> UpdateAsync(int id, UpdatePricingStructureRequest request, int? callerId, CancellationToken ct = default);
+    Task DeactivateAsync(int id, CancellationToken ct = default);
     Task DeleteAsync(int id, CancellationToken ct = default);
     Task ActivateAsync(int id, CancellationToken ct = default);
     Task<IEnumerable<PricingStructureItemDto>> GetItemsAsync(int id, CancellationToken ct = default);

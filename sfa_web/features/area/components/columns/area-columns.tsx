@@ -8,18 +8,20 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { AreaDto } from '../types/area.types'
 
 export interface AreaColumnActions {
   openEdit: (id: number) => void
+  openDelete: (id: number) => void
   openActivate: (id: number) => void
   openDeactivate: (id: number) => void
 }
 
 export function getAreaColumns(actions: AreaColumnActions): ColumnDef<AreaDto>[] {
-  const { openEdit, openActivate, openDeactivate } = actions
+  const { openEdit, openDelete, openActivate, openDeactivate } = actions
 
   return [
     {
@@ -90,6 +92,13 @@ export function getAreaColumns(actions: AreaColumnActions): ColumnDef<AreaDto>[]
                   Activate
                 </DropdownMenuItem>
               )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => openDelete(area.id)}
+              >
+                Delete
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )

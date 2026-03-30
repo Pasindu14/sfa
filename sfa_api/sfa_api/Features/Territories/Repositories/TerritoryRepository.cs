@@ -19,7 +19,7 @@ public class TerritoryRepository(AppDbContext context) : ITerritoryRepository
     public async Task<(IEnumerable<Territory> Territories, int TotalCount)> GetAllAsync(int skip, int take, int? areaId = null, bool? isActive = null, string? search = null, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, 200);
-        var query = _context.Territories.IgnoreQueryFilters().AsQueryable();
+        var query = _context.Territories.IgnoreQueryFilters().Where(x => !x.IsDeleted).AsQueryable();
         if (areaId.HasValue) query = query.Where(t => t.AreaId == areaId.Value);
         if (isActive.HasValue) query = query.Where(t => t.IsActive == isActive.Value);
         if (!string.IsNullOrWhiteSpace(search))

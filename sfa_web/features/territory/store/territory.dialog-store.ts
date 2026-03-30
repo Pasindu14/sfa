@@ -4,6 +4,7 @@ import { devtools } from 'zustand/middleware'
 interface TerritoryDialogState {
   isCreateOpen: boolean
   isEditOpen: boolean
+  isDeleteOpen: boolean
   isActivateOpen: boolean
   isDeactivateOpen: boolean
   selectedTerritoryId: number | null
@@ -11,6 +12,8 @@ interface TerritoryDialogState {
   closeCreate: () => void
   openEdit: (id: number) => void
   closeEdit: () => void
+  openDelete: (id: number) => void
+  closeDelete: () => void
   openActivate: (id: number) => void
   closeActivate: () => void
   openDeactivate: (id: number) => void
@@ -22,6 +25,7 @@ export const useTerritoryDialogStore = create<TerritoryDialogState>()(
     (set) => ({
       isCreateOpen: false,
       isEditOpen: false,
+      isDeleteOpen: false,
       isActivateOpen: false,
       isDeactivateOpen: false,
       selectedTerritoryId: null,
@@ -29,6 +33,8 @@ export const useTerritoryDialogStore = create<TerritoryDialogState>()(
       closeCreate: () => set({ isCreateOpen: false }),
       openEdit: (id) => set({ isEditOpen: true, selectedTerritoryId: id }),
       closeEdit: () => set({ isEditOpen: false, selectedTerritoryId: null }),
+      openDelete: (id) => set({ isDeleteOpen: true, selectedTerritoryId: id }),
+      closeDelete: () => set({ isDeleteOpen: false, selectedTerritoryId: null }),
       openActivate: (id) => set({ isActivateOpen: true, selectedTerritoryId: id }),
       closeActivate: () => set({ isActivateOpen: false, selectedTerritoryId: null }),
       openDeactivate: (id) => set({ isDeactivateOpen: true, selectedTerritoryId: id }),

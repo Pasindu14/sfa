@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import {
   useEditDialog,
+  useDeactivateDialog,
   useDeleteDialog,
   useActivateDialog,
   useManageItemsDialog,
@@ -17,6 +18,7 @@ import { getPricingStructureColumns } from "../columns/pricing-structure-columns
 export function PricingStructureTable() {
   const openCreate = usePricingStructureDialogStore((s) => s.openCreate);
   const { open: openEdit } = useEditDialog();
+  const { open: openDeactivate } = useDeactivateDialog();
   const { open: openDelete } = useDeleteDialog();
   const { open: openActivate } = useActivateDialog();
   const { open: openManageItems } = useManageItemsDialog();
@@ -25,11 +27,12 @@ export function PricingStructureTable() {
     (_handleRowDeselection: ((rowId: string) => void) | null | undefined) =>
       getPricingStructureColumns({
         openEdit,
+        openDeactivate,
         openDelete,
         openActivate,
         openManageItems,
       }),
-    [openEdit, openDelete, openActivate, openManageItems],
+    [openEdit, openDeactivate, openDelete, openActivate, openManageItems],
   );
 
   return (

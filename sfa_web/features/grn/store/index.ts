@@ -29,3 +29,30 @@ export function useConfirmDialog() {
     }))
   )
 }
+
+// ── Delete dialog store ────────────────────────────────────────────────────
+
+interface DeleteDialogStore {
+  isOpen: boolean
+  selectedGrnId: number | null
+  open: (id: number) => void
+  close: () => void
+}
+
+const useDeleteDialogStore = create<DeleteDialogStore>((set) => ({
+  isOpen: false,
+  selectedGrnId: null,
+  open: (id) => set({ isOpen: true, selectedGrnId: id }),
+  close: () => set({ isOpen: false, selectedGrnId: null }),
+}))
+
+export function useDeleteDialog() {
+  return useDeleteDialogStore(
+    useShallow((s) => ({
+      isOpen: s.isOpen,
+      selectedGrnId: s.selectedGrnId,
+      open: s.open,
+      close: s.close,
+    }))
+  )
+}

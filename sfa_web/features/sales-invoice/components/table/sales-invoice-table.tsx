@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import {
   useSalesInvoiceDialogStore,
   useImportDialog,
+  useDeleteDialog,
   useSalesInvoiceFilters,
 } from "../../store";
 import { useSalesInvoiceDataTable } from "../../hooks/sales-invoice.hooks";
@@ -201,6 +202,7 @@ function SalesInvoiceFilterForm({
 export function SalesInvoiceTable() {
   const openDetail = useSalesInvoiceDialogStore((s) => s.openDetail);
   const { open: openImport } = useImportDialog();
+  const { open: openDelete } = useDeleteDialog();
   const {
     date,
     distributorId,
@@ -212,8 +214,8 @@ export function SalesInvoiceTable() {
   } = useSalesInvoiceFilters();
 
   const getColumns = useCallback(
-    () => getSalesInvoiceColumns({ openDetail }),
-    [openDetail],
+    () => getSalesInvoiceColumns({ openDetail, openDelete }),
+    [openDetail, openDelete],
   );
 
   return (

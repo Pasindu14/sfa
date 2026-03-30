@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import {
   useEditDialog,
+  useDeleteDialog,
   useActivateDialog,
   useDeactivateDialog,
   useRegionDialogStore,
@@ -16,12 +17,13 @@ import { getRegionColumns } from '../columns/region-columns'
 export function RegionTable() {
   const openCreate = useRegionDialogStore((s) => s.openCreate)
   const { open: openEdit } = useEditDialog()
+  const { open: openDelete } = useDeleteDialog()
   const { open: openActivate } = useActivateDialog()
   const { open: openDeactivate } = useDeactivateDialog()
 
   const getColumns = useCallback(
-    () => getRegionColumns({ openEdit, openActivate, openDeactivate }),
-    [openEdit, openActivate, openDeactivate]
+    () => getRegionColumns({ openEdit, openDelete, openActivate, openDeactivate }),
+    [openEdit, openDelete, openActivate, openDeactivate]
   )
 
   return (

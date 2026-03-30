@@ -8,18 +8,20 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { DivisionDto } from '../types/division.types'
 
 export interface DivisionColumnActions {
   openEdit: (id: number) => void
+  openDelete: (id: number) => void
   openActivate: (id: number) => void
   openDeactivate: (id: number) => void
 }
 
 export function getDivisionColumns(actions: DivisionColumnActions): ColumnDef<DivisionDto>[] {
-  const { openEdit, openActivate, openDeactivate } = actions
+  const { openEdit, openDelete, openActivate, openDeactivate } = actions
 
   return [
     {
@@ -104,6 +106,13 @@ export function getDivisionColumns(actions: DivisionColumnActions): ColumnDef<Di
                   Activate
                 </DropdownMenuItem>
               )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => openDelete(division.id)}
+              >
+                Delete
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )
