@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { usePathname } from "next/navigation";
+import { SessionGuard } from "@/components/session-guard";
 
 export default function ProtectedLayout({
   children,
@@ -59,6 +60,7 @@ export default function ProtectedLayout({
       .join(' ');
 
   return (
+    <SessionGuard>
     <TooltipProvider>
     <SidebarProvider open={sidebarOpen} onOpenChange={handleSidebarChange}>
       <AppSidebar />
@@ -98,5 +100,6 @@ export default function ProtectedLayout({
       </SidebarInset>
     </SidebarProvider>
     </TooltipProvider>
+    </SessionGuard>
   );
 }
