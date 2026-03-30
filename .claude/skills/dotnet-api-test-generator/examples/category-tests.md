@@ -37,6 +37,7 @@ public class CategoryServiceTests
         Name = "Electronics",
         Description = "Electronic goods",
         IsActive = true,
+        IsDeleted = false,
         CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
     };

@@ -117,12 +117,12 @@ Run through **every** item before proceeding. Mark each as pass/fail:
 - [ ] Results projected to DTOs — no raw entity returns from services
 
 #### 5c. Writes & Deletes
-- [ ] Soft delete uses `ExecuteUpdateAsync` — no load-then-mutate
+- [ ] Soft delete uses `ExecuteUpdateAsync` — sets `IsActive = false` + `IsDeleted = true`; no load-then-mutate
 - [ ] Multi-row inserts use `AddRange` + single `SaveChangesAsync`
 - [ ] Related entities resolved with batch `WHERE IN` — no N+1
 
 #### 5d. Entity & Schema
-- [ ] Entity has `IsActive bool = true`
+- [ ] Entity has `IsActive bool = true` and `IsDeleted bool = false`
 - [ ] Entity has `UpdatedAt DateTime` updated on every write
 - [ ] DbContext has composite partial index with `HasFilter("\"IsActive\" = true")`
 - [ ] High-growth entity has partitioning TODO

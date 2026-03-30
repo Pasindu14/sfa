@@ -28,6 +28,7 @@ Demonstrates the minimal feature — no hierarchies, no batch ops, no locking.
 | CreatedBy | int? | Yes | null |
 | UpdatedBy | int? | Yes | null |
 | IsActive | bool | No | `= true` |
+| IsDeleted | bool | No | `= false` |
 
 ### Validation
 

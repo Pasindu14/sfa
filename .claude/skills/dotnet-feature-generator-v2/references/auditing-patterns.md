@@ -13,6 +13,8 @@ public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 public int? CreatedBy { get; set; }
 public int? UpdatedBy { get; set; }
+public bool IsActive { get; set; } = true;    // universal soft-delete / deactivation flag
+public bool IsDeleted { get; set; } = false;   // audit flag — set by DELETE endpoint
 ```
 
 The `AuditInterceptor` in the SFA API automatically populates these on `SaveChangesAsync`. This reference covers **enhanced auditing** for regulated or sensitive entities.

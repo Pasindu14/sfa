@@ -30,7 +30,7 @@ Throw these from services — `GlobalExceptionMiddleware` catches and formats th
 - **Database:** PostgreSQL (Npgsql.EntityFrameworkCore)
 - **DbContext:** `AppDbContext` at `Infrastructure/Persistence/AppDbContext.cs`
 - **Audit:** Interceptor automatically sets `CreatedAt`, `UpdatedAt`, `CreatedBy`, `UpdatedBy`
-- **Soft delete / deactivation:** Set `IsActive = false` — never call `context.Remove()`. Filter active records with `.Where(x => x.IsActive)`. Some entities (Users, Distributors) additionally have `IsDeleted = true` set by the DELETE endpoint as an audit flag, but `IsActive` is the universal status field present on all entities.
+- **Soft delete / deactivation:** Set `IsActive = false` — never call `context.Remove()`. Filter active records with `.Where(x => x.IsActive)`. All entities have `IsDeleted = true` set by the DELETE endpoint as an audit flag to distinguish deletion from deactivation. `IsActive` is the universal status field present on all entities; `IsDeleted` is the audit flag.
 - **Decimal columns:** Use `[Column(TypeName = "decimal(5,2)")]` for percentage/rate fields
 - **Migrations:**
   ```bash

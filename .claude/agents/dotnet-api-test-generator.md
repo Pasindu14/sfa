@@ -62,7 +62,7 @@ Cross-project rules are in `.claude/rules/never-do.md`. API-specific patterns (e
 - **No magic strings:** Use constants or strongly typed helpers for repeated values.
 - **PostgreSQL:** Integration tests should use a real or in-memory test database appropriate to the scenario. If using `WebApplicationFactory`, configure a test database or use EF Core InMemory provider for simple cases — but note EF InMemory doesn't enforce constraints.
 - **API envelope:** When testing endpoints, assert against the `ApiResponse<T>` wrapper structure. Expect `success: true/false` and appropriate `data` or error codes.
-- **Soft delete:** Never assert hard deletion — assert `IsActive` flag changes (`IsActive = false` for deactivation). Some entities (Users, Distributors) also set `IsDeleted = true` on their DELETE endpoint.
+- **Soft delete:** Never assert hard deletion — assert `IsActive` flag changes (`IsActive = false` for deactivation). All entities also set `IsDeleted = true` on their DELETE endpoint to distinguish deletion from deactivation.
 - **No tenant ID from client:** Do not generate tests that send tenant/company ID in requests.
 
 ---

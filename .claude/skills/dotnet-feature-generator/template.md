@@ -28,6 +28,7 @@ Fill in every section before generating any code.
 | CreatedBy | int?     | Yes      | null                | audit |
 | UpdatedBy | int?     | Yes      | null                | audit |
 | IsActive  | bool     | No       | `= true`            | universal soft-delete flag |
+| IsDeleted | bool     | No       | `= false`           | audit flag — set by DELETE endpoint |
 
 ---
 
@@ -57,7 +58,7 @@ public enum {FeatureName}Status { Active, Inactive }
 | GET    | /api/v1/{entities}/{id}  | `[Authorize]`                | |
 | POST   | /api/v1/{entities}       | `[Authorize(Roles="Admin")]` | |
 | PUT    | /api/v1/{entities}/{id}  | `[Authorize(Roles="Admin")]` | |
-| DELETE | /api/v1/{entities}/{id}  | `[Authorize(Roles="Admin")]` | soft delete via ExecuteUpdateAsync |
+| DELETE | /api/v1/{entities}/{id}  | `[Authorize(Roles="Admin")]` | soft delete via ExecuteUpdateAsync (IsActive=false + IsDeleted=true) |
 
 ---
 
@@ -66,7 +67,7 @@ public enum {FeatureName}Status { Active, Inactive }
 ```
 sfa_api/sfa_api/Features/{FeatureName}/
 ├── Entities/
-│   └── {FeatureName}.cs                    ← IsActive = true (universal soft-delete)
+│   └── {FeatureName}.cs                    ← IsActive = true + IsDeleted = false (soft-delete + audit)
 ├── DTOs/
 │   ├── {FeatureName}Dto.cs
 │   └── {FeatureName}ListDto.cs
@@ -108,6 +109,7 @@ public class {FeatureName}
     public int? CreatedBy { get; set; }
     public int? UpdatedBy { get; set; }
     public bool IsActive { get; set; } = true;   // universal soft-delete flag
+    public bool IsDeleted { get; set; } = false;  // audit flag — set by DELETE endpoint
 }
 ```
 
@@ -166,6 +168,7 @@ public class {FeatureName}Repository(AppDbContext context) : I{FeatureName}Repos
             .Where(x => x.Id == id)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(x => x.IsActive,  false)
+                .SetProperty(x => x.IsDeleted, true)
                 .SetProperty(x => x.UpdatedAt, DateTime.UtcNow), ct);
 
     public async Task SaveChangesAsync(CancellationToken ct = default)
@@ -294,6 +297,7 @@ dotnet ef migrations add Add{FeatureName}Entity --project . --startup-project .
 
 ### Entity & Schema
 - [ ] Entity has `IsActive bool = true` (universal soft-delete flag)
+- [ ] Entity has `IsDeleted bool = false` (audit flag — set by DELETE endpoint)
 - [ ] Entity has `UpdatedAt DateTime` updated on every write
 - [ ] DbContext has composite partial index with `HasFilter("\"IsActive\" = true")`
 - [ ] High-growth entity has partitioning TODO comment in migration

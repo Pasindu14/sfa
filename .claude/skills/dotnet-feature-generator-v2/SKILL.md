@@ -20,9 +20,9 @@ Every generated file must comply. The agent's self-validation checklist enforces
 | 1 | Async everywhere | `ToListAsync(ct)`, `FirstOrDefaultAsync(ct)`, `SaveChangesAsync(ct)` — every async method accepts `CancellationToken ct` |
 | 2 | Scoped lifetimes with comments | `AddScoped<IRepo, Repo>(); // Scoped — per-request DB context` |
 | 3 | AsNoTracking on every read | `.AsNoTracking()` on all list/read queries |
-| 4 | IsActive filter on every query | `.Where(x => x.IsActive)` — universal soft-delete flag |
+| 4 | IsActive filter on every query | `.Where(x => x.IsActive)` — universal soft-delete flag; DELETE also sets `IsDeleted = true` as audit trail |
 | 5 | Paginate every list | `.Skip(skip).Take(take)` — no unbounded queries |
-| 6 | ExecuteUpdateAsync for status changes | Never load entity just to flip a flag |
+| 6 | ExecuteUpdateAsync for status changes | Never load entity just to flip a flag; DELETE sets both `IsActive = false` and `IsDeleted = true` |
 | 7 | AddRange + single SaveChangesAsync | Batch all adds; one DB round-trip |
 | 8 | Batch WHERE IN for related data | `.Where(u => ids.Contains(u.Id))` — no N+1 |
 | 9 | Composite partial indexes | `HasIndex(new{Col,CreatedAt}).HasFilter("\"IsActive\" = true")` |
@@ -46,6 +46,13 @@ Every generated file must comply. The agent's self-validation checklist enforces
 | `SaveChangesAsync` in loop | N round-trips instead of 1 |
 | N+1 loop queries | N SELECTs instead of 1 WHERE IN |
 | `context.Remove()` / hard delete | Violates soft-delete contract |
+| Omitting `IsDeleted = true` in DELETE | Loses the audit distinction between deactivation and deletion |
+
+### Soft Delete vs Deactivation
+
+Every entity has two flags:
+- **`IsActive`** — universal status flag. `false` = deactivated (reversible). Queries always filter `.Where(x => x.IsActive)`.
+- **`IsDeleted`** — audit flag. `false` by default. Set to `true` only by the DELETE endpoint to mark explicit deletion. Deactivation (`ActivateAsync`/`DeactivateAsync`) only flips `IsActive`, never touches `IsDeleted`.
 
 ---
 
@@ -90,6 +97,7 @@ public class {FeatureName}
     public int? CreatedBy { get; set; }
     public int? UpdatedBy { get; set; }
     public bool IsActive { get; set; } = true;
+    public bool IsDeleted { get; set; } = false;
 }
 ```
 
@@ -162,6 +170,7 @@ public class {FeatureName}Repository(AppDbContext context) : I{FeatureName}Repos
             .Where(x => x.Id == id)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(x => x.IsActive, false)
+                .SetProperty(x => x.IsDeleted, true)
                 .SetProperty(x => x.UpdatedAt, DateTime.UtcNow), ct);
 
     public async Task SaveChangesAsync(CancellationToken ct = default)

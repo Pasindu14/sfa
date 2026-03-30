@@ -20,6 +20,7 @@ public class Category
     public int? CreatedBy { get; set; }
     public int? UpdatedBy { get; set; }
     public bool IsActive { get; set; } = true;
+    public bool IsDeleted { get; set; } = false;
 }
 ```
 
@@ -96,14 +97,12 @@ public class CategoryRepository(AppDbContext context) : ICategoryRepository
     }
 
     public async Task DeleteAsync(int id, CancellationToken ct = default)
-    {
-        var entity = await _context.Categories.FindAsync([id], ct);
-        if (entity != null)
-        {
-            entity.IsActive = false;
-            _context.Categories.Update(entity);
-        }
-    }
+        => await _context.Categories
+            .Where(x => x.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(x => x.IsActive, false)
+                .SetProperty(x => x.IsDeleted, true)
+                .SetProperty(x => x.UpdatedAt, DateTime.UtcNow), ct);
 
     public async Task SaveChangesAsync(CancellationToken ct = default)
         => await _context.SaveChangesAsync(ct);

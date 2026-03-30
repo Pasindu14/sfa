@@ -6,7 +6,7 @@ description: Cross-project prohibitions that always apply regardless of which fi
 
 These rules apply to ALL projects in the SFA monorepo (API, web, mobile).
 
-- **Never hard-delete records** — soft-delete/deactivate via `IsActive = false`; never call `context.Remove()`. Some entities additionally set `IsDeleted = true` on the DELETE endpoint, but `IsActive` is the universal status flag.
+- **Never hard-delete records** — soft-delete/deactivate via `IsActive = false`; never call `context.Remove()`. All entities set `IsDeleted = true` on the DELETE endpoint as an audit flag to distinguish deletion from deactivation. `IsActive` is the universal status flag used in queries.
 - **Never send or accept tenant/company ID from the client** — multi-tenancy resolves server-side from JWT claims
 - **Never commit secrets, `.env` files, or connection strings** — use environment variables and secrets managers
 - **Never expose raw exception messages or stack traces** in API responses — use structured error codes

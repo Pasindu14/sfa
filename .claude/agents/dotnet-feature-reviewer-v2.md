@@ -99,17 +99,19 @@ Check every rule from the skill's "14 Scalability Rules" table. For each rule, r
 
 | Check | How to Verify | Severity |
 |-------|---------------|----------|
-| Soft delete uses `ExecuteUpdateAsync` | Repository `DeleteAsync` — no load-then-mutate | HIGH |
+| Soft delete uses `ExecuteUpdateAsync` | Repository `DeleteAsync` — no load-then-mutate; must set both `IsActive = false` and `IsDeleted = true` | HIGH |
 | Multi-row inserts use `AddRange` + single `SaveChangesAsync` | If batch create exists | HIGH |
 | Related entity lookups use batch `WHERE IN` | No loop queries for related data | HIGH |
 | No `context.Remove()` anywhere | Grep for `.Remove(` in repo | CRITICAL |
+| `DeleteAsync` sets `IsDeleted = true` | Check `ExecuteUpdateAsync` includes `.SetProperty(x => x.IsDeleted, true)` | HIGH |
 
 #### 4d. Entity & Schema (Rules 9)
 
 | Check | How to Verify | Severity |
 |-------|---------------|----------|
 | Entity has `IsActive bool = true` | Read entity file | CRITICAL |
-| Entity has all 5 audit fields | `CreatedAt`, `UpdatedAt`, `CreatedBy`, `UpdatedBy`, `IsActive` | HIGH |
+| Entity has `IsDeleted bool = false` | Read entity file — audit flag set by DELETE endpoint | HIGH |
+| Entity has all 6 audit fields | `CreatedAt`, `UpdatedAt`, `CreatedBy`, `UpdatedBy`, `IsActive`, `IsDeleted` | HIGH |
 | `UpdatedAt` set on every write path | Service `UpdateAsync` + `CreateAsync` | MEDIUM |
 | Composite partial index in DbContext | `HasIndex` + `HasFilter("\"IsActive\" = true")` | HIGH |
 | High-growth entity has partitioning TODO | If applicable | LOW |

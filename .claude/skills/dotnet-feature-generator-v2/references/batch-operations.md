@@ -63,7 +63,7 @@ public async Task CreateBatchAsync(List<{FeatureName}> entities, CancellationTok
 For status changes or field updates across many rows — no entity loading:
 
 ```csharp
-// Deactivate all entities belonging to a parent
+// Deactivate all entities belonging to a parent (deactivate only — NOT a delete; IsDeleted stays false)
 public async Task DeactivateByParentAsync(int parentId, CancellationToken ct = default)
     => await _context.{Entities}
         .Where(x => x.ParentId == parentId && x.IsActive)
@@ -83,6 +83,7 @@ public async Task DeleteRangeAsync(IEnumerable<int> ids, CancellationToken ct = 
         .Where(x => ids.Contains(x.Id))
         .ExecuteUpdateAsync(s => s
             .SetProperty(x => x.IsActive, false)
+            .SetProperty(x => x.IsDeleted, true)
             .SetProperty(x => x.UpdatedAt, DateTime.UtcNow), ct);
 ```
 

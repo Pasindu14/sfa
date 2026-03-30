@@ -53,7 +53,7 @@ sfa_api/sfa_api/Common/Extensions/RateLimitExtensions.cs
 | Distributed cache | `ICacheService` / `DistributedCacheService` wrapping `IDistributedCache` (Redis → in-memory fallback) with graceful degradation | `Infrastructure/Caching/` |
 | Idempotency | `IdempotencyMiddleware` + `PostgresIdempotencyService`, cleanup background service | `Common/Middleware/`, `Infrastructure/Caching/` |
 | Rate limiting | Sliding-window global (per-IP) + `auth` (per-IP brute-force) + `user` (per-user fixed-window) | `Common/Extensions/RateLimitExtensions.cs` |
-| Soft delete | `IsActive = false` universally; never `context.Remove()` | All entities |
+| Soft delete | `IsActive = false` + `IsDeleted = true` on DELETE; deactivation sets only `IsActive = false`; never `context.Remove()` | All entities |
 | Audit trail | `AuditInterceptor` on `SaveChangesAsync` — captures all entity changes with old/new JSON diffs, userId, IP, correlationId | `Common/Audit/` |
 | Token revocation | `PostgresTokenRevocationService` + `RevokedToken` table with `ExpiresAt` index | `Infrastructure/Caching/` |
 | PurchaseOrder concurrency | All state transitions guarded with `_lockService.AcquireAsync($"po:transition:{id}")` → `ConcurrencyConflictException` (409) | `Features/PurchaseOrders/` |
