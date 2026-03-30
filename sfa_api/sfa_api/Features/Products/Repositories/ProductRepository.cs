@@ -51,14 +51,13 @@ public class ProductRepository(AppDbContext context) : IProductRepository
     }
 
     public async Task DeleteAsync(int id, CancellationToken ct = default)
-    {
-        var product = await _context.Products.IgnoreQueryFilters().FirstOrDefaultAsync(p => p.Id == id, ct);
-        if (product != null)
-        {
-            product.IsActive = false;
-            _context.Products.Update(product);
-        }
-    }
+        => await _context.Products
+            .IgnoreQueryFilters()
+            .Where(p => p.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(p => p.IsActive, false)
+                .SetProperty(p => p.IsDeleted, true)
+                .SetProperty(p => p.UpdatedAt, DateTime.UtcNow), ct);
 
     public async Task SaveChangesAsync(CancellationToken ct = default)
         => await _context.SaveChangesAsync(ct);

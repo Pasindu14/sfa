@@ -36,6 +36,7 @@ public class Outlet
     public int RegionId { get; set; }     // denormalized ancestor
 
     public bool IsActive { get; set; } = true;
+    public bool IsDeleted { get; set; } = false;
 
     // Audit fields
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

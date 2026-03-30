@@ -104,14 +104,13 @@ public class OutletRepository(AppDbContext context) : IOutletRepository
     }
 
     public async Task DeleteAsync(int id, CancellationToken ct = default)
-    {
-        var outlet = await _context.Outlets.IgnoreQueryFilters().FirstOrDefaultAsync(o => o.Id == id, ct);
-        if (outlet != null)
-        {
-            outlet.IsActive = false;
-            _context.Outlets.Update(outlet);
-        }
-    }
+        => await _context.Outlets
+            .IgnoreQueryFilters()
+            .Where(o => o.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(o => o.IsActive, false)
+                .SetProperty(o => o.IsDeleted, true)
+                .SetProperty(o => o.UpdatedAt, DateTime.UtcNow), ct);
 
     public async Task SaveChangesAsync(CancellationToken ct = default)
         => await _context.SaveChangesAsync(ct);

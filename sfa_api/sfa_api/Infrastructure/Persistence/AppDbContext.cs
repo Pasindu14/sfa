@@ -135,6 +135,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).UseIdentityColumn();
             e.HasIndex(x => x.Name).IsUnique();
+            e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt).HasFilter("\"IsActive\" = true");
             e.HasQueryFilter(x => x.IsActive);
         });
@@ -146,6 +147,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Id).UseIdentityColumn();
             e.HasIndex(x => new { x.Name, x.RegionId }).IsUnique();
             e.HasIndex(x => x.RegionId);
+            e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt).HasFilter("\"IsActive\" = true");
             e.HasQueryFilter(x => x.IsActive);
             e.HasOne(x => x.Region)
@@ -162,6 +164,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => new { x.Name, x.AreaId }).IsUnique();
             e.HasIndex(x => x.AreaId);
             e.HasIndex(x => x.RegionId);
+            e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt).HasFilter("\"IsActive\" = true");
             e.HasQueryFilter(x => x.IsActive);
             e.HasOne(x => x.Area)
@@ -183,6 +186,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.TerritoryId);
             e.HasIndex(x => x.AreaId);
             e.HasIndex(x => x.RegionId);
+            e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt).HasFilter("\"IsActive\" = true");
             e.HasQueryFilter(x => x.IsActive);
             e.HasOne(x => x.Territory)
@@ -208,6 +212,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.ReportsToUserId);
             e.HasIndex(x => new { x.UserId, x.IsActive });
             e.HasIndex(x => x.IsActive);
+            e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.EffectiveFrom);
             // Both FKs point to Users — restrict delete to protect audit trail
             e.HasOne(x => x.User)
@@ -233,6 +238,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.DivisionId);
             e.HasIndex(x => new { x.UserId, x.IsActive });
             e.HasIndex(x => x.IsActive);
+            e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.EffectiveFrom);
             // All FKs use Restrict — no cascades, preserving full audit history
             e.HasOne(x => x.User)
@@ -274,6 +280,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).UseIdentityColumn();
             e.HasIndex(x => x.IsActive);
+            e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.Name).HasFilter("\"IsActive\" = true");
             e.HasQueryFilter(x => x.IsActive);
             e.HasIndex(x => x.DivisionId);
@@ -294,6 +301,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.CreditLimit).HasColumnType("decimal(18,2)");
             e.HasIndex(x => x.NicNo);
             e.HasIndex(x => x.IsActive);
+            e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.Name).HasFilter("\"IsActive\" = true");
             e.HasQueryFilter(x => x.IsActive);
             e.HasIndex(x => x.RouteId);
@@ -312,6 +320,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Id).UseIdentityColumn();
             e.HasIndex(x => x.Code).IsUnique();
             e.HasIndex(x => x.IsActive);
+            e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt);
             // NOTE: No HasQueryFilter — repositories use IgnoreQueryFilters() throughout and
             // filter IsActive explicitly. A global filter here causes EF warnings because
@@ -338,6 +347,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Id).UseIdentityColumn();
             e.HasIndex(x => x.Name).IsUnique();
             e.HasIndex(x => x.IsActive);
+            e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.IsDefault);
             // NOTE: No HasQueryFilter — repositories use IgnoreQueryFilters() throughout and
             // filter IsActive explicitly. A global filter here causes EF warnings because
@@ -429,6 +439,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Status).HasConversion<string>();
             e.Property(x => x.ErrorSummary).HasColumnType("text");
             e.Property(x => x.Notes).HasMaxLength(1000);
+            e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.ImportedBy);
             e.HasIndex(x => x.ImportedAt);
             e.HasIndex(x => x.Status);
@@ -451,6 +462,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.InvoiceType).HasConversion<string>();
             e.Property(x => x.Status).HasConversion<string>();
             e.Property(x => x.Notes).HasMaxLength(1000);
+            e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.DistributorId);
             e.HasIndex(x => x.ImportBatchId);
             e.HasIndex(x => x.PurchaseOrderId);
@@ -503,6 +515,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(x => x.Id);
             e.Property(x => x.GrnNumber).IsRequired().HasMaxLength(30);
             e.HasIndex(x => x.GrnNumber).IsUnique();
+            e.HasIndex(x => x.IsDeleted);
             // Unique FK — enforces 1:1 with SalesInvoice (no double-GRN at DB level)
             e.HasIndex(x => x.SalesInvoiceId).IsUnique();
             e.Property(x => x.Status)

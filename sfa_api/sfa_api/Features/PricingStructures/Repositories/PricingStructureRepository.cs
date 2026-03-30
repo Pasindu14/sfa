@@ -84,14 +84,13 @@ public class PricingStructureRepository(AppDbContext context) : IPricingStructur
     }
 
     public async Task DeleteAsync(int id, CancellationToken ct = default)
-    {
-        var entity = await _context.PricingStructures.IgnoreQueryFilters().FirstOrDefaultAsync(ps => ps.Id == id, ct);
-        if (entity != null)
-        {
-            entity.IsActive = false;
-            _context.PricingStructures.Update(entity);
-        }
-    }
+        => await _context.PricingStructures
+            .IgnoreQueryFilters()
+            .Where(ps => ps.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(ps => ps.IsActive, false)
+                .SetProperty(ps => ps.IsDeleted, true)
+                .SetProperty(ps => ps.UpdatedAt, DateTime.UtcNow), ct);
 
     public async Task ActivateAsync(int id, CancellationToken ct = default)
     {

@@ -31,6 +31,7 @@ public class GRN
     public int? CreatedByUserId { get; set; }
     public int? UpdatedByUserId { get; set; }
     public bool IsActive { get; set; } = true;
+    public bool IsDeleted { get; set; } = false;
 
     // ── Navigation ────────────────────────────────────────────────────────
     public SalesInvoice SalesInvoice { get; set; } = null!;

@@ -7,6 +7,7 @@ public class PricingStructure
     public string? Description { get; set; }
     public bool IsDefault { get; set; } = false;
     public bool IsActive { get; set; } = true;
+    public bool IsDeleted { get; set; } = false;
 
     // Audit fields
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

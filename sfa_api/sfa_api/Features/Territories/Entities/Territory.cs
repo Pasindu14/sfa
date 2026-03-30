@@ -10,6 +10,7 @@ public class Territory
     public int AreaId { get; set; }         // direct parent (FK)
     public int RegionId { get; set; }       // denormalized ancestor
     public bool IsActive { get; set; } = true;
+    public bool IsDeleted { get; set; } = false;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public int? CreatedBy { get; set; }

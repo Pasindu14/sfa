@@ -12,6 +12,7 @@ public class Division
     public int AreaId { get; set; }         // denormalized
     public int RegionId { get; set; }       // denormalized
     public bool IsActive { get; set; } = true;
+    public bool IsDeleted { get; set; } = false;
 
     // Audit fields
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

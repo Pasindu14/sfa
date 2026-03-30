@@ -10,6 +10,7 @@ public class Product
     public string? ImageUrl { get; set; }                         // Storage path or URL
     public string? Remarks { get; set; }
     public bool IsActive { get; set; } = true;
+    public bool IsDeleted { get; set; } = false;
 
     // Audit fields
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

@@ -22,6 +22,7 @@ public class UserGeoAssignment
     public DateOnly EffectiveFrom { get; set; }
 
     public bool IsActive { get; set; } = true;
+    public bool IsDeleted { get; set; } = false;
 
     // Audit fields
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
