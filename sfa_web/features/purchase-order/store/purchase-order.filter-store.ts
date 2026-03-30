@@ -18,26 +18,31 @@ interface PurchaseOrderFilterState {
   resetFilters: () => void
 }
 
-const defaultState = {
-  page: 1,
-  pageSize: 10,
-  search: '',
-  status: '',
-  fromDate: '',
-  toDate: '',
+const getDefaultState = () => {
+  const now = new Date()
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  return {
+    page: 1,
+    pageSize: 10,
+    search: '',
+    status: '',
+    fromDate: firstDay.toISOString().split('T')[0],
+    toDate: lastDay.toISOString().split('T')[0],
+  }
 }
 
 export const usePurchaseOrderFilterStore = create<PurchaseOrderFilterState>()(
   devtools(
     (set) => ({
-      ...defaultState,
+      ...getDefaultState(),
       setPage: (page) => set({ page }),
       setPageSize: (pageSize) => set({ pageSize, page: 1 }),
       setSearch: (search) => set({ search, page: 1 }),
       setStatus: (status) => set({ status, page: 1 }),
       setFromDate: (fromDate) => set({ fromDate, page: 1 }),
       setToDate: (toDate) => set({ toDate, page: 1 }),
-      resetFilters: () => set(defaultState),
+      resetFilters: () => set(getDefaultState()),
     }),
     { name: 'PurchaseOrderFilterStore' }
   )

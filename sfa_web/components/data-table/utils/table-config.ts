@@ -59,6 +59,9 @@ export interface TableConfig {
 
   // Default sort direction
   defaultSortOrder?: 'asc' | 'desc';
+
+  // Default date range pre-populated in the date filter
+  defaultDateRange?: { from_date: string; to_date: string };
 }
 
 // Default configuration

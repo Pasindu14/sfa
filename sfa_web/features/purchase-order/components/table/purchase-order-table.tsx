@@ -15,6 +15,16 @@ import {
 import { usePurchaseOrderDataTable } from '../../hooks/purchase-order.hooks'
 import { getPurchaseOrderColumns } from '../columns/purchase-order-columns'
 
+function getCurrentMonthDateRange() {
+  const now = new Date()
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  return {
+    from_date: firstDay.toISOString().split('T')[0],
+    to_date: lastDay.toISOString().split('T')[0],
+  }
+}
+
 export function PurchaseOrderTable() {
   const router = useRouter()
   const getColumns = useCallback(() => getPurchaseOrderColumns(), [])
@@ -30,6 +40,7 @@ export function PurchaseOrderTable() {
         enableUrlState: false,
         columnResizingTableId: 'purchase-orders-table',
         searchPlaceholder: 'Search orders...',
+        defaultDateRange: getCurrentMonthDateRange(),
       }}
       getColumns={getColumns}
       fetchDataFn={usePurchaseOrderDataTable}
