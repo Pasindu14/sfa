@@ -1,7 +1,7 @@
 'use client'
 
 import type { ColumnDef } from '@tanstack/react-table'
-import { MoreHorizontal } from 'lucide-react'
+import { MoreHorizontal, ClipboardList } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -16,6 +16,7 @@ import type { SalesInvoiceListItem } from '../types/sales-invoice.types'
 export interface SalesInvoiceColumnActions {
   openDetail: (id: number) => void
   openDelete: (id: number) => void
+  openCreateGrn: (id: number) => void
 }
 
 function formatCurrency(amount: number) {
@@ -29,7 +30,7 @@ function formatCurrency(amount: number) {
 export function getSalesInvoiceColumns(
   actions: SalesInvoiceColumnActions,
 ): ColumnDef<SalesInvoiceListItem>[] {
-  const { openDetail, openDelete } = actions
+  const { openDetail, openDelete, openCreateGrn } = actions
 
   return [
     {
@@ -111,8 +112,17 @@ export function getSalesInvoiceColumns(
                 <span className="sr-only">Open menu</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="w-44">
               <DropdownMenuItem onClick={() => openDetail(item.id)}>View</DropdownMenuItem>
+              {item.status === 'Pending' && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => openCreateGrn(item.id)}>
+                    <ClipboardList className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                    Create GRN
+                  </DropdownMenuItem>
+                </>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive"

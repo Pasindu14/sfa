@@ -10,7 +10,7 @@ public interface IGrnRepository
     Task<SalesInvoice?> GetSalesInvoiceWithItemsAsync(int salesInvoiceId, CancellationToken ct = default);
 
     // ── GRN read ───────────────────────────────────────────────────────────
-    Task<(List<GRN> Items, int TotalCount)> GetListAsync(int page, int pageSize, string? status, int? distributorId, CancellationToken ct = default);
+    Task<(List<GRN> Items, int TotalCount)> GetListAsync(int page, int pageSize, string? status, int? distributorId, DateOnly? date = null, CancellationToken ct = default);
     Task<GRN?> GetGrnWithItemsAsync(int grnId, CancellationToken ct = default);
     Task<bool> GrnExistsForInvoiceAsync(int salesInvoiceId, CancellationToken ct = default);
 

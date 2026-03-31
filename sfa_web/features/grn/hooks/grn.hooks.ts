@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { getGrnsAction, getGrnByIdAction, createGrnAction, confirmGrnAction, deleteGrnAction } from '../actions/grn.actions'
-import { useConfirmDialog, useDeleteDialog } from '../store'
+import { useConfirmDialog, useDeleteDialog, useGrnFilterStore } from '../store'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { ActionFailure } from '@/lib/types/actions'
 import type { CreateGrnInput, ConfirmGrnInput } from '../schema/grn.schema'
@@ -37,6 +37,48 @@ export function useGrns(
     placeholderData: keepPreviousData,
   })
 }
+
+// ── DataTable hook (fetchDataFn with isQueryHook = true) ───────────────────
+
+export function useGrnDataTable(
+  page: number,
+  pageSize: number,
+  _search: string,
+  _dateRange?: unknown,
+  _sortBy?: string,
+  _sortOrder?: string,
+  _caseConfig?: unknown,
+  customFilters?: { status?: string },
+) {
+  const appliedFilters = useGrnFilterStore((s) => s.appliedFilters)
+
+  return useQuery({
+    queryKey: grnKeys.list({ page, pageSize, customFilters, appliedFilters }),
+    queryFn: async () => {
+      const result = await getGrnsAction(
+        page,
+        pageSize,
+        customFilters?.status || undefined,
+        appliedFilters?.distributorId ?? undefined,
+        appliedFilters?.date,
+      )
+      if (!result.success) throw new Error(result.error)
+      const { grns, totalCount, page: p, pageSize: ps } = result.data
+      return {
+        success: true as const,
+        data: grns,
+        pagination: {
+          page: p,
+          limit: ps,
+          total_pages: Math.ceil(totalCount / ps),
+          total_items: totalCount,
+        },
+      }
+    },
+  })
+}
+
+;(useGrnDataTable as unknown as Record<string, unknown>).isQueryHook = true
 
 // ── Detail query hook ──────────────────────────────────────────────────────
 

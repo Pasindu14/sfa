@@ -7,21 +7,24 @@ using sfa_api.Features.GRNs.Requests;
 using sfa_api.Features.SalesInvoices.Enums;
 using sfa_api.Features.Stock.Entities;
 using sfa_api.Features.Stock.Enums;
+using Microsoft.EntityFrameworkCore;
 using sfa_api.Infrastructure.Locking;
+using sfa_api.Infrastructure.Persistence;
 
 namespace sfa_api.Features.GRNs.Services;
 
-public class GrnService(IGrnRepository repository, IDistributedLockService lockService) : IGrnService
+public class GrnService(IGrnRepository repository, IDistributedLockService lockService, AppDbContext db) : IGrnService
 {
     private readonly IGrnRepository _repository = repository;
     private readonly IDistributedLockService _lockService = lockService;
+    private readonly AppDbContext _db = db;
 
     // ── List GRNs ─────────────────────────────────────────────────────────
 
     public async Task<(List<GrnDto> Items, int TotalCount)> GetListAsync(
-        int page, int pageSize, string? status, int? distributorId, CancellationToken ct = default)
+        int page, int pageSize, string? status, int? distributorId, DateOnly? date = null, CancellationToken ct = default)
     {
-        var (grns, total) = await _repository.GetListAsync(page, pageSize, status, distributorId, ct);
+        var (grns, total) = await _repository.GetListAsync(page, pageSize, status, distributorId, date, ct);
         var dtos = grns.Select(g => new GrnDto(
             g.Id,
             g.GrnNumber,
@@ -77,6 +80,8 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
             Status          = GrnStatus.Pending,
             CreatedByUserId = callerId,
             UpdatedByUserId = callerId,
+            CreatedAt       = DateTime.UtcNow,
+            UpdatedAt       = DateTime.UtcNow,
         };
 
         foreach (var item in invoice.Items)
@@ -122,82 +127,87 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
                 $"Cannot confirm GRN with status '{grn.Status}'. Only Pending GRNs can be confirmed.",
                 new { grnId, currentStatus = grn.Status.ToString() });
 
-        // 4. Begin explicit transaction — all stock updates are atomic
-        await using var transaction = await _repository.BeginTransactionAsync(ct);
-
-        try
+        // 4. Wrap in execution strategy — required because NpgsqlRetryingExecutionStrategy
+        //    does not allow user-initiated transactions unless wrapped this way
+        var strategy = _db.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
         {
-            // 5. Update GRN status
-            grn.Status          = GrnStatus.Confirmed;
-            grn.ReceivedAt      = request.ReceivedAt;
-            grn.ConfirmedBy     = callerId;
-            grn.ConfirmedAt     = DateTime.UtcNow;
-            grn.Notes           = request.Notes;
-            grn.UpdatedByUserId = callerId;
-            grn.UpdatedAt       = DateTime.UtcNow;
+            await using var transaction = await _repository.BeginTransactionAsync(ct);
 
-            // 6. Process each item — pessimistic locking on DistributorStock rows
-            foreach (var item in grn.Items)
+            try
             {
-                // SELECT ... FOR UPDATE locks the row, preventing concurrent reads of stale QuantityOnHand
-                var stock = await _repository.GetStockForUpdateAsync(grn.DistributorId, item.ProductId, ct);
+                // 5. Update GRN status
+                grn.Status          = GrnStatus.Confirmed;
+                grn.ReceivedAt      = request.ReceivedAt;
+                grn.ConfirmedBy     = callerId;
+                grn.ConfirmedAt     = DateTime.UtcNow;
+                grn.Notes           = request.Notes;
+                grn.UpdatedByUserId = callerId;
+                grn.UpdatedAt       = DateTime.UtcNow;
 
-                decimal quantityBefore;
-                if (stock is null)
+                // 6. Process each item — pessimistic locking on DistributorStock rows
+                foreach (var item in grn.Items)
                 {
-                    // First stock entry for this distributor+product — create and re-lock
-                    quantityBefore = 0m;
-                    stock = new DistributorStock
+                    // SELECT ... FOR UPDATE locks the row, preventing concurrent reads of stale QuantityOnHand
+                    var stock = await _repository.GetStockForUpdateAsync(grn.DistributorId, item.ProductId, ct);
+
+                    decimal quantityBefore;
+                    if (stock is null)
                     {
-                        DistributorId  = grn.DistributorId,
-                        ProductId      = item.ProductId,
-                        QuantityOnHand = 0m,
-                        LastUpdatedAt  = DateTime.UtcNow,
-                    };
-                    await _repository.AddStockAsync(stock, ct);
-                    // Flush so the FOR UPDATE on subsequent iterations (same product) finds the row
-                    await _repository.SaveChangesAsync(ct);
+                        // First stock entry for this distributor+product — create and re-lock
+                        quantityBefore = 0m;
+                        stock = new DistributorStock
+                        {
+                            DistributorId  = grn.DistributorId,
+                            ProductId      = item.ProductId,
+                            QuantityOnHand = 0m,
+                            LastUpdatedAt  = DateTime.UtcNow,
+                        };
+                        await _repository.AddStockAsync(stock, ct);
+                        // Flush so the FOR UPDATE on subsequent iterations (same product) finds the row
+                        await _repository.SaveChangesAsync(ct);
 
-                    // Re-lock the newly created row so we hold it through the transaction
-                    stock = await _repository.GetStockForUpdateAsync(grn.DistributorId, item.ProductId, ct) ?? stock;
+                        // Re-lock the newly created row so we hold it through the transaction
+                        stock = await _repository.GetStockForUpdateAsync(grn.DistributorId, item.ProductId, ct) ?? stock;
+                    }
+                    else
+                    {
+                        quantityBefore = stock.QuantityOnHand;
+                    }
+
+                    var quantityAfter = quantityBefore + item.Quantity;
+
+                    // Update running balance
+                    stock.QuantityOnHand = quantityAfter;
+                    stock.LastUpdatedAt  = DateTime.UtcNow;
+
+                    // Append immutable ledger entry — never update or delete
+                    await _repository.AddStockTransactionAsync(new StockTransaction
+                    {
+                        DistributorId   = grn.DistributorId,
+                        ProductId       = item.ProductId,
+                        TransactionType = StockTransactionType.GRNReceipt,
+                        Direction       = StockTransactionDirection.In,
+                        Quantity        = item.Quantity,
+                        QuantityBefore  = quantityBefore,
+                        QuantityAfter   = quantityAfter,
+                        ReferenceType   = "GRN",
+                        ReferenceId     = grnId,
+                        TransactedAt    = DateTime.UtcNow,
+                        TransactedBy    = callerId,
+                        Notes           = item.Notes,
+                    }, ct);
                 }
-                else
-                {
-                    quantityBefore = stock.QuantityOnHand;
-                }
 
-                var quantityAfter = quantityBefore + item.Quantity;
-
-                // Update running balance
-                stock.QuantityOnHand = quantityAfter;
-                stock.LastUpdatedAt  = DateTime.UtcNow;
-
-                // Append immutable ledger entry — never update or delete
-                await _repository.AddStockTransactionAsync(new StockTransaction
-                {
-                    DistributorId   = grn.DistributorId,
-                    ProductId       = item.ProductId,
-                    TransactionType = StockTransactionType.GRNReceipt,
-                    Direction       = StockTransactionDirection.In,
-                    Quantity        = item.Quantity,
-                    QuantityBefore  = quantityBefore,
-                    QuantityAfter   = quantityAfter,
-                    ReferenceType   = "GRN",
-                    ReferenceId     = grnId,
-                    TransactedAt    = DateTime.UtcNow,
-                    TransactedBy    = callerId,
-                    Notes           = item.Notes,
-                }, ct);
+                await _repository.SaveChangesAsync(ct);
+                await transaction.CommitAsync(ct);
             }
-
-            await _repository.SaveChangesAsync(ct);
-            await transaction.CommitAsync(ct);
-        }
-        catch
-        {
-            await transaction.RollbackAsync(ct);
-            throw;
-        }
+            catch
+            {
+                await transaction.RollbackAsync(ct);
+                throw;
+            }
+        });
 
         // 7. Return updated DTO (re-fetch to get committed state)
         var confirmed = await _repository.GetGrnWithItemsAsync(grnId, ct)

@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Moq;
 using sfa_api.Common.Errors;
@@ -11,6 +12,7 @@ using sfa_api.Features.SalesInvoices.Entities;
 using sfa_api.Features.SalesInvoices.Enums;
 using sfa_api.Features.Stock.Entities;
 using sfa_api.Infrastructure.Locking;
+using sfa_api.Infrastructure.Persistence;
 
 namespace sfa_api.UnitTests.Features.GRNs.Services;
 
@@ -20,6 +22,7 @@ public class GrnServiceTests
     private readonly Mock<IDistributedLockService> _lockServiceMock;
     private readonly Mock<IDbContextTransaction> _txMock;
     private readonly Mock<IAsyncDisposable> _lockMock;
+    private readonly AppDbContext _dbContext;
     private readonly GrnService _sut;
 
     private const int CallerId      = 42;
@@ -35,7 +38,15 @@ public class GrnServiceTests
         _txMock          = new Mock<IDbContextTransaction>();
         _lockMock        = new Mock<IAsyncDisposable>();
 
-        _sut = new GrnService(_repoMock.Object, _lockServiceMock.Object);
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlite("DataSource=:memory:")
+            .Options;
+        _dbContext = new AppDbContext(options);
+        _dbContext.Database.OpenConnection();
+        // EnsureCreated() omitted — SQLite has no sequences; context is used only for
+        // CreateExecutionStrategy() which works without schema creation.
+
+        _sut = new GrnService(_repoMock.Object, _lockServiceMock.Object, _dbContext);
 
         // Default: lock is acquired successfully (individual tests can override to return null)
         _lockServiceMock

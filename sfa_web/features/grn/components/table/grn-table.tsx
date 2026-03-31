@@ -1,47 +1,34 @@
-"use client";
+'use client'
 
-import { useCallback, useState } from "react";
-import { format } from "date-fns";
-import {
-  Upload,
-  Search,
-  RotateCcw,
-  CalendarIcon,
-  Building2,
-} from "lucide-react";
-import { DataTable } from "@/components/data-table/data-table";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
+import { useCallback, useState } from 'react'
+import { format } from 'date-fns'
+import { Search, RotateCcw, CalendarIcon, Building2 } from 'lucide-react'
+import { DataTable } from '@/components/data-table/data-table'
+import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from '@/components/ui/popover'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { AsyncSelect } from "@/components/async-select";
-import { cn } from "@/lib/utils";
-import {
-  useSalesInvoiceDialogStore,
-  useImportDialog,
-  useDeleteDialog,
-  useCreateGrnDialog,
-  useSalesInvoiceFilters,
-} from "../../store";
-import { useSalesInvoiceDataTable } from "../../hooks/sales-invoice.hooks";
-import { getSalesInvoiceColumns } from "../columns/sales-invoice-columns";
-import { SalesInvoiceCreateGrnDialog } from "../dialogs/sales-invoice-create-grn-dialog";
-import { getDistributorsAction } from "@/features/distributor/actions/distributor.actions";
-import type { DistributorDto } from "@/features/distributor/schema/distributor.schema";
+} from '@/components/ui/select'
+import { AsyncSelect } from '@/components/async-select'
+import { cn } from '@/lib/utils'
+import { useConfirmDialog, useDeleteDialog, useGrnFilters } from '../../store'
+import { useGrnDataTable } from '../../hooks/grn.hooks'
+import { getGrnColumns } from '../columns/grn-columns'
+import { GrnConfirmDialog } from '../dialogs/grn-confirm-dialog'
+import { GrnDeleteDialog } from '../dialogs/grn-delete-dialog'
+import { getDistributorsAction } from '@/features/distributor/actions/distributor.actions'
+import type { DistributorDto } from '@/features/distributor/schema/distributor.schema'
 
 // ── Distributor fetcher ───────────────────────────────────────────────────
-// Returns [] until user types at least 1 character — avoids loading all
-// distributors on mount and is consistent with server-side search.
 
 async function fetchDistributors(search?: string): Promise<DistributorDto[]> {
   if (!search || search.trim().length === 0) return []
@@ -56,12 +43,11 @@ function DatePicker({
   value,
   onChange,
 }: {
-  value: string        // "YYYY-MM-DD"
+  value: string
   onChange: (date: string) => void
 }) {
   const [open, setOpen] = useState(false)
-  // Parse as local midnight to avoid UTC timezone shifts
-  const selected = value ? new Date(value + "T00:00:00") : undefined
+  const selected = value ? new Date(value + 'T00:00:00') : undefined
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -69,12 +55,12 @@ function DatePicker({
         <Button
           variant="outline"
           className={cn(
-            "h-8 w-44 justify-start text-left font-normal",
-            !value && "text-muted-foreground"
+            'h-8 w-44 justify-start text-left font-normal',
+            !value && 'text-muted-foreground'
           )}
         >
           <CalendarIcon className="mr-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          {value ? format(selected!, "d MMM yyyy") : "Pick a date"}
+          {value ? format(new Date(value + 'T00:00:00'), 'd MMM yyyy') : 'Pick a date'}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
@@ -83,12 +69,11 @@ function DatePicker({
           selected={selected}
           onSelect={(day) => {
             if (day) {
-              // Convert back to YYYY-MM-DD local string
               const iso = [
                 day.getFullYear(),
-                String(day.getMonth() + 1).padStart(2, "0"),
-                String(day.getDate()).padStart(2, "0"),
-              ].join("-")
+                String(day.getMonth() + 1).padStart(2, '0'),
+                String(day.getDate()).padStart(2, '0'),
+              ].join('-')
               onChange(iso)
             }
             setOpen(false)
@@ -102,7 +87,7 @@ function DatePicker({
 
 // ── Filter form ───────────────────────────────────────────────────────────
 
-function SalesInvoiceFilterForm({
+function GrnFilterForm({
   date,
   distributorId,
   hasLoaded,
@@ -110,7 +95,6 @@ function SalesInvoiceFilterForm({
   onDistributorChange,
   onLoad,
   onReset,
-  onImport,
 }: {
   date: string
   distributorId: number | null
@@ -119,7 +103,6 @@ function SalesInvoiceFilterForm({
   onDistributorChange: (id: number | null) => void
   onLoad: () => void
   onReset: () => void
-  onImport: () => void
 }) {
   return (
     <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-card px-4 py-3">
@@ -127,7 +110,7 @@ function SalesInvoiceFilterForm({
       <div className="flex flex-col gap-1.5">
         <label className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
           <CalendarIcon className="h-3 w-3" />
-          Invoice Date
+          GRN Date
         </label>
         <DatePicker value={date} onChange={onDateChange} />
       </div>
@@ -143,12 +126,10 @@ function SalesInvoiceFilterForm({
           label="Distributor"
           placeholder="All distributors"
           fetcher={fetchDistributors}
-          value={distributorId?.toString() ?? ""}
+          value={distributorId?.toString() ?? ''}
           onChange={(val) => onDistributorChange(val ? Number(val) : null)}
           getOptionValue={(d) => d.id.toString()}
-          getDisplayValue={(d) => (
-            <span className="text-sm">{d.name}</span>
-          )}
+          getDisplayValue={(d) => <span className="text-sm">{d.name}</span>}
           renderOption={(d) => (
             <div className="flex flex-col gap-0.5 py-0.5">
               <span className="text-sm font-medium">{d.name}</span>
@@ -173,7 +154,7 @@ function SalesInvoiceFilterForm({
       <div className="flex items-center gap-2">
         <Button onClick={onLoad} className="h-8 gap-2">
           <Search className="h-3.5 w-3.5" />
-          {hasLoaded ? "Reload" : "Load Data"}
+          {hasLoaded ? 'Reload' : 'Load Data'}
         </Button>
         {hasLoaded && (
           <Button
@@ -187,25 +168,15 @@ function SalesInvoiceFilterForm({
           </Button>
         )}
       </div>
-
-      {/* Import button — right-aligned, always accessible */}
-      <div className="ml-auto">
-        <Button onClick={onImport} variant="outline" className="h-8 gap-2">
-          <Upload className="h-3.5 w-3.5" />
-          Import Excel
-        </Button>
-      </div>
     </div>
-  );
+  )
 }
 
 // ── Table ─────────────────────────────────────────────────────────────────
 
-export function SalesInvoiceTable() {
-  const openDetail = useSalesInvoiceDialogStore((s) => s.openDetail);
-  const { open: openImport } = useImportDialog();
-  const { open: openDelete } = useDeleteDialog();
-  const { open: openCreateGrn } = useCreateGrnDialog();
+export function GrnTable() {
+  const { open: openConfirm } = useConfirmDialog()
+  const { open: openDelete } = useDeleteDialog()
   const {
     date,
     distributorId,
@@ -214,16 +185,16 @@ export function SalesInvoiceTable() {
     setDistributorId,
     applyFilters,
     reset,
-  } = useSalesInvoiceFilters();
+  } = useGrnFilters()
 
   const getColumns = useCallback(
-    () => getSalesInvoiceColumns({ openDetail, openDelete, openCreateGrn }),
-    [openDetail, openDelete, openCreateGrn],
-  );
+    () => getGrnColumns({ openConfirm, openDelete }),
+    [openConfirm, openDelete],
+  )
 
   return (
     <div className="flex flex-col gap-4">
-      <SalesInvoiceFilterForm
+      <GrnFilterForm
         date={date}
         distributorId={distributorId}
         hasLoaded={!!appliedFilters}
@@ -231,7 +202,6 @@ export function SalesInvoiceTable() {
         onDistributorChange={setDistributorId}
         onLoad={applyFilters}
         onReset={reset}
-        onImport={openImport}
       />
 
       {appliedFilters ? (
@@ -239,49 +209,49 @@ export function SalesInvoiceTable() {
           key={`${appliedFilters.date}-${appliedFilters.distributorId ?? 'all'}`}
           config={{
             enableRowSelection: false,
-            enableSearch: true,
+            enableSearch: false,
             enableDateFilter: false,
             enableExport: false,
             enableColumnResizing: false,
             enableUrlState: false,
-            columnResizingTableId: "sales-invoices-table",
-            searchPlaceholder: "Search by bill no, distributor...",
+            columnResizingTableId: 'grns-table',
+            searchPlaceholder: 'Search GRNs…',
           }}
           getColumns={getColumns}
-          fetchDataFn={useSalesInvoiceDataTable}
+          fetchDataFn={useGrnDataTable}
           exportConfig={{
-            entityName: "sales-invoices",
+            entityName: 'grns',
             columnMapping: {
-              vchBillNo: "Bill No",
-              distributorName: "Distributor",
-              invoiceDate: "Date",
-              invoiceType: "Type",
-              totalAmount: "Amount",
-              status: "Status",
+              grnNumber: 'GRN Number',
+              salesInvoiceVchBillNo: 'Invoice Bill No',
+              distributorName: 'Distributor',
+              status: 'Status',
+              receivedAt: 'Received At',
+              createdAt: 'Created',
             },
             columnWidths: [
               { wch: 20 },
+              { wch: 20 },
               { wch: 25 },
-              { wch: 15 },
-              { wch: 12 },
-              { wch: 18 },
-              { wch: 15 },
+              { wch: 14 },
+              { wch: 16 },
+              { wch: 14 },
             ],
             headers: [
-              "Bill No",
-              "Distributor",
-              "Date",
-              "Type",
-              "Amount",
-              "Status",
+              'GRN Number',
+              'Invoice Bill No',
+              'Distributor',
+              'Status',
+              'Received At',
+              'Created',
             ],
           }}
           idField="id"
           renderCustomFilters={(filters, setFilters) => (
             <Select
-              value={filters?.status ?? "all"}
+              value={filters?.status ?? 'all'}
               onValueChange={(value) =>
-                setFilters({ ...filters, status: value === "all" ? "" : value })
+                setFilters({ ...filters, status: value === 'all' ? '' : value })
               }
             >
               <SelectTrigger className="h-8 w-40">
@@ -290,7 +260,7 @@ export function SalesInvoiceTable() {
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="Pending">Pending</SelectItem>
-                <SelectItem value="GrnReceived">GRN Received</SelectItem>
+                <SelectItem value="Confirmed">Confirmed</SelectItem>
                 <SelectItem value="Disputed">Disputed</SelectItem>
               </SelectContent>
             </Select>
@@ -300,8 +270,8 @@ export function SalesInvoiceTable() {
         <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed py-16 text-center">
           <CalendarIcon className="h-8 w-8 text-muted-foreground/40" />
           <p className="text-sm font-medium text-muted-foreground">
-            Select a date and click{" "}
-            <span className="font-semibold">Load Data</span> to view invoices
+            Select a date and click{' '}
+            <span className="font-semibold">Load Data</span> to view GRNs
           </p>
           <p className="text-xs text-muted-foreground/60">
             Optionally filter by distributor to narrow results
@@ -309,7 +279,8 @@ export function SalesInvoiceTable() {
         </div>
       )}
 
-      <SalesInvoiceCreateGrnDialog />
+      <GrnConfirmDialog />
+      <GrnDeleteDialog />
     </div>
-  );
+  )
 }

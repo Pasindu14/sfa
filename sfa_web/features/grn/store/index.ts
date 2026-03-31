@@ -2,6 +2,9 @@
 
 import { create } from 'zustand'
 import { useShallow } from 'zustand/react/shallow'
+import { useGrnFilterStore } from './grn.filter-store'
+
+export { useGrnFilterStore }
 
 // ── Confirm dialog store ───────────────────────────────────────────────────
 
@@ -56,3 +59,18 @@ export function useDeleteDialog() {
     }))
   )
 }
+
+// ── Filter store selectors ─────────────────────────────────────────────────
+
+export const useGrnFilters = () =>
+  useGrnFilterStore(
+    useShallow((s) => ({
+      date: s.date,
+      distributorId: s.distributorId,
+      appliedFilters: s.appliedFilters,
+      setDate: s.setDate,
+      setDistributorId: s.setDistributorId,
+      applyFilters: s.applyFilters,
+      reset: s.reset,
+    }))
+  )

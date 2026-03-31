@@ -22,7 +22,7 @@ public class GrnRepository(AppDbContext db) : IGrnRepository
     // ── GRN list ──────────────────────────────────────────────────────────
 
     public async Task<(List<GRN> Items, int TotalCount)> GetListAsync(
-        int page, int pageSize, string? status, int? distributorId, CancellationToken ct = default)
+        int page, int pageSize, string? status, int? distributorId, DateOnly? date = null, CancellationToken ct = default)
     {
         var query = _db.GRNs
             .AsNoTracking()
@@ -36,6 +36,13 @@ public class GrnRepository(AppDbContext db) : IGrnRepository
 
         if (distributorId.HasValue)
             query = query.Where(x => x.DistributorId == distributorId.Value);
+
+        if (date.HasValue)
+        {
+            var start = DateTime.SpecifyKind(date.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            var end   = DateTime.SpecifyKind(date.Value.ToDateTime(TimeOnly.MaxValue), DateTimeKind.Utc);
+            query = query.Where(x => x.CreatedAt >= start && x.CreatedAt <= end);
+        }
 
         var total = await query.CountAsync(ct);
         var items = await query
@@ -92,7 +99,7 @@ public class GrnRepository(AppDbContext db) : IGrnRepository
         // Raw SQL to get the row ID with a FOR UPDATE lock
         var ids = await _db.Database
             .SqlQueryRaw<int>(
-                "SELECT id FROM \"DistributorStocks\" WHERE distributor_id = {0} AND product_id = {1} FOR UPDATE",
+                "SELECT \"Id\" FROM \"DistributorStocks\" WHERE \"DistributorId\" = {0} AND \"ProductId\" = {1} FOR UPDATE",
                 distributorId, productId)
             .ToListAsync(ct);
 
