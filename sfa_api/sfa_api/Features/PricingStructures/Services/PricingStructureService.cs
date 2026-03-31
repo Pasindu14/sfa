@@ -130,6 +130,7 @@ public class PricingStructureService(
             ?? throw new NotFoundException("PricingStructure", id);
 
         await _repo.DeleteAsync(id, ct);
+        await _repo.SaveChangesAsync(ct);
         _logger.LogInformation("PricingStructure {PricingStructureId} deleted", id);
     }
 

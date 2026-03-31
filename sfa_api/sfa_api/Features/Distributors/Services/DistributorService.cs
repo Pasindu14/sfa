@@ -4,16 +4,19 @@ using sfa_api.Features.Distributors.Entities;
 using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.Distributors.Requests;
 using sfa_api.Features.Territories.Repositories;
+using sfa_api.Infrastructure.Caching;
 
 namespace sfa_api.Features.Distributors.Services;
 
 public class DistributorService(
     IDistributorRepository repo,
     ITerritoryRepository territoryRepo,
+    ICacheService cache,
     ILogger<DistributorService> logger) : IDistributorService
 {
     private readonly IDistributorRepository _repo = repo;
     private readonly ITerritoryRepository _territoryRepo = territoryRepo;
+    private readonly ICacheService _cache = cache;
     private readonly ILogger<DistributorService> _logger = logger;
 
     public async Task<DistributorDto> GetByIdAsync(int id, CancellationToken ct = default)

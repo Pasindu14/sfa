@@ -9,9 +9,11 @@ namespace sfa_api.Features.Products.Services;
 
 public class ProductService(
     IProductRepository repo,
+    ICacheService cache,
     ILogger<ProductService> logger) : IProductService
 {
     private readonly IProductRepository _repo = repo;
+    private readonly ICacheService _cache = cache;
     private readonly ILogger<ProductService> _logger = logger;
 
     public async Task<ProductDto> GetByIdAsync(int id, CancellationToken ct = default)
@@ -99,6 +101,7 @@ public class ProductService(
             ?? throw new NotFoundException("Product", id);
 
         await _repo.DeleteAsync(id, ct);
+        await _repo.SaveChangesAsync(ct);
         _logger.LogInformation("Product {ProductId} deleted", id);
     }
 
