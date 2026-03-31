@@ -53,6 +53,25 @@ public static class JwtExtensions
 
                         await ctx.Response.WriteAsync(
                             JsonSerializer.Serialize(new ApiErrorResponse(false, error), _jsonOptions));
+                    },
+
+                    OnForbidden = async ctx =>
+                    {
+                        ctx.Response.StatusCode = 403;
+                        ctx.Response.ContentType = "application/json";
+
+                        var correlationId = ctx.HttpContext.Items["CorrelationId"]?.ToString()
+                                            ?? string.Empty;
+
+                        var error = new ApiError(
+                            "FORBIDDEN_ACCESS",
+                            "You do not have permission to perform this action.",
+                            null, null, null,
+                            correlationId,
+                            DateTime.UtcNow);
+
+                        await ctx.Response.WriteAsync(
+                            JsonSerializer.Serialize(new ApiErrorResponse(false, error), _jsonOptions));
                     }
                 };
             });

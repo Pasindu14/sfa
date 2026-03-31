@@ -1,11 +1,18 @@
 using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
+using System.Text.Json;
 using System.Threading.RateLimiting;
+using sfa_api.Common.Errors;
 
 namespace sfa_api.Common.Extensions;
 
 public static class RateLimitExtensions
 {
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     public static IServiceCollection AddSFARateLimiting(
         this IServiceCollection services, IConfiguration config)
     {
@@ -15,6 +22,25 @@ public static class RateLimitExtensions
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = 429;
+
+            options.OnRejected = async (ctx, token) =>
+            {
+                ctx.HttpContext.Response.StatusCode = 429;
+                ctx.HttpContext.Response.ContentType = "application/json";
+
+                var correlationId = ctx.HttpContext.Items["CorrelationId"]?.ToString()
+                                    ?? string.Empty;
+
+                var error = new ApiError(
+                    "RATE_LIMITED",
+                    "Too many requests.",
+                    "Retry after the indicated time.",
+                    null, null, correlationId, DateTime.UtcNow);
+
+                await ctx.HttpContext.Response.WriteAsync(
+                    JsonSerializer.Serialize(new ApiErrorResponse(false, error), _jsonOptions),
+                    token);
+            };
 
             options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
             {

@@ -5,6 +5,7 @@ using OpenTelemetry.Trace;
 using OpenTelemetry.Metrics;
 using Serilog;
 using sfa_api.Common.Audit;
+using sfa_api.Common.Errors;
 using sfa_api.Common.Extensions;
 using sfa_api.Common.Middleware;
 using sfa_api.Features.Auth;
@@ -101,7 +102,28 @@ try
 
     // ── HTTP & API ────────────────────────────────────────────────────────
     builder.Services.AddHttpContextAccessor();
-    builder.Services.AddControllers();
+    builder.Services.AddControllers()
+        .ConfigureApiBehaviorOptions(options =>
+        {
+            options.InvalidModelStateResponseFactory = ctx =>
+            {
+                var fields = ctx.ModelState
+                    .Where(e => e.Value?.Errors.Count > 0)
+                    .ToDictionary(
+                        k => k.Key,
+                        v => v.Value!.Errors
+                            .Select(e => string.IsNullOrEmpty(e.ErrorMessage) ? "Invalid value." : e.ErrorMessage)
+                            .ToArray());
+
+                var correlationId = ctx.HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+                var error = new ApiError(
+                    "VALIDATION_FAILED",
+                    "One or more validation errors occurred.",
+                    null, fields, null, correlationId, DateTime.UtcNow);
+
+                return new Microsoft.AspNetCore.Mvc.BadRequestObjectResult(new ApiErrorResponse(false, error));
+            };
+        });
     builder.Services.AddSFACors(builder.Configuration);
     builder.Services.AddSFARateLimiting(builder.Configuration);
     builder.Services.AddSFASwagger();
