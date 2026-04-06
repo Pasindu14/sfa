@@ -1,5 +1,6 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:uswatte/core/device/device_id_service.dart';
 import 'package:uswatte/core/errors/app_exception.dart';
 import 'package:uswatte/features/auth/domain/entities/user_role.dart';
@@ -56,7 +57,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(const AuthLoading());
     try {
-      final deviceId = await _deviceIdService.getOrCreate();
+      final deviceId = await _deviceIdService.getDeviceId();
       final token = await _loginUseCase(
         username: event.username,
         password: event.password,
@@ -65,8 +66,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(AuthAuthenticated(role: token.role));
     } on AppException catch (e) {
       emit(AuthFailure(e.message));
-    } catch (_) {
-      emit(const AuthFailure('An unexpected error occurred.'));
+    } catch (e, stack) {
+      debugPrint('LOGIN ERROR: $e\n$stack');
+      emit(AuthFailure(kDebugMode ? e.toString() : 'An unexpected error occurred.'));
     }
   }
 

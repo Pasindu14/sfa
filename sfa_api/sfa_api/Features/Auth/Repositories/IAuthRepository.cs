@@ -10,6 +10,7 @@ public interface IAuthRepository
     Task<User?> GetUserByIdAsync(int userId, CancellationToken ct = default);
     Task<RefreshToken?> GetRefreshTokenByHashAsync(string tokenHash, CancellationToken ct = default);
     Task AddRefreshTokenAsync(RefreshToken token, CancellationToken ct = default);
+    Task RegisterDeviceAsync(int userId, string deviceId, CancellationToken ct = default);
     Task RevokeTokenFamilyAsync(Guid familyId, CancellationToken ct = default);
     Task RevokeAllUserTokensAsync(int userId, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);

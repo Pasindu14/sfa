@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/features/auth/presentation/bloc/auth_bloc.dart';
@@ -69,9 +68,7 @@ class _LoginPageState extends State<LoginPage>
       backgroundColor: AppColors.background,
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
-          if (state is AuthAuthenticated) {
-            context.goNamed('dashboard');
-          } else if (state is AuthFailure) {
+          if (state is AuthFailure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(

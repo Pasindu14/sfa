@@ -21,6 +21,11 @@ public class AuthService(
         { "DeviceId", new[] { "Device ID is required for Sales Reps." } }
     };
 
+    private static readonly Dictionary<string, string[]> DeviceMismatchError = new()
+    {
+        { "DeviceId", new[] { "This device is not registered for your account. Contact your administrator." } }
+    };
+
     private readonly IAuthRepository _repo = repo;
     private readonly IJwtTokenHelper _jwtHelper = jwtHelper;
     private readonly ITokenRevocationService _revocationService = revocationService;
@@ -44,11 +49,29 @@ public class AuthService(
         if (!user.IsActive)
             throw new AuthenticationException("AUTH_ACCOUNT_DISABLED", "Account is disabled.");
 
-        // 3. Validate DeviceId for Sales Reps
-        if (user.Role == UserRole.SalesRep && string.IsNullOrEmpty(request.DeviceId))
-            throw new ValidationException(DeviceIdRequiredError);
+        // 3. Device binding — TOFU (Trust On First Use) for Sales Reps
+        if (user.Role == UserRole.SalesRep)
+        {
+            if (string.IsNullOrEmpty(request.DeviceId))
+                throw new ValidationException(DeviceIdRequiredError);
 
-        // 3. Generate access token
+            if (string.IsNullOrEmpty(user.DeviceId))
+            {
+                // First login from this device — register it
+                await _repo.RegisterDeviceAsync(user.Id, request.DeviceId, ct);
+                _logger.LogInformation(
+                    "Device registered for user {UserId}: {DeviceId}",
+                    user.Id, request.DeviceId);
+            }
+            else if (user.DeviceId != request.DeviceId)
+            {
+                // Known device mismatch — wrong device
+                throw new AuthenticationException("AUTH_DEVICE_MISMATCH",
+                    "This device is not registered for your account.");
+            }
+        }
+
+        // 4. Generate access token
         var accessToken = _jwtHelper.GenerateAccessToken(user, out _);
 
         // 4. Generate and store refresh token
@@ -69,7 +92,7 @@ public class AuthService(
 
         _logger.LogInformation(
             "User {UserId} logged in from device {DeviceId}",
-            user.Id, request.DeviceId ?? "unknown");
+            user.Id, request.DeviceId ?? string.Empty);
 
         return BuildAuthResponse(accessToken, plainRefreshToken, refreshToken, user);
     }

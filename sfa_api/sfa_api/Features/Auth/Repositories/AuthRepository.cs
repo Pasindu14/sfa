@@ -37,6 +37,13 @@ public class AuthRepository(AppDbContext db) : IAuthRepository
         RefreshToken token, CancellationToken ct = default)
         => await _db.RefreshTokens.AddAsync(token, ct);
 
+    public async Task RegisterDeviceAsync(
+        int userId, string deviceId, CancellationToken ct = default)
+        => await _db.Users
+            .Where(x => x.Id == userId)
+            .ExecuteUpdateAsync(
+                s => s.SetProperty(x => x.DeviceId, deviceId), ct);
+
     public async Task RevokeTokenFamilyAsync(
         Guid familyId, CancellationToken ct = default)
         => await _db.RefreshTokens

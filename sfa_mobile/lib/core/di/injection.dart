@@ -26,7 +26,7 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton<FlutterSecureStorage>(() => storage);
   getIt.registerLazySingleton<TokenCache>(() => cache);
   getIt.registerLazySingleton<Dio>(() => createDioClient(storage, cache));
-  getIt.registerLazySingleton(() => DeviceIdService(storage));
+  getIt.registerLazySingleton(() => DeviceIdService(getIt<FlutterSecureStorage>()));
 
   // ── Auth datasources ─────────────────────────────────────────────────────────
   getIt.registerLazySingleton(
