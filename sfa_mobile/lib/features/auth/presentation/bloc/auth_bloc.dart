@@ -46,7 +46,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             ? AuthAuthenticated(role: token.role)
             : const AuthUnauthenticated(),
       );
-    } catch (_) {
+    } catch (e, stack) {
+      debugPrint('AUTH RESTORE ERROR: $e\n$stack');
       emit(const AuthUnauthenticated());
     }
   }

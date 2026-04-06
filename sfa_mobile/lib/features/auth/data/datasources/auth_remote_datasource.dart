@@ -42,23 +42,23 @@ class AuthRemoteDatasource {
     } on AppException {
       rethrow;
     } on DioException catch (e) {
-      if (e.response?.statusCode == 401) {
-        throw const ServerException(
-          code: 'INVALID_CREDENTIALS',
-          message: 'Invalid username or password.',
-        );
-      }
+      // Unwrap typed AppExceptions set by interceptors (e.g. UnauthorizedException
+      // from TokenInterceptor when a protected endpoint returns 401).
+      final interceptorError = e.error;
+      if (interceptorError is AppException) throw interceptorError;
 
-      // Try to parse the SFA ApiError envelope from the response body
+      // Parse the SFA ApiErrorResponse envelope: { "success": false, "error": {...} }
+      // and convert to the correct typed AppException via the HTTP status code.
+      final statusCode = e.response?.statusCode ?? 500;
       if (e.response?.data is Map<String, dynamic>) {
         final body = e.response!.data as Map<String, dynamic>;
-        throw ServerException(
-          code: body['code'] as String? ?? 'SERVER_ERROR',
-          message: body['message'] as String? ?? 'An error occurred.',
-        );
+        final errorJson = body['error'];
+        if (errorJson is Map<String, dynamic>) {
+          throw ApiError.fromJson(errorJson).toException(statusCode);
+        }
       }
 
-      // Map Dio exception types to human-readable messages
+      // No parseable response body — map Dio error type to a network exception.
       final message = switch (e.type) {
         DioExceptionType.connectionTimeout || DioExceptionType.sendTimeout =>
           'Connection timed out. Check your network.',
@@ -68,6 +68,10 @@ class AuthRemoteDatasource {
         _ => 'Network error. Please try again.',
       };
       throw NetworkException(message: message);
+    } catch (_) {
+      // Catches TypeError from the `response.data as Map` cast or fromJson
+      // field type mismatches — neither of which surface as DioExceptions.
+      throw const ParseException(message: 'Failed to read server response.');
     }
   }
 }

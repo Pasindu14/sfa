@@ -8,13 +8,19 @@ class JwtDecoder {
       'http://schemas.microsoft.com/ws/2008/06/identity/claims/role';
 
   /// Returns the role claim value, or null if the token is malformed.
+  /// Never throws — any decode or cast failure returns null so the caller
+  /// can apply a safe fallback without a try-catch at every call site.
   static String? extractRole(String token) {
-    final parts = token.split('.');
-    if (parts.length != 3) return null;
-    // base64url payload may be unpadded — normalize adds '=' padding
-    final normalized = base64Url.normalize(parts[1]);
-    final decoded = utf8.decode(base64Url.decode(normalized));
-    final claims = jsonDecode(decoded) as Map<String, dynamic>;
-    return claims[_roleClaimKey] as String?;
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+      // base64url payload may be unpadded — normalize adds '=' padding
+      final normalized = base64Url.normalize(parts[1]);
+      final decoded = utf8.decode(base64Url.decode(normalized));
+      final claims = jsonDecode(decoded) as Map<String, dynamic>;
+      return claims[_roleClaimKey] as String?;
+    } catch (_) {
+      return null;
+    }
   }
 }
