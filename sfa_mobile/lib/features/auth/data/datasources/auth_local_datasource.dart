@@ -42,6 +42,7 @@ class AuthLocalDatasource {
       accessToken: accessToken,
       refreshToken: results[1],
       role: userRoleFromString(JwtDecoder.extractRole(accessToken) ?? 'SalesRep'),
+      name: JwtDecoder.extractName(accessToken) ?? '',
     );
   }
 

@@ -204,6 +204,13 @@ class _HeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final name = context.select<AuthBloc, String>(
+      (bloc) => bloc.state is AuthAuthenticated
+          ? (bloc.state as AuthAuthenticated).name
+          : '',
+    );
+    final displayName = name.isNotEmpty ? name : 'Sales Rep';
+
     return Padding(
       padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 0),
       child: Container(
@@ -274,7 +281,7 @@ class _HeroCard extends StatelessWidget {
                       fontSize: 13.sp,
                       color: Colors.white.withValues(alpha: 0.75),
                     )),
-                Text('Sales Rep',
+                Text(displayName,
                     style: GoogleFonts.barlowCondensed(
                       fontSize: 32.sp,
                       fontWeight: FontWeight.w800,

@@ -21,5 +21,6 @@ class TokenResponseModel {
         role: userRoleFromString(
           JwtDecoder.extractRole(accessToken) ?? 'SalesRep',
         ),
+        name: JwtDecoder.extractName(accessToken) ?? '',
       );
 }

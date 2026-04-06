@@ -43,7 +43,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final token = await _getCurrentAuthUseCase();
       emit(
         token != null
-            ? AuthAuthenticated(role: token.role)
+            ? AuthAuthenticated(role: token.role, name: token.name)
             : const AuthUnauthenticated(),
       );
     } catch (e, stack) {
@@ -64,7 +64,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         password: event.password,
         deviceId: deviceId,
       );
-      emit(AuthAuthenticated(role: token.role));
+      emit(AuthAuthenticated(role: token.role, name: token.name));
     } on AppException catch (e) {
       emit(AuthFailure(e.message));
     } catch (e, stack) {
