@@ -245,100 +245,146 @@ class _LoginPageState extends State<LoginPage>
   }
 }
 
-// ── Header block with white background ───────────────────────────────────────
+// ── Header block — editorial white ───────────────────────────────────────────
 class _HeaderBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
       color: AppColors.background,
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(28, 40, 28, 36),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Brand mark ──
-              Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Orange masthead strip ──
+          Container(height: 5, color: AppColors.primary),
+
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(28, 28, 28, 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Icon(
-                      Icons.storefront_rounded,
-                      color: AppColors.onPrimary,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  // ── Top nav: icon + SFA label + version ──
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Icon(
+                          Icons.storefront_rounded,
+                          color: AppColors.onPrimary,
+                          size: 17,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
                       Text(
                         'SFA',
                         style: GoogleFonts.barlowCondensed(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 3.0,
-                          color: AppColors.foreground,
-                          height: 1.0,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 4.0,
+                          color: AppColors.foregroundMuted,
                         ),
                       ),
-                      Text(
-                        'USWATTE',
-                        style: GoogleFonts.barlowCondensed(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 3.5,
-                          color: AppColors.primary,
-                          height: 1.2,
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AppColors.surfaceVariant),
+                          borderRadius: BorderRadius.circular(3),
                         ),
+                        child: Text(
+                          'v1.0',
+                          style: GoogleFonts.barlowCondensed(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.0,
+                            color: AppColors.foregroundMuted,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 28),
+
+                  // ── Brand headline: USWATTE dominant ──
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      // Faint watermark behind
+                      Positioned(
+                        right: -28,
+                        top: -8,
+                        child: Text(
+                          'UW',
+                          style: GoogleFonts.barlowCondensed(
+                            fontSize: 140,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -6,
+                            height: 1.0,
+                            color: AppColors.primary.withValues(alpha: 0.07),
+                          ),
+                        ),
+                      ),
+                      // Brand content
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // USWATTE — the brand name, large + orange
+                          Text(
+                            'USWATTE',
+                            style: GoogleFonts.barlowCondensed(
+                              fontSize: 58,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -1.5,
+                              height: 0.92,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          // Descriptor line
+                          Text(
+                            'FIELD SALES PLATFORM',
+                            style: GoogleFonts.barlowCondensed(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 3.0,
+                              color: AppColors.foreground
+                                  .withValues(alpha: 0.45),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          // Accent rule
+                          Row(
+                            children: [
+                              Container(
+                                  height: 3,
+                                  width: 32,
+                                  color: AppColors.primary),
+                              const SizedBox(width: 5),
+                              Container(
+                                  height: 3,
+                                  width: 10,
+                                  color: AppColors.amber),
+                            ],
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ],
               ),
-
-              const SizedBox(height: 32),
-
-              // ── Headline ──
-              Text(
-                'Field\nSales\nPlatform',
-                style: GoogleFonts.barlowCondensed(
-                  fontSize: 52,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -1.0,
-                  height: 0.92,
-                  color: AppColors.foreground,
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // ── Orange accent rule ──
-              Row(
-                children: [
-                  Container(
-                    height: 3,
-                    width: 32,
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(width: 6),
-                  Container(
-                    height: 3,
-                    width: 12,
-                    color: AppColors.amber,
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

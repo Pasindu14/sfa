@@ -5,12 +5,12 @@ import 'package:google_fonts/google_fonts.dart';
 class AppColors {
   AppColors._();
 
-  // ── Primary amber-orange scale (mirrors sfa_web oklch chart palette) ──
-  static const Color primary = Color(0xFFCA5D10);       // web: --primary oklch(0.553 0.195 38.4)
-  static const Color primaryDark = Color(0xFF9A3D08);   // web: --chart-5 oklch(0.47 0.157 37.3)
-  static const Color primaryMedium = Color(0xFFBD6318);  // web: sidebar-primary oklch(0.646 0.222 41.1)
-  static const Color primaryLight = Color(0xFFDA7E22);   // web: --chart-2 oklch(0.705 0.213 47.6)
-  static const Color amber = Color(0xFFEEAA52);          // web: --chart-1 oklch(0.837 0.128 66.29)
+  // ── Primary orange scale (anchored to brand #F56020) ──
+  static const Color primary = Color(0xFFF56020);       // brand primary — vivid orange
+  static const Color primaryDark = Color(0xFFBF3E0A);   // -30% lightness
+  static const Color primaryMedium = Color(0xFFDB5018);  // -10% lightness
+  static const Color primaryLight = Color(0xFFF88048);   // +15% lightness
+  static const Color amber = Color(0xFFFAB060);          // warm amber highlight
 
   // ── Warm neutral scale ──
   static const Color background = Color(0xFFFFFFFF);     // web: --background
@@ -21,7 +21,7 @@ class AppColors {
   static const Color onPrimary = Color(0xFFF9F2E4);      // web: --primary-foreground oklch(0.98 0.016 73.684)
 
   // ── Functional ──
-  static const Color error = Color(0xFFCC4218);          // web: --destructive oklch(0.577 0.245 27.325)
+  static const Color error = Color(0xFFE02010);          // destructive red — distinct from primary
   static const Color success = Color(0xFF2E7D52);
   static const Color warning = Color(0xFFB45309);
 
