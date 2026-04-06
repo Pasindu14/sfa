@@ -267,7 +267,7 @@ class _HeaderBlock extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Image.asset(
-                        '../assets/images/uswatte-logo.png',
+                        'assets/images/uswatte-logo.png',
                         height: 100.h,
                         fit: BoxFit.contain,
                       ),

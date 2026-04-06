@@ -7,6 +7,11 @@ abstract class AuthEvent extends Equatable {
   List<Object?> get props => [];
 }
 
+/// Fired on app start to restore session from secure storage.
+class AppStarted extends AuthEvent {
+  const AppStarted();
+}
+
 class LoginSubmitted extends AuthEvent {
   final String username;
   final String password;

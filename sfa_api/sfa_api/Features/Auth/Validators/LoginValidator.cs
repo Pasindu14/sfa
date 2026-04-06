@@ -8,12 +8,10 @@ public class LoginValidator : AbstractValidator<LoginRequest>
     public LoginValidator()
     {
         RuleFor(x => x.Username)
-            .NotEmpty().WithMessage("Username is required.")
-            .MinimumLength(3).WithMessage("Username must be at least 3 characters.");
+            .NotEmpty().WithMessage("Username is required.");
 
         RuleFor(x => x.Password)
-            .NotEmpty().WithMessage("Password is required.")
-            .MinimumLength(8).WithMessage("Password must be at least 8 characters.");
+            .NotEmpty().WithMessage("Password is required.");
 
         // DeviceId is optional for Admin/Manager, required for Sales Reps
         // Cannot validate here since we don't know the user's role yet

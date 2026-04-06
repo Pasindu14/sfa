@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/features/auth/presentation/bloc/auth_bloc.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -128,7 +130,7 @@ class _TopBar extends StatelessWidget {
         padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 8.h),
         child: Row(
           children: [
-            Image.asset('../assets/images/uswatte-logo.png',
+            Image.asset('assets/images/uswatte-logo.png',
                 height: 32.h, fit: BoxFit.contain),
             SizedBox(width: 10.w),
             Text('SFA',
@@ -149,7 +151,12 @@ class _TopBar extends StatelessWidget {
             SizedBox(width: 12.w),
             _NavIconBtn(icon: Icons.notifications_outlined, onTap: () {}),
             SizedBox(width: 6.w),
-            _NavIconBtn(icon: Icons.logout_rounded, onTap: () {}, accent: true),
+            _NavIconBtn(
+              icon: Icons.logout_rounded,
+              onTap: () =>
+                  context.read<AuthBloc>().add(const LogoutRequested()),
+              accent: true,
+            ),
           ],
         ),
       ),
