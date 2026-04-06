@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
@@ -77,30 +78,28 @@ class _LoginPageState extends State<LoginPage>
                   state.message,
                   style: GoogleFonts.barlow(
                     fontWeight: FontWeight.w500,
-                    color: AppColors.onPrimary,
+                    fontSize: 13.sp,
+                    color: Colors.white,
                   ),
                 ),
                 backgroundColor: AppColors.error,
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4)),
-                margin: const EdgeInsets.all(16),
+                    borderRadius: BorderRadius.circular(6.r)),
+                margin: EdgeInsets.all(16.w),
               ),
             );
           }
         },
         child: Column(
           children: [
-            // ── Header block ──────────────────────────────────────
             _HeaderBlock(),
-
-            // ── Form section ──────────────────────────────────────
             Expanded(
               child: SafeArea(
                 top: false,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 28, vertical: 32),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: 28.w, vertical: 32.h),
                   child: FadeTransition(
                     opacity: _fadeAnim,
                     child: SlideTransition(
@@ -108,27 +107,26 @@ class _LoginPageState extends State<LoginPage>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // ── Section label ──
                           Text(
                             'SIGN IN',
                             style: GoogleFonts.barlowCondensed(
-                              fontSize: 12,
+                              fontSize: 12.sp,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 3.0,
                               color: AppColors.primary,
                             ),
                           ),
-                          const SizedBox(height: 6),
+                          SizedBox(height: 6.h),
                           Text(
                             'Welcome back',
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineSmall
-                                ?.copyWith(color: AppColors.foreground),
+                            style: GoogleFonts.barlowCondensed(
+                              fontSize: 22.sp,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.foreground,
+                            ),
                           ),
-                          const SizedBox(height: 32),
+                          SizedBox(height: 28.h),
 
-                          // ── Form ──
                           Form(
                             key: _formKey,
                             child: Column(
@@ -143,7 +141,7 @@ class _LoginPageState extends State<LoginPage>
                                           ? 'Username is required'
                                           : null,
                                 ),
-                                const SizedBox(height: 16),
+                                SizedBox(height: 16.h),
                                 _FormField(
                                   controller: _passwordController,
                                   label: 'PASSWORD',
@@ -155,61 +153,26 @@ class _LoginPageState extends State<LoginPage>
                                       _obscurePassword
                                           ? Icons.visibility_off_outlined
                                           : Icons.visibility_outlined,
-                                      size: 20,
+                                      size: 20.r,
                                       color: AppColors.foregroundMuted,
                                     ),
-                                    onPressed: () => setState(
-                                        () => _obscurePassword =
-                                            !_obscurePassword),
+                                    onPressed: () => setState(() =>
+                                        _obscurePassword = !_obscurePassword),
                                   ),
                                   validator: (v) =>
                                       (v == null || v.isEmpty)
                                           ? 'Password is required'
                                           : null,
                                 ),
-                                const SizedBox(height: 32),
+                                SizedBox(height: 28.h),
 
-                                // ── Submit button ──
+                                // Submit button
                                 BlocBuilder<AuthBloc, AuthState>(
                                   builder: (context, state) {
                                     final isLoading = state is AuthLoading;
-                                    return SizedBox(
-                                      width: double.infinity,
-                                      height: 52,
-                                      child: ElevatedButton(
-                                        onPressed: isLoading ? null : _submit,
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: AppColors.primary,
-                                          disabledBackgroundColor:
-                                              AppColors.primaryLight
-                                                  .withValues(alpha: 0.5),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(4),
-                                          ),
-                                          elevation: 0,
-                                        ),
-                                        child: isLoading
-                                            ? const SizedBox(
-                                                height: 20,
-                                                width: 20,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                  strokeWidth: 2,
-                                                  color: AppColors.onPrimary,
-                                                ),
-                                              )
-                                            : Text(
-                                                'SIGN IN',
-                                                style: GoogleFonts
-                                                    .barlowCondensed(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w700,
-                                                  letterSpacing: 3.0,
-                                                  color: AppColors.onPrimary,
-                                                ),
-                                              ),
-                                      ),
+                                    return _GradientButton(
+                                      onPressed: isLoading ? null : _submit,
+                                      isLoading: isLoading,
                                     );
                                   },
                                 ),
@@ -217,14 +180,13 @@ class _LoginPageState extends State<LoginPage>
                             ),
                           ),
 
-                          const SizedBox(height: 40),
+                          SizedBox(height: 36.h),
 
-                          // ── Footer ──
                           Center(
                             child: Text(
                               'SFA Uswatte  ·  Field Sales Platform',
                               style: GoogleFonts.barlowCondensed(
-                                fontSize: 11,
+                                fontSize: 11.sp,
                                 fontWeight: FontWeight.w500,
                                 letterSpacing: 1.2,
                                 color: AppColors.foregroundMuted,
@@ -245,48 +207,32 @@ class _LoginPageState extends State<LoginPage>
   }
 }
 
-// ── Header block — editorial white ───────────────────────────────────────────
+// ── Header ────────────────────────────────────────────────────────────────────
 class _HeaderBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      color: AppColors.background,
+      color: Colors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Orange masthead strip ──
-          Container(height: 5, color: AppColors.primary),
-
+          Container(height: 5.h, color: AppColors.primary),
           SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(28, 28, 28, 32),
+              padding: EdgeInsets.fromLTRB(28.w, 28.h, 28.w, 32.h),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── Top nav: icon + SFA label + version ──
+                  // Top nav
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Icon(
-                          Icons.storefront_rounded,
-                          color: AppColors.onPrimary,
-                          size: 17,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
                       Text(
                         'SFA',
                         style: GoogleFonts.barlowCondensed(
-                          fontSize: 13,
+                          fontSize: 12.sp,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 4.0,
                           color: AppColors.foregroundMuted,
@@ -294,16 +240,17 @@ class _HeaderBlock extends StatelessWidget {
                       ),
                       const Spacer(),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 8.w, vertical: 3.h),
                         decoration: BoxDecoration(
-                          border: Border.all(color: AppColors.surfaceVariant),
-                          borderRadius: BorderRadius.circular(3),
+                          border:
+                              Border.all(color: AppColors.surfaceVariant),
+                          borderRadius: BorderRadius.circular(3.r),
                         ),
                         child: Text(
                           'v1.0',
                           style: GoogleFonts.barlowCondensed(
-                            fontSize: 10,
+                            fontSize: 10.sp,
                             fontWeight: FontWeight.w600,
                             letterSpacing: 1.0,
                             color: AppColors.foregroundMuted,
@@ -313,70 +260,48 @@ class _HeaderBlock extends StatelessWidget {
                     ],
                   ),
 
-                  const SizedBox(height: 28),
+                  SizedBox(height: 24.h),
 
-                  // ── Brand headline: USWATTE dominant ──
-                  Stack(
-                    clipBehavior: Clip.none,
+                  // Logo + descriptor
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // Faint watermark behind
-                      Positioned(
-                        right: -28,
-                        top: -8,
-                        child: Text(
-                          'UW',
-                          style: GoogleFonts.barlowCondensed(
-                            fontSize: 140,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -6,
-                            height: 1.0,
-                            color: AppColors.primary.withValues(alpha: 0.07),
-                          ),
-                        ),
+                      Image.asset(
+                        '../assets/images/uswatte-logo.png',
+                        height: 100.h,
+                        fit: BoxFit.contain,
                       ),
-                      // Brand content
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // USWATTE — the brand name, large + orange
-                          Text(
-                            'USWATTE',
-                            style: GoogleFonts.barlowCondensed(
-                              fontSize: 58,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -1.5,
-                              height: 0.92,
-                              color: AppColors.primary,
+                      SizedBox(width: 20.w),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'FIELD SALES\nPLATFORM',
+                              style: GoogleFonts.barlowCondensed(
+                                fontSize: 28.sp,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.5,
+                                height: 0.95,
+                                color: AppColors.foreground,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          // Descriptor line
-                          Text(
-                            'FIELD SALES PLATFORM',
-                            style: GoogleFonts.barlowCondensed(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 3.0,
-                              color: AppColors.foreground
-                                  .withValues(alpha: 0.45),
+                            SizedBox(height: 10.h),
+                            Row(
+                              children: [
+                                Container(
+                                    height: 3.h,
+                                    width: 24.w,
+                                    color: AppColors.primary),
+                                SizedBox(width: 5.w),
+                                Container(
+                                    height: 3.h,
+                                    width: 8.w,
+                                    color: AppColors.amber),
+                              ],
                             ),
-                          ),
-                          const SizedBox(height: 20),
-                          // Accent rule
-                          Row(
-                            children: [
-                              Container(
-                                  height: 3,
-                                  width: 32,
-                                  color: AppColors.primary),
-                              const SizedBox(width: 5),
-                              Container(
-                                  height: 3,
-                                  width: 10,
-                                  color: AppColors.amber),
-                            ],
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -390,7 +315,78 @@ class _HeaderBlock extends StatelessWidget {
   }
 }
 
-// ── Reusable form field ───────────────────────────────────────────────────────
+// ── Gradient button ───────────────────────────────────────────────────────────
+class _GradientButton extends StatelessWidget {
+  const _GradientButton({required this.onPressed, required this.isLoading});
+  final VoidCallback? onPressed;
+  final bool isLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52.h,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10.r),
+          gradient: onPressed == null
+              ? LinearGradient(colors: [
+                  AppColors.primaryLight.withValues(alpha: 0.5),
+                  AppColors.amber.withValues(alpha: 0.5),
+                ])
+              : LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [AppColors.primary, AppColors.primaryLight],
+                ),
+          boxShadow: onPressed == null
+              ? []
+              : [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.35),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+        ),
+        child: MaterialButton(
+          onPressed: onPressed,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10.r)),
+          padding: EdgeInsets.zero,
+          child: isLoading
+              ? SizedBox(
+                  height: 22.r,
+                  width: 22.r,
+                  child: const CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: Colors.white,
+                  ),
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'SIGN IN',
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 3.0,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(width: 10.w),
+                    Icon(Icons.arrow_forward_rounded,
+                        color: Colors.white, size: 18.r),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Form field ────────────────────────────────────────────────────────────────
 class _FormField extends StatelessWidget {
   const _FormField({
     required this.controller,
@@ -418,24 +414,24 @@ class _FormField extends StatelessWidget {
         Text(
           label,
           style: GoogleFonts.barlowCondensed(
-            fontSize: 11,
+            fontSize: 11.sp,
             fontWeight: FontWeight.w700,
             letterSpacing: 2.0,
             color: AppColors.foregroundMuted,
           ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: 6.h),
         TextFormField(
           controller: controller,
           obscureText: obscureText,
           style: GoogleFonts.barlow(
-            fontSize: 15,
+            fontSize: 15.sp,
             fontWeight: FontWeight.w500,
             color: AppColors.foreground,
           ),
           decoration: InputDecoration(
             hintText: hint,
-            prefixIcon: Icon(icon, size: 18),
+            prefixIcon: Icon(icon, size: 18.r),
             suffixIcon: suffixIcon,
           ),
           validator: validator,
