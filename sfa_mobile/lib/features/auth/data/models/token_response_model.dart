@@ -1,4 +1,6 @@
+import 'package:uswatte/core/utils/jwt_decoder.dart';
 import 'package:uswatte/features/auth/domain/entities/auth_token.dart';
+import 'package:uswatte/features/auth/domain/entities/user_role.dart';
 
 class TokenResponseModel {
   final String accessToken;
@@ -16,5 +18,8 @@ class TokenResponseModel {
   AuthToken toEntity() => AuthToken(
         accessToken: accessToken,
         refreshToken: refreshToken,
+        role: userRoleFromString(
+          JwtDecoder.extractRole(accessToken) ?? 'SalesRep',
+        ),
       );
 }

@@ -1,6 +1,8 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:uswatte/core/device/device_id_service.dart';
 import 'package:uswatte/core/errors/app_exception.dart';
+import 'package:uswatte/features/auth/domain/entities/user_role.dart';
 import 'package:uswatte/features/auth/domain/usecases/get_current_auth_usecase.dart';
 import 'package:uswatte/features/auth/domain/usecases/login_usecase.dart';
 import 'package:uswatte/features/auth/domain/usecases/logout_usecase.dart';
@@ -12,14 +14,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LoginUseCase _loginUseCase;
   final LogoutUseCase _logoutUseCase;
   final GetCurrentAuthUseCase _getCurrentAuthUseCase;
+  final DeviceIdService _deviceIdService;
 
   AuthBloc({
     required LoginUseCase loginUseCase,
     required LogoutUseCase logoutUseCase,
     required GetCurrentAuthUseCase getCurrentAuthUseCase,
+    required DeviceIdService deviceIdService,
   })  : _loginUseCase = loginUseCase,
         _logoutUseCase = logoutUseCase,
         _getCurrentAuthUseCase = getCurrentAuthUseCase,
+        _deviceIdService = deviceIdService,
         super(const AuthInitial()) {
     on<AppStarted>(_onAppStarted);
     on<LoginSubmitted>(_onLoginSubmitted);
@@ -36,7 +41,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final token = await _getCurrentAuthUseCase();
       emit(
-        token != null ? const AuthAuthenticated() : const AuthUnauthenticated(),
+        token != null
+            ? AuthAuthenticated(role: token.role)
+            : const AuthUnauthenticated(),
       );
     } catch (_) {
       emit(const AuthUnauthenticated());
@@ -49,8 +56,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(const AuthLoading());
     try {
-      await _loginUseCase(username: event.username, password: event.password);
-      emit(const AuthAuthenticated());
+      final deviceId = await _deviceIdService.getOrCreate();
+      final token = await _loginUseCase(
+        username: event.username,
+        password: event.password,
+        deviceId: deviceId,
+      );
+      emit(AuthAuthenticated(role: token.role));
     } on AppException catch (e) {
       emit(AuthFailure(e.message));
     } catch (_) {

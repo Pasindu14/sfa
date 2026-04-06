@@ -6,14 +6,14 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/features/auth/presentation/bloc/auth_bloc.dart';
 
-class DashboardPage extends StatefulWidget {
-  const DashboardPage({super.key});
+class SalesRepHomePage extends StatefulWidget {
+  const SalesRepHomePage({super.key});
 
   @override
-  State<DashboardPage> createState() => _DashboardPageState();
+  State<SalesRepHomePage> createState() => _SalesRepHomePageState();
 }
 
-class _DashboardPageState extends State<DashboardPage>
+class _SalesRepHomePageState extends State<SalesRepHomePage>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
 

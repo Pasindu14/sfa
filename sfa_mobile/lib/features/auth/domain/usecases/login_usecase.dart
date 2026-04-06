@@ -6,7 +6,15 @@ class LoginUseCase {
 
   const LoginUseCase(this._repository);
 
-  Future<AuthToken> call({required String username, required String password}) {
-    return _repository.login(username: username, password: password);
+  Future<AuthToken> call({
+    required String username,
+    required String password,
+    required String deviceId,
+  }) {
+    return _repository.login(
+      username: username,
+      password: password,
+      deviceId: deviceId,
+    );
   }
 }

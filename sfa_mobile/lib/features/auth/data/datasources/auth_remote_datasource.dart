@@ -12,6 +12,7 @@ class AuthRemoteDatasource {
   Future<TokenResponseModel> login({
     required String username,
     required String password,
+    required String deviceId,
   }) async {
     try {
       final response = await _dio.post(
@@ -19,6 +20,7 @@ class AuthRemoteDatasource {
         data: LoginRequestModel(
           username: username,
           password: password,
+          deviceId: deviceId,
         ).toJson(),
       );
 

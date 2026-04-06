@@ -1,8 +1,11 @@
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uswatte/core/router/go_router_refresh_stream.dart';
+import 'package:uswatte/features/auth/domain/entities/user_role.dart';
 import 'package:uswatte/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:uswatte/features/auth/presentation/pages/login_page.dart';
-import 'package:uswatte/features/dashboard/presentation/pages/dashboard_page.dart';
+import 'package:uswatte/features/sales_rep/presentation/pages/sales_rep_home_page.dart';
+import 'package:uswatte/features/sales_rep/presentation/pages/unsupported_role_page.dart';
 import 'package:uswatte/features/splash/presentation/pages/splash_page.dart';
 
 class AppRouter {
@@ -22,14 +25,15 @@ class AppRouter {
           return location == '/' ? null : '/';
         }
 
-        final isAuthenticated = authState is AuthAuthenticated;
+        if (authState is AuthAuthenticated) {
+          if (location == '/' || location == '/login') {
+            return _homeRouteForRole(authState.role);
+          }
+          return null;
+        }
 
-        if (isAuthenticated && (location == '/' || location == '/login')) {
-          return '/dashboard';
-        }
-        if (!isAuthenticated && location != '/login') {
-          return '/login';
-        }
+        // Not authenticated
+        if (location != '/login') return '/login';
         return null;
       },
       routes: [
@@ -44,11 +48,25 @@ class AppRouter {
           builder: (context, state) => const LoginPage(),
         ),
         GoRoute(
-          path: '/dashboard',
-          name: 'dashboard',
-          builder: (context, state) => const DashboardPage(),
+          path: '/sales-rep',
+          builder: (_, __) => const SizedBox.shrink(),
+          routes: [
+            GoRoute(
+              path: 'home',
+              name: 'salesRepHome',
+              builder: (_, __) => const SalesRepHomePage(),
+            ),
+          ],
+        ),
+        GoRoute(
+          path: '/unsupported-role',
+          name: 'unsupportedRole',
+          builder: (_, __) => const UnsupportedRolePage(),
         ),
       ],
     );
   }
+
+  static String _homeRouteForRole(UserRole role) =>
+      role == UserRole.salesRep ? '/sales-rep/home' : '/unsupported-role';
 }

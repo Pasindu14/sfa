@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:uswatte/core/device/device_id_service.dart';
 import 'package:uswatte/core/di/injection.dart';
 import 'package:uswatte/core/router/app_router.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
@@ -18,6 +19,7 @@ void main() async {
     loginUseCase: getIt<LoginUseCase>(),
     logoutUseCase: getIt<LogoutUseCase>(),
     getCurrentAuthUseCase: getIt<GetCurrentAuthUseCase>(),
+    deviceIdService: getIt<DeviceIdService>(),
   )..add(const AppStarted());
 
   runApp(SfaApp(authBloc: authBloc));

@@ -13,8 +13,13 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<AuthToken> login({
     required String username,
     required String password,
+    required String deviceId,
   }) async {
-    final model = await _remote.login(username: username, password: password);
+    final model = await _remote.login(
+      username: username,
+      password: password,
+      deviceId: deviceId,
+    );
     final token = model.toEntity();
     await _local.saveToken(token);
     return token;

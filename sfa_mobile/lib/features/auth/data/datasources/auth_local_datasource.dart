@@ -1,7 +1,9 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uswatte/core/constants/app_constants.dart';
 import 'package:uswatte/core/network/token_cache.dart';
+import 'package:uswatte/core/utils/jwt_decoder.dart';
 import 'package:uswatte/features/auth/domain/entities/auth_token.dart';
+import 'package:uswatte/features/auth/domain/entities/user_role.dart';
 
 class AuthLocalDatasource {
   final FlutterSecureStorage _storage;
@@ -36,7 +38,11 @@ class AuthLocalDatasource {
     // Warm the in-memory cache on first access (e.g. after app restart)
     _cache.update(accessToken);
 
-    return AuthToken(accessToken: accessToken, refreshToken: results[1]);
+    return AuthToken(
+      accessToken: accessToken,
+      refreshToken: results[1],
+      role: userRoleFromString(JwtDecoder.extractRole(accessToken) ?? 'SalesRep'),
+    );
   }
 
   Future<void> clearToken() async {
