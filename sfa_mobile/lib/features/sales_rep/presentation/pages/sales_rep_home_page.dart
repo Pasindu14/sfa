@@ -202,6 +202,13 @@ class _NavIconBtn extends StatelessWidget {
 class _HeroCard extends StatelessWidget {
   const _HeroCard();
 
+  String get _greeting {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning,';
+    if (hour < 17) return 'Good afternoon,';
+    return 'Good evening,';
+  }
+
   @override
   Widget build(BuildContext context) {
     final name = context.select<AuthBloc, String>(
@@ -276,7 +283,7 @@ class _HeroCard extends StatelessWidget {
                       )),
                 ),
                 SizedBox(height: 14.h),
-                Text('Good morning,',
+                Text(_greeting,
                     style: GoogleFonts.barlow(
                       fontSize: 13.sp,
                       color: Colors.white.withValues(alpha: 0.75),
