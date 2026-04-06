@@ -18,7 +18,8 @@
       "mcp__codebase-memory-mcp__get_graph_schema",
       "mcp__codebase-memory-mcp__get_architecture",
       "Skill(review-feature)",
-      "mcp__codebase-memory-mcp__search_code"
+      "mcp__codebase-memory-mcp__search_code",
+      "WebFetch(domain:www.uswattebiscuits.com)"
     ]
   },
   "outputStyle": "Explanatory"
