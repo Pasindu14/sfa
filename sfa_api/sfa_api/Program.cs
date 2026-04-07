@@ -48,8 +48,8 @@ try
     SerilogConfig.Apply(builder);
 
     // ── Database ─────────────────────────────────────────────────────────
-    builder.Services.AddScoped<AuditInterceptor>();
-    builder.Services.AddDbContext<AppDbContext>((sp, opt) =>
+    builder.Services.AddSingleton<AuditInterceptor>();
+    builder.Services.AddDbContextPool<AppDbContext>((sp, opt) =>
         opt.UseNpgsql(
                builder.Configuration.GetConnectionString("DefaultConnection"),
                npgsql => npgsql
@@ -100,6 +100,14 @@ try
     // ── Auth ──────────────────────────────────────────────────────────────
     builder.Services.AddJwtAuthentication(builder.Configuration);
     builder.Services.AddAuthorization();
+
+    // ── Response Compression ─────────────────────────────────────────────
+    builder.Services.AddResponseCompression(options =>
+    {
+        options.EnableForHttps = true;
+        options.Providers.Add<Microsoft.AspNetCore.ResponseCompression.BrotliCompressionProvider>();
+        options.Providers.Add<Microsoft.AspNetCore.ResponseCompression.GzipCompressionProvider>();
+    });
 
     // ── HTTP & API ────────────────────────────────────────────────────────
     builder.Services.AddHttpContextAccessor();
@@ -160,6 +168,7 @@ try
     }
 
     // ── Middleware Pipeline (ORDER MATTERS) ───────────────────────────────
+    app.UseResponseCompression();                    // 0. Compress responses (before logging)
     app.UseMiddleware<CorrelationIdMiddleware>();    // 1. Correlation ID first
     app.UseSerilogRequestLogging();                 // 2. Log every request (sees final status)
     app.UseMiddleware<GlobalExceptionMiddleware>();  // 3. Catch all exceptions

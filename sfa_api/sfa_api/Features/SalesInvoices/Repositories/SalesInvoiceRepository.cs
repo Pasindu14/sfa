@@ -68,9 +68,12 @@ public class SalesInvoiceRepository(AppDbContext context) : ISalesInvoiceReposit
             .Where(x => x.IsActive);
 
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(x => x.VchBillNo.Contains(search) ||
-                                     x.Distributor.Name.Contains(search) ||
-                                     (x.SfaPoNumber != null && x.SfaPoNumber.Contains(search)));
+        {
+            var pattern = $"%{search}%";
+            query = query.Where(x => EF.Functions.ILike(x.VchBillNo, pattern) ||
+                                     EF.Functions.ILike(x.Distributor.Name, pattern) ||
+                                     (x.SfaPoNumber != null && EF.Functions.ILike(x.SfaPoNumber, pattern)));
+        }
 
         if (!string.IsNullOrWhiteSpace(status) &&
             Enum.TryParse<SalesInvoiceStatus>(status, true, out var statusEnum))

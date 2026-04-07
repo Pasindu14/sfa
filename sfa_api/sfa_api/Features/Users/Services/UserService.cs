@@ -61,8 +61,8 @@ public class UserService(
         var user = new User
         {
             Name = request.Name,
-            Username = request.Username,
-            Email = request.Email,
+            Username = request.Username.ToLowerInvariant(),
+            Email = request.Email.ToLowerInvariant(),
             Phone = request.Phone,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             Role = role,
@@ -112,8 +112,8 @@ public class UserService(
         }
 
         user.Name = request.Name;
-        user.Username = request.Username;
-        user.Email = request.Email;
+        user.Username = request.Username.ToLowerInvariant();
+        user.Email = request.Email.ToLowerInvariant();
         user.Phone = request.Phone;
         user.Role = role;
         user.DeviceId = request.DeviceId;

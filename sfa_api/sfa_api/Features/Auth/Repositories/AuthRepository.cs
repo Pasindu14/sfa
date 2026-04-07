@@ -13,13 +13,13 @@ public class AuthRepository(AppDbContext db) : IAuthRepository
         string email, CancellationToken ct = default)
         => await _db.Users
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => EF.Functions.ILike(x.Email, email) && x.IsActive, ct);
+            .FirstOrDefaultAsync(x => x.Email == email.ToLowerInvariant() && x.IsActive, ct);
 
     public async Task<User?> GetUserByUsernameAsync(
         string username, CancellationToken ct = default)
         => await _db.Users
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => EF.Functions.ILike(x.Username, username) && x.IsActive, ct);
+            .FirstOrDefaultAsync(x => x.Username == username.ToLowerInvariant() && x.IsActive, ct);
 
     public async Task<User?> GetUserByIdAsync(
         int userId, CancellationToken ct = default)

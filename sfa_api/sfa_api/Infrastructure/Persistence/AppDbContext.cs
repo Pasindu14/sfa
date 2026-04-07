@@ -464,6 +464,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.PurchaseOrderId);
             e.HasIndex(x => x.Status);
             e.HasIndex(x => x.InvoiceDate);
+            // Composite covering index for the common combined filter in GetListAsync
+            e.HasIndex(x => new { x.DistributorId, x.Status, x.InvoiceDate });
             e.HasOne(x => x.Distributor)
              .WithMany()
              .HasForeignKey(x => x.DistributorId)

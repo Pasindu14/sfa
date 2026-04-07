@@ -84,6 +84,18 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
             UpdatedAt       = DateTime.UtcNow,
         };
 
+        // Guard: duplicate ProductId in invoice items would cause a silent double stock credit
+        var duplicateProductIds = invoice.Items
+            .GroupBy(i => i.ProductId)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+        if (duplicateProductIds.Count > 0)
+            throw new BusinessRuleException(
+                "GRN_DUPLICATE_PRODUCT",
+                $"Invoice contains duplicate product entries for ProductId(s): {string.Join(", ", duplicateProductIds)}. " +
+                "Each product must appear only once per GRN.");
+
         foreach (var item in invoice.Items)
         {
             grn.Items.Add(new GRNItem
