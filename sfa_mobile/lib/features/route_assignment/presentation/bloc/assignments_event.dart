@@ -25,8 +25,9 @@ class DateChanged extends AssignmentsEvent {
 
 class DeleteAssignmentRequested extends AssignmentsEvent {
   final int id;
-  const DeleteAssignmentRequested(this.id);
+  final String? reason;
+  const DeleteAssignmentRequested(this.id, {this.reason});
 
   @override
-  List<Object> get props => [id];
+  List<Object?> get props => [id, reason];
 }

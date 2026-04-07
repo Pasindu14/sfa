@@ -8,7 +8,8 @@
       "Bash(flutter analyze:*)",
       "Bash(ls D:\\\\Github\\\\sfa\\\\sfa_api\\\\sfa_api\\\\Features:*)",
       "Bash(xargs wc:*)",
-      "Bash(xargs head:*)"
+      "Bash(xargs head:*)",
+      "Read(//d/Github/sfa/sfa_api/sfa_api/Migrations/$\\(ls /d/Github/sfa/sfa_api/sfa_api/**)"
     ]
   }
 }

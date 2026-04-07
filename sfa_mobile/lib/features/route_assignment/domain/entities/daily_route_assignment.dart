@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+enum DeletionStatus { none, pendingApproval, approved, rejected }
+
 class DailyRouteAssignment extends Equatable {
   final int id;
   final int userId;
@@ -9,6 +11,10 @@ class DailyRouteAssignment extends Equatable {
   final DateTime assignedDate;
   final bool isActive;
   final DateTime createdAt;
+  final DeletionStatus deletionStatus;
+  final DateTime? deletionRequestedAt;
+  final String? deletionRequestReason;
+  final String? deletionRejectionReason;
 
   const DailyRouteAssignment({
     required this.id,
@@ -19,11 +25,15 @@ class DailyRouteAssignment extends Equatable {
     required this.assignedDate,
     required this.isActive,
     required this.createdAt,
+    this.deletionStatus = DeletionStatus.none,
+    this.deletionRequestedAt,
+    this.deletionRequestReason,
+    this.deletionRejectionReason,
   });
 
   @override
   List<Object?> get props =>
-      [id, userId, routeId, assignedDate, isActive];
+      [id, userId, routeId, assignedDate, isActive, deletionStatus];
 }
 
 class AssignmentsResult {

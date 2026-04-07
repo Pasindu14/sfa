@@ -21,14 +21,14 @@ class AssignmentsLoaded extends AssignmentsState {
   final List<DailyRouteAssignment> assignments;
   final int totalCount;
   final DateTime? date;
-  final int? deletingId;
+  final int? requestingId;
   final String? deleteError;
 
   const AssignmentsLoaded({
     required this.assignments,
     required this.totalCount,
     required this.date,
-    this.deletingId,
+    this.requestingId,
     this.deleteError,
   });
 
@@ -36,20 +36,20 @@ class AssignmentsLoaded extends AssignmentsState {
     List<DailyRouteAssignment>? assignments,
     int? totalCount,
     DateTime? date,
-    int? deletingId,
+    int? requestingId,
     String? deleteError,
   }) =>
       AssignmentsLoaded(
         assignments: assignments ?? this.assignments,
         totalCount: totalCount ?? this.totalCount,
         date: date ?? this.date,
-        deletingId: deletingId,
+        requestingId: requestingId,
         deleteError: deleteError,
       );
 
   @override
   List<Object?> get props =>
-      [assignments, totalCount, date, deletingId, deleteError];
+      [assignments, totalCount, date, requestingId, deleteError];
 }
 
 class AssignmentsError extends AssignmentsState {

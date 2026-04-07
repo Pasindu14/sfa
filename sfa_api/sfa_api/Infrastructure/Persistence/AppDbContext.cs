@@ -18,6 +18,7 @@ using sfa_api.Features.SalesInvoices.Enums;
 using sfa_api.Features.Stock.Entities;
 using sfa_api.Features.Stock.Enums;
 using sfa_api.Features.DailyRouteAssignments.Entities;
+using sfa_api.Features.DailyRouteAssignments.Enums;
 using sfa_api.Features.UserGeoAssignments.Entities;
 using sfa_api.Features.UserReportingLines.Entities;
 using sfa_api.Features.Users.Entities;
@@ -633,6 +634,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .HasForeignKey(x => x.RouteId)
              .IsRequired()
              .OnDelete(DeleteBehavior.Restrict);
+            e.Property(x => x.DeletionStatus)
+             .HasConversion<int>()
+             .HasDefaultValue(DailyRouteAssignmentDeletionStatus.None);
+            e.Property(x => x.DeletionRequestReason).HasMaxLength(500);
+            e.Property(x => x.DeletionRejectionReason).HasMaxLength(500);
+            e.HasIndex(x => x.DeletionStatus);
         });
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);

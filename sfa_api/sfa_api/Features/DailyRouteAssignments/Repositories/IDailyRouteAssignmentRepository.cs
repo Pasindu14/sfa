@@ -28,6 +28,12 @@ public interface IDailyRouteAssignmentRepository
     Task<bool> UserExistsAsync(int userId, CancellationToken ct = default);
     Task<bool> RouteExistsAsync(int routeId, CancellationToken ct = default);
 
+    /// <summary>Returns all assignments with DeletionStatus == PendingApproval, paginated.</summary>
+    Task<(IEnumerable<DailyRouteAssignment> Items, int TotalCount)> GetPendingDeletionsAsync(int skip, int take, CancellationToken ct = default);
+
+    /// <summary>Returns the rep's active (not deleted) assignment for today, if any.</summary>
+    Task<DailyRouteAssignment?> GetActiveTodayAssignmentForRepAsync(int repId, CancellationToken ct = default);
+
     Task CreateAsync(DailyRouteAssignment entity, CancellationToken ct = default);
     Task UpdateAsync(DailyRouteAssignment entity, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);

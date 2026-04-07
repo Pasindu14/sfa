@@ -42,5 +42,6 @@ class RouteAssignmentRepositoryImpl implements RouteAssignmentRepository {
       );
 
   @override
-  Future<void> deleteAssignment(int id) => _datasource.deleteAssignment(id);
+  Future<DailyRouteAssignment?> deleteAssignment(int id, {String? reason}) =>
+      _datasource.deleteAssignment(id, reason: reason);
 }

@@ -1,3 +1,4 @@
+using sfa_api.Features.DailyRouteAssignments.Enums;
 using sfa_api.Features.Users.Entities;
 using RouteEntity = sfa_api.Features.Routes.Entities.Route;
 
@@ -14,6 +15,15 @@ public class DailyRouteAssignment
 
     public bool IsActive { get; set; } = true;
     public bool IsDeleted { get; set; } = false;
+
+    // Deletion approval workflow
+    public DailyRouteAssignmentDeletionStatus DeletionStatus { get; set; } = DailyRouteAssignmentDeletionStatus.None;
+    public int? DeletionRequestedBy { get; set; }
+    public DateTime? DeletionRequestedAt { get; set; }
+    public string? DeletionRequestReason { get; set; }   // supervisor's note, e.g. "Route flooded"
+    public int? DeletionReviewedBy { get; set; }
+    public DateTime? DeletionReviewedAt { get; set; }
+    public string? DeletionRejectionReason { get; set; } // reviewer's note if rejected
 
     // Audit fields
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

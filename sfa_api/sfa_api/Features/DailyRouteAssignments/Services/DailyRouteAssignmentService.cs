@@ -1,16 +1,20 @@
 using sfa_api.Common.Errors;
 using sfa_api.Features.DailyRouteAssignments.DTOs;
 using sfa_api.Features.DailyRouteAssignments.Entities;
+using sfa_api.Features.DailyRouteAssignments.Enums;
 using sfa_api.Features.DailyRouteAssignments.Repositories;
 using sfa_api.Features.DailyRouteAssignments.Requests;
+using sfa_api.Features.UserReportingLines.Repositories;
 
 namespace sfa_api.Features.DailyRouteAssignments.Services;
 
 public class DailyRouteAssignmentService(
     IDailyRouteAssignmentRepository repo,
+    IUserReportingLineRepository reportingRepo,
     ILogger<DailyRouteAssignmentService> logger) : IDailyRouteAssignmentService
 {
     private readonly IDailyRouteAssignmentRepository _repo = repo;
+    private readonly IUserReportingLineRepository _reportingRepo = reportingRepo;
     private readonly ILogger<DailyRouteAssignmentService> _logger = logger;
 
     public async Task<DailyRouteAssignmentDto> GetByIdAsync(int id, CancellationToken ct = default)
@@ -102,12 +106,44 @@ public class DailyRouteAssignmentService(
         return MapToDto(created);
     }
 
-    public async Task DeleteAsync(int id, int? callerId, CancellationToken ct = default)
+    public async Task<DailyRouteAssignmentDto?> DeleteAsync(
+        int id,
+        int? callerId,
+        string callerRole,
+        string? reason,
+        CancellationToken ct = default)
     {
         var assignment = await _repo.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("DailyRouteAssignment", id);
 
         var now = DateTime.UtcNow;
+
+        // Supervisor: flag for approval instead of deleting directly
+        if (string.Equals(callerRole, "Supervisor", StringComparison.OrdinalIgnoreCase))
+        {
+            if (assignment.DeletionStatus == DailyRouteAssignmentDeletionStatus.PendingApproval)
+                throw new BusinessRuleException(
+                    "DELETION_ALREADY_REQUESTED",
+                    "A deletion request for this assignment is already pending approval.");
+
+            assignment.DeletionStatus = DailyRouteAssignmentDeletionStatus.PendingApproval;
+            assignment.DeletionRequestedBy = callerId;
+            assignment.DeletionRequestedAt = now;
+            assignment.DeletionRequestReason = reason;
+            assignment.UpdatedBy = callerId;
+            assignment.UpdatedAt = now;
+
+            await _repo.UpdateAsync(assignment, ct);
+            await _repo.SaveChangesAsync(ct);
+
+            _logger.LogInformation(
+                "DailyRouteAssignment {Id} deletion requested by supervisor {CallerId}. Reason: {Reason}",
+                id, callerId, reason);
+
+            return MapToDto(assignment);
+        }
+
+        // Admin / NSM / RSM: direct soft-delete
         assignment.IsActive = false;
         assignment.IsDeleted = true;
         assignment.UpdatedBy = callerId;
@@ -117,7 +153,72 @@ public class DailyRouteAssignmentService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation(
-            "DailyRouteAssignment {Id} deleted (userId={UserId})", id, assignment.UserId);
+            "DailyRouteAssignment {Id} deleted directly by {Role} {CallerId}", id, callerRole, callerId);
+
+        return null;
+    }
+
+    public async Task ApproveDeletionAsync(int id, int? callerId, CancellationToken ct = default)
+    {
+        var assignment = await _repo.GetByIdAsync(id, ct)
+            ?? throw new NotFoundException("DailyRouteAssignment", id);
+
+        if (assignment.DeletionStatus != DailyRouteAssignmentDeletionStatus.PendingApproval)
+            throw new BusinessRuleException(
+                "NOT_PENDING_DELETION",
+                "This assignment does not have a pending deletion request.");
+
+        var now = DateTime.UtcNow;
+        assignment.IsActive = false;
+        assignment.IsDeleted = true;
+        assignment.DeletionStatus = DailyRouteAssignmentDeletionStatus.Approved;
+        assignment.DeletionReviewedBy = callerId;
+        assignment.DeletionReviewedAt = now;
+        assignment.UpdatedBy = callerId;
+        assignment.UpdatedAt = now;
+
+        await _repo.UpdateAsync(assignment, ct);
+        await _repo.SaveChangesAsync(ct);
+
+        _logger.LogInformation(
+            "DailyRouteAssignment {Id} deletion approved by {CallerId}", id, callerId);
+    }
+
+    public async Task RejectDeletionAsync(int id, int? callerId, string? reason, CancellationToken ct = default)
+    {
+        var assignment = await _repo.GetByIdAsync(id, ct)
+            ?? throw new NotFoundException("DailyRouteAssignment", id);
+
+        if (assignment.DeletionStatus != DailyRouteAssignmentDeletionStatus.PendingApproval)
+            throw new BusinessRuleException(
+                "NOT_PENDING_DELETION",
+                "This assignment does not have a pending deletion request.");
+
+        var now = DateTime.UtcNow;
+        assignment.DeletionStatus = DailyRouteAssignmentDeletionStatus.Rejected;
+        assignment.DeletionRejectionReason = reason;
+        assignment.DeletionReviewedBy = callerId;
+        assignment.DeletionReviewedAt = now;
+        assignment.UpdatedBy = callerId;
+        assignment.UpdatedAt = now;
+
+        await _repo.UpdateAsync(assignment, ct);
+        await _repo.SaveChangesAsync(ct);
+
+        _logger.LogInformation(
+            "DailyRouteAssignment {Id} deletion rejected by {CallerId}. Reason: {Reason}", id, callerId, reason);
+    }
+
+    public async Task<DailyRouteAssignmentListDto> GetPendingDeletionsAsync(int page, int pageSize, CancellationToken ct = default)
+    {
+        var skip = (page - 1) * pageSize;
+        var (items, totalCount) = await _repo.GetPendingDeletionsAsync(skip, pageSize, ct);
+        return new DailyRouteAssignmentListDto(
+            Assignments: items.Select(MapToDto),
+            TotalCount: totalCount,
+            Page: page,
+            PageSize: pageSize
+        );
     }
 
     private static DailyRouteAssignmentDto MapToDto(DailyRouteAssignment a) => new(
@@ -129,6 +230,10 @@ public class DailyRouteAssignmentService(
         AssignedDate: a.AssignedDate,
         IsActive: a.IsActive,
         CreatedAt: a.CreatedAt,
-        UpdatedAt: a.UpdatedAt
+        UpdatedAt: a.UpdatedAt,
+        DeletionStatus: a.DeletionStatus,
+        DeletionRequestedAt: a.DeletionRequestedAt,
+        DeletionRequestReason: a.DeletionRequestReason,
+        DeletionRejectionReason: a.DeletionRejectionReason
     );
 }

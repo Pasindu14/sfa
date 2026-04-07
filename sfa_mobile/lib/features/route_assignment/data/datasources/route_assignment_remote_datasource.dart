@@ -108,9 +108,18 @@ class RouteAssignmentRemoteDatasource {
     }
   }
 
-  Future<void> deleteAssignment(int id) async {
+  /// Returns the updated assignment if the supervisor flagged it as pending (HTTP 200),
+  /// or null if it was directly deleted by an admin/manager (HTTP 204).
+  Future<DailyRouteAssignment?> deleteAssignment(int id, {String? reason}) async {
     try {
-      await _dio.delete('/api/v1/daily-route-assignments/$id');
+      final response = await _dio.delete(
+        '/api/v1/daily-route-assignments/$id',
+        data: reason != null ? {'reason': reason} : null,
+      );
+      if (response.statusCode == 204) return null;
+      final body = response.data as Map<String, dynamic>;
+      final data = body['data'] as Map<String, dynamic>;
+      return DailyRouteAssignmentModel.fromJson(data);
     } on AppException {
       rethrow;
     } on DioException catch (e) {

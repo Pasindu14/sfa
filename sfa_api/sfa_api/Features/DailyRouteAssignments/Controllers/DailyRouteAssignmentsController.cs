@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using sfa_api.Common.Errors;
 using sfa_api.Common.Extensions;
+using sfa_api.Features.DailyRouteAssignments.DTOs;
 using sfa_api.Features.DailyRouteAssignments.Requests;
 using sfa_api.Features.DailyRouteAssignments.Services;
 
@@ -11,7 +12,7 @@ namespace sfa_api.Features.DailyRouteAssignments.Controllers;
 
 [ApiController]
 [Route("api/v1/daily-route-assignments")]
-[Authorize(Roles = "Admin,Supervisor")]
+[Authorize(Roles = "Admin,NSM,RSM,Supervisor")]
 public class DailyRouteAssignmentsController(
     IDailyRouteAssignmentService service,
     IValidator<CreateDailyRouteAssignmentRequest> createValidator) : ControllerBase
@@ -44,6 +45,22 @@ public class DailyRouteAssignmentsController(
     }
 
     /// <summary>
+    /// GET /api/v1/daily-route-assignments/pending-deletions
+    /// Returns all assignments awaiting deletion approval (Admin/NSM/RSM oversight).
+    /// </summary>
+    [HttpGet("pending-deletions")]
+    [Authorize(Roles = "Admin,NSM,RSM")]
+    public async Task<IActionResult> GetPendingDeletions(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var result = await _service.GetPendingDeletionsAsync(page, pageSize, ct);
+        return Ok(ResponseHelper.Ok(result, correlationId));
+    }
+
+    /// <summary>
     /// GET /api/v1/daily-route-assignments/my-reps
     /// Returns sales reps with an active reporting line to the current supervisor.
     /// </summary>
@@ -71,6 +88,7 @@ public class DailyRouteAssignmentsController(
 
     /// <summary>POST /api/v1/daily-route-assignments — create a new daily route assignment</summary>
     [HttpPost]
+    [Authorize(Roles = "Admin,Supervisor")]
     public async Task<IActionResult> Create(
         [FromBody] CreateDailyRouteAssignmentRequest request,
         CancellationToken ct)
@@ -82,12 +100,50 @@ public class DailyRouteAssignmentsController(
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, ResponseHelper.Created(result, correlationId));
     }
 
-    /// <summary>DELETE /api/v1/daily-route-assignments/{id} — cancel / soft-delete an assignment</summary>
+    /// <summary>
+    /// DELETE /api/v1/daily-route-assignments/{id}
+    /// Supervisor: flags as PendingApproval, returns 200 with updated DTO.
+    /// Admin/NSM/RSM: direct soft-delete, returns 204.
+    /// </summary>
     [HttpDelete("{id:int}")]
-    public async Task<IActionResult> Delete(int id, CancellationToken ct)
+    public async Task<IActionResult> Delete(int id, [FromBody] RequestDeletionBody? body, CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var callerRole = User.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
+
+        var result = await _service.DeleteAsync(id, callerId, callerRole, body?.Reason, ct);
+
+        if (result is null)
+            return NoContent();
+
+        return Ok(ResponseHelper.Ok(result, correlationId));
+    }
+
+    /// <summary>
+    /// POST /api/v1/daily-route-assignments/{id}/approve-deletion
+    /// Admin/NSM/RSM approves a pending deletion request — assignment is soft-deleted.
+    /// </summary>
+    [HttpPost("{id:int}/approve-deletion")]
+    [Authorize(Roles = "Admin,NSM,RSM")]
+    public async Task<IActionResult> ApproveDeletion(int id, CancellationToken ct)
     {
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
-        await _service.DeleteAsync(id, callerId, ct);
+        await _service.ApproveDeletionAsync(id, callerId, ct);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// POST /api/v1/daily-route-assignments/{id}/reject-deletion
+    /// Admin/NSM/RSM rejects a pending deletion request — assignment stays active, status set to Rejected.
+    /// </summary>
+    [HttpPost("{id:int}/reject-deletion")]
+    [Authorize(Roles = "Admin,NSM,RSM")]
+    public async Task<IActionResult> RejectDeletion(int id, [FromBody] RejectDeletionRequest request, CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
+        await _service.RejectDeletionAsync(id, callerId, request.Reason, ct);
         return NoContent();
     }
 }

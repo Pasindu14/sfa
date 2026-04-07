@@ -70,16 +70,30 @@ class AssignmentsBloc extends Bloc<AssignmentsEvent, AssignmentsState> {
     final current = state;
     if (current is! AssignmentsLoaded) return;
 
-    emit(current.copyWith(deletingId: event.id));
+    emit(current.copyWith(requestingId: event.id));
     try {
-      await _deleteAssignment(event.id);
-      final updated =
-          current.assignments.where((a) => a.id != event.id).toList();
-      emit(AssignmentsLoaded(
-        assignments: updated,
-        totalCount: current.totalCount - 1,
-        date: current.date,
-      ));
+      final updated = await _deleteAssignment(event.id, reason: event.reason);
+
+      if (updated == null) {
+        // Direct delete (Admin/NSM/RSM) — remove from list
+        final updatedList =
+            current.assignments.where((a) => a.id != event.id).toList();
+        emit(AssignmentsLoaded(
+          assignments: updatedList,
+          totalCount: current.totalCount - 1,
+          date: current.date,
+        ));
+      } else {
+        // Supervisor flow — assignment is now pending approval, update in place
+        final updatedList = current.assignments
+            .map((a) => a.id == event.id ? updated : a)
+            .toList();
+        emit(AssignmentsLoaded(
+          assignments: updatedList,
+          totalCount: current.totalCount,
+          date: current.date,
+        ));
+      }
     } on AppException catch (e) {
       emit(AssignmentsLoaded(
         assignments: current.assignments,
@@ -92,7 +106,7 @@ class AssignmentsBloc extends Bloc<AssignmentsEvent, AssignmentsState> {
         assignments: current.assignments,
         totalCount: current.totalCount,
         date: current.date,
-        deleteError: 'Failed to cancel assignment.',
+        deleteError: 'Failed to submit cancellation request.',
       ));
     }
   }

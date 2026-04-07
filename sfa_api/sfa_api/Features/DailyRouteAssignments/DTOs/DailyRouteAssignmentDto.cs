@@ -1,3 +1,5 @@
+using sfa_api.Features.DailyRouteAssignments.Enums;
+
 namespace sfa_api.Features.DailyRouteAssignments.DTOs;
 
 public record DailyRouteAssignmentDto(
@@ -9,7 +11,11 @@ public record DailyRouteAssignmentDto(
     DateOnly AssignedDate,
     bool IsActive,
     DateTime CreatedAt,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    DailyRouteAssignmentDeletionStatus DeletionStatus,
+    DateTime? DeletionRequestedAt,
+    string? DeletionRequestReason,
+    string? DeletionRejectionReason
 );
 
 public record DailyRouteAssignmentListDto(
@@ -28,3 +34,7 @@ public record RepRouteDto(
     int RouteId,
     string RouteName
 );
+
+public record RequestDeletionBody(string? Reason);
+
+public record RejectDeletionRequest(string? Reason);

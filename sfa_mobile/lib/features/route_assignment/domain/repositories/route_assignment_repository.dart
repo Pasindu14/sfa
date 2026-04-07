@@ -16,5 +16,5 @@ abstract class RouteAssignmentRepository {
     int? userId,
     DateTime? date,
   });
-  Future<void> deleteAssignment(int id);
+  Future<DailyRouteAssignment?> deleteAssignment(int id, {String? reason});
 }

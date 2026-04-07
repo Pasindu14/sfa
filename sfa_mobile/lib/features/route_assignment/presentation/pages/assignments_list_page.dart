@@ -364,54 +364,89 @@ class _LoadedBody extends StatelessWidget {
             );
           }
           final item = state.assignments[index - 1];
-          final isDeleting = state.deletingId == item.id;
+          final isRequesting = state.requestingId == item.id;
           return _AssignmentCard(
             assignment: item,
-            isDeleting: isDeleting,
-            onDelete: () => _confirmDelete(context, item),
+            isRequesting: isRequesting,
+            onDelete: () => _requestCancellation(context, item),
           );
         },
       ),
     );
   }
 
-  void _confirmDelete(BuildContext context, DailyRouteAssignment item) {
-    showDialog<bool>(
+  void _requestCancellation(BuildContext context, DailyRouteAssignment item) {
+    final reasonController = TextEditingController();
+    showDialog<String?>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
         title: Text(
-          'Cancel Assignment',
+          'Request Cancellation',
           style: GoogleFonts.barlowCondensed(
             fontSize: 18.sp,
             fontWeight: FontWeight.w700,
           ),
         ),
-        content: Text(
-          'Cancel ${item.userName}\'s assignment on this route?',
-          style: GoogleFonts.barlow(fontSize: 14.sp),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Send a cancellation request to your manager for ${item.userName}\'s route assignment?',
+              style: GoogleFonts.barlow(fontSize: 14.sp),
+            ),
+            SizedBox(height: 14.h),
+            TextField(
+              controller: reasonController,
+              maxLines: 2,
+              decoration: InputDecoration(
+                hintText: 'Reason (e.g. route flooded, road blocked)',
+                hintStyle: GoogleFonts.barlow(
+                  fontSize: 13.sp,
+                  color: AppColors.foregroundMuted,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.r),
+                  borderSide: BorderSide(color: AppColors.surfaceVariant),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.r),
+                  borderSide: BorderSide(color: AppColors.primary),
+                ),
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+              ),
+              style: GoogleFonts.barlow(fontSize: 13.sp),
+            ),
+          ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Keep',
+            onPressed: () => Navigator.of(ctx).pop(null),
+            child: Text('Cancel',
                 style: GoogleFonts.barlow(color: AppColors.foregroundMuted)),
           ),
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text('Cancel Assignment',
-                style: GoogleFonts.barlow(
-                    color: Colors.red.shade600,
-                    fontWeight: FontWeight.w600)),
+            onPressed: () =>
+                Navigator.of(ctx).pop(reasonController.text.trim()),
+            child: Text(
+              'Send Request',
+              style: GoogleFonts.barlow(
+                  color: AppColors.primary, fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),
-    ).then((confirmed) {
-      if (confirmed == true && context.mounted) {
-        context
-            .read<AssignmentsBloc>()
-            .add(DeleteAssignmentRequested(item.id));
+    ).then((reason) {
+      if (reason != null && context.mounted) {
+        context.read<AssignmentsBloc>().add(
+              DeleteAssignmentRequested(
+                item.id,
+                reason: reason.isNotEmpty ? reason : null,
+              ),
+            );
       }
     });
   }
@@ -421,12 +456,12 @@ class _LoadedBody extends StatelessWidget {
 class _AssignmentCard extends StatelessWidget {
   const _AssignmentCard({
     required this.assignment,
-    required this.isDeleting,
+    required this.isRequesting,
     required this.onDelete,
   });
 
   final DailyRouteAssignment assignment;
-  final bool isDeleting;
+  final bool isRequesting;
   final VoidCallback onDelete;
 
   String _initials(String name) {
@@ -539,8 +574,8 @@ class _AssignmentCard extends StatelessWidget {
                           ),
                         ),
                         SizedBox(width: 8.w),
-                        // Delete / loading
-                        if (isDeleting)
+                        // Action button — changes based on deletion status
+                        if (isRequesting)
                           Padding(
                             padding: EdgeInsets.all(8.r),
                             child: SizedBox(
@@ -548,14 +583,37 @@ class _AssignmentCard extends StatelessWidget {
                               height: 18.r,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: AppColors.error,
+                                color: AppColors.primary,
                               ),
                             ),
                           )
+                        else if (assignment.deletionStatus ==
+                            DeletionStatus.pendingApproval)
+                          _PendingButton()
                         else
                           _DeleteButton(onTap: onDelete),
                       ],
                     ),
+                    // Deletion status badge row
+                    if (assignment.deletionStatus ==
+                        DeletionStatus.pendingApproval) ...[
+                      SizedBox(height: 8.h),
+                      _DeletionStatusBadge(
+                        label: 'PENDING APPROVAL',
+                        reason: assignment.deletionRequestReason,
+                        color: const Color(0xFFF59E0B),
+                        icon: Icons.hourglass_top_rounded,
+                      ),
+                    ] else if (assignment.deletionStatus ==
+                        DeletionStatus.rejected) ...[
+                      SizedBox(height: 8.h),
+                      _DeletionStatusBadge(
+                        label: 'REJECTED',
+                        reason: assignment.deletionRejectionReason,
+                        color: AppColors.error,
+                        icon: Icons.cancel_outlined,
+                      ),
+                    ],
                     SizedBox(height: 10.h),
                     // Bottom metadata row
                     Row(
@@ -667,6 +725,85 @@ class _DeleteButton extends StatelessWidget {
           size: 16.r,
           color: AppColors.error,
         ),
+      ),
+    );
+  }
+}
+
+class _PendingButton extends StatelessWidget {
+  const _PendingButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 34.r,
+      height: 34.r,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF59E0B).withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(9.r),
+        border: Border.all(
+          color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Icon(
+        Icons.hourglass_top_rounded,
+        size: 16.r,
+        color: const Color(0xFFF59E0B),
+      ),
+    );
+  }
+}
+
+class _DeletionStatusBadge extends StatelessWidget {
+  const _DeletionStatusBadge({
+    required this.label,
+    required this.color,
+    required this.icon,
+    this.reason,
+  });
+  final String label;
+  final Color color;
+  final IconData icon;
+  final String? reason;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(7.r),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 12.r, color: color),
+          SizedBox(width: 6.w),
+          Text(
+            label,
+            style: GoogleFonts.barlowCondensed(
+              fontSize: 11.sp,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+              color: color,
+            ),
+          ),
+          if (reason != null && reason!.isNotEmpty) ...[
+            SizedBox(width: 6.w),
+            Expanded(
+              child: Text(
+                '· $reason',
+                style: GoogleFonts.barlow(
+                  fontSize: 11.sp,
+                  color: color.withValues(alpha: 0.8),
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

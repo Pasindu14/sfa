@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using sfa_api.Features.DailyRouteAssignments.Entities;
+using sfa_api.Features.DailyRouteAssignments.Enums;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Infrastructure.Persistence;
 using RouteEntity = sfa_api.Features.Routes.Entities.Route;
@@ -98,6 +99,40 @@ public class DailyRouteAssignmentRepository(AppDbContext context) : IDailyRouteA
 
     public async Task<bool> RouteExistsAsync(int routeId, CancellationToken ct = default)
         => await _context.Routes.IgnoreQueryFilters().AnyAsync(r => r.Id == routeId && r.IsActive, ct);
+
+    public async Task<(IEnumerable<DailyRouteAssignment>, int)> GetPendingDeletionsAsync(
+        int skip,
+        int take,
+        CancellationToken ct = default)
+    {
+        take = Math.Clamp(take, 1, 200);
+
+        var query = _context.DailyRouteAssignments
+            .Include(a => a.User)
+            .Include(a => a.Route)
+            .Where(a => a.DeletionStatus == DailyRouteAssignmentDeletionStatus.PendingApproval && !a.IsDeleted)
+            .AsQueryable();
+
+        var total = await query.CountAsync(ct);
+        var items = await query
+            .AsNoTracking()
+            .OrderBy(a => a.DeletionRequestedAt)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(ct);
+
+        return (items, total);
+    }
+
+    public async Task<DailyRouteAssignment?> GetActiveTodayAssignmentForRepAsync(int repId, CancellationToken ct = default)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        return await _context.DailyRouteAssignments
+            .Include(a => a.Route)
+            .Where(a => a.UserId == repId && a.AssignedDate == today && a.IsActive && !a.IsDeleted)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(ct);
+    }
 
     public async Task CreateAsync(DailyRouteAssignment entity, CancellationToken ct = default)
         => await _context.DailyRouteAssignments.AddAsync(entity, ct);
