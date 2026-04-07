@@ -1,4 +1,5 @@
 import { toast } from 'sonner'
+import { signOut } from 'next-auth/react'
 import type { ActionFailure } from '@/lib/types/actions'
 
 /**
@@ -21,6 +22,11 @@ export function handleErrorToast(
   const errorMessage = error.error || 'An error occurred'
   
   switch (error.code) {
+    case 'UNAUTHORIZED':
+      toast.error('Session expired. Please log in again.')
+      signOut({ redirectTo: '/sign-in' })
+      break
+
     case 'VALIDATION_FAILED':
       // Error message already contains field-specific errors from API client
       toast.error(errorMessage)
