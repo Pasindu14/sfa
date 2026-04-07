@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import {
   createAreaSchema,
   updateAreaSchema,
-  type CreateAreaInput,
+  type UpdateAreaInput,
 } from '../../schema/area.schema'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,10 +21,13 @@ import {
 import { Spinner } from '@/components/ui/spinner'
 import { RegionSelect } from '@/features/region/components/selects/region-select'
 
+// UpdateAreaInput is a superset of CreateAreaInput (adds rowVersion).
+// Using it as the form value type covers both modes; the createAreaSchema
+// simply ignores rowVersion on the create path.
 interface AreaFormProps {
   mode: 'create' | 'edit'
-  defaultValues?: Partial<CreateAreaInput>
-  onSubmit: (data: CreateAreaInput) => void
+  defaultValues?: Partial<UpdateAreaInput>
+  onSubmit: (data: UpdateAreaInput) => void
   isLoading: boolean
   fieldErrors?: Record<string, string> | null
 }
@@ -38,21 +41,23 @@ export function AreaForm({
 }: AreaFormProps) {
   const schema = mode === 'create' ? createAreaSchema : updateAreaSchema
 
-  const form = useForm<CreateAreaInput>({
-    resolver: zodResolver(schema as typeof createAreaSchema),
+  const form = useForm<UpdateAreaInput>({
+    resolver: zodResolver(schema as typeof updateAreaSchema),
     defaultValues: {
       name: '',
       regionId: 0,
+      rowVersion: 0,
       ...defaultValues,
     },
   })
 
   const { setError } = form
 
+  // Apply server-side field errors (from API) to the form
   useEffect(() => {
     if (fieldErrors) {
       Object.entries(fieldErrors).forEach(([field, message]) => {
-        setError(field as keyof CreateAreaInput, { message })
+        setError(field as keyof UpdateAreaInput, { message })
       })
     }
   }, [fieldErrors, setError])
@@ -91,6 +96,27 @@ export function AreaForm({
             </FormItem>
           )}
         />
+
+        {/* Hidden concurrency token — edit mode only */}
+        {mode === 'edit' && (
+          <FormField
+            control={form.control}
+            name="rowVersion"
+            render={({ field }) => (
+              <FormItem className="hidden">
+                <FormControl>
+                  <input
+                    type="hidden"
+                    {...field}
+                    onChange={(e) => field.onChange(Number(e.target.value))}
+                    value={field.value ?? 0}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading ? (

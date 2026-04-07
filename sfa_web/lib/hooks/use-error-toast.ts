@@ -28,8 +28,12 @@ export function handleErrorToast(
       break
 
     case 'VALIDATION_FAILED':
-      // Error message already contains field-specific errors from API client
-      toast.error(errorMessage)
+      if (error.fields && Object.keys(error.fields).length > 0) {
+        // Surface specific field messages e.g. "Name is required. Region is required."
+        toast.error(Object.values(error.fields).join('. '))
+      } else {
+        toast.error(errorMessage)
+      }
       break
       
     case 'AUTH_TOKEN_EXPIRED':

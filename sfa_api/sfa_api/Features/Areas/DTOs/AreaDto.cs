@@ -6,6 +6,7 @@ public record AreaDto(
     int RegionId,
     string RegionName,
     bool IsActive,
+    uint RowVersion,
     DateTime CreatedAt,
     DateTime UpdatedAt
 );

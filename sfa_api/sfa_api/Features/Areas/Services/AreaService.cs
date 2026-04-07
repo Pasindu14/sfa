@@ -188,6 +188,7 @@ public class AreaService(
         RegionId: area.RegionId,
         RegionName: area.Region?.Name ?? string.Empty,
         IsActive: area.IsActive,
+        RowVersion: area.RowVersion,
         CreatedAt: area.CreatedAt,
         UpdatedAt: area.UpdatedAt
     );

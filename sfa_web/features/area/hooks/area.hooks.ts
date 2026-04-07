@@ -126,8 +126,8 @@ export function useCreateArea() {
       if (!result.success) throw result
       return result.data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: areaKeys.all })
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: areaKeys.all })
       setFieldErrors(null)
       close()
       toast.success('Area created successfully')
@@ -152,8 +152,8 @@ export function useUpdateArea() {
       if (!result.success) throw result
       return result.data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: areaKeys.all })
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: areaKeys.all })
       setFieldErrors(null)
       close()
       toast.success('Area updated successfully')
@@ -176,8 +176,8 @@ export function useDeleteArea() {
       const result = await deleteAreaAction(id)
       if (!result.success) throw result
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: areaKeys.all })
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: areaKeys.all })
       close()
       toast.success('Area deleted successfully')
     },
@@ -196,8 +196,8 @@ export function useActivateArea() {
       const result = await activateAreaAction(id)
       if (!result.success) throw result
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: areaKeys.all })
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: areaKeys.all })
       close()
       toast.success('Area activated successfully')
     },
@@ -216,8 +216,8 @@ export function useDeactivateArea() {
       const result = await deactivateAreaAction(id)
       if (!result.success) throw result
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: areaKeys.all })
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: areaKeys.all })
       close()
       toast.success('Area deactivated successfully')
     },
