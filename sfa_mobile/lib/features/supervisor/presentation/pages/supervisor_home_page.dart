@@ -195,11 +195,14 @@ class _HeroCard extends StatelessWidget {
     );
     final displayName = name.isNotEmpty ? name : 'Supervisor';
 
+    final isLandscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+
     return Padding(
-      padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 0),
+      padding: EdgeInsets.fromLTRB(16.w, 8.r, 16.w, 0),
       child: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
+          gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [AppColors.primary, AppColors.primaryLight],
@@ -213,69 +216,116 @@ class _HeroCard extends StatelessWidget {
             ),
           ],
         ),
-        padding: EdgeInsets.fromLTRB(22.w, 22.h, 22.w, 22.h),
+        padding: EdgeInsets.fromLTRB(
+          22.w,
+          isLandscape ? 12.r : 22.r,
+          22.w,
+          isLandscape ? 12.r : 22.r,
+        ),
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            Positioned(
-              right: -20.w,
-              top: -20.h,
-              child: Container(
-                width: 120.r,
-                height: 120.r,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.07),
+            if (!isLandscape)
+              Positioned(
+                right: -20.w,
+                top: -20.r,
+                child: Container(
+                  width: 120.r,
+                  height: 120.r,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.07),
+                  ),
                 ),
               ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(20.r),
+            isLandscape
+                ? Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 10.w, vertical: 4.r),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(20.r),
+                        ),
+                        child: Text('SUPERVISOR',
+                            style: GoogleFonts.barlowCondensed(
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 2.5,
+                              color: Colors.white,
+                            )),
+                      ),
+                      SizedBox(width: 16.w),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(_greeting,
+                              style: GoogleFonts.barlow(
+                                fontSize: 11.sp,
+                                color: Colors.white.withValues(alpha: 0.75),
+                              )),
+                          Text(displayName,
+                              style: GoogleFonts.barlowCondensed(
+                                fontSize: 26.sp,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.5,
+                                height: 1.0,
+                                color: Colors.white,
+                              )),
+                        ],
+                      ),
+                    ],
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 10.w, vertical: 4.r),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(20.r),
+                        ),
+                        child: Text('SUPERVISOR',
+                            style: GoogleFonts.barlowCondensed(
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 2.5,
+                              color: Colors.white,
+                            )),
+                      ),
+                      SizedBox(height: 14.r),
+                      Text(_greeting,
+                          style: GoogleFonts.barlow(
+                            fontSize: 13.sp,
+                            color: Colors.white.withValues(alpha: 0.75),
+                          )),
+                      Text(displayName,
+                          style: GoogleFonts.barlowCondensed(
+                            fontSize: 32.sp,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
+                            height: 1.0,
+                            color: Colors.white,
+                          )),
+                      SizedBox(height: 16.r),
+                      Row(
+                        children: [
+                          Container(
+                              height: 2,
+                              width: 20.w,
+                              color: Colors.white.withValues(alpha: 0.5)),
+                          SizedBox(width: 4.w),
+                          Container(
+                              height: 2,
+                              width: 7.w,
+                              color: Colors.white.withValues(alpha: 0.25)),
+                        ],
+                      ),
+                    ],
                   ),
-                  child: Text('SUPERVISOR',
-                      style: GoogleFonts.barlowCondensed(
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 2.5,
-                        color: Colors.white,
-                      )),
-                ),
-                SizedBox(height: 14.h),
-                Text(_greeting,
-                    style: GoogleFonts.barlow(
-                      fontSize: 13.sp,
-                      color: Colors.white.withValues(alpha: 0.75),
-                    )),
-                Text(displayName,
-                    style: GoogleFonts.barlowCondensed(
-                      fontSize: 32.sp,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                      height: 1.0,
-                      color: Colors.white,
-                    )),
-                SizedBox(height: 16.h),
-                Row(
-                  children: [
-                    Container(
-                        height: 2.h,
-                        width: 20.w,
-                        color: Colors.white.withValues(alpha: 0.5)),
-                    SizedBox(width: 4.w),
-                    Container(
-                        height: 2.h,
-                        width: 7.w,
-                        color: Colors.white.withValues(alpha: 0.25)),
-                  ],
-                ),
-              ],
-            ),
           ],
         ),
       ),
@@ -330,14 +380,14 @@ class _ActionsSection extends StatelessWidget {
             icon: Icons.map_rounded,
             title: 'ASSIGN DAILY ROUTE',
             subtitle: 'Schedule a route for a sales rep',
-            onTap: () => context.go('/supervisor/assign-route'),
+            onTap: () => context.push('/supervisor/assign-route'),
           ),
           SizedBox(height: 10.h),
           _SecondaryAction(
             icon: Icons.list_alt_rounded,
             title: "VIEW ASSIGNMENTS",
             subtitle: "See today's route assignments",
-            onTap: () => context.go('/supervisor/assignments'),
+            onTap: () => context.push('/supervisor/assignments'),
           ),
         ],
       ),
@@ -364,14 +414,14 @@ class _SecondaryAction extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12.r),
         child: Ink(
-          height: 66.h,
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(12.r),
             border: Border.all(color: AppColors.surfaceVariant),
           ),
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            padding:
+                EdgeInsets.symmetric(horizontal: 20.w, vertical: 13.r),
             child: Row(
               children: [
                 Container(
@@ -386,7 +436,7 @@ class _SecondaryAction extends StatelessWidget {
                 SizedBox(width: 14.w),
                 Expanded(
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(title,
@@ -435,7 +485,6 @@ class _PrimaryAction extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12.r),
         child: Ink(
-          height: 66.h,
           decoration: BoxDecoration(
             color: AppColors.primary,
             borderRadius: BorderRadius.circular(12.r),
@@ -448,7 +497,8 @@ class _PrimaryAction extends StatelessWidget {
             ],
           ),
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            padding:
+                EdgeInsets.symmetric(horizontal: 20.w, vertical: 13.r),
             child: Row(
               children: [
                 Container(
@@ -463,7 +513,7 @@ class _PrimaryAction extends StatelessWidget {
                 SizedBox(width: 14.w),
                 Expanded(
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(title,

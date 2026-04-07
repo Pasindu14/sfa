@@ -323,13 +323,43 @@ class _LoadedBody extends StatelessWidget {
         itemBuilder: (context, index) {
           if (index == 0) {
             return Padding(
-              padding: EdgeInsets.only(bottom: 10.h),
-              child: Text(
-                '${state.totalCount} assignment${state.totalCount == 1 ? '' : 's'}',
-                style: GoogleFonts.barlow(
-                  fontSize: 12.sp,
-                  color: AppColors.foregroundMuted,
-                ),
+              padding: EdgeInsets.only(bottom: 12.h),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: 10.w, vertical: 5.h),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.primaryLight, AppColors.primaryDark],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20.r),
+                    ),
+                    child: Text(
+                      '${state.totalCount}',
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  Text(
+                    state.totalCount == 1
+                        ? 'assignment scheduled'
+                        : 'assignments scheduled',
+                    style: GoogleFonts.barlowCondensed(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.foregroundMuted,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ],
               ),
             );
           }
@@ -399,77 +429,166 @@ class _AssignmentCard extends StatelessWidget {
   final bool isDeleting;
   final VoidCallback onDelete;
 
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return name.isNotEmpty ? name[0].toUpperCase() : '?';
+  }
+
+  String _timeAgo(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(bottom: 10.h),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(color: const Color(0xFFE8E7E1)),
+          color: const Color(0xFFFAF9F5),
+          borderRadius: BorderRadius.circular(14.r),
+          border: Border.all(color: const Color(0xFFEDEBE3), width: 1),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              color: AppColors.primaryDark.withValues(alpha: 0.07),
+              blurRadius: 14,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
-        child: Padding(
-          padding: EdgeInsets.all(14.r),
-          child: Row(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14.r),
+          child: Stack(
             children: [
-              // Avatar
-              Container(
-                width: 42.r,
-                height: 42.r,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(10.r),
-                ),
-                child: Center(
-                  child: Text(
-                    assignment.userName.isNotEmpty
-                        ? assignment.userName[0].toUpperCase()
-                        : '?',
-                    style: GoogleFonts.barlowCondensed(
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
+              // Left accent stripe
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                child: Container(
+                  width: 4,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [AppColors.primaryLight, AppColors.primaryDark],
                     ),
                   ),
                 ),
               ),
-              SizedBox(width: 12.w),
-              // Content
-              Expanded(
+              // Card content
+              Padding(
+                padding:
+                    EdgeInsets.fromLTRB(18.w, 12.h, 12.w, 12.h),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      assignment.userName,
-                      style: GoogleFonts.barlow(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.foreground,
-                      ),
-                    ),
-                    SizedBox(height: 3.h),
                     Row(
                       children: [
-                        Icon(Icons.route_rounded,
-                            size: 12.r,
-                            color: AppColors.foregroundMuted),
-                        SizedBox(width: 4.w),
+                        // Gradient avatar
+                        Container(
+                          width: 44.r,
+                          height: 44.r,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                AppColors.primaryLight,
+                                AppColors.primaryDark,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          child: Center(
+                            child: Text(
+                              _initials(assignment.userName),
+                              style: GoogleFonts.barlowCondensed(
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12.w),
+                        // Name + route badge
                         Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                assignment.userName,
+                                style: GoogleFonts.barlowCondensed(
+                                  fontSize: 16.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.foreground,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                              SizedBox(height: 5.h),
+                              _RouteBadge(routeName: assignment.routeName),
+                            ],
+                          ),
+                        ),
+                        SizedBox(width: 8.w),
+                        // Delete / loading
+                        if (isDeleting)
+                          Padding(
+                            padding: EdgeInsets.all(8.r),
+                            child: SizedBox(
+                              width: 18.r,
+                              height: 18.r,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.error,
+                              ),
+                            ),
+                          )
+                        else
+                          _DeleteButton(onTap: onDelete),
+                      ],
+                    ),
+                    SizedBox(height: 10.h),
+                    // Bottom metadata row
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 7.w, vertical: 2.5.h),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceVariant,
+                            borderRadius: BorderRadius.circular(4.r),
+                          ),
                           child: Text(
-                            assignment.routeName,
-                            style: GoogleFonts.barlow(
-                              fontSize: 12.sp,
+                            '#${assignment.id}',
+                            style: GoogleFonts.barlowCondensed(
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.8,
                               color: AppColors.foregroundMuted,
                             ),
-                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const Spacer(),
+                        Icon(
+                          Icons.access_time_rounded,
+                          size: 10.r,
+                          color: AppColors.foregroundMuted,
+                        ),
+                        SizedBox(width: 3.w),
+                        Text(
+                          _timeAgo(assignment.createdAt),
+                          style: GoogleFonts.barlow(
+                            fontSize: 10.sp,
+                            color: AppColors.foregroundMuted,
                           ),
                         ),
                       ],
@@ -477,36 +596,76 @@ class _AssignmentCard extends StatelessWidget {
                   ],
                 ),
               ),
-              SizedBox(width: 8.w),
-              // Delete button
-              if (isDeleting)
-                SizedBox(
-                  width: 20.r,
-                  height: 20.r,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.red.shade400,
-                  ),
-                )
-              else
-                GestureDetector(
-                  onTap: onDelete,
-                  child: Container(
-                    width: 32.r,
-                    height: 32.r,
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      borderRadius: BorderRadius.circular(8.r),
-                    ),
-                    child: Icon(
-                      Icons.delete_outline_rounded,
-                      size: 16.r,
-                      color: Colors.red.shade400,
-                    ),
-                  ),
-                ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RouteBadge extends StatelessWidget {
+  const _RouteBadge({required this.routeName});
+  final String routeName;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(5.r),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: 0.18),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.route_rounded, size: 10.r, color: AppColors.primary),
+          SizedBox(width: 4.w),
+          Flexible(
+            child: Text(
+              routeName,
+              style: GoogleFonts.barlowCondensed(
+                fontSize: 11.sp,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primaryMedium,
+                letterSpacing: 0.3,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DeleteButton extends StatelessWidget {
+  const _DeleteButton({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 34.r,
+        height: 34.r,
+        decoration: BoxDecoration(
+          color: AppColors.error.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(9.r),
+          border: Border.all(
+            color: AppColors.error.withValues(alpha: 0.15),
+            width: 1,
+          ),
+        ),
+        child: Icon(
+          Icons.delete_outline_rounded,
+          size: 16.r,
+          color: AppColors.error,
         ),
       ),
     );

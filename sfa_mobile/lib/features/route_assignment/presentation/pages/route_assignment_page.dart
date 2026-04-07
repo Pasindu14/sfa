@@ -147,101 +147,87 @@ class _OrangeAppBar extends StatelessWidget {
       ),
       child: SafeArea(
         bottom: false,
-        child: SizedBox(
-          height: 64.h,
-          child: Stack(
-            children: [
-              // Decorative circles
-              Positioned(
-                right: -18.w,
-                top: -18.h,
-                child: Container(
-                  width: 90.r,
-                  height: 90.r,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.07),
-                  ),
+        child: Stack(
+          children: [
+            // Decorative circles (clipped by overflow on Stack)
+            Positioned(
+              right: -18.w,
+              top: -18.r,
+              child: Container(
+                width: 90.r,
+                height: 90.r,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.07),
                 ),
               ),
-              Positioned(
-                right: 40.w,
-                bottom: -20.h,
-                child: Container(
-                  width: 50.r,
-                  height: 50.r,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.05),
-                  ),
-                ),
-              ),
-              // Content
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8.w),
-                child: Row(
-                  children: [
-                    // Back button
-                    GestureDetector(
-                      onTap: () => context.go('/supervisor/home'),
-                      child: Container(
-                        width: 40.r,
-                        height: 40.r,
-                        margin: EdgeInsets.all(8.r),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10.r),
-                          border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.25)),
-                        ),
-                        child: Icon(Icons.arrow_back_ios_new_rounded,
-                            size: 15.r, color: Colors.white),
-                      ),
-                    ),
-                    SizedBox(width: 4.w),
-                    // Title block
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'ASSIGN DAILY ROUTE',
-                          style: GoogleFonts.barlowCondensed(
-                            fontSize: 18.sp,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.5,
-                            height: 1.0,
-                            color: Colors.white,
-                          ),
-                        ),
-                        SizedBox(height: 2.h),
-                        Text(
-                          'Schedule a rep\'s route',
-                          style: GoogleFonts.barlow(
-                            fontSize: 11.sp,
-                            color: Colors.white.withValues(alpha: 0.70),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    // Route icon badge
-                    Container(
-                      width: 38.r,
-                      height: 38.r,
-                      margin: EdgeInsets.only(right: 16.w),
+            ),
+            // Content row — no fixed height, grows with content
+            Padding(
+              padding:
+                  EdgeInsets.symmetric(horizontal: 8.w, vertical: 10.r),
+              child: Row(
+                children: [
+                  // Back button
+                  GestureDetector(
+                    onTap: () => context.pop(),
+                    child: Container(
+                      width: 40.r,
+                      height: 40.r,
+                      margin: EdgeInsets.all(4.r),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10.r),
+                        border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.25)),
                       ),
-                      child: Icon(Icons.alt_route_rounded,
-                          size: 18.r, color: Colors.white),
+                      child: Icon(Icons.arrow_back_ios_new_rounded,
+                          size: 15.r, color: Colors.white),
                     ),
-                  ],
-                ),
+                  ),
+                  SizedBox(width: 4.w),
+                  // Title block
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'ASSIGN DAILY ROUTE',
+                        style: GoogleFonts.barlowCondensed(
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.5,
+                          height: 1.0,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(height: 2.r),
+                      Text(
+                        'Schedule a rep\'s route',
+                        style: GoogleFonts.barlow(
+                          fontSize: 11.sp,
+                          color: Colors.white.withValues(alpha: 0.70),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  // Route icon badge
+                  Container(
+                    width: 38.r,
+                    height: 38.r,
+                    margin: EdgeInsets.only(right: 16.w),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                    child: Icon(Icons.alt_route_rounded,
+                        size: 18.r, color: Colors.white),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
