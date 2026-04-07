@@ -7,6 +7,5 @@ public class CreateUserAssignmentRequest
     public int? AreaId { get; set; }
     public int? TerritoryId { get; set; }
     public int? DivisionId { get; set; }
-    public int? RouteId { get; set; }
     public DateOnly EffectiveFrom { get; set; }
 }

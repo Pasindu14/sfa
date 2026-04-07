@@ -7,7 +7,6 @@ export interface GeoAssignmentPendingFilters {
   areaId: number
   territoryId: number
   divisionId: number
-  routeId: number
   isActive: string
 }
 
@@ -17,7 +16,6 @@ export interface GeoAssignmentCommittedFilters {
   areaId?: number
   territoryId?: number
   divisionId?: number
-  routeId?: number
   isActive?: string
 }
 
@@ -46,7 +44,6 @@ const defaultPending: GeoAssignmentPendingFilters = {
   areaId: 0,
   territoryId: 0,
   divisionId: 0,
-  routeId: 0,
   isActive: '',
 }
 
@@ -69,7 +66,6 @@ export const useUserGeoAssignmentFilterStore = create<UserGeoAssignmentFilterSta
           areaId: pending.areaId || undefined,
           territoryId: pending.territoryId || undefined,
           divisionId: pending.divisionId || undefined,
-          routeId: pending.routeId || undefined,
           isActive: pending.isActive || undefined,
         }
         set({ committed, page: 1 })

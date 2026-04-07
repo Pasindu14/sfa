@@ -16,7 +16,6 @@ public interface IUserGeoAssignmentService
         int? areaId = null,
         int? territoryId = null,
         int? divisionId = null,
-        int? routeId = null,
         bool? isActive = null,
         CancellationToken ct = default);
 

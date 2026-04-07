@@ -210,6 +210,61 @@ namespace sfa_api.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
+            modelBuilder.Entity("sfa_api.Features.DailyRouteAssignments.Entities.DailyRouteAssignment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateOnly>("AssignedDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("RouteId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignedDate");
+
+                    b.HasIndex("IsDeleted");
+
+                    b.HasIndex("RouteId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("RouteId", "AssignedDate")
+                        .HasFilter("\"IsDeleted\" = false");
+
+                    b.HasIndex("UserId", "AssignedDate")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = false");
+
+                    b.ToTable("DailyRouteAssignments");
+                });
+
             modelBuilder.Entity("sfa_api.Features.Distributors.Entities.Distributor", b =>
                 {
                     b.Property<int>("Id")
@@ -1474,9 +1529,6 @@ namespace sfa_api.Migrations
                     b.Property<int?>("RegionId")
                         .HasColumnType("integer");
 
-                    b.Property<int?>("RouteId")
-                        .HasColumnType("integer");
-
                     b.Property<int?>("TerritoryId")
                         .HasColumnType("integer");
 
@@ -1502,8 +1554,6 @@ namespace sfa_api.Migrations
                     b.HasIndex("IsDeleted");
 
                     b.HasIndex("RegionId");
-
-                    b.HasIndex("RouteId");
 
                     b.HasIndex("TerritoryId");
 
@@ -1657,6 +1707,25 @@ namespace sfa_api.Migrations
                     b.HasOne("sfa_api.Features.Users.Entities.User", "User")
                         .WithMany("RefreshTokens")
                         .HasForeignKey("UserId");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("sfa_api.Features.DailyRouteAssignments.Entities.DailyRouteAssignment", b =>
+                {
+                    b.HasOne("sfa_api.Features.Routes.Entities.Route", "Route")
+                        .WithMany()
+                        .HasForeignKey("RouteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("sfa_api.Features.Users.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Route");
 
                     b.Navigation("User");
                 });
@@ -2012,11 +2081,6 @@ namespace sfa_api.Migrations
                         .HasForeignKey("RegionId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("sfa_api.Features.Routes.Entities.Route", "Route")
-                        .WithMany()
-                        .HasForeignKey("RouteId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("sfa_api.Features.Territories.Entities.Territory", "Territory")
                         .WithMany()
                         .HasForeignKey("TerritoryId")
@@ -2033,8 +2097,6 @@ namespace sfa_api.Migrations
                     b.Navigation("Division");
 
                     b.Navigation("Region");
-
-                    b.Navigation("Route");
 
                     b.Navigation("Territory");
 

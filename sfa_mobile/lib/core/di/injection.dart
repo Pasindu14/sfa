@@ -11,6 +11,12 @@ import 'package:uswatte/features/auth/domain/repositories/auth_repository.dart';
 import 'package:uswatte/features/auth/domain/usecases/get_current_auth_usecase.dart';
 import 'package:uswatte/features/auth/domain/usecases/login_usecase.dart';
 import 'package:uswatte/features/auth/domain/usecases/logout_usecase.dart';
+import 'package:uswatte/features/route_assignment/data/datasources/route_assignment_remote_datasource.dart';
+import 'package:uswatte/features/route_assignment/data/repositories/route_assignment_repository_impl.dart';
+import 'package:uswatte/features/route_assignment/domain/repositories/route_assignment_repository.dart';
+import 'package:uswatte/features/route_assignment/domain/usecases/create_assignment_usecase.dart';
+import 'package:uswatte/features/route_assignment/domain/usecases/get_my_reps_usecase.dart';
+import 'package:uswatte/features/route_assignment/domain/usecases/get_rep_routes_usecase.dart';
 
 final getIt = GetIt.instance;
 
@@ -47,4 +53,18 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton(() => LogoutUseCase(getIt<AuthRepository>()));
   getIt.registerLazySingleton(
       () => GetCurrentAuthUseCase(getIt<AuthRepository>()));
+
+  // ── Route assignment ─────────────────────────────────────────────────────────
+  getIt.registerLazySingleton(
+      () => RouteAssignmentRemoteDatasource(getIt<Dio>()));
+  getIt.registerLazySingleton<RouteAssignmentRepository>(
+    () => RouteAssignmentRepositoryImpl(
+        getIt<RouteAssignmentRemoteDatasource>()),
+  );
+  getIt.registerLazySingleton(
+      () => GetMyRepsUseCase(getIt<RouteAssignmentRepository>()));
+  getIt.registerLazySingleton(
+      () => GetRepRoutesUseCase(getIt<RouteAssignmentRepository>()));
+  getIt.registerLazySingleton(
+      () => CreateAssignmentUseCase(getIt<RouteAssignmentRepository>()));
 }

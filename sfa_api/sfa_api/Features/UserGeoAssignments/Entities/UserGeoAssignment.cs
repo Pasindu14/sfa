@@ -1,7 +1,6 @@
 using sfa_api.Features.Areas.Entities;
 using sfa_api.Features.Divisions.Entities;
 using sfa_api.Features.Regions.Entities;
-using RouteEntity = sfa_api.Features.Routes.Entities.Route;
 using sfa_api.Features.Territories.Entities;
 using sfa_api.Features.Users.Entities;
 
@@ -17,8 +16,6 @@ public class UserGeoAssignment
     public int? TerritoryId { get; set; }    // denormalized from Division at write time
     public int? AreaId { get; set; }         // denormalized from Division at write time
     public int? RegionId { get; set; }       // denormalized from Division at write time
-    public int? RouteId { get; set; }        // optional — route within the assigned division
-
     public DateOnly EffectiveFrom { get; set; }
 
     public bool IsActive { get; set; } = true;
@@ -36,5 +33,4 @@ public class UserGeoAssignment
     public Territory? Territory { get; set; }
     public Area? Area { get; set; }
     public Region? Region { get; set; }
-    public RouteEntity? Route { get; set; }
 }

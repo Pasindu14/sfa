@@ -23,6 +23,7 @@ using sfa_api.Features.Stock;
 using sfa_api.Features.Regions;
 using sfa_api.Features.Routes;
 using sfa_api.Features.Territories;
+using sfa_api.Features.DailyRouteAssignments;
 using sfa_api.Features.UserGeoAssignments;
 using sfa_api.Features.UserReportingLines;
 using sfa_api.Features.Users;
@@ -139,6 +140,7 @@ try
     builder.Services.AddDivisionsFeature();
     builder.Services.AddUserReportingLinesFeature();
     builder.Services.AddUserGeoAssignmentsFeature();
+    builder.Services.AddDailyRouteAssignmentsFeature();
     builder.Services.AddRoutesFeature();
     builder.Services.AddOutletsFeature();
     builder.Services.AddProductsFeature();

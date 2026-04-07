@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs grep:*)",
+      "Bash(xargs cat:*)",
+      "Bash(dotnet ef:*)",
+      "Bash(dotnet build:*)",
+      "Bash(flutter analyze:*)"
+    ]
+  }
+}

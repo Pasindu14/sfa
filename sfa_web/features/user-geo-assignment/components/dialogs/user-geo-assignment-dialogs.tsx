@@ -118,7 +118,6 @@ function EditUserGeoAssignmentDialog() {
                     areaId: assignment.areaId ?? undefined,
                     territoryId: assignment.territoryId ?? undefined,
                     divisionId: assignment.divisionId ?? undefined,
-                    routeId: assignment.routeId ?? undefined,
                     effectiveFrom: assignment.effectiveFrom,
                     userName: assignment.userName,
                     userRole: assignment.userRole,

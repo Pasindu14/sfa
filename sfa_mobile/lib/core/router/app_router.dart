@@ -4,9 +4,11 @@ import 'package:uswatte/core/router/go_router_refresh_stream.dart';
 import 'package:uswatte/features/auth/domain/entities/user_role.dart';
 import 'package:uswatte/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:uswatte/features/auth/presentation/pages/login_page.dart';
+import 'package:uswatte/features/route_assignment/presentation/pages/route_assignment_page.dart';
 import 'package:uswatte/features/sales_rep/presentation/pages/sales_rep_home_page.dart';
 import 'package:uswatte/features/sales_rep/presentation/pages/unsupported_role_page.dart';
 import 'package:uswatte/features/splash/presentation/pages/splash_page.dart';
+import 'package:uswatte/features/supervisor/presentation/pages/supervisor_home_page.dart';
 
 class AppRouter {
   AppRouter._();
@@ -59,6 +61,22 @@ class AppRouter {
           ],
         ),
         GoRoute(
+          path: '/supervisor',
+          builder: (_, __) => const SizedBox.shrink(),
+          routes: [
+            GoRoute(
+              path: 'home',
+              name: 'supervisorHome',
+              builder: (_, __) => const SupervisorHomePage(),
+            ),
+            GoRoute(
+              path: 'assign-route',
+              name: 'assignRoute',
+              builder: (_, __) => const RouteAssignmentPage(),
+            ),
+          ],
+        ),
+        GoRoute(
           path: '/unsupported-role',
           name: 'unsupportedRole',
           builder: (_, __) => const UnsupportedRolePage(),
@@ -67,6 +85,14 @@ class AppRouter {
     );
   }
 
-  static String _homeRouteForRole(UserRole role) =>
-      role == UserRole.salesRep ? '/sales-rep/home' : '/unsupported-role';
+  static String _homeRouteForRole(UserRole role) {
+    switch (role) {
+      case UserRole.salesRep:
+        return '/sales-rep/home';
+      case UserRole.supervisor:
+        return '/supervisor/home';
+      default:
+        return '/unsupported-role';
+    }
+  }
 }

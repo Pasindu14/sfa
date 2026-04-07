@@ -19,7 +19,6 @@ public class UserGeoAssignmentRepository(AppDbContext context) : IUserGeoAssignm
             .Include(g => g.Territory)
             .Include(g => g.Area)
             .Include(g => g.Region)
-            .Include(g => g.Route)
             .FirstOrDefaultAsync(g => g.Id == id, ct);
 
     public async Task<UserGeoAssignment?> GetActiveByUserIdAsync(int userId, CancellationToken ct = default)
@@ -35,7 +34,6 @@ public class UserGeoAssignmentRepository(AppDbContext context) : IUserGeoAssignm
         int? areaId = null,
         int? territoryId = null,
         int? divisionId = null,
-        int? routeId = null,
         bool? isActive = null,
         CancellationToken ct = default)
     {
@@ -47,7 +45,6 @@ public class UserGeoAssignmentRepository(AppDbContext context) : IUserGeoAssignm
             .Include(g => g.Territory)
             .Include(g => g.Area)
             .Include(g => g.Region)
-            .Include(g => g.Route)
             .AsQueryable();
 
         if (isActive.HasValue)
@@ -75,9 +72,6 @@ public class UserGeoAssignmentRepository(AppDbContext context) : IUserGeoAssignm
 
         if (divisionId.HasValue)
             query = query.Where(g => g.DivisionId == divisionId.Value);
-
-        if (routeId.HasValue)
-            query = query.Where(g => g.RouteId == routeId.Value);
 
         var total = await query.CountAsync(ct);
         var items = await query
@@ -134,15 +128,18 @@ public class UserGeoAssignmentRepository(AppDbContext context) : IUserGeoAssignm
             .OrderBy(r => r.Name)
             .ToListAsync(ct);
 
-    public async Task<bool> RouteExistsAsync(int routeId, CancellationToken ct = default)
-        => await _context.Routes.AnyAsync(r => r.Id == routeId && r.IsActive, ct);
-
     public async Task<bool> UserExistsAsync(int userId, CancellationToken ct = default)
         => await _context.Users.AnyAsync(u => u.Id == userId && !u.IsDeleted, ct);
 
     public async Task<bool> IsAdminOrDistributorAsync(int userId, CancellationToken ct = default)
         => await _context.Users.AnyAsync(
             u => u.Id == userId && (u.Role == UserRole.Admin || u.Role == UserRole.Distributor), ct);
+
+    public async Task<UserRole?> GetUserRoleAsync(int userId, CancellationToken ct = default)
+        => await _context.Users
+            .Where(u => u.Id == userId)
+            .Select(u => (UserRole?)u.Role)
+            .FirstOrDefaultAsync(ct);
 
     public async Task<bool> DivisionExistsAsync(int divisionId, CancellationToken ct = default)
         => await _context.Divisions.IgnoreQueryFilters().AnyAsync(d => d.Id == divisionId, ct);

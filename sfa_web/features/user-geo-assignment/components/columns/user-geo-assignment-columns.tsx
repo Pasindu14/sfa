@@ -43,7 +43,6 @@ function resolveGeoHierarchy(row: UserAssignmentDto): string[] {
   if (row.areaName) parts.push(row.areaName)
   if (row.territoryName) parts.push(row.territoryName)
   if (row.divisionName) parts.push(row.divisionName)
-  if (row.routeName) parts.push(row.routeName)
   return parts
 }
 
@@ -84,7 +83,7 @@ export function getUserGeoAssignmentColumns(
       header: 'Geo Level',
       cell: ({ row }) => {
         const r = row.original
-        const level = r.routeId ? 'Route' : r.divisionId ? 'Division' : r.territoryId ? 'Territory' : r.areaId ? 'Area' : r.regionId ? 'Region' : '—'
+        const level = r.divisionId ? 'Division' : r.territoryId ? 'Territory' : r.areaId ? 'Area' : r.regionId ? 'Region' : '—'
         return <span className="text-sm text-muted-foreground">{level}</span>
       },
     },

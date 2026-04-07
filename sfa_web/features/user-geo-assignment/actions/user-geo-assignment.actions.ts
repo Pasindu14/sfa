@@ -14,7 +14,6 @@ import type { RegionDto } from '@/features/region/schema/region.schema'
 import type { AreaDto } from '@/features/area/schema/area.schema'
 import type { TerritoryDto } from '@/features/territory/schema/territory.schema'
 import type { DivisionDto } from '@/features/division/schema/division.schema'
-import type { RouteDto } from '@/features/route/schema/route.schema'
 
 type UserAssignmentsListResponse = {
   userAssignments: UserAssignmentDto[]
@@ -41,7 +40,6 @@ export const getUserAssignmentsAction = createAction(
     areaId?: number,
     territoryId?: number,
     divisionId?: number,
-    routeId?: number,
     isActive?: string,
   ) => {
     const res = await client.get('/api/v1/user-assignments', {
@@ -54,7 +52,6 @@ export const getUserAssignmentsAction = createAction(
         areaId: areaId || undefined,
         territoryId: territoryId || undefined,
         divisionId: divisionId || undefined,
-        routeId: routeId || undefined,
         isActive:
           isActive === 'true' ? true : isActive === 'false' ? false : undefined,
       },
@@ -156,10 +153,3 @@ export const getActiveDivisionsForSelectAction = createAction(
   },
 )
 
-export const getActiveRoutesByDivisionAction = createAction(
-  { name: 'getActiveRoutesByDivisionAction', requireAuth: true, requiredRole: 'Admin' },
-  async (divisionId: number) => {
-    const res = await client.get(`/api/v1/routes/by-division/${divisionId}`)
-    return res.data.data as RouteDto[]
-  },
-)

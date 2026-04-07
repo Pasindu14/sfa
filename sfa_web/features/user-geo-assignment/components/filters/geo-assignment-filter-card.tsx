@@ -5,13 +5,11 @@ import {
   Map,
   MapPin,
   Building2,
-  Route,
   Users,
   ToggleLeft,
   RotateCcw,
   Search,
   Lock,
-  Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -28,7 +26,6 @@ import {
   useAreasForSelect,
   useTerritoriesForSelect,
   useDivisionsForSelect,
-  useRoutesForDivision,
 } from '../../hooks/user-geo-assignment.hooks'
 
 const ROLES = ['NSM', 'RSM', 'ASM', 'Supervisor', 'SalesRep']
@@ -90,32 +87,27 @@ export function GeoAssignmentFilterCard() {
     pending.areaId,
     pending.territoryId,
     pending.divisionId,
-    pending.routeId,
     pending.isActive,
   ].filter(Boolean).length
 
-  const { data: routes = [], isLoading: loadingRoutes } = useRoutesForDivision(
-    pending.divisionId || undefined,
-  )
-
   function handleRegionChange(value: string) {
     const regionId = value === '__all__' ? 0 : Number(value)
-    setPending({ regionId, areaId: 0, territoryId: 0, divisionId: 0, routeId: 0 })
+    setPending({ regionId, areaId: 0, territoryId: 0, divisionId: 0 })
   }
 
   function handleAreaChange(value: string) {
     const areaId = value === '__all__' ? 0 : Number(value)
-    setPending({ areaId, territoryId: 0, divisionId: 0, routeId: 0 })
+    setPending({ areaId, territoryId: 0, divisionId: 0 })
   }
 
   function handleTerritoryChange(value: string) {
     const territoryId = value === '__all__' ? 0 : Number(value)
-    setPending({ territoryId, divisionId: 0, routeId: 0 })
+    setPending({ territoryId, divisionId: 0 })
   }
 
   function handleDivisionChange(value: string) {
     const divisionId = value === '__all__' ? 0 : Number(value)
-    setPending({ divisionId, routeId: 0 })
+    setPending({ divisionId })
   }
 
   return (
@@ -153,7 +145,7 @@ export function GeoAssignmentFilterCard() {
 
       <div className="p-5 space-y-4">
         {/* Single row: all filters */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {/* Role */}
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-1.5">
@@ -300,36 +292,6 @@ export function GeoAssignmentFilterCard() {
             </Select>
           </GeoStep>
 
-          {/* Route */}
-          <GeoStep
-            icon={
-              loadingRoutes
-                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                : <Route className="h-3.5 w-3.5" />
-            }
-            label="Route"
-            locked={!pending.divisionId}
-          >
-            <Select
-              disabled={!pending.divisionId || loadingRoutes}
-              value={pending.routeId ? String(pending.routeId) : '__all__'}
-              onValueChange={(v) => setPending({ routeId: v === '__all__' ? 0 : Number(v) })}
-            >
-              <SelectTrigger className="h-9 w-full text-sm">
-                <SelectValue placeholder={
-                  loadingRoutes ? 'Loading…'
-                  : pending.divisionId ? 'All routes'
-                  : '—'
-                } />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">All routes</SelectItem>
-                {routes.map((r) => (
-                  <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </GeoStep>
         </div>
 
         {/* Action row */}

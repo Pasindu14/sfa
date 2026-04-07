@@ -17,6 +17,7 @@ using sfa_api.Features.SalesInvoices.Entities;
 using sfa_api.Features.SalesInvoices.Enums;
 using sfa_api.Features.Stock.Entities;
 using sfa_api.Features.Stock.Enums;
+using sfa_api.Features.DailyRouteAssignments.Entities;
 using sfa_api.Features.UserGeoAssignments.Entities;
 using sfa_api.Features.UserReportingLines.Entities;
 using sfa_api.Features.Users.Entities;
@@ -57,6 +58,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<StockTransaction> StockTransactions => Set<StockTransaction>();
     public DbSet<UserReportingLine> UserReportingLines => Set<UserReportingLine>();
     public DbSet<UserGeoAssignment> UserGeoAssignments => Set<UserGeoAssignment>();
+    public DbSet<DailyRouteAssignment> DailyRouteAssignments => Set<DailyRouteAssignment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -266,12 +268,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .HasForeignKey(x => x.RegionId)
              .IsRequired(false)
              .OnDelete(DeleteBehavior.Restrict);
-            e.HasOne(x => x.Route)
-             .WithMany()
-             .HasForeignKey(x => x.RouteId)
-             .IsRequired(false)
-             .OnDelete(DeleteBehavior.Restrict);
-            e.HasIndex(x => x.RouteId);
         });
 
         // Route
@@ -605,6 +601,31 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(x => x.TransactedByUser)
              .WithMany()
              .HasForeignKey(x => x.TransactedBy)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // DailyRouteAssignment
+        modelBuilder.Entity<DailyRouteAssignment>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.HasIndex(x => x.UserId);
+            e.HasIndex(x => x.RouteId);
+            e.HasIndex(x => x.AssignedDate);
+            e.HasIndex(x => new { x.UserId, x.AssignedDate }).IsUnique()
+             .HasFilter("\"IsDeleted\" = false");
+            e.HasIndex(x => new { x.RouteId, x.AssignedDate })
+             .HasFilter("\"IsDeleted\" = false");
+            e.HasIndex(x => x.IsDeleted);
+            e.HasOne(x => x.User)
+             .WithMany()
+             .HasForeignKey(x => x.UserId)
+             .IsRequired()
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Route)
+             .WithMany()
+             .HasForeignKey(x => x.RouteId)
+             .IsRequired()
              .OnDelete(DeleteBehavior.Restrict);
         });
 

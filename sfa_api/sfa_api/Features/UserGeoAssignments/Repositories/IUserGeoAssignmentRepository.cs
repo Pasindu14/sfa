@@ -1,6 +1,7 @@
 using sfa_api.Features.Divisions.Entities;
 using sfa_api.Features.UserGeoAssignments.Entities;
 using sfa_api.Features.UserReportingLines.Entities;
+using sfa_api.Features.Users.Entities;
 using RouteEntity = sfa_api.Features.Routes.Entities.Route;
 
 namespace sfa_api.Features.UserGeoAssignments.Repositories;
@@ -19,7 +20,6 @@ public interface IUserGeoAssignmentRepository
         int? areaId = null,
         int? territoryId = null,
         int? divisionId = null,
-        int? routeId = null,
         bool? isActive = null,
         CancellationToken ct = default);
 
@@ -39,10 +39,9 @@ public interface IUserGeoAssignmentRepository
     /// <summary>Returns active routes belonging to a specific division.</summary>
     Task<IEnumerable<RouteEntity>> GetActiveRoutesByDivisionIdAsync(int divisionId, CancellationToken ct = default);
 
-    Task<bool> RouteExistsAsync(int routeId, CancellationToken ct = default);
-
     Task<bool> UserExistsAsync(int userId, CancellationToken ct = default);
     Task<bool> IsAdminOrDistributorAsync(int userId, CancellationToken ct = default);
+    Task<UserRole?> GetUserRoleAsync(int userId, CancellationToken ct = default);
     Task<bool> DivisionExistsAsync(int divisionId, CancellationToken ct = default);
 
     Task CreateAsync(UserGeoAssignment entity, CancellationToken ct = default);

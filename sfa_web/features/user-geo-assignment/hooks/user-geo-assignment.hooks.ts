@@ -22,7 +22,6 @@ import {
   getActiveAreasForSelectAction,
   getActiveTerritoriesForSelectAction,
   getActiveDivisionsForSelectAction,
-  getActiveRoutesByDivisionAction,
 } from '../actions/user-geo-assignment.actions'
 import { useCreateDialog, useEditDialog, useDeactivateDialog, useActivateDialog } from '../store'
 import { useUserGeoAssignmentFilterStore } from '../store/user-geo-assignment.filter-store'
@@ -47,7 +46,6 @@ export const userGeoAssignmentKeys = {
   areasForSelect: ['geo-areas-for-select'] as const,
   territoriesForSelect: ['geo-territories-for-select'] as const,
   divisionsForSelect: ['geo-divisions-for-select'] as const,
-  routesForDivision: (divisionId: number) => ['geo-routes-for-division', divisionId] as const,
 }
 
 // --- Query options factory ---
@@ -152,19 +150,6 @@ export function useDivisionsForSelect() {
   })
 }
 
-export function useRoutesForDivision(divisionId: number | undefined) {
-  return useQuery({
-    queryKey: userGeoAssignmentKeys.routesForDivision(divisionId ?? 0),
-    queryFn: async () => {
-      const result = await getActiveRoutesByDivisionAction(divisionId!)
-      if (!result.success) throw new Error(result.error)
-      return result.data
-    },
-    enabled: !!divisionId,
-    staleTime: 5 * 60 * 1000,
-  })
-}
-
 // --- DataTable hook ---
 // Reads committed filters directly from the store — the DataTable's own
 // customFilters arg is intentionally ignored so the query only fires when
@@ -195,7 +180,6 @@ export function useUserGeoAssignmentDataTable(
         committed?.areaId,
         committed?.territoryId,
         committed?.divisionId,
-        committed?.routeId,
         committed?.isActive,
       )
       if (!result.success) throw new Error(result.error)

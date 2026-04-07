@@ -6,7 +6,6 @@ export const createUserGeoAssignmentSchema = z.object({
   areaId: z.number().int().min(1).optional(),
   territoryId: z.number().int().min(1).optional(),
   divisionId: z.number().int().min(1).optional(),
-  routeId: z.number().int().min(1).optional(),
   effectiveFrom: z.string().min(1, 'Effective date is required'),
 })
 
@@ -15,7 +14,6 @@ export const updateUserGeoAssignmentSchema = z.object({
   areaId: z.number().int().min(1).optional(),
   territoryId: z.number().int().min(1).optional(),
   divisionId: z.number().int().min(1).optional(),
-  routeId: z.number().int().min(1).optional(),
   effectiveFrom: z.string().min(1, 'Effective date is required'),
 })
 
@@ -47,8 +45,6 @@ export type UserAssignmentDto = {
   areaName: string | null
   regionId: number | null
   regionName: string | null
-  routeId: number | null
-  routeName: string | null
   effectiveFrom: string
   isActive: boolean
   createdAt: string

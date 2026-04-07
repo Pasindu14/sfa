@@ -10,7 +10,13 @@
       "Bash(cd \"D:/Github/sfa/sfa_web\" && npx tsc --noEmit 2>&1 | grep -i \"route\\\\|Route\" | head -30)",
       "Bash(cd \"D:/Github/sfa/sfa_web\" && npx tsc --noEmit 2>&1 | tail -5)",
       "Bash(cd \"D:/Github/sfa/sfa_api/sfa_api\" && dotnet ef migrations add routes_isactive_replace_isdeleted 2>&1)",
-      "Bash(cd \"D:/Github/sfa/sfa_api/sfa_api\" && dotnet ef database update 2>&1)"
+      "Bash(cd \"D:/Github/sfa/sfa_api/sfa_api\" && dotnet ef database update 2>&1)",
+      "Bash(xargs grep:*)",
+      "Bash(dotnet ef:*)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet test:*)",
+      "Bash(npm run:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

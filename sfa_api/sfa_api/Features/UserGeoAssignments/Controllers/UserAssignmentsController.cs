@@ -53,12 +53,11 @@ public class UserAssignmentsController(
         [FromQuery] int? areaId = null,
         [FromQuery] int? territoryId = null,
         [FromQuery] int? divisionId = null,
-        [FromQuery] int? routeId = null,
         [FromQuery] bool? isActive = null,
         CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
-        var result = await _service.GetAllAsync(page, pageSize, search, role, regionId, areaId, territoryId, divisionId, routeId, isActive, ct);
+        var result = await _service.GetAllAsync(page, pageSize, search, role, regionId, areaId, territoryId, divisionId, isActive, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 

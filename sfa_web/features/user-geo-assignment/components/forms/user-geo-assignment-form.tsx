@@ -36,14 +36,12 @@ import {
   useAreasForSelect,
   useTerritoriesForSelect,
   useDivisionsForSelect,
-  useRoutesForDivision,
 } from "../../hooks/user-geo-assignment.hooks";
 import type { UserDto } from "@/features/user/schema/user.schema";
 import type { RegionDto } from "@/features/region/schema/region.schema";
 import type { AreaDto } from "@/features/area/schema/area.schema";
 import type { TerritoryDto } from "@/features/territory/schema/territory.schema";
 import type { DivisionDto } from "@/features/division/schema/division.schema";
-import type { RouteDto } from "@/features/route/schema/route.schema";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -197,7 +195,6 @@ interface EditFormProps {
     regionId?: number;
     areaId?: number;
     territoryId?: number;
-    routeId?: number;
   };
   onSubmit: (data: UpdateUserGeoAssignmentInput) => void;
   onCancel?: () => void;
@@ -261,12 +258,10 @@ interface GeoCascadeProps {
   selectedAreaId: number;
   selectedTerritoryId: number;
   selectedDivisionId: number;
-  selectedRouteId: number;
   onRegionChange: (id: number) => void;
   onAreaChange: (id: number) => void;
   onTerritoryChange: (id: number) => void;
   onDivisionChange: (id: number) => void;
-  onRouteChange: (id: number) => void;
   regions: RegionDto[];
   areas: AreaDto[];
   territories: TerritoryDto[];
@@ -280,12 +275,10 @@ function GeoCascadeSection({
   selectedAreaId,
   selectedTerritoryId,
   selectedDivisionId,
-  selectedRouteId,
   onRegionChange,
   onAreaChange,
   onTerritoryChange,
   onDivisionChange,
-  onRouteChange,
   regions,
   areas,
   territories,
@@ -305,9 +298,6 @@ function GeoCascadeSection({
 
   const selectedDivision =
     divisions.find((d) => d.id === selectedDivisionId) ?? null;
-
-  const { data: routes = [], isLoading: isLoadingRoutes } =
-    useRoutesForDivision(selectedDivisionId || undefined);
 
   const activeStep: GeoStep = selectedTerritoryId
     ? "Division"
@@ -423,39 +413,6 @@ function GeoCascadeSection({
           )}
         </div>
 
-        {/* Route — spans both columns, only shown when a division is selected */}
-        {selectedDivisionId ? (
-          <div className="col-span-2 space-y-1">
-            <div className="flex items-center gap-1.5">
-              <p className="text-xs text-muted-foreground">Route</p>
-              {isLoadingRoutes && <Spinner className="h-3 w-3" />}
-            </div>
-            <Select
-              disabled={isLoadingRoutes || routes.length === 0}
-              value={selectedRouteId ? String(selectedRouteId) : ""}
-              onValueChange={(v) => onRouteChange(Number(v))}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue
-                  placeholder={
-                    isLoadingRoutes
-                      ? "Loading routes…"
-                      : routes.length === 0
-                        ? "No routes for this division"
-                        : "Select route"
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {routes.map((r) => (
-                  <SelectItem key={r.id} value={String(r.id)}>
-                    {r.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        ) : null}
       </div>
 
       {selectedDivision && <DivisionPreviewCard division={selectedDivision} />}
@@ -494,7 +451,6 @@ function CreateForm({
       areaId: undefined,
       territoryId: undefined,
       divisionId: undefined,
-      routeId: undefined,
       effectiveFrom: new Date().toISOString().split("T")[0],
     },
   });
@@ -518,7 +474,6 @@ function CreateForm({
     setValue("areaId", undefined);
     setValue("territoryId", undefined);
     setValue("divisionId", undefined);
-    setValue("routeId", undefined);
   }
 
   function handleAreaChange(id: number) {
@@ -527,23 +482,16 @@ function CreateForm({
     setValue("areaId", id > 0 ? id : undefined);
     setValue("territoryId", undefined);
     setValue("divisionId", undefined);
-    setValue("routeId", undefined);
   }
 
   function handleTerritoryChange(id: number) {
     setSelectedTerritoryId(id);
     setValue("territoryId", id > 0 ? id : undefined);
     setValue("divisionId", undefined);
-    setValue("routeId", undefined);
   }
 
   function handleDivisionChange(id: number) {
     setValue("divisionId", id > 0 ? id : undefined);
-    setValue("routeId", undefined);
-  }
-
-  function handleRouteChange(id: number) {
-    setValue("routeId", id > 0 ? id : undefined);
   }
 
   useEffect(() => {
@@ -553,8 +501,6 @@ function CreateForm({
       });
     }
   }, [fieldErrors, setError]);
-
-  const routeId = watch("routeId");
 
   return (
     <Form {...form}>
@@ -605,12 +551,10 @@ function CreateForm({
           selectedAreaId={selectedAreaId}
           selectedTerritoryId={selectedTerritoryId}
           selectedDivisionId={divisionId ?? 0}
-          selectedRouteId={routeId ?? 0}
           onRegionChange={handleRegionChange}
           onAreaChange={handleAreaChange}
           onTerritoryChange={handleTerritoryChange}
           onDivisionChange={handleDivisionChange}
-          onRouteChange={handleRouteChange}
           regions={regions}
           areas={areas}
           territories={territories}
@@ -706,7 +650,6 @@ function EditForm({
       areaId: initAreaId > 0 ? initAreaId : undefined,
       territoryId: initTerritoryId > 0 ? initTerritoryId : undefined,
       divisionId: defaultValues?.divisionId ?? undefined,
-      routeId: defaultValues?.routeId ?? undefined,
       effectiveFrom:
         defaultValues?.effectiveFrom ?? new Date().toISOString().split("T")[0],
     },
@@ -714,7 +657,6 @@ function EditForm({
 
   const { setError, setValue, watch } = form;
   const divisionId = watch("divisionId");
-  const routeId = watch("routeId");
 
   // Sync cascade state once division data loads (handles late-loading divisions list)
   useEffect(() => {
@@ -736,7 +678,6 @@ function EditForm({
     setValue("areaId", undefined);
     setValue("territoryId", undefined);
     setValue("divisionId", undefined);
-    setValue("routeId", undefined);
   }
 
   function handleAreaChange(id: number) {
@@ -745,23 +686,16 @@ function EditForm({
     setValue("areaId", id > 0 ? id : undefined);
     setValue("territoryId", undefined);
     setValue("divisionId", undefined);
-    setValue("routeId", undefined);
   }
 
   function handleTerritoryChange(id: number) {
     setSelectedTerritoryId(id);
     setValue("territoryId", id > 0 ? id : undefined);
     setValue("divisionId", undefined);
-    setValue("routeId", undefined);
   }
 
   function handleDivisionChange(id: number) {
     setValue("divisionId", id > 0 ? id : undefined);
-    setValue("routeId", undefined);
-  }
-
-  function handleRouteChange(id: number) {
-    setValue("routeId", id > 0 ? id : undefined);
   }
 
   useEffect(() => {
@@ -803,12 +737,10 @@ function EditForm({
           selectedAreaId={selectedAreaId}
           selectedTerritoryId={selectedTerritoryId}
           selectedDivisionId={divisionId ?? 0}
-          selectedRouteId={routeId ?? 0}
           onRegionChange={handleRegionChange}
           onAreaChange={handleAreaChange}
           onTerritoryChange={handleTerritoryChange}
           onDivisionChange={handleDivisionChange}
-          onRouteChange={handleRouteChange}
           regions={regions}
           areas={areas}
           territories={territories}

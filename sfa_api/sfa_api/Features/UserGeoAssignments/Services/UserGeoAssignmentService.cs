@@ -4,6 +4,7 @@ using sfa_api.Features.UserGeoAssignments.Entities;
 using sfa_api.Features.UserGeoAssignments.Repositories;
 using sfa_api.Features.UserGeoAssignments.Requests;
 using sfa_api.Features.UserReportingLines.Entities;
+using sfa_api.Features.Users.Entities;
 
 namespace sfa_api.Features.UserGeoAssignments.Services;
 
@@ -32,12 +33,11 @@ public class UserGeoAssignmentService(
         int? areaId = null,
         int? territoryId = null,
         int? divisionId = null,
-        int? routeId = null,
         bool? isActive = null,
         CancellationToken ct = default)
     {
         var skip = (page - 1) * pageSize;
-        var (items, totalCount) = await _repo.GetAllAsync(skip, pageSize, search, role, regionId, areaId, territoryId, divisionId, routeId, isActive, ct);
+        var (items, totalCount) = await _repo.GetAllAsync(skip, pageSize, search, role, regionId, areaId, territoryId, divisionId, isActive, ct);
 
         var itemList = items.ToList();
         var userIds = itemList.Select(g => g.UserId).Distinct();
@@ -73,6 +73,13 @@ public class UserGeoAssignmentService(
                 "USER_ROLE_NOT_ASSIGNABLE",
                 "Admin and Distributor users cannot be given a geo assignment.");
 
+        // SalesRep must be assigned to a Division
+        var userRole = await _repo.GetUserRoleAsync(request.UserId, ct);
+        if (userRole == UserRole.SalesRep && !request.DivisionId.HasValue)
+            throw new BusinessRuleException(
+                "DIVISION_REQUIRED_FOR_SALES_REP",
+                "SalesRep users must be assigned to a Division.");
+
         // Validate division if provided
         if (request.DivisionId.HasValue &&
             !await _repo.DivisionExistsAsync(request.DivisionId.Value, ct))
@@ -98,7 +105,6 @@ public class UserGeoAssignmentService(
             AreaId = request.AreaId,
             TerritoryId = request.TerritoryId,
             DivisionId = request.DivisionId,
-            RouteId = request.RouteId,
             EffectiveFrom = request.EffectiveFrom,
             IsActive = true,
             CreatedBy = callerId,
@@ -129,13 +135,19 @@ public class UserGeoAssignmentService(
         var geo = await _repo.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("UserAssignment", id);
 
+        // SalesRep must be assigned to a Division
+        var userRole = await _repo.GetUserRoleAsync(geo.UserId, ct);
+        if (userRole == UserRole.SalesRep && !request.DivisionId.HasValue)
+            throw new BusinessRuleException(
+                "DIVISION_REQUIRED_FOR_SALES_REP",
+                "SalesRep users must be assigned to a Division.");
+
         var now = DateTime.UtcNow;
 
         geo.RegionId = request.RegionId;
         geo.AreaId = request.AreaId;
         geo.TerritoryId = request.TerritoryId;
         geo.DivisionId = request.DivisionId;
-        geo.RouteId = request.RouteId;
         geo.EffectiveFrom = request.EffectiveFrom;
         geo.UpdatedBy = callerId;
         geo.UpdatedAt = now;
@@ -208,8 +220,6 @@ public class UserGeoAssignmentService(
         AreaName: geo.Area?.Name,
         RegionId: geo.RegionId,
         RegionName: geo.Region?.Name,
-        RouteId: geo.RouteId,
-        RouteName: geo.Route?.Name,
         EffectiveFrom: geo.EffectiveFrom,
         IsActive: geo.IsActive,
         CreatedAt: geo.CreatedAt,

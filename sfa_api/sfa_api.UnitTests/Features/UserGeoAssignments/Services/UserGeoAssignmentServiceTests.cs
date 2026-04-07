@@ -180,7 +180,7 @@ public class UserGeoAssignmentServiceTests
     public async Task GetAllAsync_ReturnsPaginatedListDto()
     {
         var geos = new[] { CreateFakeGeo(1, userId: 10), CreateFakeGeo(2, userId: 11) };
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, null, null, null, null, null, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, null, null, null, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((geos.AsEnumerable(), 2));
         _repoMock.Setup(r => r.GetActiveReportingLinesByUserIdsAsync(
                      It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()))
@@ -197,7 +197,7 @@ public class UserGeoAssignmentServiceTests
     [Fact]
     public async Task GetAllAsync_Page2_CalculatesCorrectSkip()
     {
-        _repoMock.Setup(r => r.GetAllAsync(10, 10, null, null, null, null, null, null, null, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(10, 10, null, null, null, null, null, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<UserGeoAssignment>(), 0));
         _repoMock.Setup(r => r.GetActiveReportingLinesByUserIdsAsync(
                      It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()))
@@ -205,7 +205,7 @@ public class UserGeoAssignmentServiceTests
 
         await _sut.GetAllAsync(2, 10);
 
-        _repoMock.Verify(r => r.GetAllAsync(10, 10, null, null, null, null, null, null, null, null, It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.GetAllAsync(10, 10, null, null, null, null, null, null, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     // ─────────────────────────────────────────────────
@@ -310,7 +310,7 @@ public class UserGeoAssignmentServiceTests
         var request = new CreateUserAssignmentRequest
         {
             UserId = 10,
-            RegionId = 1, AreaId = 2, TerritoryId = 3, DivisionId = 4, RouteId = 5,
+            RegionId = 1, AreaId = 2, TerritoryId = 3, DivisionId = 4,
             EffectiveFrom = new DateOnly(2026, 3, 26)
         };
         SetupSuccessfulCreate(request);
@@ -325,7 +325,6 @@ public class UserGeoAssignmentServiceTests
         captured.AreaId.Should().Be(2);
         captured.TerritoryId.Should().Be(3);
         captured.DivisionId.Should().Be(4);
-        captured.RouteId.Should().Be(5);
     }
 
     // ─────────────────────────────────────────────────
@@ -377,7 +376,7 @@ public class UserGeoAssignmentServiceTests
         var geo = CreateFakeGeo();
         var request = new UpdateUserAssignmentRequest
         {
-            RegionId = 11, AreaId = 22, TerritoryId = 33, DivisionId = 44, RouteId = 55,
+            RegionId = 11, AreaId = 22, TerritoryId = 33, DivisionId = 44,
             EffectiveFrom = new DateOnly(2026, 4, 1)
         };
         _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
@@ -390,7 +389,6 @@ public class UserGeoAssignmentServiceTests
         geo.AreaId.Should().Be(22);
         geo.TerritoryId.Should().Be(33);
         geo.DivisionId.Should().Be(44);
-        geo.RouteId.Should().Be(55);
     }
 
     // ─────────────────────────────────────────────────
@@ -454,6 +452,8 @@ public class UserGeoAssignmentServiceTests
                  .ReturnsAsync(true);
         _repoMock.Setup(r => r.IsAdminOrDistributorAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
                  .ReturnsAsync(false);
+        _repoMock.Setup(r => r.GetUserRoleAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(UserRole.SalesRep);
         _repoMock.Setup(r => r.DivisionExistsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
                  .ReturnsAsync(true);
 
@@ -479,6 +479,8 @@ public class UserGeoAssignmentServiceTests
         UpdateUserAssignmentRequest request,
         int geoId)
     {
+        _repoMock.Setup(r => r.GetUserRoleAsync(geo.UserId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(UserRole.SalesRep);
         _repoMock.Setup(r => r.UpdateAsync(geo, It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
@@ -488,5 +490,47 @@ public class UserGeoAssignmentServiceTests
         _repoMock.Setup(r => r.GetActiveReportingLinesByUserIdsAsync(
                      It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()))
                  .ReturnsAsync(Enumerable.Empty<UserReportingLine>());
+    }
+
+    // ─────────────────────────────────────────────────
+    // SalesRep Division constraint
+    // ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CreateAsync_SalesRepWithoutDivision_ThrowsBusinessRuleException()
+    {
+        var request = new CreateUserAssignmentRequest
+        {
+            UserId = 10,
+            DivisionId = null,
+            EffectiveFrom = new DateOnly(2026, 3, 26)
+        };
+        _repoMock.Setup(r => r.UserExistsAsync(10, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(true);
+        _repoMock.Setup(r => r.IsAdminOrDistributorAsync(10, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(false);
+        _repoMock.Setup(r => r.GetUserRoleAsync(10, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(UserRole.SalesRep);
+
+        var act = () => _sut.CreateAsync(request, callerId: 1);
+
+        var ex = await act.Should().ThrowAsync<BusinessRuleException>();
+        ex.Which.ErrorCode.Should().Be("DIVISION_REQUIRED_FOR_SALES_REP");
+    }
+
+    [Fact]
+    public async Task UpdateAsync_SalesRepWithoutDivision_ThrowsBusinessRuleException()
+    {
+        var geo = CreateFakeGeo(userId: 10);
+        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(geo);
+        _repoMock.Setup(r => r.GetUserRoleAsync(10, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(UserRole.SalesRep);
+
+        var request = new UpdateUserAssignmentRequest { DivisionId = null, EffectiveFrom = new DateOnly(2026, 4, 1) };
+        var act = () => _sut.UpdateAsync(1, request, callerId: 1);
+
+        var ex = await act.Should().ThrowAsync<BusinessRuleException>();
+        ex.Which.ErrorCode.Should().Be("DIVISION_REQUIRED_FOR_SALES_REP");
     }
 }
