@@ -82,6 +82,10 @@ const data = {
           title: "Geo Assignments",
           url: "/geo-assignments",
         },
+        {
+          title: "Route Cancellations",
+          url: "/route-cancellations",
+        },
       ],
     },
     {
