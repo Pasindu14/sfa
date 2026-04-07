@@ -10,7 +10,9 @@ import {
   RotateCcw,
   Search,
   Lock,
+  Loader2,
 } from 'lucide-react'
+import { useIsFetching } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -26,6 +28,7 @@ import {
   useAreasForSelect,
   useTerritoriesForSelect,
   useDivisionsForSelect,
+  userGeoAssignmentKeys,
 } from '../../hooks/user-geo-assignment.hooks'
 
 const ROLES = ['NSM', 'RSM', 'ASM', 'Supervisor', 'SalesRep']
@@ -80,6 +83,7 @@ export function GeoAssignmentFilterCard() {
 
   const isLoading = loadingRegions || loadingAreas || loadingTerritories || loadingDivisions
   const hasCommitted = committed !== null
+  const isFetchingResults = useIsFetching({ queryKey: userGeoAssignmentKeys.lists() }) > 0
 
   const activeFilterCount = [
     pending.role,
@@ -311,10 +315,15 @@ export function GeoAssignmentFilterCard() {
             <Button
               size="sm"
               onClick={commit}
+              disabled={isFetchingResults}
               className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
             >
-              <Search className="h-3.5 w-3.5" />
-              Load Results
+              {isFetchingResults ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Search className="h-3.5 w-3.5" />
+              )}
+              {isFetchingResults ? 'Loading…' : 'Load Results'}
             </Button>
           </div>
         </div>
