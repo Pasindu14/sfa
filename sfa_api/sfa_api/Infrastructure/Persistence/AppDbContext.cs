@@ -619,6 +619,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => new { x.RouteId, x.AssignedDate })
              .HasFilter("\"IsDeleted\" = false");
             e.HasIndex(x => x.IsDeleted);
+            // Matching query filter prevents EF warning about Route's global IsActive filter
+            // being the required end of this relationship. Deleted assignments are excluded
+            // globally; repos that need them call IgnoreQueryFilters().
+            e.HasQueryFilter(x => !x.IsDeleted);
             e.HasOne(x => x.User)
              .WithMany()
              .HasForeignKey(x => x.UserId)
