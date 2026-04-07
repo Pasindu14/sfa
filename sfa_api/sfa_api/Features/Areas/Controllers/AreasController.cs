@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 using sfa_api.Common.Errors;
 using sfa_api.Common.Extensions;
@@ -75,6 +76,7 @@ public class AreasController(
     /// </summary>
     [HttpPost]
     [Authorize(Roles = "Admin")]
+    [EnableRateLimiting("user")]
     public async Task<IActionResult> Create([FromBody] CreateAreaRequest request, CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
@@ -92,6 +94,7 @@ public class AreasController(
     /// </summary>
     [HttpPut("{id}")]
     [Authorize(Roles = "Admin")]
+    [EnableRateLimiting("user")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateAreaRequest request, CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
@@ -108,6 +111,7 @@ public class AreasController(
     /// </summary>
     [HttpPost("{id}/activate")]
     [Authorize(Roles = "Admin")]
+    [EnableRateLimiting("user")]
     public async Task<IActionResult> Activate(int id, CancellationToken ct)
     {
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
@@ -120,10 +124,24 @@ public class AreasController(
     /// </summary>
     [HttpPost("{id}/deactivate")]
     [Authorize(Roles = "Admin")]
+    [EnableRateLimiting("user")]
     public async Task<IActionResult> Deactivate(int id, CancellationToken ct)
     {
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
         await _service.DeactivateAsync(id, callerId, ct);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// DELETE /api/v1/areas/{id}
+    /// </summary>
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
+    [EnableRateLimiting("user")]
+    public async Task<IActionResult> Delete(int id, CancellationToken ct)
+    {
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
+        await _service.DeleteAsync(id, callerId, ct);
         return NoContent();
     }
 }

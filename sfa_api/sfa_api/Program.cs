@@ -169,9 +169,9 @@ try
 
     // ── Middleware Pipeline (ORDER MATTERS) ───────────────────────────────
     app.UseResponseCompression();                    // 0. Compress responses (before logging)
-    app.UseMiddleware<CorrelationIdMiddleware>();    // 1. Correlation ID first
-    app.UseSerilogRequestLogging();                 // 2. Log every request (sees final status)
-    app.UseMiddleware<GlobalExceptionMiddleware>();  // 3. Catch all exceptions
+    app.UseMiddleware<GlobalExceptionMiddleware>();  // 1. Catch all exceptions (must be first to wrap all errors)
+    app.UseMiddleware<CorrelationIdMiddleware>();    // 2. Correlation ID
+    app.UseSerilogRequestLogging();                 // 3. Log every request (sees final status)
     app.UseHttpsRedirection();                      // 4. HTTPS only
     app.UseCors("SFAPolicy");                       // 5. CORS
     app.UseForwardedHeaders(new ForwardedHeadersOptions // 6. Trust X-Forwarded-For from proxy

@@ -153,10 +153,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt).HasFilter("\"IsActive\" = true");
             e.HasQueryFilter(x => x.IsActive);
+            e.Property(x => x.RowVersion)
+             .IsRowVersion()
+             .HasColumnName("xmin")
+             .HasColumnType("xid");
             e.HasOne(x => x.Region)
              .WithMany()
              .HasForeignKey(x => x.RegionId)
-             .IsRequired();
+             .IsRequired()
+             .OnDelete(DeleteBehavior.Restrict);
         });
 
         // Territory

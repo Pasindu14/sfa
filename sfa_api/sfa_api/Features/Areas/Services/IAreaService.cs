@@ -12,4 +12,5 @@ public interface IAreaService
     Task<AreaDto> UpdateAsync(int id, UpdateAreaRequest request, int? callerId, CancellationToken ct = default);
     Task ActivateAsync(int id, int? callerId, CancellationToken ct = default);
     Task DeactivateAsync(int id, int? callerId, CancellationToken ct = default);
+    Task DeleteAsync(int id, int? callerId, CancellationToken ct = default);
 }

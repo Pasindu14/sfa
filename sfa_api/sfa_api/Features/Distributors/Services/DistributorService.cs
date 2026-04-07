@@ -31,7 +31,7 @@ public class DistributorService(
     public async Task<DistributorListDto> GetAllAsync(int page, int pageSize, string? search = null, bool? isActive = null, CancellationToken ct = default)
     {
         var cacheKey = $"distributors:list:{page}:{pageSize}:{search}:{isActive}";
-        var cached = await _cache.GetAsync<DistributorListDto>(cacheKey);
+        var cached = await _cache.GetAsync<DistributorListDto>(cacheKey, ct);
         if (cached is not null) return cached;
 
         var skip = (page - 1) * pageSize;
@@ -43,7 +43,7 @@ public class DistributorService(
             PageSize: pageSize
         );
 
-        await _cache.SetAsync(cacheKey, result, CacheTtl);
+        await _cache.SetAsync(cacheKey, result, CacheTtl, ct);
         return result;
     }
 

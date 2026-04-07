@@ -10,11 +10,11 @@ public class DistributedCacheService(
     private readonly IDistributedCache _cache = cache;
     private readonly ILogger<DistributedCacheService> _logger = logger;
 
-    public async Task<T?> GetAsync<T>(string key)
+    public async Task<T?> GetAsync<T>(string key, CancellationToken ct = default)
     {
         try
         {
-            var bytes = await _cache.GetAsync(key);
+            var bytes = await _cache.GetAsync(key, ct);
             if (bytes == null) return default;
             return JsonSerializer.Deserialize<T>(bytes);
         }
@@ -25,7 +25,7 @@ public class DistributedCacheService(
         }
     }
 
-    public async Task SetAsync<T>(string key, T value, TimeSpan ttl)
+    public async Task SetAsync<T>(string key, T value, TimeSpan ttl, CancellationToken ct = default)
     {
         try
         {
@@ -33,7 +33,7 @@ public class DistributedCacheService(
             await _cache.SetAsync(key, bytes, new DistributedCacheEntryOptions
             {
                 AbsoluteExpirationRelativeToNow = ttl
-            });
+            }, ct);
         }
         catch (Exception ex)
         {
@@ -41,11 +41,11 @@ public class DistributedCacheService(
         }
     }
 
-    public async Task RemoveAsync(string key)
+    public async Task RemoveAsync(string key, CancellationToken ct = default)
     {
         try
         {
-            await _cache.RemoveAsync(key);
+            await _cache.RemoveAsync(key, ct);
         }
         catch (Exception ex)
         {

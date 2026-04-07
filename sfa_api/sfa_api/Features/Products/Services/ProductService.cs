@@ -28,7 +28,7 @@ public class ProductService(
     public async Task<ProductListDto> GetAllAsync(int page, int pageSize, string? search = null, CancellationToken ct = default)
     {
         var cacheKey = $"products:list:{page}:{pageSize}:{search}";
-        var cached = await _cache.GetAsync<ProductListDto>(cacheKey);
+        var cached = await _cache.GetAsync<ProductListDto>(cacheKey, ct);
         if (cached is not null) return cached;
 
         var skip = (page - 1) * pageSize;
@@ -40,7 +40,7 @@ public class ProductService(
             PageSize: pageSize
         );
 
-        await _cache.SetAsync(cacheKey, result, CacheTtl);
+        await _cache.SetAsync(cacheKey, result, CacheTtl, ct);
         return result;
     }
 

@@ -46,17 +46,9 @@ public class AreaServiceTests
         Region = CreateFakeRegion(regionId)
     };
 
-    private static CreateAreaRequest CreateValidCreateRequest() => new()
-    {
-        Name = "North Area",
-        RegionId = 1
-    };
+    private static CreateAreaRequest CreateValidCreateRequest() => new("North Area", 1);
 
-    private static UpdateAreaRequest CreateValidUpdateRequest() => new()
-    {
-        Name = "Updated Area",
-        RegionId = 1
-    };
+    private static UpdateAreaRequest CreateValidUpdateRequest() => new("Updated Area", 1, 1u);
 
     // ─────────────────────────────────────────────────
     // GetByIdAsync
@@ -268,7 +260,7 @@ public class AreaServiceTests
     [Fact]
     public async Task UpdateAsync_NonExistentArea_ThrowsNotFoundException()
     {
-        _repoMock.Setup(r => r.GetByIdAsync(99, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetByIdTrackedAsync(99, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Area?)null);
 
         var act = () => _sut.UpdateAsync(99, CreateValidUpdateRequest(), callerId: 1);
@@ -281,8 +273,8 @@ public class AreaServiceTests
     public async Task UpdateAsync_RegionNotFound_ThrowsNotFoundException()
     {
         var area = CreateFakeArea();
-        var request = new UpdateAreaRequest { Name = "New Name", RegionId = 99 };
-        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+        var request = new UpdateAreaRequest("New Name", 99, 1u);
+        _repoMock.Setup(r => r.GetByIdTrackedAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(area);
         _repoMock.Setup(r => r.RegionExistsAsync(99, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(false);
@@ -297,8 +289,8 @@ public class AreaServiceTests
     public async Task UpdateAsync_DuplicateName_ThrowsDuplicateResourceException()
     {
         var area = CreateFakeArea();
-        var request = new UpdateAreaRequest { Name = "Taken Area", RegionId = 1 };
-        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+        var request = new UpdateAreaRequest("Taken Area", 1, 1u);
+        _repoMock.Setup(r => r.GetByIdTrackedAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(area);
         _repoMock.Setup(r => r.RegionExistsAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(true);
@@ -316,8 +308,8 @@ public class AreaServiceTests
     {
         var area = CreateFakeArea();
         area.Name = "My Area";
-        var request = new UpdateAreaRequest { Name = "My Area", RegionId = 1 };
-        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+        var request = new UpdateAreaRequest("My Area", 1, 1u);
+        _repoMock.Setup(r => r.GetByIdTrackedAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(area);
         _repoMock.Setup(r => r.RegionExistsAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(true);
@@ -334,8 +326,8 @@ public class AreaServiceTests
     public async Task UpdateAsync_MutatesAreaFieldsCorrectly()
     {
         var area = CreateFakeArea();
-        var request = new UpdateAreaRequest { Name = "Renamed Area", RegionId = 2 };
-        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+        var request = new UpdateAreaRequest("Renamed Area", 2, 1u);
+        _repoMock.Setup(r => r.GetByIdTrackedAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(area);
         _repoMock.Setup(r => r.RegionExistsAsync(2, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(true);
@@ -345,6 +337,10 @@ public class AreaServiceTests
         updatedArea.Name = "Renamed Area";
         _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(updatedArea);
+        _repoMock.Setup(r => r.UpdateAsync(It.IsAny<Area>(), It.IsAny<CancellationToken>()))
+                 .Returns(Task.CompletedTask);
+        _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
+                 .Returns(Task.CompletedTask);
 
         var result = await _sut.UpdateAsync(1, request, callerId: 1);
 
@@ -356,7 +352,7 @@ public class AreaServiceTests
     public async Task UpdateAsync_SetsAuditFields()
     {
         var area = CreateFakeArea();
-        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetByIdTrackedAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(area);
         SetupSuccessfulUpdate(area, CreateValidUpdateRequest(), 1);
 
@@ -371,7 +367,7 @@ public class AreaServiceTests
     {
         var area = CreateFakeArea();
         var request = CreateValidUpdateRequest();
-        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetByIdTrackedAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(area);
         SetupSuccessfulUpdate(area, request, 1);
 
@@ -388,7 +384,7 @@ public class AreaServiceTests
     public async Task ActivateAsync_ExistingArea_SetsIsActiveTrue()
     {
         var area = CreateFakeArea(isActive: false);
-        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetByIdTrackedAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(area);
 
         await _sut.ActivateAsync(1, callerId: 1);
@@ -401,7 +397,7 @@ public class AreaServiceTests
     [Fact]
     public async Task ActivateAsync_NonExistentArea_ThrowsNotFoundException()
     {
-        _repoMock.Setup(r => r.GetByIdAsync(99, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetByIdTrackedAsync(99, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Area?)null);
 
         var act = () => _sut.ActivateAsync(99, callerId: 1);
@@ -414,7 +410,7 @@ public class AreaServiceTests
     public async Task ActivateAsync_SetsAuditFields()
     {
         var area = CreateFakeArea(isActive: false);
-        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetByIdTrackedAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(area);
 
         await _sut.ActivateAsync(1, callerId: 8);
@@ -431,7 +427,7 @@ public class AreaServiceTests
     public async Task DeactivateAsync_ExistingArea_SetsIsActiveFalse()
     {
         var area = CreateFakeArea(isActive: true);
-        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetByIdTrackedAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(area);
 
         await _sut.DeactivateAsync(1, callerId: 1);
@@ -444,7 +440,7 @@ public class AreaServiceTests
     [Fact]
     public async Task DeactivateAsync_NonExistentArea_ThrowsNotFoundException()
     {
-        _repoMock.Setup(r => r.GetByIdAsync(99, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetByIdTrackedAsync(99, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Area?)null);
 
         var act = () => _sut.DeactivateAsync(99, callerId: 1);
@@ -457,7 +453,7 @@ public class AreaServiceTests
     public async Task DeactivateAsync_SetsAuditFields()
     {
         var area = CreateFakeArea(isActive: true);
-        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetByIdTrackedAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(area);
 
         await _sut.DeactivateAsync(1, callerId: 6);
@@ -492,7 +488,7 @@ public class AreaServiceTests
     /// <summary>
     /// Sets up all repo calls required for a successful UpdateAsync flow
     /// (region exists, no name duplicate, update + save + re-fetch).
-    /// Note: GetByIdAsync for the initial fetch must be set up by the calling test.
+    /// Note: GetByIdTrackedAsync for the initial fetch must be set up by the calling test.
     /// </summary>
     private void SetupSuccessfulUpdate(Area existingArea, UpdateAreaRequest request, int areaId)
     {

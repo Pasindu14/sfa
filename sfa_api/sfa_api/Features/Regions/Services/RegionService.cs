@@ -28,7 +28,7 @@ public class RegionService(
     public async Task<RegionListDto> GetAllAsync(int page, int pageSize, string? search = null, CancellationToken ct = default)
     {
         var cacheKey = $"regions:list:{page}:{pageSize}:{search}";
-        var cached = await _cache.GetAsync<RegionListDto>(cacheKey);
+        var cached = await _cache.GetAsync<RegionListDto>(cacheKey, ct);
         if (cached is not null) return cached;
 
         var skip = (page - 1) * pageSize;
@@ -40,7 +40,7 @@ public class RegionService(
             PageSize: pageSize
         );
 
-        await _cache.SetAsync(cacheKey, result, CacheTtl);
+        await _cache.SetAsync(cacheKey, result, CacheTtl, ct);
         return result;
     }
 

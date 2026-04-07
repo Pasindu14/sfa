@@ -28,7 +28,7 @@ public class TerritoryService(
     public async Task<TerritoryListDto> GetAllAsync(int page, int pageSize, int? areaId = null, bool? isActive = null, string? search = null, CancellationToken ct = default)
     {
         var cacheKey = $"territories:list:{page}:{pageSize}:{areaId}:{isActive}:{search}";
-        var cached = await _cache.GetAsync<TerritoryListDto>(cacheKey);
+        var cached = await _cache.GetAsync<TerritoryListDto>(cacheKey, ct);
         if (cached is not null) return cached;
 
         var skip = (page - 1) * pageSize;
@@ -40,7 +40,7 @@ public class TerritoryService(
             PageSize: pageSize
         );
 
-        await _cache.SetAsync(cacheKey, result, CacheTtl);
+        await _cache.SetAsync(cacheKey, result, CacheTtl, ct);
         return result;
     }
 

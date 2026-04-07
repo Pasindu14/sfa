@@ -8,11 +8,7 @@ public class CreateAreaValidatorTests
 {
     private readonly CreateAreaValidator _validator = new();
 
-    private static CreateAreaRequest ValidRequest() => new()
-    {
-        Name = "North Area",
-        RegionId = 1
-    };
+    private static CreateAreaRequest ValidRequest() => new("North Area", 1);
 
     // ─────────────────────────────────────────────────
     // Valid request — baseline
@@ -34,8 +30,7 @@ public class CreateAreaValidatorTests
     [InlineData(null)]
     public void Name_Empty_Fails(string? name)
     {
-        var req = ValidRequest();
-        req.Name = name!;
+        var req = new CreateAreaRequest(name!, 1);
         var result = _validator.TestValidate(req);
         result.ShouldHaveValidationErrorFor(x => x.Name)
               .WithErrorMessage("Name is required.");
@@ -44,8 +39,7 @@ public class CreateAreaValidatorTests
     [Fact]
     public void Name_ExceedsMaxLength_Fails()
     {
-        var req = ValidRequest();
-        req.Name = new string('A', 101);
+        var req = new CreateAreaRequest(new string('A', 101), 1);
         var result = _validator.TestValidate(req);
         result.ShouldHaveValidationErrorFor(x => x.Name)
               .WithErrorMessage("Name must not exceed 100 characters.");
@@ -54,8 +48,7 @@ public class CreateAreaValidatorTests
     [Fact]
     public void Name_ExactlyMaxLength_Passes()
     {
-        var req = ValidRequest();
-        req.Name = new string('A', 100);
+        var req = new CreateAreaRequest(new string('A', 100), 1);
         var result = _validator.TestValidate(req);
         result.ShouldNotHaveValidationErrorFor(x => x.Name);
     }
@@ -67,8 +60,7 @@ public class CreateAreaValidatorTests
     [Fact]
     public void RegionId_Zero_Fails()
     {
-        var req = ValidRequest();
-        req.RegionId = 0;
+        var req = new CreateAreaRequest("North Area", 0);
         var result = _validator.TestValidate(req);
         result.ShouldHaveValidationErrorFor(x => x.RegionId)
               .WithErrorMessage("RegionId must be a valid region.");
@@ -77,8 +69,7 @@ public class CreateAreaValidatorTests
     [Fact]
     public void RegionId_Negative_Fails()
     {
-        var req = ValidRequest();
-        req.RegionId = -5;
+        var req = new CreateAreaRequest("North Area", -5);
         var result = _validator.TestValidate(req);
         result.ShouldHaveValidationErrorFor(x => x.RegionId)
               .WithErrorMessage("RegionId must be a valid region.");
@@ -87,8 +78,7 @@ public class CreateAreaValidatorTests
     [Fact]
     public void RegionId_Positive_Passes()
     {
-        var req = ValidRequest();
-        req.RegionId = 1;
+        var req = new CreateAreaRequest("North Area", 1);
         var result = _validator.TestValidate(req);
         result.ShouldNotHaveValidationErrorFor(x => x.RegionId);
     }

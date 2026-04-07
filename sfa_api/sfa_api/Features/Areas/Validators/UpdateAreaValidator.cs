@@ -13,5 +13,8 @@ public class UpdateAreaValidator : AbstractValidator<UpdateAreaRequest>
 
         RuleFor(x => x.RegionId)
             .GreaterThan(0).WithMessage("RegionId must be a valid region.");
+
+        RuleFor(x => x.RowVersion)
+            .NotEqual(0u).WithMessage("RowVersion is required for optimistic concurrency.");
     }
 }

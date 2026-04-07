@@ -16,6 +16,9 @@ public class Area
     public int? CreatedBy { get; set; }
     public int? UpdatedBy { get; set; }
 
+    // Optimistic concurrency — maps to PostgreSQL xmin system column
+    public uint RowVersion { get; set; }
+
     // Navigation
     public Region? Region { get; set; }
 }

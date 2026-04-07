@@ -28,7 +28,7 @@ public class DivisionService(
     public async Task<DivisionListDto> GetAllAsync(int page, int pageSize, int? territoryId = null, int? areaId = null, int? regionId = null, bool? isActive = null, string? search = null, CancellationToken ct = default)
     {
         var cacheKey = $"divisions:list:{page}:{pageSize}:{territoryId}:{areaId}:{regionId}:{isActive}:{search}";
-        var cached = await _cache.GetAsync<DivisionListDto>(cacheKey);
+        var cached = await _cache.GetAsync<DivisionListDto>(cacheKey, ct);
         if (cached is not null) return cached;
 
         var skip = (page - 1) * pageSize;
@@ -40,7 +40,7 @@ public class DivisionService(
             PageSize: pageSize
         );
 
-        await _cache.SetAsync(cacheKey, result, CacheTtl);
+        await _cache.SetAsync(cacheKey, result, CacheTtl, ct);
         return result;
     }
 

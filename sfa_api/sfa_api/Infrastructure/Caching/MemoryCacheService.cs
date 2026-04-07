@@ -7,13 +7,13 @@ public class MemoryCacheService(IMemoryCache cache, ILogger<MemoryCacheService> 
     private readonly IMemoryCache _cache = cache;
     private readonly ILogger<MemoryCacheService> _logger = logger;
 
-    public Task<T?> GetAsync<T>(string key)
+    public Task<T?> GetAsync<T>(string key, CancellationToken ct = default)
     {
         _cache.TryGetValue(key, out T? value);
         return Task.FromResult(value);
     }
 
-    public Task SetAsync<T>(string key, T value, TimeSpan ttl)
+    public Task SetAsync<T>(string key, T value, TimeSpan ttl, CancellationToken ct = default)
     {
         _cache.Set(key, value, new MemoryCacheEntryOptions
         {
@@ -22,7 +22,7 @@ public class MemoryCacheService(IMemoryCache cache, ILogger<MemoryCacheService> 
         return Task.CompletedTask;
     }
 
-    public Task RemoveAsync(string key)
+    public Task RemoveAsync(string key, CancellationToken ct = default)
     {
         _cache.Remove(key);
         return Task.CompletedTask;
