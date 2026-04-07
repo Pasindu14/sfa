@@ -379,65 +379,216 @@ class _LoadedBody extends StatelessWidget {
     final reasonController = TextEditingController();
     showDialog<String?>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
-        title: Text(
-          'Request Cancellation',
-          style: GoogleFonts.barlowCondensed(
-            fontSize: 18.sp,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        content: Column(
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20.r)),
+        insetPadding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 32.h),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Send a cancellation request to your manager for ${item.userName}\'s route assignment?',
-              style: GoogleFonts.barlow(fontSize: 14.sp),
-            ),
-            SizedBox(height: 14.h),
-            TextField(
-              controller: reasonController,
-              maxLines: 2,
-              decoration: InputDecoration(
-                hintText: 'Reason (e.g. route flooded, road blocked)',
-                hintStyle: GoogleFonts.barlow(
-                  fontSize: 13.sp,
-                  color: AppColors.foregroundMuted,
+            // ── Gradient header ──────────────────────────────────────────
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 18.h),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.primaryDark, AppColors.primary],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.r),
-                  borderSide: BorderSide(color: AppColors.surfaceVariant),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.r),
-                  borderSide: BorderSide(color: AppColors.primary),
-                ),
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                borderRadius:
+                    BorderRadius.vertical(top: Radius.circular(20.r)),
               ),
-              style: GoogleFonts.barlow(fontSize: 13.sp),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: 8.w, vertical: 3.h),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(4.r),
+                    ),
+                    child: Text(
+                      'ROUTE CANCELLATION',
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 9.sp,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 2,
+                        color: Colors.white.withValues(alpha: 0.85),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 8.h),
+                  Text(
+                    item.userName,
+                    style: GoogleFonts.barlowCondensed(
+                      fontSize: 22.sp,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: -0.3,
+                      height: 1.1,
+                    ),
+                  ),
+                  SizedBox(height: 4.h),
+                  Row(
+                    children: [
+                      Icon(Icons.route_rounded,
+                          size: 11.r,
+                          color: Colors.white.withValues(alpha: 0.7)),
+                      SizedBox(width: 4.w),
+                      Text(
+                        item.routeName,
+                        style: GoogleFonts.barlow(
+                          fontSize: 12.sp,
+                          color: Colors.white.withValues(alpha: 0.75),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            // ── Body ─────────────────────────────────────────────────────
+            Padding(
+              padding:
+                  EdgeInsets.fromLTRB(20.w, 18.h, 20.w, 16.h),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'This request will be sent to your manager for approval. Please provide a reason.',
+                    style: GoogleFonts.barlow(
+                      fontSize: 13.sp,
+                      color: AppColors.foregroundMuted,
+                      height: 1.45,
+                    ),
+                  ),
+                  SizedBox(height: 14.h),
+                  TextField(
+                    controller: reasonController,
+                    maxLines: 3,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      hintText:
+                          'e.g. Route flooded, road blocked by accident…',
+                      hintStyle: GoogleFonts.barlow(
+                        fontSize: 12.sp,
+                        color: AppColors.foregroundMuted
+                            .withValues(alpha: 0.6),
+                      ),
+                      filled: true,
+                      fillColor: AppColors.surface,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10.r),
+                        borderSide: BorderSide(
+                            color: AppColors.surfaceVariant),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10.r),
+                        borderSide: BorderSide(
+                            color: AppColors.surfaceVariant),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10.r),
+                        borderSide: BorderSide(
+                            color: AppColors.primary, width: 1.5),
+                      ),
+                      contentPadding: EdgeInsets.symmetric(
+                          horizontal: 14.w, vertical: 12.h),
+                    ),
+                    style: GoogleFonts.barlow(
+                        fontSize: 13.sp,
+                        color: AppColors.foreground),
+                  ),
+                  SizedBox(height: 18.h),
+                  // ── Action buttons ────────────────────────────────────
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => Navigator.of(ctx).pop(null),
+                          child: Container(
+                            padding: EdgeInsets.symmetric(vertical: 11.h),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius:
+                                  BorderRadius.circular(10.r),
+                              border: Border.all(
+                                  color: AppColors.surfaceVariant),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'Cancel',
+                                style: GoogleFonts.barlowCondensed(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.5,
+                                  color: AppColors.foregroundMuted,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 10.w),
+                      Expanded(
+                        flex: 2,
+                        child: GestureDetector(
+                          onTap: () => Navigator.of(ctx)
+                              .pop(reasonController.text.trim()),
+                          child: Container(
+                            padding: EdgeInsets.symmetric(vertical: 11.h),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [
+                                  AppColors.primaryDark,
+                                  AppColors.primary
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius:
+                                  BorderRadius.circular(10.r),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primary
+                                      .withValues(alpha: 0.30),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.send_rounded,
+                                      size: 13.r,
+                                      color: Colors.white),
+                                  SizedBox(width: 6.w),
+                                  Text(
+                                    'SEND REQUEST',
+                                    style: GoogleFonts.barlowCondensed(
+                                      fontSize: 14.sp,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 1,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(null),
-            child: Text('Cancel',
-                style: GoogleFonts.barlow(color: AppColors.foregroundMuted)),
-          ),
-          TextButton(
-            onPressed: () =>
-                Navigator.of(ctx).pop(reasonController.text.trim()),
-            child: Text(
-              'Send Request',
-              style: GoogleFonts.barlow(
-                  color: AppColors.primary, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
       ),
     ).then((reason) {
       if (reason != null && context.mounted) {
