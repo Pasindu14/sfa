@@ -1,8 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:uswatte/core/errors/app_exception.dart';
 import 'package:uswatte/core/network/api_response.dart';
+import 'package:uswatte/features/route_assignment/data/models/daily_route_assignment_model.dart';
 import 'package:uswatte/features/route_assignment/data/models/rep_route_model.dart';
 import 'package:uswatte/features/route_assignment/data/models/rep_summary_model.dart';
+import 'package:uswatte/features/route_assignment/domain/entities/daily_route_assignment.dart';
 
 class RouteAssignmentRemoteDatasource {
   final Dio _dio;
@@ -57,6 +59,58 @@ class RouteAssignmentRemoteDatasource {
         'routeId': routeId,
         'assignedDate': dateStr,
       });
+    } on AppException {
+      rethrow;
+    } on DioException catch (e) {
+      throw _mapDioError(e);
+    } catch (_) {
+      throw const ParseException(message: 'Failed to read server response.');
+    }
+  }
+
+  Future<AssignmentsResult> getAssignments({
+    int page = 1,
+    int pageSize = 50,
+    int? userId,
+    DateTime? date,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{
+        'page': page,
+        'pageSize': pageSize,
+        if (userId != null) 'userId': userId,
+        if (date != null)
+          'date':
+              '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
+      };
+      final response = await _dio.get(
+        '/api/v1/daily-route-assignments',
+        queryParameters: queryParams,
+      );
+      final body = response.data as Map<String, dynamic>;
+      final data = body['data'] as Map<String, dynamic>;
+      final assignmentList = (data['assignments'] as List<dynamic>)
+          .map((e) =>
+              DailyRouteAssignmentModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+      return AssignmentsResult(
+        assignments: assignmentList,
+        totalCount: data['totalCount'] as int,
+        page: data['page'] as int,
+        pageSize: data['pageSize'] as int,
+      );
+    } on AppException {
+      rethrow;
+    } on DioException catch (e) {
+      throw _mapDioError(e);
+    } catch (_) {
+      throw const ParseException(message: 'Failed to read server response.');
+    }
+  }
+
+  Future<void> deleteAssignment(int id) async {
+    try {
+      await _dio.delete('/api/v1/daily-route-assignments/$id');
     } on AppException {
       rethrow;
     } on DioException catch (e) {

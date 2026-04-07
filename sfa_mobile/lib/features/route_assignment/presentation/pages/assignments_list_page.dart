@@ -1,0 +1,603 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:uswatte/core/di/injection.dart';
+import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/features/route_assignment/domain/entities/daily_route_assignment.dart';
+import 'package:uswatte/features/route_assignment/domain/usecases/delete_assignment_usecase.dart';
+import 'package:uswatte/features/route_assignment/domain/usecases/get_assignments_usecase.dart';
+import 'package:uswatte/features/route_assignment/presentation/bloc/assignments_bloc.dart';
+
+class AssignmentsListPage extends StatelessWidget {
+  const AssignmentsListPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => AssignmentsBloc(
+        getAssignments: getIt<GetAssignmentsUseCase>(),
+        deleteAssignment: getIt<DeleteAssignmentUseCase>(),
+      )..add(LoadAssignmentsRequested(date: _today())),
+      child: const _AssignmentsView(),
+    );
+  }
+
+  static DateTime _today() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
+}
+
+class _AssignmentsView extends StatelessWidget {
+  const _AssignmentsView();
+
+  @override
+  Widget build(BuildContext context) {
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+    ));
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Column(
+        children: [
+          const _Header(),
+          Expanded(
+            child: BlocConsumer<AssignmentsBloc, AssignmentsState>(
+              listenWhen: (_, s) =>
+                  s is AssignmentsLoaded && s.deleteError != null,
+              listener: (context, state) {
+                if (state is AssignmentsLoaded && state.deleteError != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(state.deleteError!),
+                      backgroundColor: Colors.red.shade700,
+                    ),
+                  );
+                }
+              },
+              builder: (context, state) {
+                if (state is AssignmentsLoading) {
+                  return const Center(
+                    child: CircularProgressIndicator(
+                        color: AppColors.primary, strokeWidth: 2),
+                  );
+                }
+                if (state is AssignmentsError) {
+                  return _ErrorBody(
+                    message: state.message,
+                    date: state.date,
+                  );
+                }
+                if (state is AssignmentsLoaded) {
+                  return _LoadedBody(state: state);
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Header ────────────────────────────────────────────────────────────────────
+class _Header extends StatelessWidget {
+  const _Header();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<AssignmentsBloc, AssignmentsState>(
+      builder: (context, state) {
+        final date = switch (state) {
+          AssignmentsLoading s => s.date,
+          AssignmentsLoaded s => s.date,
+          AssignmentsError s => s.date,
+          _ => null,
+        };
+        final selectedDate = date ?? _today();
+
+        return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [AppColors.primaryDark, AppColors.primary],
+            ),
+          ),
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(8.w, 4.h, 8.w, 16.h),
+              child: Column(
+                children: [
+                  // Back + title row
+                  Row(
+                    children: [
+                      _IconBtn(
+                        icon: Icons.arrow_back_ios_new_rounded,
+                        onTap: () => context.pop(),
+                      ),
+                      SizedBox(width: 6.w),
+                      Expanded(
+                        child: Text(
+                          'ROUTE ASSIGNMENTS',
+                          style: GoogleFonts.barlowCondensed(
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.5,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 14.h),
+                  // Date navigator
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
+                    child: Row(
+                      children: [
+                        _NavArrow(
+                          icon: Icons.chevron_left_rounded,
+                          onTap: () {
+                            final prev = selectedDate
+                                .subtract(const Duration(days: 1));
+                            context
+                                .read<AssignmentsBloc>()
+                                .add(DateChanged(prev));
+                          },
+                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: selectedDate,
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(2030),
+                                builder: (ctx, child) => Theme(
+                                  data: Theme.of(ctx).copyWith(
+                                    colorScheme: ColorScheme.light(
+                                      primary: AppColors.primary,
+                                      onPrimary: Colors.white,
+                                    ),
+                                  ),
+                                  child: child!,
+                                ),
+                              );
+                              if (picked != null && context.mounted) {
+                                context.read<AssignmentsBloc>().add(DateChanged(
+                                    DateTime(
+                                        picked.year,
+                                        picked.month,
+                                        picked.day)));
+                              }
+                            },
+                            child: Column(
+                              children: [
+                                Text(
+                                  _dateLabel(selectedDate),
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.barlowCondensed(
+                                    fontSize: 18.sp,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.5,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                if (_isToday(selectedDate))
+                                  Text(
+                                    'TODAY',
+                                    style: GoogleFonts.barlowCondensed(
+                                      fontSize: 9.sp,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 2,
+                                      color:
+                                          Colors.white.withValues(alpha: 0.65),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        _NavArrow(
+                          icon: Icons.chevron_right_rounded,
+                          onTap: () {
+                            final next =
+                                selectedDate.add(const Duration(days: 1));
+                            context
+                                .read<AssignmentsBloc>()
+                                .add(DateChanged(next));
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  DateTime _today() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
+
+  bool _isToday(DateTime date) {
+    final now = DateTime.now();
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+  }
+
+  String _dateLabel(DateTime date) {
+    const months = [
+      'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
+      'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'
+    ];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+}
+
+class _IconBtn extends StatelessWidget {
+  const _IconBtn({required this.icon, required this.onTap});
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36.r,
+        height: 36.r,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(8.r),
+        ),
+        child: Icon(icon, color: Colors.white, size: 18.r),
+      ),
+    );
+  }
+}
+
+class _NavArrow extends StatelessWidget {
+  const _NavArrow({required this.icon, required this.onTap});
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36.r,
+        height: 36.r,
+        alignment: Alignment.center,
+        child: Icon(icon,
+            color: Colors.white.withValues(alpha: 0.9), size: 22.r),
+      ),
+    );
+  }
+}
+
+// ── Loaded body ───────────────────────────────────────────────────────────────
+class _LoadedBody extends StatelessWidget {
+  const _LoadedBody({required this.state});
+  final AssignmentsLoaded state;
+
+  @override
+  Widget build(BuildContext context) {
+    if (state.assignments.isEmpty) {
+      return _EmptyState(date: state.date);
+    }
+
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: () async {
+        context
+            .read<AssignmentsBloc>()
+            .add(LoadAssignmentsRequested(date: state.date));
+        await context.read<AssignmentsBloc>().stream.firstWhere(
+              (s) => s is AssignmentsLoaded || s is AssignmentsError,
+            );
+      },
+      child: ListView.builder(
+        padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 24.h),
+        itemCount: state.assignments.length + 1,
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return Padding(
+              padding: EdgeInsets.only(bottom: 10.h),
+              child: Text(
+                '${state.totalCount} assignment${state.totalCount == 1 ? '' : 's'}',
+                style: GoogleFonts.barlow(
+                  fontSize: 12.sp,
+                  color: AppColors.foregroundMuted,
+                ),
+              ),
+            );
+          }
+          final item = state.assignments[index - 1];
+          final isDeleting = state.deletingId == item.id;
+          return _AssignmentCard(
+            assignment: item,
+            isDeleting: isDeleting,
+            onDelete: () => _confirmDelete(context, item),
+          );
+        },
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, DailyRouteAssignment item) {
+    showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
+        title: Text(
+          'Cancel Assignment',
+          style: GoogleFonts.barlowCondensed(
+            fontSize: 18.sp,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: Text(
+          'Cancel ${item.userName}\'s assignment on this route?',
+          style: GoogleFonts.barlow(fontSize: 14.sp),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('Keep',
+                style: GoogleFonts.barlow(color: AppColors.foregroundMuted)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text('Cancel Assignment',
+                style: GoogleFonts.barlow(
+                    color: Colors.red.shade600,
+                    fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    ).then((confirmed) {
+      if (confirmed == true && context.mounted) {
+        context
+            .read<AssignmentsBloc>()
+            .add(DeleteAssignmentRequested(item.id));
+      }
+    });
+  }
+}
+
+// ── Assignment card ────────────────────────────────────────────────────────────
+class _AssignmentCard extends StatelessWidget {
+  const _AssignmentCard({
+    required this.assignment,
+    required this.isDeleting,
+    required this.onDelete,
+  });
+
+  final DailyRouteAssignment assignment;
+  final bool isDeleting;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 10.h),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(color: const Color(0xFFE8E7E1)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(14.r),
+          child: Row(
+            children: [
+              // Avatar
+              Container(
+                width: 42.r,
+                height: 42.r,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(10.r),
+                ),
+                child: Center(
+                  child: Text(
+                    assignment.userName.isNotEmpty
+                        ? assignment.userName[0].toUpperCase()
+                        : '?',
+                    style: GoogleFonts.barlowCondensed(
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: 12.w),
+              // Content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      assignment.userName,
+                      style: GoogleFonts.barlow(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.foreground,
+                      ),
+                    ),
+                    SizedBox(height: 3.h),
+                    Row(
+                      children: [
+                        Icon(Icons.route_rounded,
+                            size: 12.r,
+                            color: AppColors.foregroundMuted),
+                        SizedBox(width: 4.w),
+                        Expanded(
+                          child: Text(
+                            assignment.routeName,
+                            style: GoogleFonts.barlow(
+                              fontSize: 12.sp,
+                              color: AppColors.foregroundMuted,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 8.w),
+              // Delete button
+              if (isDeleting)
+                SizedBox(
+                  width: 20.r,
+                  height: 20.r,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.red.shade400,
+                  ),
+                )
+              else
+                GestureDetector(
+                  onTap: onDelete,
+                  child: Container(
+                    width: 32.r,
+                    height: 32.r,
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                    child: Icon(
+                      Icons.delete_outline_rounded,
+                      size: 16.r,
+                      color: Colors.red.shade400,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Empty state ───────────────────────────────────────────────────────────────
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({this.date});
+  final DateTime? date;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 32.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64.r,
+              height: 64.r,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.event_busy_rounded,
+                  size: 30.r, color: AppColors.primary),
+            ),
+            SizedBox(height: 16.h),
+            Text(
+              'No assignments',
+              style: GoogleFonts.barlowCondensed(
+                fontSize: 20.sp,
+                fontWeight: FontWeight.w700,
+                color: AppColors.foreground,
+              ),
+            ),
+            SizedBox(height: 6.h),
+            Text(
+              'No routes have been assigned for this day yet.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.barlow(
+                fontSize: 13.sp,
+                color: AppColors.foregroundMuted,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Error body ────────────────────────────────────────────────────────────────
+class _ErrorBody extends StatelessWidget {
+  const _ErrorBody({required this.message, this.date});
+  final String message;
+  final DateTime? date;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 32.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.wifi_off_rounded,
+                size: 36.r, color: AppColors.foregroundMuted),
+            SizedBox(height: 14.h),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.barlow(
+                fontSize: 14.sp,
+                color: AppColors.foregroundMuted,
+              ),
+            ),
+            SizedBox(height: 16.h),
+            TextButton.icon(
+              onPressed: () => context
+                  .read<AssignmentsBloc>()
+                  .add(LoadAssignmentsRequested(date: date)),
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Retry'),
+              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

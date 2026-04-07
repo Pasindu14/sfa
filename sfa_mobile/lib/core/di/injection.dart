@@ -15,6 +15,8 @@ import 'package:uswatte/features/route_assignment/data/datasources/route_assignm
 import 'package:uswatte/features/route_assignment/data/repositories/route_assignment_repository_impl.dart';
 import 'package:uswatte/features/route_assignment/domain/repositories/route_assignment_repository.dart';
 import 'package:uswatte/features/route_assignment/domain/usecases/create_assignment_usecase.dart';
+import 'package:uswatte/features/route_assignment/domain/usecases/delete_assignment_usecase.dart';
+import 'package:uswatte/features/route_assignment/domain/usecases/get_assignments_usecase.dart';
 import 'package:uswatte/features/route_assignment/domain/usecases/get_my_reps_usecase.dart';
 import 'package:uswatte/features/route_assignment/domain/usecases/get_rep_routes_usecase.dart';
 
@@ -67,4 +69,8 @@ Future<void> configureDependencies() async {
       () => GetRepRoutesUseCase(getIt<RouteAssignmentRepository>()));
   getIt.registerLazySingleton(
       () => CreateAssignmentUseCase(getIt<RouteAssignmentRepository>()));
+  getIt.registerLazySingleton(
+      () => GetAssignmentsUseCase(getIt<RouteAssignmentRepository>()));
+  getIt.registerLazySingleton(
+      () => DeleteAssignmentUseCase(getIt<RouteAssignmentRepository>()));
 }

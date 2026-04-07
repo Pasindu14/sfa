@@ -671,14 +671,12 @@ class _SearchableSelectField<T> extends StatelessWidget {
         height: 50.h,
         padding: EdgeInsets.symmetric(horizontal: 14.w),
         decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.05)
-              : const Color(0xFFF6F5EF),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(10.r),
           border: Border.all(
             color: isSelected
-                ? AppColors.primary.withValues(alpha: 0.30)
-                : const Color(0xFFEEEDE6),
+                ? AppColors.primary.withValues(alpha: 0.40)
+                : const Color(0xFFE0DFD9),
           ),
         ),
         child: Row(
@@ -845,7 +843,7 @@ class _SearchableSheetContentState<T>
                     Padding(
                       padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 14.h),
                       child: Container(
-                        height: 44.h,
+                        height: 52.h,
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(10.r),
@@ -861,7 +859,6 @@ class _SearchableSheetContentState<T>
                             Expanded(
                               child: TextField(
                                 controller: _controller,
-                                autofocus: true,
                                 cursorColor: AppColors.primary,
                                 style: GoogleFonts.barlow(
                                     fontSize: 14.sp,
@@ -874,6 +871,8 @@ class _SearchableSheetContentState<T>
                                   border: InputBorder.none,
                                   enabledBorder: InputBorder.none,
                                   focusedBorder: InputBorder.none,
+                                  filled: true,
+                                  fillColor: Colors.white,
                                   isDense: true,
                                   contentPadding: EdgeInsets.zero,
                                 ),

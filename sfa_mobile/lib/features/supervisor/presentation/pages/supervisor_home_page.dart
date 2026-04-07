@@ -324,11 +324,93 @@ class _ActionsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
-      child: _PrimaryAction(
-        icon: Icons.map_rounded,
-        title: 'ASSIGN DAILY ROUTE',
-        subtitle: 'Schedule a route for a sales rep',
-        onTap: () => context.go('/supervisor/assign-route'),
+      child: Column(
+        children: [
+          _PrimaryAction(
+            icon: Icons.map_rounded,
+            title: 'ASSIGN DAILY ROUTE',
+            subtitle: 'Schedule a route for a sales rep',
+            onTap: () => context.go('/supervisor/assign-route'),
+          ),
+          SizedBox(height: 10.h),
+          _SecondaryAction(
+            icon: Icons.list_alt_rounded,
+            title: "VIEW ASSIGNMENTS",
+            subtitle: "See today's route assignments",
+            onTap: () => context.go('/supervisor/assignments'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SecondaryAction extends StatelessWidget {
+  const _SecondaryAction({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String title, subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12.r),
+        child: Ink(
+          height: 66.h,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(12.r),
+            border: Border.all(color: AppColors.surfaceVariant),
+          ),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: Row(
+              children: [
+                Container(
+                  width: 36.r,
+                  height: 36.r,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  child: Icon(icon, color: AppColors.primary, size: 18.r),
+                ),
+                SizedBox(width: 14.w),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title,
+                          style: GoogleFonts.barlowCondensed(
+                            fontSize: 17.sp,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.2,
+                            height: 1.0,
+                            color: AppColors.foreground,
+                          )),
+                      Text(subtitle,
+                          style: GoogleFonts.barlow(
+                            fontSize: 11.sp,
+                            color: AppColors.foregroundMuted,
+                          )),
+                    ],
+                  ),
+                ),
+                Icon(Icons.arrow_forward_ios_rounded,
+                    color: AppColors.foregroundMuted, size: 13.r),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

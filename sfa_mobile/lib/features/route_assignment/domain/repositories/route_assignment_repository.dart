@@ -1,3 +1,4 @@
+import 'package:uswatte/features/route_assignment/domain/entities/daily_route_assignment.dart';
 import 'package:uswatte/features/route_assignment/domain/entities/rep_route.dart';
 import 'package:uswatte/features/route_assignment/domain/entities/rep_summary.dart';
 
@@ -9,4 +10,11 @@ abstract class RouteAssignmentRepository {
     required int routeId,
     required DateTime assignedDate,
   });
+  Future<AssignmentsResult> getAssignments({
+    int page = 1,
+    int pageSize = 50,
+    int? userId,
+    DateTime? date,
+  });
+  Future<void> deleteAssignment(int id);
 }
