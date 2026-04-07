@@ -374,10 +374,12 @@ class _FormBody extends StatelessWidget {
             label: 'SALES REP',
             icon: Icons.person_rounded,
             isComplete: true,
-            child: _DropdownField<RepSummary>(
+            child: _SearchableSelectField<RepSummary>(
               value: selectedRep,
               items: reps,
               labelBuilder: (r) => r.userName,
+              placeholder: 'Select a sales rep...',
+              sheetTitle: 'SELECT SALES REP',
               enabled: !isSaving,
               onChanged: (rep) {
                 if (rep != null) {
@@ -398,10 +400,12 @@ class _FormBody extends StatelessWidget {
                 ? _RouteLoadingIndicator()
                 : routes.isEmpty
                     ? _NoRoutesWarning()
-                    : _DropdownField<RepRoute>(
+                    : _SearchableSelectField<RepRoute>(
                         value: selectedRoute,
                         items: routes,
                         labelBuilder: (r) => r.routeName,
+                        placeholder: 'Select a route...',
+                        sheetTitle: 'SELECT ROUTE',
                         enabled: !isSaving,
                         onChanged: (route) {
                           if (route != null) {
@@ -620,51 +624,439 @@ class _StepConnector extends StatelessWidget {
   }
 }
 
-// ── Generic dropdown ──────────────────────────────────────────────────────────
-class _DropdownField<T> extends StatelessWidget {
+// ── Searchable select field ───────────────────────────────────────────────────
+class _SearchableSelectField<T> extends StatelessWidget {
   final T? value;
   final List<T> items;
   final String Function(T) labelBuilder;
+  final String placeholder;
+  final String sheetTitle;
   final bool enabled;
   final ValueChanged<T?>? onChanged;
 
-  const _DropdownField({
+  const _SearchableSelectField({
     required this.value,
     required this.items,
     required this.labelBuilder,
+    required this.placeholder,
+    required this.sheetTitle,
     required this.enabled,
     required this.onChanged,
   });
 
+  void _openSheet(BuildContext context) {
+    showModalBottomSheet<T>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _SearchableSheetContent<T>(
+        items: items,
+        selectedValue: value,
+        labelBuilder: labelBuilder,
+        title: sheetTitle,
+        onSelected: (item) {
+          Navigator.of(context).pop();
+          onChanged?.call(item);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 50.h,
-      padding: EdgeInsets.symmetric(horizontal: 14.w),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF6F5EF),
-        borderRadius: BorderRadius.circular(10.r),
-        border: Border.all(color: const Color(0xFFEEEDE6)),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<T>(
-          value: value,
-          isExpanded: true,
-          icon: Icon(Icons.keyboard_arrow_down_rounded,
-              color: enabled ? AppColors.primary : AppColors.foregroundMuted,
-              size: 20.r),
-          style: GoogleFonts.barlow(
-            fontSize: 15.sp,
-            fontWeight: FontWeight.w500,
-            color: AppColors.foreground,
+    final isSelected = value != null;
+    return GestureDetector(
+      onTap: enabled ? () => _openSheet(context) : null,
+      child: Container(
+        height: 50.h,
+        padding: EdgeInsets.symmetric(horizontal: 14.w),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: 0.05)
+              : const Color(0xFFF6F5EF),
+          borderRadius: BorderRadius.circular(10.r),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.primary.withValues(alpha: 0.30)
+                : const Color(0xFFEEEDE6),
           ),
-          items: items
-              .map((item) => DropdownMenuItem<T>(
-                    value: item,
-                    child: Text(labelBuilder(item)),
-                  ))
-              .toList(),
-          onChanged: enabled ? onChanged : null,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isSelected ? Icons.check_circle_outline_rounded : Icons.search_rounded,
+              size: 16.r,
+              color: isSelected ? AppColors.primary : AppColors.foregroundMuted,
+            ),
+            SizedBox(width: 10.w),
+            Expanded(
+              child: Text(
+                isSelected ? labelBuilder(value as T) : placeholder,
+                style: GoogleFonts.barlow(
+                  fontSize: 14.sp,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  color: isSelected ? AppColors.foreground : AppColors.foregroundMuted,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Icon(Icons.keyboard_arrow_down_rounded,
+                color: enabled ? AppColors.primary : AppColors.foregroundMuted,
+                size: 20.r),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Searchable bottom sheet content ──────────────────────────────────────────
+class _SearchableSheetContent<T> extends StatefulWidget {
+  final List<T> items;
+  final T? selectedValue;
+  final String Function(T) labelBuilder;
+  final String title;
+  final ValueChanged<T> onSelected;
+
+  const _SearchableSheetContent({
+    required this.items,
+    required this.selectedValue,
+    required this.labelBuilder,
+    required this.title,
+    required this.onSelected,
+  });
+
+  @override
+  State<_SearchableSheetContent<T>> createState() =>
+      _SearchableSheetContentState<T>();
+}
+
+class _SearchableSheetContentState<T>
+    extends State<_SearchableSheetContent<T>> {
+  final _controller = TextEditingController();
+  late List<T> _filtered;
+
+  @override
+  void initState() {
+    super.initState();
+    _filtered = widget.items;
+    _controller.addListener(_onSearch);
+  }
+
+  void _onSearch() {
+    final q = _controller.text.toLowerCase();
+    setState(() {
+      _filtered = q.isEmpty
+          ? widget.items
+          : widget.items
+              .where((i) => widget.labelBuilder(i).toLowerCase().contains(q))
+              .toList();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.65,
+      minChildSize: 0.4,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (_, scrollController) => ClipRRect(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+        child: Container(
+          color: Colors.white,
+          child: Column(
+            children: [
+              // ── Orange header with handle ─────────────────────────────────
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [AppColors.primaryDark, AppColors.primary],
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    // Handle on orange bg
+                    SizedBox(height: 10.h),
+                    Container(
+                      width: 32.w,
+                      height: 3.5.h,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(2.r),
+                      ),
+                    ),
+                    SizedBox(height: 12.h),
+                    // Title row
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(20.w, 0, 16.w, 16.h),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.title,
+                                  style: GoogleFonts.barlowCondensed(
+                                    fontSize: 19.sp,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 1.2,
+                                    color: Colors.white,
+                                    height: 1.0,
+                                  ),
+                                ),
+                                SizedBox(height: 2.h),
+                                Text(
+                                  '${widget.items.length} available',
+                                  style: GoogleFonts.barlow(
+                                    fontSize: 11.sp,
+                                    color: Colors.white.withValues(alpha: 0.65),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => Navigator.of(context).pop(),
+                            child: Container(
+                              width: 32.r,
+                              height: 32.r,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.18),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(Icons.close_rounded,
+                                  size: 15.r, color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Search bar embedded in orange header
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 14.h),
+                      child: Container(
+                        height: 44.h,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10.r),
+                        ),
+                        child: Row(
+                          children: [
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 12.w),
+                              child: Icon(Icons.search_rounded,
+                                  size: 17.r,
+                                  color: const Color(0xFFADADA5)),
+                            ),
+                            Expanded(
+                              child: TextField(
+                                controller: _controller,
+                                autofocus: true,
+                                cursorColor: AppColors.primary,
+                                style: GoogleFonts.barlow(
+                                    fontSize: 14.sp,
+                                    color: AppColors.foreground),
+                                decoration: InputDecoration(
+                                  hintText: 'Search...',
+                                  hintStyle: GoogleFonts.barlow(
+                                      fontSize: 14.sp,
+                                      color: const Color(0xFFADADA5)),
+                                  border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                              ),
+                            ),
+                            if (_controller.text.isNotEmpty)
+                              GestureDetector(
+                                onTap: () => _controller.clear(),
+                                child: Padding(
+                                  padding:
+                                      EdgeInsets.symmetric(horizontal: 10.w),
+                                  child: Icon(Icons.cancel_rounded,
+                                      size: 16.r,
+                                      color: const Color(0xFFADADA5)),
+                                ),
+                              )
+                            else
+                              SizedBox(width: 12.w),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // ── Results count bar ─────────────────────────────────────────
+              Container(
+                color: const Color(0xFFF8F8F5),
+                padding:
+                    EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
+                child: Row(
+                  children: [
+                    Text(
+                      _controller.text.isEmpty
+                          ? 'All results'
+                          : '${_filtered.length} result${_filtered.length == 1 ? '' : 's'}',
+                      style: GoogleFonts.barlow(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFFADADA5),
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Divider(height: 1, color: const Color(0xFFF0EFEA)),
+              // ── List ──────────────────────────────────────────────────────
+              Expanded(
+                child: _filtered.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.search_off_rounded,
+                                size: 34.r,
+                                color: const Color(0xFFCCCCC4)),
+                            SizedBox(height: 10.h),
+                            Text('No results',
+                                style: GoogleFonts.barlow(
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w500,
+                                    color: const Color(0xFFADADA5))),
+                            SizedBox(height: 2.h),
+                            Text('Try a different search term',
+                                style: GoogleFonts.barlow(
+                                    fontSize: 12.sp,
+                                    color: const Color(0xFFCCCCC4))),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        controller: scrollController,
+                        padding: EdgeInsets.only(bottom: 24.h),
+                        itemCount: _filtered.length,
+                        itemBuilder: (_, index) {
+                          final item = _filtered[index];
+                          final isActive = item == widget.selectedValue;
+                          return _SheetListTile<T>(
+                            item: item,
+                            isActive: isActive,
+                            labelBuilder: widget.labelBuilder,
+                            onTap: () => widget.onSelected(item),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Sheet list tile ───────────────────────────────────────────────────────────
+class _SheetListTile<T> extends StatefulWidget {
+  final T item;
+  final bool isActive;
+  final String Function(T) labelBuilder;
+  final VoidCallback onTap;
+
+  const _SheetListTile({
+    required this.item,
+    required this.isActive,
+    required this.labelBuilder,
+    required this.onTap,
+  });
+
+  @override
+  State<_SheetListTile<T>> createState() => _SheetListTileState<T>();
+}
+
+class _SheetListTileState<T> extends State<_SheetListTile<T>> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = widget.labelBuilder(widget.item);
+    final initial = label.isNotEmpty ? label[0].toUpperCase() : '?';
+
+    return GestureDetector(
+      onTap: widget.onTap,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 80),
+        color: _pressed
+            ? const Color(0xFFF5F4EE)
+            : widget.isActive
+                ? AppColors.primary.withValues(alpha: 0.05)
+                : Colors.white,
+        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+        child: Row(
+          children: [
+            // Avatar
+            Container(
+              width: 38.r,
+              height: 38.r,
+              decoration: BoxDecoration(
+                color: widget.isActive
+                    ? AppColors.primary
+                    : const Color(0xFFF0EFEA),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  initial,
+                  style: GoogleFonts.barlowCondensed(
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w800,
+                    color: widget.isActive
+                        ? Colors.white
+                        : const Color(0xFF8A8A82),
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(width: 14.w),
+            // Label
+            Expanded(
+              child: Text(
+                label,
+                style: GoogleFonts.barlow(
+                  fontSize: 14.sp,
+                  fontWeight:
+                      widget.isActive ? FontWeight.w700 : FontWeight.w500,
+                  color: widget.isActive
+                      ? AppColors.primary
+                      : AppColors.foreground,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            // Check
+            if (widget.isActive)
+              Icon(Icons.check_rounded,
+                  size: 18.r, color: AppColors.primary)
+            else
+              SizedBox(width: 18.r),
+          ],
         ),
       ),
     );
