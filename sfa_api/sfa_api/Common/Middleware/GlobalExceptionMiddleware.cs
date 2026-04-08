@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using sfa_api.Common.Errors;
 using System.Text.Json;
 
@@ -46,6 +48,11 @@ public class GlobalExceptionMiddleware(RequestDelegate next,
             NotFoundException nex => (404, new ApiError(
                 nex.ErrorCode, nex.Message, null,
                 null, null, correlationId, DateTime.UtcNow)),
+
+            DbUpdateException dbEx when dbEx.InnerException is PostgresException pgEx && pgEx.SqlState == "23505"
+                => (409, new ApiError(
+                    "DUPLICATE_RESOURCE", "A record with the same unique value already exists.", null,
+                    null, null, correlationId, DateTime.UtcNow)),
 
             ConcurrencyConflictException cex => (409, new ApiError(
                 cex.ErrorCode, cex.Message,

@@ -13,6 +13,6 @@ public interface IAreaRepository
     Task<bool> RegionExistsAsync(int regionId, CancellationToken ct = default);
     Task CreateAsync(Area area, CancellationToken ct = default);
     Task UpdateAsync(Area area, CancellationToken ct = default);
-    Task DeleteAsync(int id, CancellationToken ct = default);
+    Task DeleteAsync(int id, int? callerId, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

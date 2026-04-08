@@ -29,13 +29,6 @@ public class AreaService(
 
     public async Task<AreaListDto> GetAllAsync(int page, int pageSize, int? regionId = null, bool? isActive = null, string? search = null, CancellationToken ct = default)
     {
-        // Issue 16: validate page size
-        if (pageSize < 1 || pageSize > 100)
-            throw new ValidationException(new Dictionary<string, string[]>
-            {
-                ["pageSize"] = ["pageSize must be between 1 and 100."]
-            });
-
         var cacheKey = $"areas:list:{page}:{pageSize}:{regionId}:{isActive}:{search}";
         var cached = await _cache.GetAsync<AreaListDto>(cacheKey, ct);
         if (cached is not null) return cached;
@@ -175,10 +168,7 @@ public class AreaService(
 
     public async Task DeleteAsync(int id, int? callerId, CancellationToken ct = default)
     {
-        _ = await _repo.GetByIdAsync(id, ct)
-            ?? throw new NotFoundException("Area", id);
-
-        await _repo.DeleteAsync(id, ct);
+        await _repo.DeleteAsync(id, callerId, ct);
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Area {AreaId} deleted by {CallerId}", id, callerId);

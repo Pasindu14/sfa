@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using sfa_api.Common.Errors;
 using sfa_api.Features.Areas.Entities;
 using sfa_api.Infrastructure.Persistence;
 
@@ -20,7 +21,6 @@ public class AreaRepository(AppDbContext context) : IAreaRepository
     public async Task<Area?> GetByIdTrackedAsync(int id, CancellationToken ct = default)
         => await _context.Areas
             .IgnoreQueryFilters()
-            .Include(a => a.Region)
             .FirstOrDefaultAsync(a => a.Id == id, ct);
 
     public async Task<(IEnumerable<Area> Areas, int TotalCount)> GetAllAsync(int skip, int take, int? regionId = null, bool? isActive = null, string? search = null, CancellationToken ct = default)
@@ -61,10 +61,12 @@ public class AreaRepository(AppDbContext context) : IAreaRepository
     }
 
     public async Task<bool> ExistsByNameAsync(string name, int regionId, CancellationToken ct = default)
-        => await _context.Areas.IgnoreQueryFilters().AnyAsync(a => a.Name == name && a.RegionId == regionId, ct);
+        => await _context.Areas.IgnoreQueryFilters()
+            .AnyAsync(a => EF.Functions.ILike(a.Name, name) && a.RegionId == regionId && !a.IsDeleted, ct);
 
     public async Task<bool> ExistsByNameAsync(string name, int regionId, int excludeId, CancellationToken ct = default)
-        => await _context.Areas.IgnoreQueryFilters().AnyAsync(a => a.Name == name && a.RegionId == regionId && a.Id != excludeId, ct);
+        => await _context.Areas.IgnoreQueryFilters()
+            .AnyAsync(a => EF.Functions.ILike(a.Name, name) && a.RegionId == regionId && a.Id != excludeId && !a.IsDeleted, ct);
 
     public async Task<bool> RegionExistsAsync(int regionId, CancellationToken ct = default)
         => await _context.Regions.IgnoreQueryFilters().AnyAsync(r => r.Id == regionId, ct);
@@ -78,16 +80,17 @@ public class AreaRepository(AppDbContext context) : IAreaRepository
         return Task.CompletedTask;
     }
 
-    public async Task DeleteAsync(int id, CancellationToken ct = default)
+    public async Task DeleteAsync(int id, int? callerId, CancellationToken ct = default)
     {
         var area = await _context.Areas
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(a => a.Id == id, ct);
-        if (area is null) return;
+            .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted, ct)
+            ?? throw new NotFoundException("Area", id);
 
         area.IsActive = false;
         area.IsDeleted = true;
         area.UpdatedAt = DateTime.UtcNow;
+        area.UpdatedBy = callerId;
         _context.Areas.Update(area);
     }
 
