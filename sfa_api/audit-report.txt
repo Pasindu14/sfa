@@ -1,0 +1,58 @@
+SFA API Audit Report — Wed, Apr  8, 2026 11:00:36 PM [Scope: Areas]
+============================================
+
+## 1. Error Handling
+  PASS — No try-catch in endpoints
+  PASS — No untyped exceptions
+  PASS — Validator count matches request count (2/2)
+
+## 2. Performance
+  PASS — AsNoTracking present: ./sfa_api/Features/Areas/Repositories/AreaRepository.cs
+  FAIL — Possible unbounded query: ./sfa_api/Features/Areas/Repositories/AreaRepository.cs:51:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/Areas/Repositories/AreaRepository.cs:74:            .ToListAsync(ct);
+  PASS — No string interpolation in logs
+
+## 3. Security
+  PASS — [Authorize] present: ./sfa_api/Features/Areas/Controllers/AreasController.cs
+  PASS — No hardcoded secrets found
+  FAIL — HasQueryFilter missing IsDeleted: ./sfa_api/Features/Areas/Repositories/AreaRepository.cs:57:        // Global HasQueryFilter(x => x.IsActive) covers active-only restriction — no explicit Where needed.
+  FAIL — HasQueryFilter missing IsDeleted: ./sfa_api/Features/ProductCategoryPricings/Repositories/ProductCategoryPricingRepository.cs:17:        // Load all active products (HasQueryFilter on Product already filters IsActive)
+  FAIL — HasQueryFilter missing IsDeleted: ./sfa_api/Infrastructure/Persistence/AppDbContext.cs:93:            // NOTE: No HasQueryFilter - we display both active and inactive records
+  FAIL — HasQueryFilter missing IsDeleted: ./sfa_api/Infrastructure/Persistence/AppDbContext.cs:131:            // NOTE: No HasQueryFilter - we display both active and inactive records
+  FAIL — HasQueryFilter missing IsDeleted: ./sfa_api/Infrastructure/Persistence/AppDbContext.cs:143:            e.HasQueryFilter(x => x.IsActive);
+  FAIL — HasQueryFilter missing IsDeleted: ./sfa_api/Infrastructure/Persistence/AppDbContext.cs:157:            e.HasQueryFilter(x => x.IsActive);
+  FAIL — HasQueryFilter missing IsDeleted: ./sfa_api/Infrastructure/Persistence/AppDbContext.cs:179:            e.HasQueryFilter(x => x.IsActive);
+  FAIL — HasQueryFilter missing IsDeleted: ./sfa_api/Infrastructure/Persistence/AppDbContext.cs:201:            e.HasQueryFilter(x => x.IsActive);
+  FAIL — HasQueryFilter missing IsDeleted: ./sfa_api/Infrastructure/Persistence/AppDbContext.cs:289:            e.HasQueryFilter(x => x.IsActive);
+  FAIL — HasQueryFilter missing IsDeleted: ./sfa_api/Infrastructure/Persistence/AppDbContext.cs:310:            e.HasQueryFilter(x => x.IsActive);
+  FAIL — HasQueryFilter missing IsDeleted: ./sfa_api/Infrastructure/Persistence/AppDbContext.cs:329:            // NOTE: No HasQueryFilter — repositories use IgnoreQueryFilters() throughout and
+  FAIL — HasQueryFilter missing IsDeleted: ./sfa_api/Infrastructure/Persistence/AppDbContext.cs:356:            // NOTE: No HasQueryFilter — repositories use IgnoreQueryFilters() throughout and
+  PASS — No deviceId bypass on token rotation
+
+## 4. Architecture
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Areas/Controllers/AreasController.cs:47:    public async Task<IActionResult> GetAll(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Areas/Controllers/AreasController.cs:71:    public async Task<IActionResult> GetAllActive(
+  PASS — No PATCH endpoints found
+  PASS — No HttpContext in services
+  PASS — ApiResponse not used in services
+
+## 5. Data Access
+  PASS — AddDbContextPool used
+  PASS — No raw SQL concatenation
+
+## 6. Timezone Handling
+  FAIL — DateTime.Now used: ./sfa_api/Features/Areas/Entities/Area.cs:14:    public DateTime CreatedAt { get; set; } = DateTime.Now;
+  FAIL — DateTime.Now used: ./sfa_api/Features/Areas/Entities/Area.cs:15:    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+  PASS — No timestamp without time zone in migrations
+
+## 7. Request Hardening
+  PASS — No wildcard CORS
+  PASS — Request size limit configured
+
+## 8. Soft Delete Consistency
+  PASS — No hard deletes found
+
+============================================
+TOTAL PASSED : 17
+TOTAL FAILED : 0
+============================================
