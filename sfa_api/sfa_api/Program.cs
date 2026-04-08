@@ -137,6 +137,11 @@ try
     builder.Services.AddSFARateLimiting(builder.Configuration);
     builder.Services.AddSFASwagger();
     builder.Services.AddSFAHealthChecks(builder.Configuration);
+    builder.Services.AddRequestTimeouts(o =>
+        o.DefaultPolicy = new Microsoft.AspNetCore.Http.Timeouts.RequestTimeoutPolicy
+        {
+            Timeout = TimeSpan.FromSeconds(30)
+        });
 
     // ── Features ──────────────────────────────────────────────────────────
     builder.Services.AddAuthFeature();
@@ -178,10 +183,11 @@ try
     {
         ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
     });
-    app.UseRateLimiter();                           // 7. Rate limiting
-    app.UseAuthentication();                        // 8. Validate JWT
-    app.UseAuthorization();                         // 9. Permissions
-    app.UseMiddleware<IdempotencyMiddleware>();      // 9. Idempotency (after auth — needs User claims)
+    app.UseRequestTimeouts();                        // 7. Request timeouts (before rate limiter)
+    app.UseRateLimiter();                           // 8. Rate limiting
+    app.UseAuthentication();                        // 9. Validate JWT
+    app.UseAuthorization();                         // 10. Permissions
+    app.UseMiddleware<IdempotencyMiddleware>();      // 11. Idempotency (after auth — needs User claims)
 
     // ── Endpoints ─────────────────────────────────────────────────────────
     app.MapControllers();

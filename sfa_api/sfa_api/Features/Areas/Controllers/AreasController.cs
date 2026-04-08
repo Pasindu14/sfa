@@ -21,6 +21,12 @@ public class AreasController(
     private readonly IValidator<CreateAreaRequest> _createValidator = createValidator;
     private readonly IValidator<UpdateAreaRequest> _updateValidator = updateValidator;
 
+    private int GetCallerId()
+    {
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
+        return callerId;
+    }
+
     /// <summary>
     /// GET /api/v1/areas/{id}
     /// </summary>
@@ -73,6 +79,7 @@ public class AreasController(
 
     /// <summary>
     /// POST /api/v1/areas
+    /// Callers should send X-Idempotency-Key to prevent duplicate submissions on retries.
     /// </summary>
     [HttpPost]
     [Authorize(Roles = "Admin")]
@@ -83,8 +90,7 @@ public class AreasController(
 
         await _createValidator.ValidateOrThrowAsync(request, ct);
 
-        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
-        var result = await _service.CreateAsync(request, callerId, ct);
+        var result = await _service.CreateAsync(request, GetCallerId(), ct);
         return CreatedAtAction(nameof(GetById), new { id = result.Id },
             ResponseHelper.Created(result, correlationId));
     }
@@ -101,8 +107,7 @@ public class AreasController(
 
         await _updateValidator.ValidateOrThrowAsync(request, ct);
 
-        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
-        var result = await _service.UpdateAsync(id, request, callerId, ct);
+        var result = await _service.UpdateAsync(id, request, GetCallerId(), ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 
@@ -114,8 +119,8 @@ public class AreasController(
     [EnableRateLimiting("user")]
     public async Task<IActionResult> Activate(int id, CancellationToken ct)
     {
-        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
-        await _service.ActivateAsync(id, callerId, ct);
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        await _service.ActivateAsync(id, GetCallerId(), ct);
         return NoContent();
     }
 
@@ -127,8 +132,8 @@ public class AreasController(
     [EnableRateLimiting("user")]
     public async Task<IActionResult> Deactivate(int id, CancellationToken ct)
     {
-        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
-        await _service.DeactivateAsync(id, callerId, ct);
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        await _service.DeactivateAsync(id, GetCallerId(), ct);
         return NoContent();
     }
 
@@ -140,8 +145,7 @@ public class AreasController(
     [EnableRateLimiting("user")]
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
     {
-        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
-        await _service.DeleteAsync(id, callerId, ct);
+        await _service.DeleteAsync(id, GetCallerId(), ct);
         return NoContent();
     }
 }

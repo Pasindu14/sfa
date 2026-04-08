@@ -151,6 +151,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => new { x.Name, x.RegionId }).IsUnique();
             e.HasIndex(x => x.RegionId);
             e.HasIndex(x => x.IsDeleted);
+            // Composite index for common admin list query: WHERE RegionId=? AND IsActive=? AND NOT IsDeleted
+            e.HasIndex(x => new { x.RegionId, x.IsActive, x.IsDeleted });
             e.HasIndex(x => x.UpdatedAt).HasFilter("\"IsActive\" = true");
             e.HasQueryFilter(x => x.IsActive);
             e.Property(x => x.RowVersion)

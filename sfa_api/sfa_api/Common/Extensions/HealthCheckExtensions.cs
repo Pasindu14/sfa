@@ -7,11 +7,12 @@ public static class HealthCheckExtensions
     public static IServiceCollection AddSFAHealthChecks(
         this IServiceCollection services, IConfiguration config)
     {
-        services.AddHealthChecks()
-            .AddNpgSql(
-                config.GetConnectionString("DefaultConnection")!,
-                name: "postgresql",
-                tags: ["ready"]);
+        var connectionString = config.GetConnectionString("DefaultConnection");
+        var healthChecks = services.AddHealthChecks();
+        if (!string.IsNullOrWhiteSpace(connectionString))
+        {
+            healthChecks.AddNpgSql(connectionString, name: "postgresql", tags: ["ready"]);
+        }
 
         return services;
     }

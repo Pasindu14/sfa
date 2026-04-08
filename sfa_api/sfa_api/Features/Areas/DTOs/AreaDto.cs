@@ -12,7 +12,7 @@ public record AreaDto(
 );
 
 public record AreaListDto(
-    IEnumerable<AreaDto> Areas,
+    IReadOnlyList<AreaDto> Areas,
     int TotalCount,
     int Page,
     int PageSize

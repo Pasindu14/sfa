@@ -36,7 +36,7 @@ public class AreaService(
         var skip = (page - 1) * pageSize;
         var (areas, totalCount) = await _repo.GetAllAsync(skip, pageSize, regionId, isActive, search, ct);
         var result = new AreaListDto(
-            Areas: areas.Select(MapToDto),
+            Areas: areas.Select(MapToDto).ToList(),
             TotalCount: totalCount,
             Page: page,
             PageSize: pageSize
@@ -46,20 +46,19 @@ public class AreaService(
         return result;
     }
 
-    public async Task<IEnumerable<AreaDto>> GetAllActiveAsync(int? regionId = null, CancellationToken ct = default)
+    public async Task<IReadOnlyList<AreaDto>> GetAllActiveAsync(int? regionId = null, CancellationToken ct = default)
     {
         var cacheKey = regionId.HasValue ? $"{ActiveCacheKey}:{regionId}" : ActiveCacheKey;
-        var cached = await _cache.GetAsync<IEnumerable<AreaDto>>(cacheKey, ct);
+        var cached = await _cache.GetAsync<IReadOnlyList<AreaDto>>(cacheKey, ct);
         if (cached is not null) return cached;
 
-        var areas = await _repo.GetAllActiveAsync(regionId, ct);
-        var result = areas.Select(MapToDto).ToList();
+        var result = await _repo.GetAllActiveAsync(regionId, ct);
 
         await _cache.SetAsync(cacheKey, result, CacheTtl, ct);
         return result;
     }
 
-    public async Task<AreaDto> CreateAsync(CreateAreaRequest request, int? callerId, CancellationToken ct = default)
+    public async Task<AreaDto> CreateAsync(CreateAreaRequest request, int callerId, CancellationToken ct = default)
     {
         if (!await _repo.RegionExistsAsync(request.RegionId, ct))
             throw new NotFoundException("Region", request.RegionId);
@@ -73,9 +72,8 @@ public class AreaService(
             RegionId = request.RegionId,
             IsActive = true,
             CreatedBy = callerId,
-            UpdatedBy = callerId,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedBy = callerId
+            // CreatedAt/UpdatedAt are set automatically by AuditInterceptor
         };
 
         await _repo.CreateAsync(area, ct);
@@ -83,8 +81,8 @@ public class AreaService(
 
         _logger.LogInformation("Area {AreaId} created by {CallerId}", area.Id, callerId);
 
-        // Invalidate caches after write
-        await _cache.RemoveAsync(ActiveCacheKey, ct);
+        // Invalidate caches after write — prefix covers both "areas:active" and "areas:active:{regionId}" variants
+        await _cache.RemoveByPrefixAsync(ActiveCacheKey, ct);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
 
         // Re-fetch to populate navigation property (RegionName)
@@ -93,7 +91,7 @@ public class AreaService(
         return MapToDto(created);
     }
 
-    public async Task<AreaDto> UpdateAsync(int id, UpdateAreaRequest request, int? callerId, CancellationToken ct = default)
+    public async Task<AreaDto> UpdateAsync(int id, UpdateAreaRequest request, int callerId, CancellationToken ct = default)
     {
         // Use tracked fetch for mutation path
         var area = await _repo.GetByIdTrackedAsync(id, ct)
@@ -105,19 +103,22 @@ public class AreaService(
         if (await _repo.ExistsByNameAsync(request.Name, request.RegionId, id, ct))
             throw new DuplicateResourceException("Name");
 
+        // Apply client-supplied RowVersion so EF uses it in the WHERE xmin = $token clause.
+        // Without this, EF uses the freshly-fetched xmin and only catches conflicts within
+        // the same request — not staleness from when the client last read the entity.
+        area.RowVersion = request.RowVersion;
         area.Name = request.Name;
         area.RegionId = request.RegionId;
         area.UpdatedBy = callerId;
-        area.UpdatedAt = DateTime.UtcNow;
-        area.RowVersion = request.RowVersion;
+        // UpdatedAt is set automatically by AuditInterceptor
 
-        await _repo.UpdateAsync(area, ct);
+        await _repo.UpdateAsync(area);
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Area {AreaId} updated by {CallerId}", id, callerId);
 
-        // Invalidate caches after write
-        await _cache.RemoveAsync(ActiveCacheKey, ct);
+        // Invalidate caches after write — prefix covers both "areas:active" and "areas:active:{regionId}" variants
+        await _cache.RemoveByPrefixAsync(ActiveCacheKey, ct);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
 
         // Re-fetch to populate navigation property
@@ -126,55 +127,59 @@ public class AreaService(
         return MapToDto(updated);
     }
 
-    public async Task ActivateAsync(int id, int? callerId, CancellationToken ct = default)
+    public async Task ActivateAsync(int id, int callerId, CancellationToken ct = default)
     {
-        // Use tracked fetch for mutation path
         var area = await _repo.GetByIdTrackedAsync(id, ct)
             ?? throw new NotFoundException("Area", id);
 
+        var wasActive = area.IsActive;
         area.IsActive = true;
         area.UpdatedBy = callerId;
-        area.UpdatedAt = DateTime.UtcNow;
 
-        await _repo.UpdateAsync(area, ct);
+        await _repo.UpdateAsync(area);
         await _repo.SaveChangesAsync(ct);
 
-        _logger.LogInformation("Area {AreaId} activated by {CallerId}", id, callerId);
+        _logger.LogInformation("Area {AreaId} status changed from {OldStatus} to {NewStatus} by {CallerId}",
+            id, wasActive ? "Active" : "Inactive", "Active", callerId);
 
-        // Invalidate caches after write
-        await _cache.RemoveAsync(ActiveCacheKey, ct);
+        await _cache.RemoveByPrefixAsync(ActiveCacheKey, ct);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
     }
 
-    public async Task DeactivateAsync(int id, int? callerId, CancellationToken ct = default)
+    public async Task DeactivateAsync(int id, int callerId, CancellationToken ct = default)
     {
-        // Use tracked fetch for mutation path
+        var area = await _repo.GetByIdTrackedAsync(id, ct)
+            ?? throw new NotFoundException("Area", id);
+
+        var wasActive = area.IsActive;
+        area.IsActive = false;
+        area.UpdatedBy = callerId;
+
+        await _repo.UpdateAsync(area);
+        await _repo.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Area {AreaId} status changed from {OldStatus} to {NewStatus} by {CallerId}",
+            id, wasActive ? "Active" : "Inactive", "Inactive", callerId);
+
+        await _cache.RemoveByPrefixAsync(ActiveCacheKey, ct);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
+    }
+
+    public async Task DeleteAsync(int id, int callerId, CancellationToken ct = default)
+    {
         var area = await _repo.GetByIdTrackedAsync(id, ct)
             ?? throw new NotFoundException("Area", id);
 
         area.IsActive = false;
+        area.IsDeleted = true;
         area.UpdatedBy = callerId;
-        area.UpdatedAt = DateTime.UtcNow;
 
-        await _repo.UpdateAsync(area, ct);
-        await _repo.SaveChangesAsync(ct);
-
-        _logger.LogInformation("Area {AreaId} deactivated by {CallerId}", id, callerId);
-
-        // Invalidate caches after write
-        await _cache.RemoveAsync(ActiveCacheKey, ct);
-        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
-    }
-
-    public async Task DeleteAsync(int id, int? callerId, CancellationToken ct = default)
-    {
-        await _repo.DeleteAsync(id, callerId, ct);
+        await _repo.UpdateAsync(area);
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Area {AreaId} deleted by {CallerId}", id, callerId);
 
-        // Invalidate caches after write
-        await _cache.RemoveAsync(ActiveCacheKey, ct);
+        await _cache.RemoveByPrefixAsync(ActiveCacheKey, ct);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
     }
 
