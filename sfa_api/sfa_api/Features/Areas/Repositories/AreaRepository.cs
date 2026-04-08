@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using sfa_api.Common.Errors;
 using sfa_api.Features.Areas.DTOs;
 using sfa_api.Features.Areas.Entities;
 using sfa_api.Infrastructure.Persistence;
@@ -94,6 +95,21 @@ public class AreaRepository(AppDbContext context) : IAreaRepository
         return Task.CompletedTask;
     }
 
+    // Sets the OriginalValue of RowVersion so EF uses the client's version in the
+    // WHERE xmin = $token clause — this is what actually detects cross-request staleness.
+    // Assigning area.RowVersion directly only changes CurrentValue and has no effect on the lock.
+    public void ApplyConcurrencyToken(Area area, uint rowVersion)
+        => _context.Entry(area).Property(x => x.RowVersion).OriginalValue = rowVersion;
+
     public async Task SaveChangesAsync(CancellationToken ct = default)
-        => await _context.SaveChangesAsync(ct);
+    {
+        try
+        {
+            await _context.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new ConcurrencyConflictException();
+        }
+    }
 }

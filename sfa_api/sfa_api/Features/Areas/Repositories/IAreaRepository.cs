@@ -14,5 +14,6 @@ public interface IAreaRepository
     Task<bool> RegionExistsAsync(int regionId, CancellationToken ct = default);
     Task CreateAsync(Area area, CancellationToken ct = default);
     Task UpdateAsync(Area area);
+    void ApplyConcurrencyToken(Area area, uint rowVersion);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

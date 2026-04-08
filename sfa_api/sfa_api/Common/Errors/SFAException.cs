@@ -44,7 +44,7 @@ public class ConflictException : SFAException
     protected ConflictException(string code, string message, object? currentData = null)
         : base(code, message, currentData) { }
 }
-public class ConcurrencyConflictException(object currentData) : ConflictException("CONCURRENCY_CONFLICT", "Record was modified by another user.", currentData)
+public class ConcurrencyConflictException(object? currentData = null) : ConflictException("CONCURRENCY_CONFLICT", "Record was modified by another user.", currentData)
 {
 }
 public class DuplicateResourceException(string entity) : ConflictException($"{entity.ToUpperInvariant()}_DUPLICATE", $"{entity} already exists.")

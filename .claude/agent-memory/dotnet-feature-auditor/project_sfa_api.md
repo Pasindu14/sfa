@@ -20,11 +20,16 @@ Key facts discovered during audit sessions:
 - Cache invalidation is NOW present: CreateAsync/UpdateAsync/ActivateAsync/DeactivateAsync/DeleteAsync all call RemoveAsync(ActiveCacheKey) and RemoveByPrefixAsync(ListCachePrefix).
 - GetAllActiveAsync now caches results with SetAsync.
 - ICacheService.GetAsync/SetAsync take a CancellationToken — ct IS passed to cache calls.
-- RowVersion on Area maps to PostgreSQL xmin column via IsRowVersion(). UpdateAsync sets area.RowVersion = request.RowVersion BEFORE calling Update/SaveChanges — this is a bug: assigning the client-supplied RowVersion to the tracked entity overwrites the DB-fetched xmin value; EF Core then compares the wrong value during concurrency check. RowVersion should NOT be assigned; EF reads xmin from the tracked entity automatically.
+- RowVersion on Area maps to PostgreSQL xmin column via IsRowVersion(). UpdateAsync sets area.RowVersion = request.RowVersion (AreaService.cs line 109). EF Core uses the OriginalValue of the concurrency token (loaded from DB) in the WHERE clause, not the CurrentValue. Assigning request.RowVersion to area.RowVersion changes CurrentValue only — the concurrency check still fires against the freshly-loaded DB xmin, NOT the client's supplied value. To use the client's RowVersion for cross-request staleness detection, call: context.Entry(area).Property(x => x.RowVersion).OriginalValue = request.RowVersion. The current code's assignment is effectively a no-op for concurrency checking.
 - Connection string in appsettings.json lacks MaxPoolSize/MinPoolSize — these are ADO.NET pool settings for Npgsql, not EF options; they must be in the connection string itself.
 - No request timeout middleware (ASP.NET Core 8 UseRequestTimeouts or equivalent) — only DB CommandTimeout=30 exists.
 - EnableRetryOnFailure(3) is configured on EF/Npgsql — covers DB transient failures. No Polly wrapping for Redis/cache calls.
 - Areas is reference data (<500 rows expected) — offset pagination (Skip/Take) is appropriate. No cursor needed.
+- DbUpdateConcurrencyException is NEVER caught in the Areas feature or globally in GlobalExceptionMiddleware. When xmin concurrency check fires (concurrent update), EF throws DbUpdateConcurrencyException which hits the 500 fallback — should be caught and rethrown as ConcurrencyConflictException.
+- GetAllActiveAsync (AreaRepository line 54) uses global HasQueryFilter(x => x.IsActive) but does NOT add a Where(!a.IsDeleted) guard. The HasQueryFilter only covers IsActive. In practice safe because DeleteAsync always sets IsActive=false, but no explicit guard.
+- RegionExistsAsync (AreaRepository line 84) calls IgnoreQueryFilters() with no IsDeleted or IsActive filter — allows creating an Area under an inactive/deleted Region.
+- page query param in GetAll endpoint has no lower-bound guard. page=0 produces skip=-pageSize which PostgreSQL rejects with an exception (hits 500 fallback).
+- FixAreaIndexes migration (20260408050138) added IX_Areas_RegionId_IsActive_IsDeleted composite index — this is already applied.
 - GetAllAsync does 2 separate queries (CountAsync + ToListAsync) which is correct; no N+1.
 - No IAsyncEnumerable streaming used; ToList() on GetAllActiveAsync result — acceptable for bounded Take(1000) list.
 - UpdatedAt partial index uses HasFilter("\"IsActive\" = true") — this is a composite filter index for active areas only; this is fine.

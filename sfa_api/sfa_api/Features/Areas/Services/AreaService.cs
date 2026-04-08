@@ -103,10 +103,9 @@ public class AreaService(
         if (await _repo.ExistsByNameAsync(request.Name, request.RegionId, id, ct))
             throw new DuplicateResourceException("Name");
 
-        // Apply client-supplied RowVersion so EF uses it in the WHERE xmin = $token clause.
-        // Without this, EF uses the freshly-fetched xmin and only catches conflicts within
-        // the same request — not staleness from when the client last read the entity.
-        area.RowVersion = request.RowVersion;
+        // Tell EF to use the client's RowVersion as the OriginalValue in the WHERE xmin = $token clause.
+        // Setting area.RowVersion directly only changes CurrentValue — OriginalValue is what EF checks.
+        _repo.ApplyConcurrencyToken(area, request.RowVersion);
         area.Name = request.Name;
         area.RegionId = request.RegionId;
         area.UpdatedBy = callerId;
