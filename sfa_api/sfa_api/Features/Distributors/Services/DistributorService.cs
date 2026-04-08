@@ -20,6 +20,7 @@ public class DistributorService(
     private readonly ILogger<DistributorService> _logger = logger;
 
     private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
+    private const string ListCachePrefix = "distributors:list:";
 
     public async Task<DistributorDto> GetByIdAsync(int id, CancellationToken ct = default)
     {
@@ -93,6 +94,7 @@ public class DistributorService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Distributor {DistributorId} created", distributor.Id);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
         return MapToDto(distributor);
     }
 
@@ -144,6 +146,7 @@ public class DistributorService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Distributor {DistributorId} updated", id);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
         return MapToDto(distributor);
     }
 
@@ -156,6 +159,7 @@ public class DistributorService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Distributor {DistributorId} deleted", id);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
     }
 
     public async Task ActivateAsync(int id, int? callerId, CancellationToken ct = default)
@@ -171,6 +175,7 @@ public class DistributorService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Distributor {DistributorId} activated", id);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
     }
 
     public async Task DeactivateAsync(int id, int? callerId, CancellationToken ct = default)
@@ -186,6 +191,7 @@ public class DistributorService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Distributor {DistributorId} deactivated", id);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
     }
 
     private static DistributorDto MapToDto(Distributor d) => new(

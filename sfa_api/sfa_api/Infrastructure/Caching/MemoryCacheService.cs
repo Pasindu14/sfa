@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Caching.Memory;
+using System.Collections.Concurrent;
 
 namespace sfa_api.Infrastructure.Caching;
 
@@ -6,6 +7,8 @@ public class MemoryCacheService(IMemoryCache cache, ILogger<MemoryCacheService> 
 {
     private readonly IMemoryCache _cache = cache;
     private readonly ILogger<MemoryCacheService> _logger = logger;
+
+    private static readonly ConcurrentDictionary<string, bool> _trackedKeys = new();
 
     public Task<T?> GetAsync<T>(string key, CancellationToken ct = default)
     {
@@ -19,12 +22,25 @@ public class MemoryCacheService(IMemoryCache cache, ILogger<MemoryCacheService> 
         {
             AbsoluteExpirationRelativeToNow = ttl
         });
+        _trackedKeys.TryAdd(key, true);
         return Task.CompletedTask;
     }
 
     public Task RemoveAsync(string key, CancellationToken ct = default)
     {
         _cache.Remove(key);
+        _trackedKeys.TryRemove(key, out _);
+        return Task.CompletedTask;
+    }
+
+    public Task RemoveByPrefixAsync(string prefix, CancellationToken ct = default)
+    {
+        var keys = _trackedKeys.Keys.Where(k => k.StartsWith(prefix, StringComparison.Ordinal)).ToList();
+        foreach (var key in keys)
+        {
+            _cache.Remove(key);
+            _trackedKeys.TryRemove(key, out _);
+        }
         return Task.CompletedTask;
     }
 }

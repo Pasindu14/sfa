@@ -17,6 +17,7 @@ public class TerritoryService(
     private readonly ILogger<TerritoryService> _logger = logger;
 
     private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
+    private const string ListCachePrefix = "territories:list:";
 
     public async Task<TerritoryDto> GetByIdAsync(int id, CancellationToken ct = default)
     {
@@ -74,6 +75,7 @@ public class TerritoryService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Territory {TerritoryId} created", territory.Id);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
 
         var created = await _repo.GetByIdAsync(territory.Id, ct)
             ?? throw new NotFoundException("Territory", territory.Id);
@@ -101,6 +103,7 @@ public class TerritoryService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Territory {TerritoryId} updated", id);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
 
         var updated = await _repo.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("Territory", id);
@@ -120,6 +123,7 @@ public class TerritoryService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Territory {TerritoryId} activated", id);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
     }
 
     public async Task DeactivateAsync(int id, int? callerId, CancellationToken ct = default)
@@ -135,6 +139,7 @@ public class TerritoryService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Territory {TerritoryId} deactivated", id);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
     }
 
     private static TerritoryDto MapToDto(Territory territory) => new(

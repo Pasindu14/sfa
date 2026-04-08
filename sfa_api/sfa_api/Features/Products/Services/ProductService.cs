@@ -17,6 +17,7 @@ public class ProductService(
     private readonly ILogger<ProductService> _logger = logger;
 
     private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
+    private const string ListCachePrefix = "products:list:";
 
     public async Task<ProductDto> GetByIdAsync(int id, CancellationToken ct = default)
     {
@@ -68,6 +69,7 @@ public class ProductService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Product {ProductId} created with code {Code}", product.Id, product.Code);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
         return MapToDto(product);
     }
 
@@ -92,6 +94,7 @@ public class ProductService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Product {ProductId} updated", id);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
         return MapToDto(product);
     }
 
@@ -102,6 +105,7 @@ public class ProductService(
 
         await _repo.DeactivateAsync(id, ct);
         _logger.LogInformation("Product {ProductId} deactivated", id);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
     }
 
     public async Task DeleteAsync(int id, CancellationToken ct = default)
@@ -112,6 +116,7 @@ public class ProductService(
         await _repo.DeleteAsync(id, ct);
         await _repo.SaveChangesAsync(ct);
         _logger.LogInformation("Product {ProductId} deleted", id);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
     }
 
     public async Task ActivateAsync(int id, CancellationToken ct = default)
@@ -126,6 +131,7 @@ public class ProductService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Product {ProductId} activated", id);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
     }
 
     private static ProductDto MapToDto(Product product) => new(

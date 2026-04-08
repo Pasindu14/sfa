@@ -17,6 +17,7 @@ public class DivisionService(
     private readonly ILogger<DivisionService> _logger = logger;
 
     private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
+    private const string ListCachePrefix = "divisions:list:";
 
     public async Task<DivisionDto> GetByIdAsync(int id, CancellationToken ct = default)
     {
@@ -75,6 +76,7 @@ public class DivisionService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Division {DivisionId} created", division.Id);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
 
         var created = await _repo.GetByIdAsync(division.Id, ct)
             ?? throw new NotFoundException("Division", division.Id);
@@ -103,6 +105,7 @@ public class DivisionService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Division {DivisionId} updated", id);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
 
         var updated = await _repo.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("Division", id);
@@ -122,6 +125,7 @@ public class DivisionService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Division {DivisionId} activated", id);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
     }
 
     public async Task DeactivateAsync(int id, int? callerId, CancellationToken ct = default)
@@ -137,6 +141,7 @@ public class DivisionService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Division {DivisionId} deactivated", id);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
     }
 
     private static DivisionDto MapToDto(Division d) => new(

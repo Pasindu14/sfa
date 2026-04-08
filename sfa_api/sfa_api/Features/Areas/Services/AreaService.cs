@@ -18,6 +18,7 @@ public class AreaService(
 
     private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
     private const string ActiveCacheKey = "areas:active";
+    private const string ListCachePrefix = "areas:list:";
 
     public async Task<AreaDto> GetByIdAsync(int id, CancellationToken ct = default)
     {
@@ -91,6 +92,7 @@ public class AreaService(
 
         // Invalidate caches after write
         await _cache.RemoveAsync(ActiveCacheKey, ct);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
 
         // Re-fetch to populate navigation property (RegionName)
         var created = await _repo.GetByIdAsync(area.Id, ct)
@@ -123,6 +125,7 @@ public class AreaService(
 
         // Invalidate caches after write
         await _cache.RemoveAsync(ActiveCacheKey, ct);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
 
         // Re-fetch to populate navigation property
         var updated = await _repo.GetByIdAsync(id, ct)
@@ -147,6 +150,7 @@ public class AreaService(
 
         // Invalidate caches after write
         await _cache.RemoveAsync(ActiveCacheKey, ct);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
     }
 
     public async Task DeactivateAsync(int id, int? callerId, CancellationToken ct = default)
@@ -166,6 +170,7 @@ public class AreaService(
 
         // Invalidate caches after write
         await _cache.RemoveAsync(ActiveCacheKey, ct);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
     }
 
     public async Task DeleteAsync(int id, int? callerId, CancellationToken ct = default)
@@ -180,6 +185,7 @@ public class AreaService(
 
         // Invalidate caches after write
         await _cache.RemoveAsync(ActiveCacheKey, ct);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
     }
 
     private static AreaDto MapToDto(Area area) => new(

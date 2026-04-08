@@ -17,6 +17,7 @@ public class RegionService(
     private readonly ILogger<RegionService> _logger = logger;
 
     private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
+    private const string ListCachePrefix = "regions:list:";
 
     public async Task<RegionDto> GetByIdAsync(int id, CancellationToken ct = default)
     {
@@ -69,6 +70,7 @@ public class RegionService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Region {RegionId} created", region.Id);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
         return MapToDto(region);
     }
 
@@ -88,6 +90,7 @@ public class RegionService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Region {RegionId} updated", id);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
         return MapToDto(region);
     }
 
@@ -104,6 +107,7 @@ public class RegionService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Region {RegionId} activated", id);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
     }
 
     public async Task DeactivateAsync(int id, int? callerId, CancellationToken ct = default)
@@ -119,6 +123,7 @@ public class RegionService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Region {RegionId} deactivated", id);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
     }
 
     private static RegionDto MapToDto(Region region) => new(

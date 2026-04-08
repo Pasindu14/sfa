@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Caching.Distributed;
+using System.Collections.Concurrent;
 using System.Text.Json;
 
 namespace sfa_api.Infrastructure.Caching;
@@ -9,6 +10,9 @@ public class DistributedCacheService(
 {
     private readonly IDistributedCache _cache = cache;
     private readonly ILogger<DistributedCacheService> _logger = logger;
+
+    // Static so it's shared across all scoped instances in this process.
+    private static readonly ConcurrentDictionary<string, bool> _trackedKeys = new();
 
     public async Task<T?> GetAsync<T>(string key, CancellationToken ct = default)
     {
@@ -34,6 +38,7 @@ public class DistributedCacheService(
             {
                 AbsoluteExpirationRelativeToNow = ttl
             }, ct);
+            _trackedKeys.TryAdd(key, true);
         }
         catch (Exception ex)
         {
@@ -46,10 +51,28 @@ public class DistributedCacheService(
         try
         {
             await _cache.RemoveAsync(key, ct);
+            _trackedKeys.TryRemove(key, out _);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Cache remove failed for key {Key}", key);
+        }
+    }
+
+    public async Task RemoveByPrefixAsync(string prefix, CancellationToken ct = default)
+    {
+        var keys = _trackedKeys.Keys.Where(k => k.StartsWith(prefix, StringComparison.Ordinal)).ToList();
+        foreach (var key in keys)
+        {
+            try
+            {
+                await _cache.RemoveAsync(key, ct);
+                _trackedKeys.TryRemove(key, out _);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Cache prefix remove failed for key {Key}", key);
+            }
         }
     }
 }
