@@ -14,7 +14,7 @@ public class ProductCategoryPricingRepository(AppDbContext context) : IProductCa
 
     public async Task<IEnumerable<ProductCategoryPricingDto>> GetAllWithPricingAsync(CancellationToken ct = default)
     {
-        // Load all active products (HasQueryFilter on Product already filters IsActive)
+        // Load all active non-deleted products (Product has no HasQueryFilter — IsActive and IsDeleted are filtered explicitly in Product repos)
         var products = await _context.Products
             .OrderBy(p => p.Code)
             .ToListAsync(ct);

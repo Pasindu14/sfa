@@ -47,21 +47,19 @@ public class AreaRepository(AppDbContext context) : IAreaRepository
             .AsNoTracking()
             .OrderBy(a => a.Name)
             .Skip(skip)
-            .Take(take)
-            .ToListAsync(ct);
+            .Take(take).ToListAsync(ct);
         return (areas, totalCount);
     }
 
     public async Task<IReadOnlyList<AreaDto>> GetAllActiveAsync(int? regionId = null, CancellationToken ct = default)
     {
-        // Global HasQueryFilter(x => x.IsActive) covers active-only restriction — no explicit Where needed.
+        // Global HasQueryFilter(x => x.IsActive && !x.IsDeleted) covers active-only and soft-delete restriction — no explicit Where needed.
         // Projecting to AreaDto here avoids materializing full entities + navigation objects for a dropdown.
         var query = _context.Areas.AsQueryable();
         if (regionId.HasValue) query = query.Where(a => a.RegionId == regionId.Value);
         return await query
             .AsNoTracking()
             .OrderBy(a => a.Name)
-            .Take(1000)
             .Select(a => new AreaDto(
                 a.Id,
                 a.Name,
@@ -71,7 +69,7 @@ public class AreaRepository(AppDbContext context) : IAreaRepository
                 a.RowVersion,
                 a.CreatedAt,
                 a.UpdatedAt))
-            .ToListAsync(ct);
+            .Take(1000).ToListAsync(ct);
     }
 
     public async Task<bool> ExistsByNameAsync(string name, int regionId, CancellationToken ct = default)

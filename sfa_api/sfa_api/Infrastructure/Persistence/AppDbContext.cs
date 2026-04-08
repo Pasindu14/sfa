@@ -90,7 +90,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.Phone).IsUnique();
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt);
-            // NOTE: No HasQueryFilter - we display both active and inactive records
+            // NOTE: No HasQueryFilter (IsActive or IsDeleted) - we display both active and inactive records
             // Soft delete is for audit purposes only, records are never physically removed
             e.HasOne(x => x.Distributor)
              .WithMany()
@@ -128,7 +128,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(x => x.Territory).WithMany().HasForeignKey(x => x.TerritoryId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.Area).WithMany().HasForeignKey(x => x.AreaId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.Region).WithMany().HasForeignKey(x => x.RegionId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
-            // NOTE: No HasQueryFilter - we display both active and inactive records
+            // NOTE: No HasQueryFilter (IsActive or IsDeleted) - we display both active and inactive records
             // Soft delete is for audit purposes only, records are never physically removed
         });
 
@@ -140,7 +140,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.Name).IsUnique();
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt).HasFilter("\"IsActive\" = true");
-            e.HasQueryFilter(x => x.IsActive);
+            e.HasQueryFilter(x => x.IsActive && !x.IsDeleted);
         });
 
         // Area
@@ -154,7 +154,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             // Composite index for common admin list query: WHERE RegionId=? AND IsActive=? AND NOT IsDeleted
             e.HasIndex(x => new { x.RegionId, x.IsActive, x.IsDeleted });
             e.HasIndex(x => x.UpdatedAt).HasFilter("\"IsActive\" = true");
-            e.HasQueryFilter(x => x.IsActive);
+            e.HasQueryFilter(x => x.IsActive && !x.IsDeleted);
             e.Property(x => x.RowVersion)
              .IsRowVersion()
              .HasColumnName("xmin")
@@ -176,7 +176,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.RegionId);
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt).HasFilter("\"IsActive\" = true");
-            e.HasQueryFilter(x => x.IsActive);
+            e.HasQueryFilter(x => x.IsActive && !x.IsDeleted);
             e.HasOne(x => x.Area)
              .WithMany()
              .HasForeignKey(x => x.AreaId)
@@ -198,7 +198,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.RegionId);
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt).HasFilter("\"IsActive\" = true");
-            e.HasQueryFilter(x => x.IsActive);
+            e.HasQueryFilter(x => x.IsActive && !x.IsDeleted);
             e.HasOne(x => x.Territory)
              .WithMany()
              .HasForeignKey(x => x.TerritoryId)
@@ -286,7 +286,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.IsActive);
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.Name).HasFilter("\"IsActive\" = true");
-            e.HasQueryFilter(x => x.IsActive);
+            e.HasQueryFilter(x => x.IsActive && !x.IsDeleted);
             e.HasIndex(x => x.DivisionId);
             e.HasIndex(x => x.TerritoryId);
             e.HasIndex(x => x.AreaId);
@@ -307,7 +307,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.IsActive);
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.Name).HasFilter("\"IsActive\" = true");
-            e.HasQueryFilter(x => x.IsActive);
+            e.HasQueryFilter(x => x.IsActive && !x.IsDeleted);
             e.HasIndex(x => x.RouteId);
             e.HasIndex(x => x.DivisionId);
             e.HasIndex(x => x.TerritoryId);
@@ -326,8 +326,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.IsActive);
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt);
-            // NOTE: No HasQueryFilter — repositories use IgnoreQueryFilters() throughout and
-            // filter IsActive explicitly. A global filter here causes EF warnings because
+            // NOTE: No HasQueryFilter (IsActive or IsDeleted) — repositories use IgnoreQueryFilters() throughout and
+            // filter IsActive and IsDeleted explicitly. A global filter here causes EF warnings because
             // GRNItem, PurchaseOrderItem, SalesInvoiceItem, DistributorStock, StockTransaction
             // all have required FKs to Product.
         });
@@ -353,8 +353,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.IsActive);
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.IsDefault);
-            // NOTE: No HasQueryFilter — repositories use IgnoreQueryFilters() throughout and
-            // filter IsActive explicitly. A global filter here causes EF warnings because
+            // NOTE: No HasQueryFilter (IsActive or IsDeleted) — repositories use IgnoreQueryFilters() throughout and
+            // filter IsActive and IsDeleted explicitly. A global filter here causes EF warnings because
             // PricingStructureItem has a required FK to PricingStructure.
         });
 
