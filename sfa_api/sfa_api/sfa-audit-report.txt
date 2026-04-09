@@ -1,0 +1,72 @@
+
+=== 1. Stock Race Conditions ===
+[FAIL] SELECT FOR UPDATE SKIP LOCKED missing — stock updates unprotected
+[WARN] pg_advisory_xact_lock not found — consider for business-level locking
+[PASS] No app-layer stock deduction detected
+[PASS] Redis mutex (Redlock/SETNX) found
+[FAIL] No negative stock alert/guard detected
+
+=== 2. Concurrency ===
+[PASS] Optimistic concurrency token found
+[PASS] Idempotency key found on orders
+
+=== 3. Caching (Redis) ===
+[PASS] Redis cache registered
+[PASS] Redis registration in Program.cs found
+
+=== 4. Pagination ===
+[PASS] No offset pagination on heavy tables
+[WARN] No cursor pagination detected — confirm heavy tables use cursor not offset
+
+=== 5. EF Core Performance ===
+[PASS] AsNoTracking found
+[FAIL] 84 read queries possibly missing AsNoTracking
+[FAIL] Non-async SaveChanges found — use SaveChangesAsync
+[PASS] No obvious N+1 pattern detected
+[PASS] No Add() in loop detected
+
+=== 6. Connection Pooling ===
+[WARN] No explicit pooling config — confirm Npgsql default pooling or PgBouncer in place
+
+=== 7. Database Indexes ===
+[PASS] Indexes found in migrations/config
+[PASS] Date column index found
+[PASS] Status column index found
+
+=== 8. Reporting ===
+[WARN] No materialized views found — heavy reports must use pre-aggregated views
+[PASS] Statement/command timeout configured on queries
+[WARN] No Hangfire found — heavy reports must be async (queue → process → notify)
+
+=== 9. Rate Limiting ===
+[PASS] Rate limiting found
+[PASS] Per-user rate limiting policy found
+
+=== 10. Resiliency ===
+[PASS] Polly resiliency policies found
+[PASS] CancellationToken present
+[PASS] CancellationToken propagated into EF calls
+
+=== 11. Response Compression ===
+[PASS] Response compression enabled
+
+=== 12. Mobile Sync ===
+[PASS] Client idempotency key found on sync endpoint
+[WARN] No per-order sync status — mobile needs accepted/rejected/partial per order
+[WARN] No explicit conflict resolution — server must always win on stock/price
+
+=== 13. Security ===
+[PASS] [Authorize] attribute found on endpoints
+[PASS] No CompanyId found — correct for single-company system
+[PASS] Refresh token logic found
+
+=== 14. Audit Trail ===
+[PASS] Audit trail found
+
+=== 15. Observability ===
+[PASS] Structured logging found
+[PASS] No Console.WriteLine in production code
+[PASS] Health checks registered
+[WARN] No slow query tracking — add EF Core interceptor or pg log_min_duration_statement
+
+PASS: 28 | FAIL: 4 | TOTAL: 32

@@ -1,4 +1,4 @@
-SFA API Audit Report — Wed, Apr  8, 2026 11:06:02 PM [Scope: Areas]
+SFA API Audit Report — Thu, Apr  9, 2026  9:36:43 AM [Scope: Areas]
 ============================================
 
 ## 1. Error Handling
@@ -6,39 +6,97 @@ SFA API Audit Report — Wed, Apr  8, 2026 11:06:02 PM [Scope: Areas]
   PASS — No untyped exceptions
   PASS — Validator count matches request count (2/2)
 
-## 2. Performance
+## 2. Stock Race Conditions
+  FAIL — SELECT FOR UPDATE SKIP LOCKED missing — stock updates unprotected
+  FAIL — pg_advisory_xact_lock not found — business-level locking missing
+  PASS — No app-layer stock deduction detected
+  FAIL — No negative stock guard — alert missing if stock goes below zero
+  PASS — Redis mutex (Redlock/SETNX) found
+
+## 3. Concurrency
+  PASS — Optimistic concurrency token found
+  PASS — Idempotency key found
+
+## 4. Caching
+  PASS — Redis cache found
+  PASS — Redis registered in Program.cs
+
+## 5. Performance
   PASS — AsNoTracking present: ./sfa_api/Features/Areas/Repositories/AreaRepository.cs
   PASS — No unbounded ToListAsync found
+  PASS — No obvious N+1 pattern detected
   PASS — No string interpolation in logs
 
-## 3. Security
-  PASS — [Authorize] present: ./sfa_api/Features/Areas/Controllers/AreasController.cs
-  PASS — No hardcoded secrets found
-  PASS — All HasQueryFilter include IsDeleted
-  PASS — No deviceId bypass on token rotation
+## 6. Pagination
+  PASS — No offset pagination on heavy tables
+  FAIL — No cursor pagination — heavy tables must use cursor not offset
 
-## 4. Architecture
-  PASS — All async methods have CancellationToken
-  PASS — No PATCH endpoints found
-  PASS — No HttpContext in services
-  PASS — ApiResponse not used in services
-
-## 5. Data Access
+## 7. Connection Pooling
+  FAIL — No explicit pooling config — confirm Npgsql default pooling or PgBouncer in place
   PASS — AddDbContextPool used
-  PASS — No raw SQL concatenation
 
-## 6. Timezone Handling
+## 8. Database Indexes
+  PASS — Indexes found
+  PASS — Date column index found
+  PASS — Status column index found
+
+## 9. Reporting
+  FAIL — No read replica — reports must never hit primary DB
+  PASS — Statement/command timeout configured
+  FAIL — No materialized views — heavy reports must use pre-aggregated views
+  FAIL — No Hangfire — heavy reports must be async (queue → process → Azure Blob → notify)
+  PASS — No real-time SalesOrders+Stock join detected
+
+## 10. Rate Limiting
+  PASS — Rate limiting found
+  PASS — Per-user rate limiting policy found
+
+## 11. Resiliency
+  PASS — Polly resiliency policies found
+  PASS — All async methods have CancellationToken
+  PASS — CancellationToken propagated into EF calls
+
+## 12. Response Compression
+  PASS — Response compression enabled
+
+## 13. Mobile Sync
+  PASS — Idempotency key on sync endpoint found
+  FAIL — No per-order sync status — mobile needs accepted/rejected/partial per order
+  FAIL — No explicit conflict resolution — server must always win on stock/price
+
+## 14. Security
+  PASS — [Authorize] present: ./sfa_api/Features/Areas/Controllers/AreasController.cs
+  PASS — No CompanyId found — correct for single-company system
+  PASS — No hardcoded secrets found
+  PASS — Refresh token logic found
+  PASS — No deviceId bypass on token rotation
+  PASS — No wildcard CORS
+  PASS — Request size limit configured
+  PASS — All HasQueryFilter include IsDeleted
+
+## 15. Audit Trail
+  PASS — Audit trail found
+
+## 16. Soft Delete Consistency
+  PASS — No hard deletes found
+
+## 17. Timezone Handling
   PASS — No DateTime.Now found
   PASS — No timestamp without time zone in migrations
 
-## 7. Request Hardening
-  PASS — No wildcard CORS
-  PASS — Request size limit configured
+## 18. Architecture
+  PASS — No PATCH endpoints found
+  PASS — No HttpContext in services
+  PASS — ApiResponse not used in services
+  PASS — No raw SQL concatenation
 
-## 8. Soft Delete Consistency
-  PASS — No hard deletes found
+## 19. Observability
+  PASS — Structured logging found
+  PASS — No Console.WriteLine in production code
+  PASS — Health checks registered
+  PASS — Slow query tracking found
 
 ============================================
-TOTAL PASSED : 21
-TOTAL FAILED : 0
+TOTAL PASSED : 47
+TOTAL FAILED : 10
 ============================================

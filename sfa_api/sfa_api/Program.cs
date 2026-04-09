@@ -49,13 +49,16 @@ try
 
     // ── Database ─────────────────────────────────────────────────────────
     builder.Services.AddSingleton<AuditInterceptor>();
+    builder.Services.AddSingleton<SlowQueryInterceptor>();
     builder.Services.AddDbContextPool<AppDbContext>((sp, opt) =>
         opt.UseNpgsql(
                builder.Configuration.GetConnectionString("DefaultConnection"),
                npgsql => npgsql
                    .CommandTimeout(30)
                    .EnableRetryOnFailure(3))
-           .AddInterceptors(sp.GetRequiredService<AuditInterceptor>()));
+           .AddInterceptors(
+               sp.GetRequiredService<AuditInterceptor>(),
+               sp.GetRequiredService<SlowQueryInterceptor>()));
 
     // ── Caching ──────────────────────────────────────────────────────────
     var redisConnection = builder.Configuration["REDIS_CONNECTION"];
