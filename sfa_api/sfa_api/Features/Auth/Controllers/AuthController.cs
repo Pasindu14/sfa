@@ -17,6 +17,8 @@ public class AuthController(
     IAuthService authService,
     IValidator<LoginRequest> loginValidator,
     IValidator<RefreshRequest> refreshValidator,
+    IValidator<LogoutRequest> logoutValidator,
+    IValidator<DevTokenRequest> devTokenValidator,
     IAuthRepository authRepository,
     IJwtTokenHelper jwtTokenHelper,
     IWebHostEnvironment env) : ControllerBase
@@ -24,6 +26,8 @@ public class AuthController(
     private readonly IAuthService _authService = authService;
     private readonly IValidator<LoginRequest> _loginValidator = loginValidator;
     private readonly IValidator<RefreshRequest> _refreshValidator = refreshValidator;
+    private readonly IValidator<LogoutRequest> _logoutValidator = logoutValidator;
+    private readonly IValidator<DevTokenRequest> _devTokenValidator = devTokenValidator;
     private readonly IAuthRepository _authRepository = authRepository;
     private readonly IJwtTokenHelper _jwtTokenHelper = jwtTokenHelper;
     private readonly IWebHostEnvironment _env = env;
@@ -72,6 +76,8 @@ public class AuthController(
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
 
+        await _logoutValidator.ValidateOrThrowAsync(request, ct);
+
         if (string.IsNullOrEmpty(request.RefreshToken))
             return Ok(ResponseHelper.Ok("Logged out.", correlationId));
 
@@ -109,6 +115,8 @@ public class AuthController(
             throw new AuthorizationException("dev-token endpoint");
 
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+
+        await _devTokenValidator.ValidateOrThrowAsync(request, ct);
 
         var user = await _authRepository.GetUserByIdAsync(request.UserId, ct)
             ?? throw new NotFoundException("User", request.UserId);

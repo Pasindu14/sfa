@@ -16,6 +16,8 @@ public static class AuthServiceExtensions
         services.AddScoped<IJwtTokenHelper, JwtTokenHelper>();
         services.AddScoped<IValidator<LoginRequest>, LoginValidator>();
         services.AddScoped<IValidator<RefreshRequest>, RefreshValidator>();
+        services.AddScoped<IValidator<LogoutRequest>, LogoutValidator>();
+        services.AddScoped<IValidator<DevTokenRequest>, DevTokenValidator>();
         return services;
     }
 }
