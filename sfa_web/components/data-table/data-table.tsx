@@ -172,6 +172,9 @@ interface DataTableProps<TData extends ExportableData, TValue> {
   // Custom page size options
   pageSizeOptions?: number[];
 
+  // Default page size (overrides the built-in default of 10)
+  defaultPageSize?: number;
+
   // Custom toolbar content render function
   renderToolbarContent?: (props: {
     selectedRows: TData[];
@@ -196,6 +199,7 @@ export function DataTable<TData extends ExportableData, TValue>({
   exportConfig,
   idField = "id" as keyof TData,
   pageSizeOptions,
+  defaultPageSize,
   renderToolbarContent,
   onRowClick,
   subRowsConfig,
@@ -219,7 +223,7 @@ export function DataTable<TData extends ExportableData, TValue>({
 
   // States for API parameters using conditional URL state
   const [page, setPage] = useConditionalUrlState("page", 1);
-  const [pageSize, setPageSize] = useConditionalUrlState("pageSize", 10);
+  const [pageSize, setPageSize] = useConditionalUrlState("pageSize", defaultPageSize ?? 10);
   const [search, setSearch] = useConditionalUrlState("search", "");
   const [dateRange, setDateRange] = useConditionalUrlState<{
     from_date: string;

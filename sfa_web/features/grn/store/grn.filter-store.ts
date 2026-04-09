@@ -6,33 +6,42 @@ function todayIso() {
 }
 
 export interface AppliedGrnFilters {
-  date: string
+  dateFrom: string
+  dateTo: string
   distributorId: number | null
 }
 
 interface GrnFilterState {
-  date: string
+  dateFrom: string
+  dateTo: string
   distributorId: number | null
   appliedFilters: AppliedGrnFilters | null
-  setDate: (date: string) => void
+  isFetching: boolean
+  setDateFrom: (date: string) => void
+  setDateTo: (date: string) => void
   setDistributorId: (id: number | null) => void
   applyFilters: () => void
+  setFetching: (v: boolean) => void
   reset: () => void
 }
 
 export const useGrnFilterStore = create<GrnFilterState>()(
   devtools(
     (set, get) => ({
-      date: todayIso(),
+      dateFrom: todayIso(),
+      dateTo: todayIso(),
       distributorId: null,
       appliedFilters: null,
-      setDate: (date) => set({ date }),
+      isFetching: false,
+      setDateFrom: (dateFrom) => set({ dateFrom }),
+      setDateTo: (dateTo) => set({ dateTo }),
       setDistributorId: (distributorId) => set({ distributorId }),
       applyFilters: () => {
-        const { date, distributorId } = get()
-        set({ appliedFilters: { date, distributorId } })
+        const { dateFrom, dateTo, distributorId } = get()
+        set({ appliedFilters: { dateFrom, dateTo, distributorId }, isFetching: true })
       },
-      reset: () => set({ date: todayIso(), distributorId: null, appliedFilters: null }),
+      setFetching: (isFetching) => set({ isFetching }),
+      reset: () => set({ dateFrom: todayIso(), dateTo: todayIso(), distributorId: null, appliedFilters: null, isFetching: false }),
     }),
     { name: 'GrnFilterStore' }
   )

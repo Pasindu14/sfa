@@ -15,7 +15,7 @@ public interface ISalesInvoiceRepository
     // Read
     Task<(List<SalesInvoice> Items, int TotalCount)> GetListAsync(
         int page, int pageSize, string? search, string? status,
-        DateOnly? date, int? distributorId, CancellationToken ct = default);
+        DateOnly? dateFrom, DateOnly? dateTo, int? distributorId, CancellationToken ct = default);
     Task<SalesInvoice?> GetDetailAsync(int id, CancellationToken ct = default);
 
     // Write

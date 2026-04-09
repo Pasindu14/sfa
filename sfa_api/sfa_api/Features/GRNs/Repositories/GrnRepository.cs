@@ -22,7 +22,7 @@ public class GrnRepository(AppDbContext db) : IGrnRepository
     // ── GRN list ──────────────────────────────────────────────────────────
 
     public async Task<(List<GRN> Items, int TotalCount)> GetListAsync(
-        int page, int pageSize, string? status, int? distributorId, DateOnly? date = null, CancellationToken ct = default)
+        int page, int pageSize, string? status, int? distributorId, DateOnly? dateFrom = null, DateOnly? dateTo = null, CancellationToken ct = default)
     {
         var query = _db.GRNs
             .AsNoTracking()
@@ -37,11 +37,16 @@ public class GrnRepository(AppDbContext db) : IGrnRepository
         if (distributorId.HasValue)
             query = query.Where(x => x.DistributorId == distributorId.Value);
 
-        if (date.HasValue)
+        if (dateFrom.HasValue)
         {
-            var start = DateTime.SpecifyKind(date.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
-            var end   = DateTime.SpecifyKind(date.Value.ToDateTime(TimeOnly.MaxValue), DateTimeKind.Utc);
-            query = query.Where(x => x.CreatedAt >= start && x.CreatedAt <= end);
+            var start = DateTime.SpecifyKind(dateFrom.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            query = query.Where(x => x.CreatedAt >= start);
+        }
+
+        if (dateTo.HasValue)
+        {
+            var end = DateTime.SpecifyKind(dateTo.Value.ToDateTime(TimeOnly.MaxValue), DateTimeKind.Utc);
+            query = query.Where(x => x.CreatedAt <= end);
         }
 
         var total = await query.CountAsync(ct);

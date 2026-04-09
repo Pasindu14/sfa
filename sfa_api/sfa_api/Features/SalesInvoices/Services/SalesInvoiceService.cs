@@ -201,9 +201,9 @@ public class SalesInvoiceService(
 
     public async Task<(List<SalesInvoiceListDto> Items, int TotalCount)> GetListAsync(
         int page, int pageSize, string? search, string? status,
-        DateOnly? date, int? distributorId, CancellationToken ct = default)
+        DateOnly? dateFrom, DateOnly? dateTo, int? distributorId, CancellationToken ct = default)
     {
-        var (invoices, total) = await _repository.GetListAsync(page, pageSize, search, status, date, distributorId, ct);
+        var (invoices, total) = await _repository.GetListAsync(page, pageSize, search, status, dateFrom, dateTo, distributorId, ct);
         var dtos = invoices.Select(inv => new SalesInvoiceListDto(
             inv.Id,
             inv.VchBillNo,

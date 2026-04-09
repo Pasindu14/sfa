@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { getGrnsAction, getGrnByIdAction, createGrnAction, confirmGrnAction, deleteGrnAction } from '../actions/grn.actions'
@@ -52,7 +52,7 @@ export function useGrnDataTable(
 ) {
   const appliedFilters = useGrnFilterStore((s) => s.appliedFilters)
 
-  return useQuery({
+  const query = useQuery({
     queryKey: grnKeys.list({ page, pageSize, customFilters, appliedFilters }),
     queryFn: async () => {
       const result = await getGrnsAction(
@@ -60,7 +60,8 @@ export function useGrnDataTable(
         pageSize,
         customFilters?.status || undefined,
         appliedFilters?.distributorId ?? undefined,
-        appliedFilters?.date,
+        appliedFilters?.dateFrom,
+        appliedFilters?.dateTo,
       )
       if (!result.success) throw new Error(result.error)
       const { grns, totalCount, page: p, pageSize: ps } = result.data
@@ -76,6 +77,14 @@ export function useGrnDataTable(
       }
     },
   })
+
+  useEffect(() => {
+    if (query.isSuccess || query.isError) {
+      useGrnFilterStore.getState().setFetching(false)
+    }
+  }, [query.isSuccess, query.isError])
+
+  return query
 }
 
 ;(useGrnDataTable as unknown as Record<string, unknown>).isQueryHook = true

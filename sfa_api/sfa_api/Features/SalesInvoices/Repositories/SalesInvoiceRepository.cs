@@ -59,7 +59,7 @@ public class SalesInvoiceRepository(AppDbContext context) : ISalesInvoiceReposit
 
     public async Task<(List<SalesInvoice> Items, int TotalCount)> GetListAsync(
         int page, int pageSize, string? search, string? status,
-        DateOnly? date, int? distributorId, CancellationToken ct = default)
+        DateOnly? dateFrom, DateOnly? dateTo, int? distributorId, CancellationToken ct = default)
     {
         var query = _context.SalesInvoices
             .AsNoTracking()
@@ -79,8 +79,11 @@ public class SalesInvoiceRepository(AppDbContext context) : ISalesInvoiceReposit
             Enum.TryParse<SalesInvoiceStatus>(status, true, out var statusEnum))
             query = query.Where(x => x.Status == statusEnum);
 
-        if (date.HasValue)
-            query = query.Where(x => x.InvoiceDate == date.Value);
+        if (dateFrom.HasValue)
+            query = query.Where(x => x.InvoiceDate >= dateFrom.Value);
+
+        if (dateTo.HasValue)
+            query = query.Where(x => x.InvoiceDate <= dateTo.Value);
 
         if (distributorId.HasValue)
             query = query.Where(x => x.DistributorId == distributorId.Value);

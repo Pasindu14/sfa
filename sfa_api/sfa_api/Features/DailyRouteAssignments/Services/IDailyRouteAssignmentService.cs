@@ -24,6 +24,7 @@ public interface IDailyRouteAssignmentService
     Task<DailyRouteAssignmentDto> CreateAsync(
         CreateDailyRouteAssignmentRequest request,
         int? callerId,
+        string callerRole,
         CancellationToken ct = default);
 
     /// <summary>

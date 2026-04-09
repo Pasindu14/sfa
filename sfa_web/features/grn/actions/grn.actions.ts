@@ -17,7 +17,8 @@ export const getGrnsAction = createAction(
     pageSize: number = 20,
     status?: string,
     distributorId?: number,
-    date?: string,
+    dateFrom?: string,
+    dateTo?: string,
   ) => {
     const res = await client.get('/api/v1/grns', {
       params: {
@@ -25,7 +26,8 @@ export const getGrnsAction = createAction(
         pageSize,
         status: status || undefined,
         distributorId: distributorId || undefined,
-        date: date || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
       },
     })
     const body = res.data

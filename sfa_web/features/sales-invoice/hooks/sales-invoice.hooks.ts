@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
@@ -49,7 +49,7 @@ export function useSalesInvoiceDataTable(
   // Direct selector — no useShallow needed for a single value
   const appliedFilters = useSalesInvoiceFilterStore((s) => s.appliedFilters)
 
-  return useQuery({
+  const query = useQuery({
     queryKey: salesInvoiceKeys.list({ page, pageSize, search, customFilters, appliedFilters }),
     queryFn: async () => {
       const result = await getSalesInvoicesAction(
@@ -57,7 +57,8 @@ export function useSalesInvoiceDataTable(
         pageSize,
         search || undefined,
         customFilters?.status || undefined,
-        appliedFilters?.date,
+        appliedFilters?.dateFrom,
+        appliedFilters?.dateTo,
         appliedFilters?.distributorId ?? undefined,
       )
       if (!result.success) throw new Error(result.error)
@@ -73,9 +74,15 @@ export function useSalesInvoiceDataTable(
         },
       }
     },
-    // No keepPreviousData — we want the table to show a fresh loading state
-    // when the user changes date/distributor and clicks Reload, not stale rows.
   })
+
+  useEffect(() => {
+    if (query.isSuccess || query.isError) {
+      useSalesInvoiceFilterStore.getState().setFetching(false)
+    }
+  }, [query.isSuccess, query.isError])
+
+  return query
 }
 
 ;(useSalesInvoiceDataTable as unknown as Record<string, unknown>).isQueryHook = true

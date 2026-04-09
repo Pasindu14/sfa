@@ -65,10 +65,13 @@ export function useDeleteDialog() {
 export const useGrnFilters = () =>
   useGrnFilterStore(
     useShallow((s) => ({
-      date: s.date,
+      dateFrom: s.dateFrom,
+      dateTo: s.dateTo,
       distributorId: s.distributorId,
       appliedFilters: s.appliedFilters,
-      setDate: s.setDate,
+      isFetching: s.isFetching,
+      setDateFrom: s.setDateFrom,
+      setDateTo: s.setDateTo,
       setDistributorId: s.setDistributorId,
       applyFilters: s.applyFilters,
       reset: s.reset,

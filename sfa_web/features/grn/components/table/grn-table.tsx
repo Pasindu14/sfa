@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react'
 import { format } from 'date-fns'
-import { Search, RotateCcw, CalendarIcon, Building2 } from 'lucide-react'
+import { Search, RotateCcw, CalendarIcon, Building2, Loader2 } from 'lucide-react'
 import { DataTable } from '@/components/data-table/data-table'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
@@ -88,31 +88,46 @@ function DatePicker({
 // ── Filter form ───────────────────────────────────────────────────────────
 
 function GrnFilterForm({
-  date,
+  dateFrom,
+  dateTo,
   distributorId,
   hasLoaded,
-  onDateChange,
+  isLoading,
+  onDateFromChange,
+  onDateToChange,
   onDistributorChange,
   onLoad,
   onReset,
 }: {
-  date: string
+  dateFrom: string
+  dateTo: string
   distributorId: number | null
   hasLoaded: boolean
-  onDateChange: (date: string) => void
+  isLoading: boolean
+  onDateFromChange: (date: string) => void
+  onDateToChange: (date: string) => void
   onDistributorChange: (id: number | null) => void
   onLoad: () => void
   onReset: () => void
 }) {
   return (
     <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-card px-4 py-3">
-      {/* Date picker */}
+      {/* Date From */}
       <div className="flex flex-col gap-1.5">
         <label className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
           <CalendarIcon className="h-3 w-3" />
-          GRN Date
+          From Date
         </label>
-        <DatePicker value={date} onChange={onDateChange} />
+        <DatePicker value={dateFrom} onChange={onDateFromChange} />
+      </div>
+
+      {/* Date To */}
+      <div className="flex flex-col gap-1.5">
+        <label className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+          <CalendarIcon className="h-3 w-3" />
+          To Date
+        </label>
+        <DatePicker value={dateTo} onChange={onDateToChange} />
       </div>
 
       {/* Distributor */}
@@ -152,9 +167,11 @@ function GrnFilterForm({
 
       {/* Actions */}
       <div className="flex items-center gap-2">
-        <Button onClick={onLoad} className="h-8 gap-2">
-          <Search className="h-3.5 w-3.5" />
-          {hasLoaded ? 'Reload' : 'Load Data'}
+        <Button onClick={onLoad} disabled={isLoading} className="h-8 gap-2">
+          {isLoading
+            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            : <Search className="h-3.5 w-3.5" />}
+          {isLoading ? 'Loading...' : hasLoaded ? 'Reload' : 'Load Data'}
         </Button>
         {hasLoaded && (
           <Button
@@ -178,10 +195,13 @@ export function GrnTable() {
   const { open: openConfirm } = useConfirmDialog()
   const { open: openDelete } = useDeleteDialog()
   const {
-    date,
+    dateFrom,
+    dateTo,
     distributorId,
     appliedFilters,
-    setDate,
+    isFetching,
+    setDateFrom,
+    setDateTo,
     setDistributorId,
     applyFilters,
     reset,
@@ -195,10 +215,13 @@ export function GrnTable() {
   return (
     <div className="flex flex-col gap-4">
       <GrnFilterForm
-        date={date}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
         distributorId={distributorId}
         hasLoaded={!!appliedFilters}
-        onDateChange={setDate}
+        isLoading={isFetching}
+        onDateFromChange={setDateFrom}
+        onDateToChange={setDateTo}
         onDistributorChange={setDistributorId}
         onLoad={applyFilters}
         onReset={reset}
@@ -206,7 +229,7 @@ export function GrnTable() {
 
       {appliedFilters ? (
         <DataTable
-          key={`${appliedFilters.date}-${appliedFilters.distributorId ?? 'all'}`}
+          key={`${appliedFilters.dateFrom}-${appliedFilters.dateTo}-${appliedFilters.distributorId ?? 'all'}`}
           config={{
             enableRowSelection: false,
             enableSearch: false,
@@ -270,7 +293,7 @@ export function GrnTable() {
         <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed py-16 text-center">
           <CalendarIcon className="h-8 w-8 text-muted-foreground/40" />
           <p className="text-sm font-medium text-muted-foreground">
-            Select a date and click{' '}
+            Select a date range and click{' '}
             <span className="font-semibold">Load Data</span> to view GRNs
           </p>
           <p className="text-xs text-muted-foreground/60">

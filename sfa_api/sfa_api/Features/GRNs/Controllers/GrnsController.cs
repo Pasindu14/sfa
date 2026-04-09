@@ -37,12 +37,14 @@ public class GrnsController(
         [FromQuery] int pageSize = 20,
         [FromQuery] string? status = null,
         [FromQuery] int? distributorId = null,
-        [FromQuery] string? date = null,
+        [FromQuery] string? dateFrom = null,
+        [FromQuery] string? dateTo = null,
         CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
-        DateOnly? parsedDate = DateOnly.TryParse(date, out var d) ? d : null;
-        var (items, total) = await _grnService.GetListAsync(page, pageSize, status, distributorId, parsedDate, ct);
+        DateOnly? parsedDateFrom = DateOnly.TryParse(dateFrom, out var df) ? df : null;
+        DateOnly? parsedDateTo = DateOnly.TryParse(dateTo, out var dt) ? dt : null;
+        var (items, total) = await _grnService.GetListAsync(page, pageSize, status, distributorId, parsedDateFrom, parsedDateTo, ct);
         return Ok(ResponseHelper.Paged(items, page, pageSize, total, correlationId));
     }
 

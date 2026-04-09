@@ -96,7 +96,8 @@ public class DailyRouteAssignmentsController(
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
         await _createValidator.ValidateOrThrowAsync(request, ct);
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
-        var result = await _service.CreateAsync(request, callerId, ct);
+        var callerRole = User.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
+        var result = await _service.CreateAsync(request, callerId, callerRole, ct);
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, ResponseHelper.Created(result, correlationId));
     }
 

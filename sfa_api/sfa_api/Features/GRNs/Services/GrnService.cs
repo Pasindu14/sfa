@@ -22,9 +22,9 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
     // ── List GRNs ─────────────────────────────────────────────────────────
 
     public async Task<(List<GrnDto> Items, int TotalCount)> GetListAsync(
-        int page, int pageSize, string? status, int? distributorId, DateOnly? date = null, CancellationToken ct = default)
+        int page, int pageSize, string? status, int? distributorId, DateOnly? dateFrom = null, DateOnly? dateTo = null, CancellationToken ct = default)
     {
-        var (grns, total) = await _repository.GetListAsync(page, pageSize, status, distributorId, date, ct);
+        var (grns, total) = await _repository.GetListAsync(page, pageSize, status, distributorId, dateFrom, dateTo, ct);
         var dtos = grns.Select(g => new GrnDto(
             g.Id,
             g.GrnNumber,

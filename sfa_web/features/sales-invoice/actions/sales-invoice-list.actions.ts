@@ -11,7 +11,8 @@ export const getSalesInvoicesAction = createAction(
     pageSize: number = 20,
     search?: string,
     status?: string,
-    date?: string,
+    dateFrom?: string,
+    dateTo?: string,
     distributorId?: number,
   ) => {
     const res = await client.get('/api/v1/sales-invoices', {
@@ -20,7 +21,8 @@ export const getSalesInvoicesAction = createAction(
         pageSize,
         search: search || undefined,
         status: status || undefined,
-        date: date || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
         distributorId: distributorId || undefined,
       },
     })

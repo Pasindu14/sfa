@@ -63,6 +63,7 @@ public class DailyRouteAssignmentService(
     public async Task<DailyRouteAssignmentDto> CreateAsync(
         CreateDailyRouteAssignmentRequest request,
         int? callerId,
+        string callerRole,
         CancellationToken ct = default)
     {
         if (!await _repo.UserExistsAsync(request.UserId, ct))
@@ -70,6 +71,16 @@ public class DailyRouteAssignmentService(
 
         if (!await _repo.RouteExistsAsync(request.RouteId, ct))
             throw new NotFoundException("Route", request.RouteId);
+
+        // Supervisors may only assign routes to their own direct reports
+        if (string.Equals(callerRole, "Supervisor", StringComparison.OrdinalIgnoreCase) && callerId.HasValue)
+        {
+            var myReps = await _repo.GetRepsByReportsToAsync(callerId.Value, ct);
+            if (!myReps.Any(r => r.Id == request.UserId))
+                throw new BusinessRuleException(
+                    "REP_NOT_YOUR_SUBORDINATE",
+                    "You can only assign routes to sales reps who report directly to you.");
+        }
 
         // Serialize concurrent creates for the same rep on the same date to prevent duplicate assignments.
         var lockKey = $"daily-route-assignment:rep:{request.UserId}:{request.AssignedDate:yyyy-MM-dd}";
