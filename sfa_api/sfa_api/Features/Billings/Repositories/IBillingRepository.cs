@@ -1,0 +1,32 @@
+using Microsoft.EntityFrameworkCore.Storage;
+using sfa_api.Features.Billings.DTOs;
+using sfa_api.Features.Billings.Entities;
+using sfa_api.Features.Billings.Enums;
+using sfa_api.Features.Distributors.Entities;
+using sfa_api.Features.Outlets.Entities;
+using sfa_api.Features.Stock.Entities;
+
+namespace sfa_api.Features.Billings.Repositories;
+
+public interface IBillingRepository
+{
+    Task<long> GetNextBillingNumberAsync(CancellationToken ct = default);
+    Task<Outlet?> GetOutletAsync(int outletId, CancellationToken ct = default);
+    Task<Distributor?> GetDistributorByTerritoryAsync(int territoryId, CancellationToken ct = default);
+    Task<List<int>> GetActiveProductIdsAsync(IEnumerable<int> productIds, CancellationToken ct = default);
+
+    /// <summary>AsNoTracking pre-check before acquiring locks.</summary>
+    Task<List<DistributorStock>> GetStockSnapshotAsync(int distributorId, IEnumerable<int> productIds, CancellationToken ct = default);
+
+    Task<Billing?> GetByIdAsync(int id, CancellationToken ct = default);
+    Task<(List<BillingListDto> Items, int TotalCount)> GetListAsync(
+        int page, int pageSize,
+        BillingType? billingType, BillingStatus? status,
+        int? outletId, int? distributorId, int? salesRepId,
+        DateOnly? dateFrom, DateOnly? dateTo,
+        CancellationToken ct = default);
+
+    Task AddAsync(Billing billing, CancellationToken ct = default);
+    Task SaveChangesAsync(CancellationToken ct = default);
+    Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct = default);
+}

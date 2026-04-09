@@ -1,0 +1,63 @@
+using sfa_api.Features.Billings.Enums;
+using sfa_api.Features.Distributors.Entities;
+using sfa_api.Features.Outlets.Entities;
+using sfa_api.Features.Users.Entities;
+
+namespace sfa_api.Features.Billings.Entities;
+
+public class Billing
+{
+    public int Id { get; set; }
+    public string BillingNumber { get; set; } = string.Empty;  // BIL-2026-00001 / RET-2026-00001
+
+    public BillingType BillingType { get; set; } = BillingType.Sale;
+    public ReturnType? ReturnType { get; set; }           // null for Sale; required for Return
+    public int? OriginalBillingId { get; set; }           // Return → FK to original Sale billing
+
+    public DateOnly BillingDate { get; set; }
+
+    // Core references
+    public int OutletId { get; set; }
+    public int SalesRepId { get; set; }         // from JWT at write time
+    public int DistributorId { get; set; }       // denormalized at write time
+
+    // Full org chain — all denormalized at write time from UserReportingLine
+    public int? SupervisorUserId { get; set; }  // SalesRep's direct manager
+    public int? AsmUserId { get; set; }         // Supervisor's manager
+    public int? RsmUserId { get; set; }         // ASM's manager
+    public int? NsmUserId { get; set; }         // RSM's manager
+
+    // Full geo chain — all denormalized at write time from UserGeoAssignment
+    public int? DivisionId { get; set; }
+    public int? TerritoryId { get; set; }
+    public int? AreaId { get; set; }
+    public int? RegionId { get; set; }
+
+    // Amounts
+    public decimal SubTotalAmount { get; set; }      // Σ item.TotalPrice (non-free)
+    public decimal BillDiscountRate { get; set; }    // Bill-level discount % (0–100), default 0
+    public decimal BillDiscountAmount { get; set; }  // SubTotalAmount × BillDiscountRate / 100
+    public decimal TotalAmount { get; set; }         // SubTotalAmount − BillDiscountAmount
+
+    public BillingStatus Status { get; set; } = BillingStatus.Submitted;
+    public string? Notes { get; set; }
+
+    // Audit
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public int? CreatedBy { get; set; }
+    public int? UpdatedBy { get; set; }
+    public bool IsActive { get; set; } = true;
+    public bool IsDeleted { get; set; } = false;
+
+    // Navigation
+    public Outlet Outlet { get; set; } = null!;
+    public User SalesRep { get; set; } = null!;
+    public Distributor Distributor { get; set; } = null!;
+    public User? Supervisor { get; set; }
+    public User? Asm { get; set; }
+    public User? Rsm { get; set; }
+    public User? Nsm { get; set; }
+    public Billing? OriginalBilling { get; set; }
+    public ICollection<BillingItem> Items { get; set; } = [];
+}

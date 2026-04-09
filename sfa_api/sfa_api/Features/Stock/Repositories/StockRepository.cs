@@ -95,6 +95,61 @@ public class StockRepository(AppDbContext db) : IStockRepository
         });
     }
 
+    /// <inheritdoc/>
+    public async Task<DistributorStock?> GetStockForUpdateAsync(
+        int distributorId, int productId, CancellationToken ct = default)
+    {
+        var ids = await _db.Database
+            .SqlQueryRaw<int>(
+                "SELECT \"Id\" FROM \"DistributorStocks\" WHERE \"DistributorId\" = {0} AND \"ProductId\" = {1} FOR UPDATE",
+                distributorId, productId)
+            .ToListAsync(ct);
+
+        if (ids.Count == 0) return null;
+
+        return await _db.DistributorStocks
+            .FirstOrDefaultAsync(x => x.Id == ids[0], ct);
+    }
+
+    /// <inheritdoc/>
+    public async Task CreditStockAsync(
+        int distributorId,
+        int productId,
+        decimal quantity,
+        StockTransactionType transactionType,
+        string referenceType,
+        int referenceId,
+        int transactedBy,
+        string? notes = null,
+        CancellationToken ct = default)
+    {
+        var stock = await _db.DistributorStocks
+            .FirstOrDefaultAsync(x => x.DistributorId == distributorId && x.ProductId == productId, ct)
+            ?? throw new NotFoundException("DistributorStock", $"distributor={distributorId}/product={productId}");
+
+        var quantityBefore = stock.QuantityOnHand;
+        var quantityAfter  = quantityBefore + quantity;
+
+        stock.QuantityOnHand = quantityAfter;
+        stock.LastUpdatedAt  = DateTime.UtcNow;
+
+        _db.StockTransactions.Add(new StockTransaction
+        {
+            DistributorId   = distributorId,
+            ProductId       = productId,
+            TransactionType = transactionType,
+            Direction       = StockTransactionDirection.In,
+            Quantity        = quantity,
+            QuantityBefore  = quantityBefore,
+            QuantityAfter   = quantityAfter,
+            ReferenceType   = referenceType,
+            ReferenceId     = referenceId,
+            TransactedAt    = DateTime.UtcNow,
+            TransactedBy    = transactedBy,
+            Notes           = notes
+        });
+    }
+
     public Task SaveChangesAsync(CancellationToken ct = default)
         => _db.SaveChangesAsync(ct);
 }

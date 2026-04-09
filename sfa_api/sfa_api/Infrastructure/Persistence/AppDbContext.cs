@@ -11,6 +11,8 @@ using sfa_api.Features.ProductCategoryPricings.Entities;
 using sfa_api.Features.PricingStructures.Entities;
 using sfa_api.Features.Products.Entities;
 using sfa_api.Features.PurchaseOrders.Entities;
+using sfa_api.Features.Billings.Entities;
+using sfa_api.Features.Billings.Enums;
 using sfa_api.Features.GRNs.Entities;
 using sfa_api.Features.GRNs.Enums;
 using sfa_api.Features.SalesInvoices.Entities;
@@ -60,6 +62,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<UserReportingLine> UserReportingLines => Set<UserReportingLine>();
     public DbSet<UserGeoAssignment> UserGeoAssignments => Set<UserGeoAssignment>();
     public DbSet<DailyRouteAssignment> DailyRouteAssignments => Set<DailyRouteAssignment>();
+    public DbSet<Billing> Billings => Set<Billing>();
+    public DbSet<BillingItem> BillingItems => Set<BillingItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -653,6 +657,99 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.DeletionRequestReason).HasMaxLength(500);
             e.Property(x => x.DeletionRejectionReason).HasMaxLength(500);
             e.HasIndex(x => x.DeletionStatus);
+        });
+
+        // ── Billing sequence ──────────────────────────────────────────────────
+        modelBuilder.HasSequence<long>("billing_number_seq").StartsAt(1).IncrementsBy(1);
+
+        // ── Billing ───────────────────────────────────────────────────────────
+        modelBuilder.Entity<Billing>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.BillingNumber).IsRequired().HasMaxLength(30);
+            e.HasIndex(x => x.BillingNumber).IsUnique();
+            e.Property(x => x.BillingType).HasConversion<string>().HasMaxLength(10);
+            e.Property(x => x.ReturnType).HasConversion<string>().HasMaxLength(15);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(15);
+            e.Property(x => x.Notes).HasMaxLength(1000);
+            e.Property(x => x.SubTotalAmount).HasColumnType("decimal(18,2)");
+            e.Property(x => x.BillDiscountRate).HasColumnType("decimal(5,2)");
+            e.Property(x => x.BillDiscountAmount).HasColumnType("decimal(18,2)");
+            e.Property(x => x.TotalAmount).HasColumnType("decimal(18,2)");
+
+            // Report indexes — every org/geo level paired with BillingDate for range queries
+            e.HasIndex(x => new { x.SalesRepId,       x.BillingDate });
+            e.HasIndex(x => new { x.DistributorId,    x.BillingDate });
+            e.HasIndex(x => new { x.SupervisorUserId, x.BillingDate });
+            e.HasIndex(x => new { x.AsmUserId,        x.BillingDate });
+            e.HasIndex(x => new { x.RsmUserId,        x.BillingDate });
+            e.HasIndex(x => new { x.NsmUserId,        x.BillingDate });
+            e.HasIndex(x => new { x.TerritoryId,      x.BillingDate });
+            e.HasIndex(x => new { x.AreaId,           x.BillingDate });
+            e.HasIndex(x => new { x.RegionId,         x.BillingDate });
+            e.HasIndex(x => new { x.OutletId,         x.BillingDate });
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.IsDeleted).HasFilter("\"IsDeleted\" = false");
+            // Matching query filter prevents EF warning about Outlet's global IsActive+IsDeleted filter
+            // being the required end of this relationship.
+            e.HasQueryFilter(x => !x.IsDeleted);
+
+            // FK relationships
+            e.HasOne(x => x.Outlet)
+             .WithMany()
+             .HasForeignKey(x => x.OutletId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.SalesRep)
+             .WithMany()
+             .HasForeignKey(x => x.SalesRepId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Distributor)
+             .WithMany()
+             .HasForeignKey(x => x.DistributorId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Supervisor)
+             .WithMany()
+             .HasForeignKey(x => x.SupervisorUserId)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Asm)
+             .WithMany()
+             .HasForeignKey(x => x.AsmUserId)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Rsm)
+             .WithMany()
+             .HasForeignKey(x => x.RsmUserId)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Nsm)
+             .WithMany()
+             .HasForeignKey(x => x.NsmUserId)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.OriginalBilling)
+             .WithMany()
+             .HasForeignKey(x => x.OriginalBillingId)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasMany(x => x.Items)
+             .WithOne(i => i.Billing)
+             .HasForeignKey(i => i.BillingId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ── BillingItem ───────────────────────────────────────────────────────
+        modelBuilder.Entity<BillingItem>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Quantity).HasColumnType("decimal(18,4)");
+            e.Property(x => x.UnitPrice).HasColumnType("decimal(18,2)");
+            e.Property(x => x.DiscountRate).HasColumnType("decimal(5,2)");
+            e.Property(x => x.DiscountAmount).HasColumnType("decimal(18,2)");
+            e.Property(x => x.TotalPrice).HasColumnType("decimal(18,2)");
+            // Matching filter for Billing's HasQueryFilter
+            e.HasQueryFilter(x => !x.IsDeleted);
+            e.HasIndex(x => x.BillingId);
+            e.HasIndex(x => x.ProductId);
+            e.HasOne(x => x.Product)
+             .WithMany()
+             .HasForeignKey(x => x.ProductId)
+             .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
