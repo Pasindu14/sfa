@@ -50,9 +50,13 @@ try
     // ── Database ─────────────────────────────────────────────────────────
     builder.Services.AddSingleton<AuditInterceptor>();
     builder.Services.AddSingleton<SlowQueryInterceptor>();
+    var baseConnStr = builder.Configuration.GetConnectionString("DefaultConnection") ?? string.Empty;
+    var pooledConnStr = baseConnStr.TrimEnd(';')
+        + ";Maximum Pool Size=200;Minimum Pool Size=5;Connection Idle Lifetime=300";
+
     builder.Services.AddDbContextPool<AppDbContext>((sp, opt) =>
         opt.UseNpgsql(
-               builder.Configuration.GetConnectionString("DefaultConnection"),
+               pooledConnStr,
                npgsql => npgsql
                    .CommandTimeout(30)
                    .EnableRetryOnFailure(3))

@@ -1,10 +1,10 @@
-SFA API Audit Report — Thu, Apr  9, 2026 10:23:36 AM [Scope: Distributors]
+SFA API Audit Report — Thu, Apr  9, 2026 10:32:20 AM [Scope: ALL FEATURES]
 ============================================
 
 ## 1. Error Handling
   PASS — No try-catch in endpoints
   PASS — No untyped exceptions
-  PASS — Validator count matches request count (2/2)
+  FAIL — Possible missing validators: 38 validators vs 39 request files
 
 ## 2. Stock Race Conditions
   FAIL — SELECT FOR UPDATE SKIP LOCKED missing — stock updates unprotected
@@ -22,8 +22,66 @@ SFA API Audit Report — Thu, Apr  9, 2026 10:23:36 AM [Scope: Distributors]
   PASS — Redis registered in Program.cs
 
 ## 5. Performance
+  PASS — AsNoTracking present: ./sfa_api/Features/Areas/Repositories/AreaRepository.cs
+  PASS — AsNoTracking present: ./sfa_api/Features/Auth/Repositories/AuthRepository.cs
+  PASS — AsNoTracking present: ./sfa_api/Features/DailyRouteAssignments/Repositories/DailyRouteAssignmentRepository.cs
   PASS — AsNoTracking present: ./sfa_api/Features/Distributors/Repositories/DistributorRepository.cs
+  PASS — AsNoTracking present: ./sfa_api/Features/Divisions/Repositories/DivisionRepository.cs
+  PASS — AsNoTracking present: ./sfa_api/Features/GRNs/Repositories/GrnRepository.cs
+  PASS — AsNoTracking present: ./sfa_api/Features/Outlets/Repositories/OutletRepository.cs
+  PASS — AsNoTracking present: ./sfa_api/Features/PricingStructures/Repositories/PricingStructureRepository.cs
+  FAIL — Missing AsNoTracking in: ./sfa_api/Features/ProductCategoryPricings/Repositories/ProductCategoryPricingRepository.cs
+  PASS — AsNoTracking present: ./sfa_api/Features/Products/Repositories/ProductRepository.cs
+  PASS — AsNoTracking present: ./sfa_api/Features/PurchaseOrders/Repositories/PurchaseOrderRepository.cs
+  PASS — AsNoTracking present: ./sfa_api/Features/Regions/Repositories/RegionRepository.cs
+  PASS — AsNoTracking present: ./sfa_api/Features/Routes/Repositories/RouteRepository.cs
+  PASS — AsNoTracking present: ./sfa_api/Features/SalesInvoices/Repositories/SalesInvoiceRepository.cs
+  PASS — AsNoTracking present: ./sfa_api/Features/Stock/Repositories/StockRepository.cs
+  PASS — AsNoTracking present: ./sfa_api/Features/Territories/Repositories/TerritoryRepository.cs
+  PASS — AsNoTracking present: ./sfa_api/Features/UserGeoAssignments/Repositories/UserGeoAssignmentRepository.cs
+  PASS — AsNoTracking present: ./sfa_api/Features/UserReportingLines/Repositories/UserReportingLineRepository.cs
+  PASS — AsNoTracking present: ./sfa_api/Features/Users/Repositories/UserRepository.cs
+  FAIL — Possible unbounded query: ./sfa_api/Features/DailyRouteAssignments/Repositories/DailyRouteAssignmentRepository.cs:51:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/DailyRouteAssignments/Repositories/DailyRouteAssignmentRepository.cs:68:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/DailyRouteAssignments/Repositories/DailyRouteAssignmentRepository.cs:87:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/DailyRouteAssignments/Repositories/DailyRouteAssignmentRepository.cs:124:            .ToListAsync(ct);
   FAIL — Possible unbounded query: ./sfa_api/Features/Distributors/Repositories/DistributorRepository.cs:55:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/Divisions/Repositories/DivisionRepository.cs:53:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/Divisions/Repositories/DivisionRepository.cs:70:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/GRNs/Repositories/GrnRepository.cs:52:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/GRNs/Repositories/GrnRepository.cs:77:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/GRNs/Repositories/GrnRepository.cs:104:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/Outlets/Repositories/OutletRepository.cs:55:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/Outlets/Repositories/OutletRepository.cs:73:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/Outlets/Repositories/OutletRepository.cs:95:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/PricingStructures/Repositories/PricingStructureRepository.cs:44:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/PricingStructures/Repositories/PricingStructureRepository.cs:67:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/PricingStructures/Repositories/PricingStructureRepository.cs:76:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/PricingStructures/Repositories/PricingStructureRepository.cs:118:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/ProductCategoryPricings/Repositories/ProductCategoryPricingRepository.cs:20:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/ProductCategoryPricings/Repositories/ProductCategoryPricingRepository.cs:27:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/ProductCategoryPricings/Repositories/ProductCategoryPricingRepository.cs:57:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/Products/Repositories/ProductRepository.cs:33:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/PurchaseOrders/Repositories/PurchaseOrderRepository.cs:72:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/PurchaseOrders/Repositories/PurchaseOrderRepository.cs:129:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/PurchaseOrders/Repositories/PurchaseOrderRepository.cs:145:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/Regions/Repositories/RegionRepository.cs:32:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/Regions/Repositories/RegionRepository.cs:41:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/Routes/Repositories/RouteRepository.cs:52:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/Routes/Repositories/RouteRepository.cs:69:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/Routes/Repositories/RouteRepository.cs:76:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/SalesInvoices/Repositories/SalesInvoiceRepository.cs:48:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/SalesInvoices/Repositories/SalesInvoiceRepository.cs:93:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/Stock/Repositories/StockRepository.cs:26:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/Stock/Repositories/StockRepository.cs:40:              .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/Territories/Repositories/TerritoryRepository.cs:41:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/Territories/Repositories/TerritoryRepository.cs:54:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/UserGeoAssignments/Repositories/UserGeoAssignmentRepository.cs:82:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/UserGeoAssignments/Repositories/UserGeoAssignmentRepository.cs:95:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/UserGeoAssignments/Repositories/UserGeoAssignmentRepository.cs:129:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/UserReportingLines/Repositories/UserReportingLineRepository.cs:61:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/UserReportingLines/Repositories/UserReportingLineRepository.cs:72:            .ToListAsync(ct);
+  FAIL — Possible unbounded query: ./sfa_api/Features/Users/Repositories/UserRepository.cs:63:            .ToListAsync(ct);
   PASS — No obvious N+1 pattern detected
   PASS — No string interpolation in logs
 
@@ -53,7 +111,75 @@ SFA API Audit Report — Thu, Apr  9, 2026 10:23:36 AM [Scope: Distributors]
 
 ## 11. Resiliency
   PASS — Polly resiliency policies found
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Controllers/AuthController.cs:41:    public async Task<IActionResult> Login(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Controllers/AuthController.cs:58:    public async Task<IActionResult> Refresh(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Controllers/AuthController.cs:74:    public async Task<IActionResult> Logout(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Controllers/AuthController.cs:111:    public async Task<IActionResult> GenerateDevToken(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Repositories/AuthRepository.cs:12:    public async Task<User?> GetUserByEmailAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Repositories/AuthRepository.cs:18:    public async Task<User?> GetUserByUsernameAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Repositories/AuthRepository.cs:24:    public async Task<User?> GetUserByIdAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Repositories/AuthRepository.cs:30:    public async Task<RefreshToken?> GetRefreshTokenByHashAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Repositories/AuthRepository.cs:36:    public async Task AddRefreshTokenAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Repositories/AuthRepository.cs:40:    public async Task RegisterDeviceAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Repositories/AuthRepository.cs:47:    public async Task RevokeTokenFamilyAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Repositories/AuthRepository.cs:54:    public async Task RevokeAllUserTokensAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Services/AuthService.cs:35:    public async Task<AuthResponseDto> LoginAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Services/AuthService.cs:100:    public async Task<AuthResponseDto> RefreshAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/DailyRouteAssignments/Controllers/DailyRouteAssignmentsController.cs:25:    public async Task<IActionResult> GetAll(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/DailyRouteAssignments/Controllers/DailyRouteAssignmentsController.cs:53:    public async Task<IActionResult> GetPendingDeletions(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/DailyRouteAssignments/Controllers/DailyRouteAssignmentsController.cs:92:    public async Task<IActionResult> Create(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/DailyRouteAssignments/Repositories/DailyRouteAssignmentRepository.cs:20:    public async Task<(IEnumerable<DailyRouteAssignment>, int)> GetAllAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/DailyRouteAssignments/Repositories/DailyRouteAssignmentRepository.cs:105:    public async Task<(IEnumerable<DailyRouteAssignment>, int)> GetPendingDeletionsAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/DailyRouteAssignments/Services/DailyRouteAssignmentService.cs:30:    public async Task<DailyRouteAssignmentListDto> GetAllAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/DailyRouteAssignments/Services/DailyRouteAssignmentService.cs:63:    public async Task<DailyRouteAssignmentDto> CreateAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/DailyRouteAssignments/Services/DailyRouteAssignmentService.cs:117:    public async Task<DailyRouteAssignmentDto?> DeleteAsync(
   FAIL — Missing CancellationToken: ./sfa_api/Features/Distributors/Controllers/DistributorsController.cs:39:    public async Task<IActionResult> GetAll(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Divisions/Controllers/DivisionsController.cs:40:    public async Task<IActionResult> GetAll(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Divisions/Controllers/DivisionsController.cs:66:    public async Task<IActionResult> GetAllActive(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Divisions/Repositories/DivisionRepository.cs:22:    public async Task<(IEnumerable<Division> Divisions, int TotalCount)> GetAllAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/GRNs/Controllers/GrnsController.cs:35:    public async Task<IActionResult> GetList(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/GRNs/Repositories/GrnRepository.cs:24:    public async Task<(List<GRN> Items, int TotalCount)> GetListAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/GRNs/Repositories/GrnRepository.cs:96:    public async Task<DistributorStock?> GetStockForUpdateAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/GRNs/Services/GrnService.cs:24:    public async Task<(List<GrnDto> Items, int TotalCount)> GetListAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Outlets/Controllers/OutletsController.cs:40:    public async Task<IActionResult> GetAll(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Outlets/Repositories/OutletRepository.cs:26:    public async Task<(IEnumerable<Outlet> Outlets, int TotalCount)> GetAllAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/PricingStructures/Controllers/PricingStructuresController.cs:31:    public async Task<IActionResult> GetAllPricingStructures(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Products/Controllers/ProductsController.cs:40:    public async Task<IActionResult> GetAllProducts(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/PurchaseOrders/Controllers/PurchaseOrdersController.cs:43:    public async Task<IActionResult> GetStats(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/PurchaseOrders/Controllers/PurchaseOrdersController.cs:59:    public async Task<IActionResult> GetAll(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/PurchaseOrders/Repositories/PurchaseOrderRepository.cs:24:    public async Task<(IEnumerable<PurchaseOrder> PurchaseOrders, int TotalCount)> GetAllAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/PurchaseOrders/Repositories/PurchaseOrderRepository.cs:85:    public async Task<Dictionary<PurchaseOrderStatus, int>> GetCountsByStatusAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/PurchaseOrders/Services/PurchaseOrderService.cs:50:    public async Task<PurchaseOrderListDto> GetAllAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/PurchaseOrders/Services/PurchaseOrderService.cs:591:    public async Task<PurchaseOrderStatsDto> GetStatsAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Regions/Controllers/RegionsController.cs:40:    public async Task<IActionResult> GetAll(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Routes/Controllers/RoutesController.cs:40:    public async Task<IActionResult> GetAll(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Routes/Repositories/RouteRepository.cs:24:    public async Task<(IEnumerable<RouteEntity> Routes, int TotalCount)> GetAllAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/SalesInvoices/Controllers/SalesInvoicesController.cs:33:    public async Task<IActionResult> GetList(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/SalesInvoices/Repositories/SalesInvoiceRepository.cs:60:    public async Task<(List<SalesInvoice> Items, int TotalCount)> GetListAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/SalesInvoices/Services/SalesInvoiceService.cs:20:    public async Task<ImportBatchResultDto> ImportAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/SalesInvoices/Services/SalesInvoiceService.cs:202:    public async Task<(List<SalesInvoiceListDto> Items, int TotalCount)> GetListAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Stock/Controllers/StockController.cs:21:    public async Task<IActionResult> GetByDistributor(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Stock/Controllers/StockController.cs:48:    public async Task<IActionResult> GetTransactions(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Stock/Repositories/StockRepository.cs:11:    public async Task<(List<DistributorStock> Items, int TotalCount)> GetStockByDistributorAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Territories/Controllers/TerritoriesController.cs:40:    public async Task<IActionResult> GetAll(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Territories/Controllers/TerritoriesController.cs:64:    public async Task<IActionResult> GetAllActive(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/UserGeoAssignments/Controllers/UserAssignmentsController.cs:47:    public async Task<IActionResult> GetAll(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/UserGeoAssignments/Controllers/UserAssignmentsController.cs:66:    public async Task<IActionResult> Create(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/UserGeoAssignments/Controllers/UserAssignmentsController.cs:79:    public async Task<IActionResult> Update(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/UserGeoAssignments/Repositories/UserGeoAssignmentRepository.cs:28:    public async Task<(IEnumerable<UserGeoAssignment>, int)> GetAllAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/UserGeoAssignments/Repositories/UserGeoAssignmentRepository.cs:87:    public async Task<IEnumerable<UserReportingLine>> GetActiveReportingLinesByUserIdsAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/UserGeoAssignments/Repositories/UserGeoAssignmentRepository.cs:98:    public async Task<(int Total, int Active, int ActiveTerritories, int ThisMonth)> GetStatsAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/UserGeoAssignments/Services/UserGeoAssignmentService.cs:27:    public async Task<UserAssignmentListDto> GetAllAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/UserGeoAssignments/Services/UserGeoAssignmentService.cs:61:    public async Task<UserAssignmentDto> CreateAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/UserGeoAssignments/Services/UserGeoAssignmentService.cs:129:    public async Task<UserAssignmentDto> UpdateAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/UserReportingLines/Controllers/UserReportingLinesController.cs:38:    public async Task<IActionResult> GetAll(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/UserReportingLines/Controllers/UserReportingLinesController.cs:57:    public async Task<IActionResult> GetSubordinates(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/UserReportingLines/Repositories/UserReportingLineRepository.cs:22:    public async Task<(IEnumerable<UserReportingLine> Items, int TotalCount)> GetAllAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/UserReportingLines/Services/UserReportingLineService.cs:23:    public async Task<UserReportingLineListDto> GetAllAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/UserReportingLines/Services/UserReportingLineService.cs:42:    public async Task<IEnumerable<UserReportingLineDto>> GetSubordinatesAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/UserReportingLines/Services/UserReportingLineService.cs:79:    public async Task<UserReportingLineDto> CreateAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/UserReportingLines/Services/UserReportingLineService.cs:133:    public async Task<UserReportingLineDto> UpdateAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Users/Controllers/UsersController.cs:44:    public async Task<IActionResult> GetAllUsers(
   PASS — CancellationToken propagated into EF calls
 
 ## 12. Response Compression
@@ -65,7 +191,25 @@ SFA API Audit Report — Thu, Apr  9, 2026 10:23:36 AM [Scope: Distributors]
   FAIL — No explicit conflict resolution — server must always win on stock/price
 
 ## 14. Security
+  PASS — [Authorize] present: ./sfa_api/Features/Areas/Controllers/AreasController.cs
+  PASS — [Authorize] present: ./sfa_api/Features/Auth/Controllers/AuthController.cs
+  PASS — [Authorize] present: ./sfa_api/Features/DailyRouteAssignments/Controllers/DailyRouteAssignmentsController.cs
   PASS — [Authorize] present: ./sfa_api/Features/Distributors/Controllers/DistributorsController.cs
+  PASS — [Authorize] present: ./sfa_api/Features/Divisions/Controllers/DivisionsController.cs
+  PASS — [Authorize] present: ./sfa_api/Features/GRNs/Controllers/GrnsController.cs
+  PASS — [Authorize] present: ./sfa_api/Features/Outlets/Controllers/OutletsController.cs
+  PASS — [Authorize] present: ./sfa_api/Features/PricingStructures/Controllers/PricingStructuresController.cs
+  PASS — [Authorize] present: ./sfa_api/Features/ProductCategoryPricings/Controllers/ProductCategoryPricingsController.cs
+  PASS — [Authorize] present: ./sfa_api/Features/Products/Controllers/ProductsController.cs
+  PASS — [Authorize] present: ./sfa_api/Features/PurchaseOrders/Controllers/PurchaseOrdersController.cs
+  PASS — [Authorize] present: ./sfa_api/Features/Regions/Controllers/RegionsController.cs
+  PASS — [Authorize] present: ./sfa_api/Features/Routes/Controllers/RoutesController.cs
+  PASS — [Authorize] present: ./sfa_api/Features/SalesInvoices/Controllers/SalesInvoicesController.cs
+  PASS — [Authorize] present: ./sfa_api/Features/Stock/Controllers/StockController.cs
+  PASS — [Authorize] present: ./sfa_api/Features/Territories/Controllers/TerritoriesController.cs
+  PASS — [Authorize] present: ./sfa_api/Features/UserGeoAssignments/Controllers/UserAssignmentsController.cs
+  PASS — [Authorize] present: ./sfa_api/Features/UserReportingLines/Controllers/UserReportingLinesController.cs
+  PASS — [Authorize] present: ./sfa_api/Features/Users/Controllers/UsersController.cs
   PASS — No CompanyId found — correct for single-company system
   PASS — No hardcoded secrets found
   PASS — Refresh token logic found
@@ -97,6 +241,6 @@ SFA API Audit Report — Thu, Apr  9, 2026 10:23:36 AM [Scope: Distributors]
   PASS — Slow query tracking found
 
 ============================================
-TOTAL PASSED : 45
-TOTAL FAILED : 12
+TOTAL PASSED : 79
+TOTAL FAILED : 122
 ============================================

@@ -16,6 +16,7 @@ public class ProductCategoryPricingRepository(AppDbContext context) : IProductCa
     {
         // Load all active non-deleted products (Product has no HasQueryFilter — IsActive and IsDeleted are filtered explicitly in Product repos)
         var products = await _context.Products
+            .AsNoTracking()
             .OrderBy(p => p.Code)
             .ToListAsync(ct);
 
@@ -23,6 +24,7 @@ public class ProductCategoryPricingRepository(AppDbContext context) : IProductCa
 
         // Load all pricing rows for those products
         var pricingRows = await _context.ProductCategoryPrices
+            .AsNoTracking()
             .Where(x => productIds.Contains(x.ProductId))
             .ToListAsync(ct);
 

@@ -14,6 +14,7 @@ public static class PurchaseOrdersServiceExtensions
         services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
         services.AddScoped<IValidator<CreatePurchaseOrderRequest>, CreatePurchaseOrderValidator>();
         services.AddScoped<IValidator<UpdatePurchaseOrderRequest>, UpdatePurchaseOrderValidator>();
+        services.AddScoped<IValidator<RejectPurchaseOrderRequest>, RejectPurchaseOrderValidator>();
         return services;
     }
 }

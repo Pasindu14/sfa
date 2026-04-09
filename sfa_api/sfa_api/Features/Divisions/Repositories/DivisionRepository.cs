@@ -66,6 +66,7 @@ public class DivisionRepository(AppDbContext context) : IDivisionRepository
             .Include(d => d.Region)
             .AsNoTracking()
             .OrderBy(d => d.Name)
+            .Take(500)
             .ToListAsync(ct);
     }
 
