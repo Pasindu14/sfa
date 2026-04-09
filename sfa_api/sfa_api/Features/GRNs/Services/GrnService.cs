@@ -114,7 +114,7 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
         await _repository.SaveChangesAsync(ct);
 
         // 7. Reload with navigation props for DTO projection
-        var created = await _repository.GetGrnWithItemsAsync(grn.Id, ct)
+        var created = await _repository.GetGrnWithItemsReadOnlyAsync(grn.Id, ct)
             ?? throw new DatabaseUnavailableException();
 
         return ProjectToDto(created);
@@ -222,7 +222,7 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
         });
 
         // 7. Return updated DTO (re-fetch to get committed state)
-        var confirmed = await _repository.GetGrnWithItemsAsync(grnId, ct)
+        var confirmed = await _repository.GetGrnWithItemsReadOnlyAsync(grnId, ct)
             ?? throw new DatabaseUnavailableException();
 
         return ProjectToDto(confirmed);
@@ -232,7 +232,7 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
 
     public async Task<GrnDto> GetByIdAsync(int grnId, CancellationToken ct = default)
     {
-        var grn = await _repository.GetGrnWithItemsAsync(grnId, ct)
+        var grn = await _repository.GetGrnWithItemsReadOnlyAsync(grnId, ct)
             ?? throw new NotFoundException("GRN", grnId);
         return ProjectToDto(grn);
     }

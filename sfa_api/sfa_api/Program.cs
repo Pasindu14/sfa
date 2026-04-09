@@ -52,7 +52,7 @@ try
     builder.Services.AddSingleton<SlowQueryInterceptor>();
     var baseConnStr = builder.Configuration.GetConnectionString("DefaultConnection") ?? string.Empty;
     var pooledConnStr = baseConnStr.TrimEnd(';')
-        + ";Maximum Pool Size=200;Minimum Pool Size=5;Connection Idle Lifetime=300";
+        + ";Maximum Pool Size=100;Minimum Pool Size=10;Connection Idle Lifetime=300";
 
     builder.Services.AddDbContextPool<AppDbContext>((sp, opt) =>
         opt.UseNpgsql(

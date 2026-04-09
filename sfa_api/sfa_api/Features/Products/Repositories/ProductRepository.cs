@@ -35,6 +35,17 @@ public class ProductRepository(AppDbContext context) : IProductRepository
         return (products, totalCount);
     }
 
+    public async Task<HashSet<int>> GetActiveProductIdsInSetAsync(IEnumerable<int> ids, CancellationToken ct = default)
+    {
+        var idList = ids.ToList();
+        var result = await _context.Products
+            .IgnoreQueryFilters()
+            .Where(p => idList.Contains(p.Id) && p.IsActive && !p.IsDeleted)
+            .Select(p => p.Id)
+            .ToListAsync(ct);
+        return [.. result];
+    }
+
     public async Task<bool> ExistsByCodeAsync(string code, CancellationToken ct = default)
         => await _context.Products.IgnoreQueryFilters().AnyAsync(p => p.Code == code, ct);
 

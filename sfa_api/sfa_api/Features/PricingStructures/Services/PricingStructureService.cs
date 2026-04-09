@@ -4,44 +4,68 @@ using sfa_api.Features.PricingStructures.Entities;
 using sfa_api.Features.PricingStructures.Repositories;
 using sfa_api.Features.PricingStructures.Requests;
 using sfa_api.Features.Products.Repositories;
+using sfa_api.Infrastructure.Caching;
 
 namespace sfa_api.Features.PricingStructures.Services;
 
 public class PricingStructureService(
     IPricingStructureRepository repo,
     IProductRepository productRepo,
+    ICacheService cache,
     ILogger<PricingStructureService> logger) : IPricingStructureService
 {
     private readonly IPricingStructureRepository _repo = repo;
     private readonly IProductRepository _productRepo = productRepo;
+    private readonly ICacheService _cache = cache;
     private readonly ILogger<PricingStructureService> _logger = logger;
+
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
+    private const string CachePrefix = "pricing:";
 
     public async Task<PricingStructureDetailDto> GetByIdAsync(int id, CancellationToken ct = default)
     {
+        var cacheKey = $"pricing:detail:{id}";
+        var cached = await _cache.GetAsync<PricingStructureDetailDto>(cacheKey, ct);
+        if (cached is not null) return cached;
+
         var structure = await _repo.GetByIdWithItemsAsync(id, ct)
             ?? throw new NotFoundException("PricingStructure", id);
-        return MapToDetailDto(structure);
+        var result = MapToDetailDto(structure);
+        await _cache.SetAsync(cacheKey, result, CacheTtl, ct);
+        return result;
     }
 
     public async Task<PricingStructureDetailDto> GetDefaultAsync(CancellationToken ct = default)
     {
+        const string cacheKey = "pricing:default";
+        var cached = await _cache.GetAsync<PricingStructureDetailDto>(cacheKey, ct);
+        if (cached is not null) return cached;
+
         var structure = await _repo.GetCurrentDefaultAsync(ct)
             ?? throw new NotFoundException("PricingStructure", "default");
         var withItems = await _repo.GetByIdWithItemsAsync(structure.Id, ct)
             ?? throw new NotFoundException("PricingStructure", structure.Id);
-        return MapToDetailDto(withItems);
+        var result = MapToDetailDto(withItems);
+        await _cache.SetAsync(cacheKey, result, CacheTtl, ct);
+        return result;
     }
 
     public async Task<PricingStructureListDto> GetAllAsync(int page, int pageSize, string? search = null, CancellationToken ct = default)
     {
+        var cacheKey = $"pricing:list:{page}:{pageSize}:{search ?? ""}";
+        var cached = await _cache.GetAsync<PricingStructureListDto>(cacheKey, ct);
+        if (cached is not null) return cached;
+
         var skip = (page - 1) * pageSize;
         var (structures, totalCount) = await _repo.GetAllAsync(skip, pageSize, search, ct);
-        return new PricingStructureListDto(
+        var result = new PricingStructureListDto(
             PricingStructures: structures.Select(MapToDto),
             TotalCount: totalCount,
             Page: page,
             PageSize: pageSize
         );
+        await _cache.SetAsync(cacheKey, result, CacheTtl, ct);
+        return result;
     }
 
     public async Task<PricingStructureDto> CreateAsync(CreatePricingStructureRequest request, int? callerId, CancellationToken ct = default)
@@ -78,6 +102,7 @@ public class PricingStructureService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("PricingStructure {PricingStructureId} created with name {Name}", structure.Id, structure.Name);
+        await _cache.RemoveByPrefixAsync(CachePrefix, ct);
         return MapToDto(structure);
     }
 
@@ -112,6 +137,7 @@ public class PricingStructureService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("PricingStructure {PricingStructureId} updated", id);
+        await _cache.RemoveByPrefixAsync(CachePrefix, ct);
         return MapToDto(structure);
     }
 
@@ -122,6 +148,7 @@ public class PricingStructureService(
 
         await _repo.DeactivateAsync(id, ct);
         _logger.LogInformation("PricingStructure {PricingStructureId} deactivated", id);
+        await _cache.RemoveByPrefixAsync(CachePrefix, ct);
     }
 
     public async Task DeleteAsync(int id, CancellationToken ct = default)
@@ -132,6 +159,7 @@ public class PricingStructureService(
         await _repo.DeleteAsync(id, ct);
         await _repo.SaveChangesAsync(ct);
         _logger.LogInformation("PricingStructure {PricingStructureId} deleted", id);
+        await _cache.RemoveByPrefixAsync(CachePrefix, ct);
     }
 
     public async Task ActivateAsync(int id, CancellationToken ct = default)
@@ -143,15 +171,22 @@ public class PricingStructureService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("PricingStructure {PricingStructureId} activated", id);
+        await _cache.RemoveByPrefixAsync(CachePrefix, ct);
     }
 
     public async Task<IEnumerable<PricingStructureItemDto>> GetItemsAsync(int id, CancellationToken ct = default)
     {
+        var cacheKey = $"pricing:items:{id}";
+        var cached = await _cache.GetAsync<IEnumerable<PricingStructureItemDto>>(cacheKey, ct);
+        if (cached is not null) return cached;
+
         _ = await _repo.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("PricingStructure", id);
 
         var items = await _repo.GetItemsAsync(id, ct);
-        return items.Select(MapItemToDto);
+        var result = items.Select(MapItemToDto).ToList();
+        await _cache.SetAsync(cacheKey, result, CacheTtl, ct);
+        return result;
     }
 
     public async Task<IEnumerable<PricingStructureItemDto>> BulkReplaceItemsAsync(int id, BulkUpdateItemsRequest request, int? callerId, CancellationToken ct = default)
@@ -160,8 +195,7 @@ public class PricingStructureService(
             ?? throw new NotFoundException("PricingStructure", id);
 
         var productIds = request.Items.Select(i => i.ProductId).Distinct().ToList();
-        var (activeProducts, _) = await _productRepo.GetAllAsync(0, int.MaxValue, null, ct);
-        var activeProductIds = activeProducts.Select(p => p.Id).ToHashSet();
+        var activeProductIds = await _productRepo.GetActiveProductIdsInSetAsync(productIds, ct);
 
         var invalidIds = productIds.Where(pid => !activeProductIds.Contains(pid)).ToList();
         if (invalidIds.Count > 0)
@@ -187,6 +221,7 @@ public class PricingStructureService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("PricingStructure {PricingStructureId} items bulk replaced with {Count} items", id, newItems.Count);
+        await _cache.RemoveByPrefixAsync(CachePrefix, ct);
 
         var updatedItems = await _repo.GetItemsAsync(id, ct);
         return updatedItems.Select(MapItemToDto);

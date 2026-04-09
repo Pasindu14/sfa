@@ -102,4 +102,16 @@ record ApiError(
 Use `ResponseHelper.Ok(data, correlationId)` in controllers — never construct manually.
 
 > Exception → HTTP status mapping, EF Core patterns, auth details, and infrastructure services
-> are in `.claude/rules/api-conventions.md` (auto-loaded when editing `sfa_api/**` files).
+(auto-loaded when editing `sfa_api/**` files).
+
+
+## Scale Context
+- 500 field reps, single company
+- Expected: ~50 concurrent users, ~200 req/min peak
+- All list endpoints must use cursor-based pagination — no offset on large tables
+- Every repository query must have AsNoTracking()
+- Redis cache mandatory on all reference data (catalogs, price lists, geo hierarchy)
+- No unbounded queries — Take() required on every list
+- Composite indexes required on any column used in WHERE + ORDER BY together
+- Connection pool: MaxPoolSize=100, MinPoolSize=10
+- All timestamps: timestamptz, DateTime.UtcNow only

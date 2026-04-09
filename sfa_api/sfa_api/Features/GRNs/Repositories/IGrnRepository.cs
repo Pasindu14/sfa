@@ -11,7 +11,10 @@ public interface IGrnRepository
 
     // ── GRN read ───────────────────────────────────────────────────────────
     Task<(List<GRN> Items, int TotalCount)> GetListAsync(int page, int pageSize, string? status, int? distributorId, DateOnly? date = null, CancellationToken ct = default);
+    /// <summary>Tracked — use when you will mutate the returned entity (e.g. ConfirmAsync).</summary>
     Task<GRN?> GetGrnWithItemsAsync(int grnId, CancellationToken ct = default);
+    /// <summary>AsNoTracking — use for read-only projections (GET endpoints, post-save reloads).</summary>
+    Task<GRN?> GetGrnWithItemsReadOnlyAsync(int grnId, CancellationToken ct = default);
     Task<bool> GrnExistsForInvoiceAsync(int salesInvoiceId, CancellationToken ct = default);
 
     // ── GRN sequence ───────────────────────────────────────────────────────

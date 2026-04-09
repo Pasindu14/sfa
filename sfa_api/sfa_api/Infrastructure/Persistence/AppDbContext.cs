@@ -386,6 +386,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.DistributorId);
             e.HasIndex(x => x.Status);
             e.HasIndex(x => x.CreatedAt);
+            // Composite covering index for common filtered+sorted list query
+            e.HasIndex(x => new { x.DistributorId, x.CreatedAt })
+             .IsDescending(false, true);
             e.HasOne(x => x.Distributor)
              .WithMany()
              .HasForeignKey(x => x.DistributorId)
@@ -524,6 +527,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.IsDeleted);
             // Unique FK — enforces 1:1 with SalesInvoice (no double-GRN at DB level)
             e.HasIndex(x => x.SalesInvoiceId).IsUnique();
+            // Composite covering index for common filtered+sorted list query (WHERE DistributorId=X AND Status=Y ORDER BY CreatedAt DESC)
+            e.HasIndex(x => new { x.DistributorId, x.Status, x.CreatedAt })
+             .IsDescending(false, false, true);
             e.Property(x => x.Status)
              .HasConversion<string>()
              .HasMaxLength(20);

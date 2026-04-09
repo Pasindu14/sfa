@@ -65,6 +65,16 @@ public class GrnRepository(AppDbContext db) : IGrnRepository
               .Include(x => x.ConfirmedByUser)
               .FirstOrDefaultAsync(x => x.Id == grnId && x.IsActive, ct);
 
+    public Task<GRN?> GetGrnWithItemsReadOnlyAsync(int grnId, CancellationToken ct = default)
+        => _db.GRNs
+              .AsNoTracking()
+              .Include(x => x.Items)
+                  .ThenInclude(i => i.Product)
+              .Include(x => x.SalesInvoice)
+              .Include(x => x.Distributor)
+              .Include(x => x.ConfirmedByUser)
+              .FirstOrDefaultAsync(x => x.Id == grnId && x.IsActive, ct);
+
     public Task<bool> GrnExistsForInvoiceAsync(int salesInvoiceId, CancellationToken ct = default)
         => _db.GRNs.AnyAsync(x => x.SalesInvoiceId == salesInvoiceId, ct);
 
