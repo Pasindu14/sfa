@@ -64,6 +64,7 @@ public class DailyRouteAssignmentRepository(AppDbContext context) : IDailyRouteA
             .Select(rl => rl.User!)
             .AsNoTracking()
             .OrderBy(u => u.Name)
+            .Take(500)
             .ToListAsync(ct);
 
     public async Task<IEnumerable<RouteEntity>> GetActiveRoutesByRepIdAsync(int userId, CancellationToken ct = default)
@@ -82,6 +83,7 @@ public class DailyRouteAssignmentRepository(AppDbContext context) : IDailyRouteA
             .Where(r => r.IsActive && !r.IsDeleted && r.DivisionId == geoAssignment.DivisionId)
             .AsNoTracking()
             .OrderBy(r => r.Name)
+            .Take(500)
             .ToListAsync(ct);
     }
 

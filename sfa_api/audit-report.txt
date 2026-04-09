@@ -1,10 +1,10 @@
-SFA API Audit Report — Thu, Apr  9, 2026  9:55:34 AM [Scope: Auth]
+SFA API Audit Report — Thu, Apr  9, 2026 10:16:02 AM [Scope: Distributors]
 ============================================
 
 ## 1. Error Handling
   PASS — No try-catch in endpoints
   PASS — No untyped exceptions
-  PASS — Validator count matches request count (4/4)
+  PASS — Validator count matches request count (2/2)
 
 ## 2. Stock Race Conditions
   FAIL — SELECT FOR UPDATE SKIP LOCKED missing — stock updates unprotected
@@ -22,8 +22,8 @@ SFA API Audit Report — Thu, Apr  9, 2026  9:55:34 AM [Scope: Auth]
   PASS — Redis registered in Program.cs
 
 ## 5. Performance
-  PASS — AsNoTracking present: ./sfa_api/Features/Auth/Repositories/AuthRepository.cs
-  PASS — No unbounded ToListAsync found
+  PASS — AsNoTracking present: ./sfa_api/Features/Distributors/Repositories/DistributorRepository.cs
+  FAIL — Possible unbounded query: ./sfa_api/Features/Distributors/Repositories/DistributorRepository.cs:55:            .ToListAsync(ct);
   PASS — No obvious N+1 pattern detected
   PASS — No string interpolation in logs
 
@@ -53,20 +53,7 @@ SFA API Audit Report — Thu, Apr  9, 2026  9:55:34 AM [Scope: Auth]
 
 ## 11. Resiliency
   PASS — Polly resiliency policies found
-  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Controllers/AuthController.cs:41:    public async Task<IActionResult> Login(
-  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Controllers/AuthController.cs:58:    public async Task<IActionResult> Refresh(
-  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Controllers/AuthController.cs:74:    public async Task<IActionResult> Logout(
-  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Controllers/AuthController.cs:111:    public async Task<IActionResult> GenerateDevToken(
-  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Repositories/AuthRepository.cs:12:    public async Task<User?> GetUserByEmailAsync(
-  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Repositories/AuthRepository.cs:18:    public async Task<User?> GetUserByUsernameAsync(
-  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Repositories/AuthRepository.cs:24:    public async Task<User?> GetUserByIdAsync(
-  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Repositories/AuthRepository.cs:30:    public async Task<RefreshToken?> GetRefreshTokenByHashAsync(
-  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Repositories/AuthRepository.cs:36:    public async Task AddRefreshTokenAsync(
-  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Repositories/AuthRepository.cs:40:    public async Task RegisterDeviceAsync(
-  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Repositories/AuthRepository.cs:47:    public async Task RevokeTokenFamilyAsync(
-  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Repositories/AuthRepository.cs:54:    public async Task RevokeAllUserTokensAsync(
-  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Services/AuthService.cs:35:    public async Task<AuthResponseDto> LoginAsync(
-  FAIL — Missing CancellationToken: ./sfa_api/Features/Auth/Services/AuthService.cs:100:    public async Task<AuthResponseDto> RefreshAsync(
+  FAIL — Missing CancellationToken: ./sfa_api/Features/Distributors/Controllers/DistributorsController.cs:39:    public async Task<IActionResult> GetAll(
   PASS — CancellationToken propagated into EF calls
 
 ## 12. Response Compression
@@ -78,7 +65,7 @@ SFA API Audit Report — Thu, Apr  9, 2026  9:55:34 AM [Scope: Auth]
   FAIL — No explicit conflict resolution — server must always win on stock/price
 
 ## 14. Security
-  PASS — [Authorize] present: ./sfa_api/Features/Auth/Controllers/AuthController.cs
+  PASS — [Authorize] present: ./sfa_api/Features/Distributors/Controllers/DistributorsController.cs
   PASS — No CompanyId found — correct for single-company system
   PASS — No hardcoded secrets found
   PASS — Refresh token logic found
@@ -110,6 +97,6 @@ SFA API Audit Report — Thu, Apr  9, 2026  9:55:34 AM [Scope: Auth]
   PASS — Slow query tracking found
 
 ============================================
-TOTAL PASSED : 46
-TOTAL FAILED : 24
+TOTAL PASSED : 45
+TOTAL FAILED : 12
 ============================================

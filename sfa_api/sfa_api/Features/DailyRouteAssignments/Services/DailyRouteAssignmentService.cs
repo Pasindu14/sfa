@@ -5,16 +5,19 @@ using sfa_api.Features.DailyRouteAssignments.Enums;
 using sfa_api.Features.DailyRouteAssignments.Repositories;
 using sfa_api.Features.DailyRouteAssignments.Requests;
 using sfa_api.Features.UserReportingLines.Repositories;
+using sfa_api.Infrastructure.Locking;
 
 namespace sfa_api.Features.DailyRouteAssignments.Services;
 
 public class DailyRouteAssignmentService(
     IDailyRouteAssignmentRepository repo,
     IUserReportingLineRepository reportingRepo,
+    IDistributedLockService lockService,
     ILogger<DailyRouteAssignmentService> logger) : IDailyRouteAssignmentService
 {
     private readonly IDailyRouteAssignmentRepository _repo = repo;
     private readonly IUserReportingLineRepository _reportingRepo = reportingRepo;
+    private readonly IDistributedLockService _lockService = lockService;
     private readonly ILogger<DailyRouteAssignmentService> _logger = logger;
 
     public async Task<DailyRouteAssignmentDto> GetByIdAsync(int id, CancellationToken ct = default)
@@ -67,6 +70,11 @@ public class DailyRouteAssignmentService(
 
         if (!await _repo.RouteExistsAsync(request.RouteId, ct))
             throw new NotFoundException("Route", request.RouteId);
+
+        // Serialize concurrent creates for the same rep on the same date to prevent duplicate assignments.
+        var lockKey = $"daily-route-assignment:rep:{request.UserId}:{request.AssignedDate:yyyy-MM-dd}";
+        await using var handle = await _lockService.AcquireAsync(lockKey, ct)
+            ?? throw new BusinessRuleException("LOCK_UNAVAILABLE", "Could not acquire lock to create assignment. Please retry.");
 
         // Validate: rep not already assigned on this date
         if (await _repo.IsRepAlreadyAssignedOnDateAsync(request.UserId, request.AssignedDate, ct))
