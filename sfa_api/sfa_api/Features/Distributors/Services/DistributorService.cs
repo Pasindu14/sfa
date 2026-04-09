@@ -5,6 +5,7 @@ using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.Distributors.Requests;
 using sfa_api.Features.Territories.Repositories;
 using sfa_api.Infrastructure.Caching;
+using sfa_api.Infrastructure.Locking;
 
 namespace sfa_api.Features.Distributors.Services;
 
@@ -12,11 +13,13 @@ public class DistributorService(
     IDistributorRepository repo,
     ITerritoryRepository territoryRepo,
     ICacheService cache,
+    IDistributedLockService lockService,
     ILogger<DistributorService> logger) : IDistributorService
 {
     private readonly IDistributorRepository _repo = repo;
     private readonly ITerritoryRepository _territoryRepo = territoryRepo;
     private readonly ICacheService _cache = cache;
+    private readonly IDistributedLockService _lockService = lockService;
     private readonly ILogger<DistributorService> _logger = logger;
 
     private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
@@ -50,6 +53,9 @@ public class DistributorService(
 
     public async Task<DistributorDto> CreateAsync(CreateDistributorRequest request, int? callerId, CancellationToken ct = default)
     {
+        await using var advisoryLock = await _lockService.AcquireAsync($"distributor:create:{request.Email}", ct)
+            ?? throw new ConcurrencyConflictException(new { email = request.Email, message = "A concurrent distributor creation with this email is already in progress." });
+
         if (await _repo.ExistsByEmailAsync(request.Email, ct))
             throw new DuplicateResourceException("Email");
 
@@ -100,6 +106,9 @@ public class DistributorService(
 
     public async Task<DistributorDto> UpdateAsync(int id, UpdateDistributorRequest request, int? callerId, CancellationToken ct = default)
     {
+        await using var advisoryLock = await _lockService.AcquireAsync($"distributor:update:{id}", ct)
+            ?? throw new ConcurrencyConflictException(new { distributorId = id, message = "A concurrent update for this distributor is already in progress." });
+
         var distributor = await _repo.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("Distributor", id);
 
