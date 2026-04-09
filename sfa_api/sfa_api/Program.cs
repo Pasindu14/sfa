@@ -18,6 +18,7 @@ using sfa_api.Features.PricingStructures;
 using sfa_api.Features.Products;
 using sfa_api.Features.PurchaseOrders;
 using sfa_api.Features.Billings;
+using sfa_api.Features.MobileSync;
 using sfa_api.Features.GRNs;
 using sfa_api.Features.SalesInvoices;
 using sfa_api.Features.Stock;
@@ -172,6 +173,7 @@ try
     builder.Services.AddGrnsFeature();
     builder.Services.AddBillingsFeature();
     builder.Services.AddStockFeature();
+    builder.Services.AddMobileSyncFeature();
 
     var app = builder.Build();
 

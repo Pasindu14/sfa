@@ -70,6 +70,7 @@ public class ProductService(
 
         _logger.LogInformation("Product {ProductId} created with code {Code}", product.Id, product.Code);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
+        await _cache.RemoveAsync("mobile:products", ct);
         return MapToDto(product);
     }
 
@@ -95,6 +96,7 @@ public class ProductService(
 
         _logger.LogInformation("Product {ProductId} updated", id);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
+        await _cache.RemoveAsync("mobile:products", ct);
         return MapToDto(product);
     }
 
@@ -106,6 +108,7 @@ public class ProductService(
         await _repo.DeactivateAsync(id, ct);
         _logger.LogInformation("Product {ProductId} deactivated", id);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
+        await _cache.RemoveAsync("mobile:products", ct);
     }
 
     public async Task DeleteAsync(int id, CancellationToken ct = default)
@@ -117,6 +120,7 @@ public class ProductService(
         await _repo.SaveChangesAsync(ct);
         _logger.LogInformation("Product {ProductId} deleted", id);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
+        await _cache.RemoveAsync("mobile:products", ct);
     }
 
     public async Task ActivateAsync(int id, CancellationToken ct = default)
@@ -132,6 +136,7 @@ public class ProductService(
 
         _logger.LogInformation("Product {ProductId} activated", id);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
+        await _cache.RemoveAsync("mobile:products", ct);
     }
 
     private static ProductDto MapToDto(Product product) => new(
