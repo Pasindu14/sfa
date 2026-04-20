@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/features/auth/presentation/bloc/auth_bloc.dart';
 
@@ -587,6 +588,8 @@ class _ActionsGrid extends StatelessWidget {
             onTap: () {},
           ),
           SizedBox(height: 10.h),
+          _SyncDataAction(onTap: () => context.push('/sales-rep/sync')),
+          SizedBox(height: 10.h),
           Row(
             children: [
               Expanded(
@@ -610,11 +613,86 @@ class _ActionsGrid extends StatelessWidget {
                   icon: Icons.inventory_2_rounded,
                   label: 'Products',
                   color: AppColors.foregroundMuted,
+                  onTap: () => context.push('/sales-rep/products'),
                 ),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SyncDataAction extends StatelessWidget {
+  const _SyncDataAction({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12.r),
+        child: Ink(
+          height: 56.h,
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(12.r),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.35),
+              width: 1.5,
+            ),
+          ),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: Row(
+              children: [
+                Container(
+                  width: 32.r,
+                  height: 32.r,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  child: Icon(Icons.sync_rounded,
+                      color: AppColors.primary, size: 16.r),
+                ),
+                SizedBox(width: 14.w),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'SYNC DATA',
+                        style: GoogleFonts.barlowCondensed(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                          height: 1.0,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      Text(
+                        'Keep your device data up to date',
+                        style: GoogleFonts.barlow(
+                          fontSize: 11.sp,
+                          color: AppColors.foregroundMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.arrow_forward_ios_rounded,
+                    color: AppColors.primary.withValues(alpha: 0.6),
+                    size: 12.r),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -702,17 +780,19 @@ class _SecondaryAction extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.color,
+    this.onTap,
   });
   final IconData icon;
   final String label;
   final Color color;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () {},
+        onTap: onTap,
         borderRadius: BorderRadius.circular(12.r),
         child: Ink(
           decoration: BoxDecoration(

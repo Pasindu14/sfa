@@ -7,6 +7,14 @@ import 'package:uswatte/features/auth/presentation/pages/login_page.dart';
 import 'package:uswatte/features/route_assignment/presentation/pages/assignments_list_page.dart';
 import 'package:uswatte/features/route_assignment/presentation/pages/route_assignment_page.dart';
 import 'package:uswatte/features/sales_rep/presentation/pages/sales_rep_home_page.dart';
+import 'package:uswatte/features/products/presentation/bloc/products_bloc.dart';
+import 'package:uswatte/features/products/presentation/bloc/products_event.dart';
+import 'package:uswatte/features/products/presentation/pages/products_page.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uswatte/core/di/injection.dart';
+import 'package:uswatte/features/products/domain/usecases/get_products_usecase.dart';
+import 'package:uswatte/features/products/domain/usecases/sync_products_usecase.dart';
+import 'package:uswatte/features/sync/presentation/pages/sync_page.dart';
 import 'package:uswatte/features/sales_rep/presentation/pages/unsupported_role_page.dart';
 import 'package:uswatte/features/splash/presentation/pages/splash_page.dart';
 import 'package:uswatte/features/supervisor/presentation/pages/supervisor_home_page.dart';
@@ -58,6 +66,28 @@ class AppRouter {
               path: 'home',
               name: 'salesRepHome',
               builder: (_, __) => const SalesRepHomePage(),
+            ),
+            GoRoute(
+              path: 'sync',
+              name: 'sync',
+              builder: (_, __) => BlocProvider(
+                create: (_) => ProductsBloc(
+                  getProductsUseCase: getIt<GetProductsUseCase>(),
+                  syncProductsUseCase: getIt<SyncProductsUseCase>(),
+                )..add(const LoadProductsRequested()),
+                child: const SyncPage(),
+              ),
+            ),
+            GoRoute(
+              path: 'products',
+              name: 'products',
+              builder: (_, __) => BlocProvider(
+                create: (_) => ProductsBloc(
+                  getProductsUseCase: getIt<GetProductsUseCase>(),
+                  syncProductsUseCase: getIt<SyncProductsUseCase>(),
+                )..add(const LoadProductsRequested()),
+                child: const ProductsPage(),
+              ),
             ),
           ],
         ),

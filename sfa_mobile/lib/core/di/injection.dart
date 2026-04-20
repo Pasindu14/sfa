@@ -19,6 +19,13 @@ import 'package:uswatte/features/route_assignment/domain/usecases/delete_assignm
 import 'package:uswatte/features/route_assignment/domain/usecases/get_assignments_usecase.dart';
 import 'package:uswatte/features/route_assignment/domain/usecases/get_my_reps_usecase.dart';
 import 'package:uswatte/features/route_assignment/domain/usecases/get_rep_routes_usecase.dart';
+import 'package:uswatte/core/db/database_helper.dart';
+import 'package:uswatte/features/products/data/datasources/products_local_datasource.dart';
+import 'package:uswatte/features/products/data/datasources/products_remote_datasource.dart';
+import 'package:uswatte/features/products/data/repositories/products_repository_impl.dart';
+import 'package:uswatte/features/products/domain/repositories/products_repository.dart';
+import 'package:uswatte/features/products/domain/usecases/get_products_usecase.dart';
+import 'package:uswatte/features/products/domain/usecases/sync_products_usecase.dart';
 
 final getIt = GetIt.instance;
 
@@ -73,4 +80,21 @@ Future<void> configureDependencies() async {
       () => GetAssignmentsUseCase(getIt<RouteAssignmentRepository>()));
   getIt.registerLazySingleton(
       () => DeleteAssignmentUseCase(getIt<RouteAssignmentRepository>()));
+
+  // ── Products ─────────────────────────────────────────────────────────────────
+  getIt.registerLazySingleton(() => DatabaseHelper.instance);
+  getIt.registerLazySingleton(
+      () => ProductsLocalDatasource(getIt<DatabaseHelper>()));
+  getIt.registerLazySingleton(
+      () => ProductsRemoteDatasource(getIt<Dio>()));
+  getIt.registerLazySingleton<ProductsRepository>(
+    () => ProductsRepositoryImpl(
+      getIt<ProductsRemoteDatasource>(),
+      getIt<ProductsLocalDatasource>(),
+    ),
+  );
+  getIt.registerLazySingleton(
+      () => GetProductsUseCase(getIt<ProductsRepository>()));
+  getIt.registerLazySingleton(
+      () => SyncProductsUseCase(getIt<ProductsRepository>()));
 }

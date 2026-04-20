@@ -53,6 +53,10 @@ dependencies:
   # Responsive UI
   flutter_screenutil: ^5.9.3
 
+  # Local database
+  sqflite: ^2.4.2
+  path: ^1.9.1
+
   # Utilities
   get_it: ^8.0.3
   injectable: ^2.5.0
