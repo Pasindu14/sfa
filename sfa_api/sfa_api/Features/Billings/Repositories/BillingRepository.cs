@@ -38,6 +38,13 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
                     .Select(x => x.Id)
                     .ToListAsync(ct);
 
+    public async Task<Dictionary<int, string>> GetActiveProductNamesAsync(IEnumerable<int> productIds, CancellationToken ct = default)
+        => await _db.Products
+                    .AsNoTracking()
+                    .Where(x => productIds.Contains(x.Id) && x.IsActive && !x.IsDeleted)
+                    .Select(x => new { x.Id, x.ItemDescription })
+                    .ToDictionaryAsync(x => x.Id, x => x.ItemDescription, ct);
+
     public Task<List<DistributorStock>> GetStockSnapshotAsync(
         int distributorId, IEnumerable<int> productIds, CancellationToken ct = default)
         => _db.DistributorStocks

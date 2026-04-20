@@ -14,6 +14,16 @@ public class CreateBillingValidator : AbstractValidator<CreateBillingRequest>
         RuleFor(x => x.BillDiscountRate)
             .InclusiveBetween(0, 100).WithMessage("BillDiscountRate must be between 0 and 100.");
 
+        // Offline-sync guardrails: mobile may have created the bill up to 7 days ago.
+        // Reject future dates (clock skew / rogue client) and anything older than 7 days
+        // (likely indicates a corrupted outbox that should be escalated manually).
+        RuleFor(x => x.BillingDate!.Value)
+            .LessThanOrEqualTo(_ => DateOnly.FromDateTime(DateTime.UtcNow))
+                .WithMessage("BillingDate cannot be in the future.")
+            .GreaterThanOrEqualTo(_ => DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7)))
+                .WithMessage("BillingDate cannot be more than 7 days in the past.")
+            .When(x => x.BillingDate.HasValue);
+
         RuleFor(x => x.ReturnType)
             .NotNull().WithMessage("ReturnType is required when BillingType is Return.")
             .When(x => x.BillingType == BillingType.Return);

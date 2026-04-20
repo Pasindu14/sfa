@@ -37,8 +37,8 @@ public class BillingService(
 
         // ② Validate all products exist and are active
         var requestedProductIds = request.Items.Select(i => i.ProductId).Distinct().ToList();
-        var activeProductIds    = await _billingRepository.GetActiveProductIdsAsync(requestedProductIds, ct);
-        var missingIds          = requestedProductIds.Except(activeProductIds).ToList();
+        var productNames        = await _billingRepository.GetActiveProductNamesAsync(requestedProductIds, ct);
+        var missingIds          = requestedProductIds.Except(productNames.Keys).ToList();
         if (missingIds.Count > 0)
             throw new NotFoundException("Product", string.Join(", ", missingIds));
 
@@ -75,20 +75,25 @@ public class BillingService(
             ? await _reportingLineRepository.GetActiveByUserIdAsync(rsmId.Value, ct) : null;
         int? nsmId = l4?.ReportsToUserId;
 
-        // ⑥ Pre-check stock availability for Sale billings (fast fail before acquiring lock)
+        // ⑥ Pre-check stock availability for Sale billings (fast fail before acquiring lock).
+        // Collect ALL shortages across line items so the rep sees every missing product in one response,
+        // not just the first — this avoids retry-discover-retry-discover loops from mobile.
         if (request.BillingType == BillingType.Sale)
         {
             var snapshot = await _billingRepository.GetStockSnapshotAsync(distributor.Id, requestedProductIds, ct);
+            var shortages = new List<StockShortage>();
             foreach (var item in request.Items)
             {
                 var stock     = snapshot.FirstOrDefault(s => s.ProductId == item.ProductId);
                 var available = stock?.QuantityOnHand ?? 0m;
                 if (available < item.Quantity)
-                    throw new BusinessRuleException(
-                        "INSUFFICIENT_STOCK",
-                        $"Insufficient stock for product {item.ProductId}: requested {item.Quantity}, available {available}.",
-                        new { item.ProductId, requested = item.Quantity, available });
+                {
+                    var name = productNames.TryGetValue(item.ProductId, out var n) ? n : $"Product #{item.ProductId}";
+                    shortages.Add(new StockShortage(item.ProductId, name, item.Quantity, available));
+                }
             }
+            if (shortages.Count > 0)
+                throw new InsufficientStockException(shortages);
         }
 
         // ⑦ Compute amounts
@@ -139,7 +144,7 @@ public class BillingService(
             BillingType       = request.BillingType,
             ReturnType        = request.ReturnType,
             OriginalBillingId = request.OriginalBillingId,
-            BillingDate       = DateOnly.FromDateTime(DateTime.UtcNow),
+            BillingDate       = request.BillingDate ?? DateOnly.FromDateTime(DateTime.UtcNow),
             OutletId          = request.OutletId,
             SalesRepId        = salesRepId,
             DistributorId     = distributor.Id,

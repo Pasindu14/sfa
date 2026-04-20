@@ -9,5 +9,6 @@ public record CreateBillingRequest(
     int? OriginalBillingId,
     decimal BillDiscountRate,
     string? Notes,
-    List<CreateBillingItemRequest> Items
+    List<CreateBillingItemRequest> Items,
+    DateOnly? BillingDate = null
 );

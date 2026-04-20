@@ -34,6 +34,18 @@ import 'package:uswatte/features/sync/presentation/pages/sync_page.dart';
 import 'package:uswatte/features/sales_rep/presentation/pages/unsupported_role_page.dart';
 import 'package:uswatte/features/splash/presentation/pages/splash_page.dart';
 import 'package:uswatte/features/supervisor/presentation/pages/supervisor_home_page.dart';
+import 'package:uswatte/core/sync/bill_sync_service.dart';
+import 'package:uswatte/features/bills/domain/usecases/create_bill_usecase.dart';
+import 'package:uswatte/features/pricing/data/datasources/pricing_local_datasource.dart';
+import 'package:uswatte/features/bills/domain/usecases/delete_bill_usecase.dart';
+import 'package:uswatte/features/bills/domain/usecases/get_bills_usecase.dart';
+import 'package:uswatte/features/bills/domain/usecases/retry_sync_usecase.dart';
+import 'package:uswatte/features/bills/presentation/bloc/bills_list_bloc.dart';
+import 'package:uswatte/features/bills/presentation/bloc/bills_list_event.dart';
+import 'package:uswatte/features/bills/presentation/bloc/create_bill_bloc.dart';
+import 'package:uswatte/features/bills/presentation/pages/bill_detail_page.dart';
+import 'package:uswatte/features/bills/presentation/pages/bills_list_page.dart';
+import 'package:uswatte/features/bills/presentation/pages/create_bill_page.dart';
 
 class AppRouter {
   AppRouter._();
@@ -169,6 +181,59 @@ class AppRouter {
                   name: 'pricingDetail',
                   builder: (_, state) => PricingStructureDetailPage(
                     structure: state.extra as PricingStructure,
+                  ),
+                ),
+              ],
+            ),
+            GoRoute(
+              path: 'bills',
+              name: 'bills',
+              builder: (_, __) => BlocProvider(
+                create: (_) => BillsListBloc(
+                  getBillsUseCase: getIt<GetBillsUseCase>(),
+                  retrySyncUseCase: getIt<RetrySyncUseCase>(),
+                  deleteBillUseCase: getIt<DeleteBillUseCase>(),
+                  syncService: getIt<BillSyncService>(),
+                )..add(const LoadBillsRequested()),
+                child: const BillsListPage(),
+              ),
+              routes: [
+                GoRoute(
+                  path: 'create',
+                  name: 'createBill',
+                  builder: (_, __) => MultiBlocProvider(
+                    providers: [
+                      BlocProvider(
+                        create: (_) => CreateBillBloc(
+                          createBillUseCase: getIt<CreateBillUseCase>(),
+                          pricingLocalDatasource: getIt<PricingLocalDatasource>(),
+                        ),
+                      ),
+                      BlocProvider(
+                        create: (_) => OutletsBloc(
+                          getOutletsUseCase: getIt<GetOutletsUseCase>(),
+                          syncOutletsUseCase: getIt<SyncOutletsUseCase>(),
+                          getCurrentRouteIdUseCase:
+                              getIt<GetCurrentRouteIdUseCase>(),
+                        )..add(const LoadOutletsRequested()),
+                      ),
+                    ],
+                    child: const CreateBillPage(),
+                  ),
+                ),
+                GoRoute(
+                  path: ':id',
+                  name: 'billDetail',
+                  builder: (_, state) => BlocProvider(
+                    create: (_) => BillsListBloc(
+                      getBillsUseCase: getIt<GetBillsUseCase>(),
+                      retrySyncUseCase: getIt<RetrySyncUseCase>(),
+                      deleteBillUseCase: getIt<DeleteBillUseCase>(),
+                      syncService: getIt<BillSyncService>(),
+                    ),
+                    child: BillDetailPage(
+                      clientBillId: state.pathParameters['id']!,
+                    ),
                   ),
                 ),
               ],

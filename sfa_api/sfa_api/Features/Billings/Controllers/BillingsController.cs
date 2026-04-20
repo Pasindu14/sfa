@@ -74,6 +74,19 @@ public class BillingsController(
     /// <summary>
     /// POST /api/v1/billings
     /// SalesRep only — creates a billing for an outlet and deducts stock atomically.
+    ///
+    /// <para><b>Offline-sync contract (mobile):</b></para>
+    /// <list type="bullet">
+    ///   <item>Send the header <c>X-Idempotency-Key: {UUID}</c> — the client-generated bill id.
+    ///   The same key may be retried any number of times; the server caches the response and
+    ///   returns it verbatim, so a flaky connection can't create duplicate bills.</item>
+    ///   <item>Send <c>billingDate</c> in the body to preserve the date the rep wrote the bill
+    ///   offline (otherwise the server stamps the sync time). Must be within the last 7 days.</item>
+    /// </list>
+    ///
+    /// <para><b>Stock-out error shape (HTTP 422, code <c>INSUFFICIENT_STOCK</c>):</b>
+    /// <c>ApiError.Fields</c> contains one entry per missing product, keyed <c>product:{id}</c>,
+    /// with a human-readable message including the product name, requested, and available.</para>
     /// </summary>
     [HttpPost]
     [Authorize(Roles = "SalesRep")]

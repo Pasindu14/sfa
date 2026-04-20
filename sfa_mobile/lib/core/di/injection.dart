@@ -39,6 +39,18 @@ import 'package:uswatte/features/pricing/data/repositories/pricing_repository_im
 import 'package:uswatte/features/pricing/domain/repositories/pricing_repository.dart';
 import 'package:uswatte/features/pricing/domain/usecases/get_pricing_usecase.dart';
 import 'package:uswatte/features/pricing/domain/usecases/sync_pricing_usecase.dart';
+import 'package:uswatte/core/connectivity/connectivity_service.dart';
+import 'package:uswatte/core/sync/bill_sync_service.dart';
+import 'package:uswatte/features/bills/data/datasources/bills_local_datasource.dart';
+import 'package:uswatte/features/bills/data/datasources/bills_remote_datasource.dart';
+import 'package:uswatte/features/bills/data/repositories/bills_repository_impl.dart';
+import 'package:uswatte/features/bills/domain/repositories/bills_repository.dart';
+import 'package:uswatte/features/bills/domain/usecases/create_bill_usecase.dart';
+import 'package:uswatte/features/bills/domain/usecases/delete_bill_usecase.dart';
+import 'package:uswatte/features/bills/domain/usecases/get_bill_by_id_usecase.dart';
+import 'package:uswatte/features/bills/domain/usecases/get_bills_usecase.dart';
+import 'package:uswatte/features/bills/domain/usecases/retry_sync_usecase.dart';
+import 'package:uswatte/features/bills/domain/usecases/search_products_for_bill_usecase.dart';
 
 final getIt = GetIt.instance;
 
@@ -144,4 +156,39 @@ Future<void> configureDependencies() async {
       () => GetPricingUseCase(getIt<PricingRepository>()));
   getIt.registerLazySingleton(
       () => SyncPricingUseCase(getIt<PricingRepository>()));
+
+  // ── Connectivity ─────────────────────────────────────────────────────────────
+  getIt.registerLazySingleton<ConnectivityService>(() => ConnectivityService());
+
+  // ── Bills ────────────────────────────────────────────────────────────────────
+  // BillsLocalDatasource + BillsRemoteDatasource are simple wrappers. The
+  // BillSyncService closes the loop: it pushes pending bills whenever
+  // ConnectivityService flips from offline -> online, and it's called
+  // fire-and-forget from BillsRepositoryImpl.createBill so the page closes
+  // instantly while the POST happens in the background.
+  getIt.registerLazySingleton(
+      () => BillsLocalDatasource(getIt<DatabaseHelper>()));
+  getIt.registerLazySingleton(
+      () => BillsRemoteDatasource(getIt<Dio>()));
+  getIt.registerLazySingleton<BillSyncService>(
+    () => BillSyncService(
+      getIt<BillsLocalDatasource>(),
+      getIt<BillsRemoteDatasource>(),
+      getIt<ConnectivityService>(),
+    ),
+  );
+  getIt.registerLazySingleton<BillsRepository>(
+    () => BillsRepositoryImpl(
+      getIt<BillsLocalDatasource>(),
+      getIt<BillSyncService>(),
+    ),
+  );
+  getIt.registerLazySingleton(() => CreateBillUseCase(getIt<BillsRepository>()));
+  getIt.registerLazySingleton(() => GetBillsUseCase(getIt<BillsRepository>()));
+  getIt.registerLazySingleton(
+      () => GetBillByIdUseCase(getIt<BillsRepository>()));
+  getIt.registerLazySingleton(() => DeleteBillUseCase(getIt<BillsRepository>()));
+  getIt.registerLazySingleton(() => RetrySyncUseCase(getIt<BillsRepository>()));
+  getIt.registerLazySingleton(
+      () => SearchProductsForBillUseCase(getIt<BillsRepository>()));
 }

@@ -15,6 +15,12 @@ public interface IBillingRepository
     Task<Distributor?> GetDistributorByTerritoryAsync(int territoryId, CancellationToken ct = default);
     Task<List<int>> GetActiveProductIdsAsync(IEnumerable<int> productIds, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns Id → ItemDescription for active products. Used by the create-billing flow
+    /// so stock-out errors can name the offending products rather than citing bare IDs.
+    /// </summary>
+    Task<Dictionary<int, string>> GetActiveProductNamesAsync(IEnumerable<int> productIds, CancellationToken ct = default);
+
     /// <summary>AsNoTracking pre-check before acquiring locks.</summary>
     Task<List<DistributorStock>> GetStockSnapshotAsync(int distributorId, IEnumerable<int> productIds, CancellationToken ct = default);
 

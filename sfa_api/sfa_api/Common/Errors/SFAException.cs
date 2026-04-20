@@ -57,9 +57,27 @@ public class BusinessRuleException : SFAException
     public BusinessRuleException(string code, string message, object? data = null)
         : base(code, message, data) { }
 }
-public class InsufficientStockException(Guid productId, int requested, int available) : BusinessRuleException("INSUFFICIENT_STOCK", $"Insufficient stock for product {productId}.",
-        new { productId, requested, available })
+
+public record StockShortage(int ProductId, string ProductName, decimal Requested, decimal Available);
+
+public class InsufficientStockException : BusinessRuleException
 {
+    public IReadOnlyList<StockShortage> Shortages { get; }
+    public Dictionary<string, string[]> Fields { get; }
+
+    public InsufficientStockException(IReadOnlyList<StockShortage> shortages)
+        : base(
+            "INSUFFICIENT_STOCK",
+            shortages.Count == 1
+                ? $"No stock of '{shortages[0].ProductName}' (requested {shortages[0].Requested}, available {shortages[0].Available})."
+                : $"{shortages.Count} products are out of stock.",
+            new { shortages })
+    {
+        Shortages = shortages;
+        Fields = shortages.ToDictionary(
+            s => $"product:{s.ProductId}",
+            s => new[] { $"No stock of '{s.ProductName}' (requested {s.Requested}, available {s.Available})" });
+    }
 }
 public class InvalidOrderStateException(string currentState, string attemptedTransition) : BusinessRuleException("INVALID_ORDER_STATE",
         $"Cannot transition order from '{currentState}' to '{attemptedTransition}'.",

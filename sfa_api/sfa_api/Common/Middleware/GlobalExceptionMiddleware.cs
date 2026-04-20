@@ -63,6 +63,10 @@ public class GlobalExceptionMiddleware(RequestDelegate next,
                 confEx.ErrorCode, confEx.Message, null,
                 null, confEx.Data, correlationId, DateTime.UtcNow)),
 
+            InsufficientStockException isx => (422, new ApiError(
+                isx.ErrorCode, isx.Message, null,
+                isx.Fields, isx.Data, correlationId, DateTime.UtcNow)),
+
             BusinessRuleException bex => (422, new ApiError(
                 bex.ErrorCode, bex.Message, null,
                 null, bex.Data, correlationId, DateTime.UtcNow)),
