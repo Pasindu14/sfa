@@ -26,6 +26,19 @@ import 'package:uswatte/features/products/data/repositories/products_repository_
 import 'package:uswatte/features/products/domain/repositories/products_repository.dart';
 import 'package:uswatte/features/products/domain/usecases/get_products_usecase.dart';
 import 'package:uswatte/features/products/domain/usecases/sync_products_usecase.dart';
+import 'package:uswatte/features/outlets/data/datasources/outlets_local_datasource.dart';
+import 'package:uswatte/features/outlets/data/datasources/outlets_remote_datasource.dart';
+import 'package:uswatte/features/outlets/data/repositories/outlets_repository_impl.dart';
+import 'package:uswatte/features/outlets/domain/repositories/outlets_repository.dart';
+import 'package:uswatte/features/outlets/domain/usecases/get_outlets_usecase.dart';
+import 'package:uswatte/features/outlets/domain/usecases/get_current_route_id_usecase.dart';
+import 'package:uswatte/features/outlets/domain/usecases/sync_outlets_usecase.dart';
+import 'package:uswatte/features/pricing/data/datasources/pricing_local_datasource.dart';
+import 'package:uswatte/features/pricing/data/datasources/pricing_remote_datasource.dart';
+import 'package:uswatte/features/pricing/data/repositories/pricing_repository_impl.dart';
+import 'package:uswatte/features/pricing/domain/repositories/pricing_repository.dart';
+import 'package:uswatte/features/pricing/domain/usecases/get_pricing_usecase.dart';
+import 'package:uswatte/features/pricing/domain/usecases/sync_pricing_usecase.dart';
 
 final getIt = GetIt.instance;
 
@@ -97,4 +110,38 @@ Future<void> configureDependencies() async {
       () => GetProductsUseCase(getIt<ProductsRepository>()));
   getIt.registerLazySingleton(
       () => SyncProductsUseCase(getIt<ProductsRepository>()));
+
+  // ── Outlets ──────────────────────────────────────────────────────────────────
+  getIt.registerLazySingleton(
+      () => OutletsLocalDatasource(getIt<DatabaseHelper>()));
+  getIt.registerLazySingleton(
+      () => OutletsRemoteDatasource(getIt<Dio>()));
+  getIt.registerLazySingleton<OutletsRepository>(
+    () => OutletsRepositoryImpl(
+      getIt<OutletsRemoteDatasource>(),
+      getIt<OutletsLocalDatasource>(),
+    ),
+  );
+  getIt.registerLazySingleton(
+      () => GetOutletsUseCase(getIt<OutletsRepository>()));
+  getIt.registerLazySingleton(
+      () => SyncOutletsUseCase(getIt<OutletsRepository>()));
+  getIt.registerLazySingleton(
+      () => GetCurrentRouteIdUseCase(getIt<OutletsRepository>()));
+
+  // ── Pricing ──────────────────────────────────────────────────────────────────
+  getIt.registerLazySingleton(
+      () => PricingLocalDatasource(getIt<DatabaseHelper>()));
+  getIt.registerLazySingleton(
+      () => PricingRemoteDatasource(getIt<Dio>()));
+  getIt.registerLazySingleton<PricingRepository>(
+    () => PricingRepositoryImpl(
+      getIt<PricingRemoteDatasource>(),
+      getIt<PricingLocalDatasource>(),
+    ),
+  );
+  getIt.registerLazySingleton(
+      () => GetPricingUseCase(getIt<PricingRepository>()));
+  getIt.registerLazySingleton(
+      () => SyncPricingUseCase(getIt<PricingRepository>()));
 }

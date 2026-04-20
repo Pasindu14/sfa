@@ -174,6 +174,18 @@ public class PricingStructureService(
         await _cache.RemoveByPrefixAsync(CachePrefix, ct);
     }
 
+    public async Task<IEnumerable<PricingStructureDetailDto>> GetAllActiveWithItemsAsync(CancellationToken ct = default)
+    {
+        const string cacheKey = "pricing:active";
+        var cached = await _cache.GetAsync<IEnumerable<PricingStructureDetailDto>>(cacheKey, ct);
+        if (cached is not null) return cached;
+
+        var structures = await _repo.GetAllActiveWithItemsAsync(ct);
+        var result = structures.Select(MapToDetailDto).ToList();
+        await _cache.SetAsync(cacheKey, result, CacheTtl, ct);
+        return result;
+    }
+
     public async Task<IEnumerable<PricingStructureItemDto>> GetItemsAsync(int id, CancellationToken ct = default)
     {
         var cacheKey = $"pricing:items:{id}";

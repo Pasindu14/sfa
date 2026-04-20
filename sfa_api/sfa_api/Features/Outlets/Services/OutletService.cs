@@ -3,15 +3,21 @@ using sfa_api.Features.Outlets.DTOs;
 using sfa_api.Features.Outlets.Entities;
 using sfa_api.Features.Outlets.Repositories;
 using sfa_api.Features.Outlets.Requests;
+using sfa_api.Infrastructure.Caching;
 
 namespace sfa_api.Features.Outlets.Services;
 
 public class OutletService(
     IOutletRepository repo,
+    ICacheService cache,
     ILogger<OutletService> logger) : IOutletService
 {
     private readonly IOutletRepository _repo = repo;
+    private readonly ICacheService _cache = cache;
     private readonly ILogger<OutletService> _logger = logger;
+
+    private static readonly TimeSpan RouteCacheTtl = TimeSpan.FromMinutes(30);
+    private const string RouteCachePrefix = "outlets:route:";
 
     public async Task<OutletDto> GetByIdAsync(int id, CancellationToken ct = default)
     {
@@ -36,6 +42,18 @@ public class OutletService(
     {
         var outlets = await _repo.GetAllActiveAsync(ct);
         return outlets.Select(MapToDto);
+    }
+
+    public async Task<IEnumerable<OutletDto>> GetByRouteIdAsync(int routeId, CancellationToken ct = default)
+    {
+        var cacheKey = $"{RouteCachePrefix}{routeId}";
+        var cached = await _cache.GetAsync<IEnumerable<OutletDto>>(cacheKey, ct);
+        if (cached is not null) return cached;
+
+        var outlets = await _repo.GetByRouteIdAsync(routeId, ct);
+        var result = outlets.Select(MapToDto).ToList();
+        await _cache.SetAsync(cacheKey, result, RouteCacheTtl, ct);
+        return result;
     }
 
     public async Task<IEnumerable<OutletMapPointDto>> GetMapPointsAsync(CancellationToken ct = default)
@@ -102,6 +120,7 @@ public class OutletService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Outlet {OutletId} created", outlet.Id);
+        await _cache.RemoveByPrefixAsync(RouteCachePrefix, ct);
 
         var created = await _repo.GetByIdAsync(outlet.Id, ct)
             ?? throw new NotFoundException("Outlet", outlet.Id);
@@ -166,6 +185,7 @@ public class OutletService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Outlet {OutletId} updated", id);
+        await _cache.RemoveByPrefixAsync(RouteCachePrefix, ct);
 
         var updated = await _repo.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("Outlet", id);
@@ -181,6 +201,7 @@ public class OutletService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Outlet {OutletId} deleted", id);
+        await _cache.RemoveByPrefixAsync(RouteCachePrefix, ct);
     }
 
     public async Task ActivateAsync(int id, int? callerId, CancellationToken ct = default)
@@ -196,6 +217,7 @@ public class OutletService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Outlet {OutletId} activated", id);
+        await _cache.RemoveByPrefixAsync(RouteCachePrefix, ct);
     }
 
     public async Task DeactivateAsync(int id, int? callerId, CancellationToken ct = default)
@@ -211,6 +233,7 @@ public class OutletService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Outlet {OutletId} deactivated", id);
+        await _cache.RemoveByPrefixAsync(RouteCachePrefix, ct);
     }
 
     private static OutletDto MapToDto(Outlet o) => new(

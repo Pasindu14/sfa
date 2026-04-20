@@ -4,6 +4,22 @@ import 'package:uswatte/core/router/go_router_refresh_stream.dart';
 import 'package:uswatte/features/auth/domain/entities/user_role.dart';
 import 'package:uswatte/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:uswatte/features/auth/presentation/pages/login_page.dart';
+import 'package:uswatte/features/outlets/domain/usecases/get_current_route_id_usecase.dart';
+import 'package:uswatte/features/outlets/domain/usecases/get_outlets_usecase.dart';
+import 'package:uswatte/features/outlets/domain/usecases/sync_outlets_usecase.dart';
+import 'package:uswatte/features/outlets/presentation/bloc/outlets_bloc.dart';
+import 'package:uswatte/features/outlets/presentation/bloc/outlets_event.dart';
+import 'package:uswatte/features/outlets/presentation/pages/outlets_page.dart';
+import 'package:uswatte/features/pricing/domain/usecases/get_pricing_usecase.dart';
+import 'package:uswatte/features/pricing/domain/usecases/sync_pricing_usecase.dart';
+import 'package:uswatte/features/pricing/presentation/bloc/pricing_bloc.dart';
+import 'package:uswatte/features/pricing/presentation/bloc/pricing_event.dart';
+import 'package:uswatte/features/pricing/domain/entities/pricing_structure.dart';
+import 'package:uswatte/features/pricing/presentation/pages/pricing_page.dart';
+import 'package:uswatte/features/pricing/presentation/pages/pricing_structure_detail_page.dart';
+import 'package:uswatte/features/route_assignment/domain/usecases/delete_assignment_usecase.dart';
+import 'package:uswatte/features/route_assignment/domain/usecases/get_assignments_usecase.dart';
+import 'package:uswatte/features/route_assignment/presentation/bloc/assignments_bloc.dart';
 import 'package:uswatte/features/route_assignment/presentation/pages/assignments_list_page.dart';
 import 'package:uswatte/features/route_assignment/presentation/pages/route_assignment_page.dart';
 import 'package:uswatte/features/sales_rep/presentation/pages/sales_rep_home_page.dart';
@@ -65,17 +81,65 @@ class AppRouter {
             GoRoute(
               path: 'home',
               name: 'salesRepHome',
-              builder: (_, __) => const SalesRepHomePage(),
+              builder: (_, __) => MultiBlocProvider(
+                providers: [
+                  BlocProvider(
+                    create: (_) => AssignmentsBloc(
+                      getAssignments: getIt<GetAssignmentsUseCase>(),
+                      deleteAssignment: getIt<DeleteAssignmentUseCase>(),
+                    )..add(LoadAssignmentsRequested(date: DateTime.now())),
+                  ),
+                  BlocProvider(
+                    create: (_) => OutletsBloc(
+                      getOutletsUseCase: getIt<GetOutletsUseCase>(),
+                      syncOutletsUseCase: getIt<SyncOutletsUseCase>(),
+                      getCurrentRouteIdUseCase:
+                          getIt<GetCurrentRouteIdUseCase>(),
+                    )..add(const LoadOutletsRequested()),
+                  ),
+                ],
+                child: const SalesRepHomePage(),
+              ),
             ),
             GoRoute(
               path: 'sync',
               name: 'sync',
-              builder: (_, __) => BlocProvider(
-                create: (_) => ProductsBloc(
-                  getProductsUseCase: getIt<GetProductsUseCase>(),
-                  syncProductsUseCase: getIt<SyncProductsUseCase>(),
-                )..add(const LoadProductsRequested()),
+              builder: (_, __) => MultiBlocProvider(
+                providers: [
+                  BlocProvider(
+                    create: (_) => ProductsBloc(
+                      getProductsUseCase: getIt<GetProductsUseCase>(),
+                      syncProductsUseCase: getIt<SyncProductsUseCase>(),
+                    )..add(const LoadProductsRequested()),
+                  ),
+                  BlocProvider(
+                    create: (_) => OutletsBloc(
+                      getOutletsUseCase: getIt<GetOutletsUseCase>(),
+                      syncOutletsUseCase: getIt<SyncOutletsUseCase>(),
+                      getCurrentRouteIdUseCase:
+                          getIt<GetCurrentRouteIdUseCase>(),
+                    )..add(const LoadOutletsRequested()),
+                  ),
+                  BlocProvider(
+                    create: (_) => PricingBloc(
+                      getPricingUseCase: getIt<GetPricingUseCase>(),
+                      syncPricingUseCase: getIt<SyncPricingUseCase>(),
+                    )..add(const LoadPricingRequested()),
+                  ),
+                ],
                 child: const SyncPage(),
+              ),
+            ),
+            GoRoute(
+              path: 'outlets',
+              name: 'outlets',
+              builder: (_, __) => BlocProvider(
+                create: (_) => OutletsBloc(
+                  getOutletsUseCase: getIt<GetOutletsUseCase>(),
+                  syncOutletsUseCase: getIt<SyncOutletsUseCase>(),
+                  getCurrentRouteIdUseCase: getIt<GetCurrentRouteIdUseCase>(),
+                )..add(const LoadOutletsRequested()),
+                child: const OutletsPage(),
               ),
             ),
             GoRoute(
@@ -88,6 +152,26 @@ class AppRouter {
                 )..add(const LoadProductsRequested()),
                 child: const ProductsPage(),
               ),
+            ),
+            GoRoute(
+              path: 'pricing',
+              name: 'pricing',
+              builder: (_, __) => BlocProvider(
+                create: (_) => PricingBloc(
+                  getPricingUseCase: getIt<GetPricingUseCase>(),
+                  syncPricingUseCase: getIt<SyncPricingUseCase>(),
+                )..add(const LoadPricingRequested()),
+                child: const PricingPage(),
+              ),
+              routes: [
+                GoRoute(
+                  path: 'detail',
+                  name: 'pricingDetail',
+                  builder: (_, state) => PricingStructureDetailPage(
+                    structure: state.extra as PricingStructure,
+                  ),
+                ),
+              ],
             ),
           ],
         ),

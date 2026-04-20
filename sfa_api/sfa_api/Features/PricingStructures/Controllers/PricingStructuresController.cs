@@ -53,6 +53,19 @@ public class PricingStructuresController(
     }
 
     /// <summary>
+    /// GET /api/v1/pricing-structures/active
+    /// All authenticated roles — mobile sync endpoint
+    /// </summary>
+    [HttpGet("active")]
+    [Authorize]
+    public async Task<IActionResult> GetAllActive(CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var result = await _pricingStructureService.GetAllActiveWithItemsAsync(ct);
+        return Ok(ResponseHelper.Ok(result, correlationId));
+    }
+
+    /// <summary>
     /// GET /api/v1/pricing-structures/{id}
     /// </summary>
     [HttpGet("{id}")]

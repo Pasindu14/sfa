@@ -6,6 +6,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:uswatte/features/outlets/presentation/bloc/outlets_bloc.dart';
+import 'package:uswatte/features/outlets/presentation/bloc/outlets_event.dart';
+import 'package:uswatte/features/route_assignment/presentation/bloc/assignments_bloc.dart';
 
 class SalesRepHomePage extends StatefulWidget {
   const SalesRepHomePage({super.key});
@@ -48,7 +51,19 @@ class _SalesRepHomePageState extends State<SalesRepHomePage>
       statusBarIconBrightness: Brightness.dark,
     ));
 
-    return Scaffold(
+    return BlocListener<AssignmentsBloc, AssignmentsState>(
+      listenWhen: (_, curr) =>
+          curr is AssignmentsLoaded && curr.assignments.isNotEmpty,
+      listener: (context, state) {
+        if (state is AssignmentsLoaded && state.assignments.isNotEmpty) {
+          final assignment = state.assignments.first;
+          context.read<OutletsBloc>().add(SyncDailyOutletsRequested(
+                routeId: assignment.routeId,
+                routeName: assignment.routeName,
+              ));
+        }
+      },
+      child: Scaffold(
       backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
@@ -107,6 +122,7 @@ class _SalesRepHomePageState extends State<SalesRepHomePage>
           SliverToBoxAdapter(child: SizedBox(height: 40.h)),
         ],
       ),
+      ),
     );
   }
 }
@@ -129,34 +145,105 @@ class _TopBar extends StatelessWidget {
       child: Container(
         color: AppColors.background,
         padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 8.h),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Image.asset('assets/images/uswatte-logo.png',
-                height: 32.h, fit: BoxFit.contain),
-            SizedBox(width: 10.w),
-            Text('SFA',
-                style: GoogleFonts.barlowCondensed(
-                  fontSize: 11.sp,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 4,
-                  color: AppColors.foregroundMuted,
-                )),
-            const Spacer(),
-            Text(_dateLabel,
-                style: GoogleFonts.barlowCondensed(
-                  fontSize: 11.sp,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.0,
-                  color: AppColors.foregroundMuted,
-                )),
-            SizedBox(width: 12.w),
-            _NavIconBtn(icon: Icons.notifications_outlined, onTap: () {}),
+            Row(
+              children: [
+                Image.asset('assets/images/uswatte-logo.png',
+                    height: 32.h, fit: BoxFit.contain),
+                SizedBox(width: 10.w),
+                Text('SFA',
+                    style: GoogleFonts.barlowCondensed(
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 4,
+                      color: AppColors.foregroundMuted,
+                    )),
+                const Spacer(),
+                Text(_dateLabel,
+                    style: GoogleFonts.barlowCondensed(
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.0,
+                      color: AppColors.foregroundMuted,
+                    )),
+                SizedBox(width: 12.w),
+                _NavIconBtn(icon: Icons.notifications_outlined, onTap: () {}),
+                SizedBox(width: 6.w),
+                _NavIconBtn(
+                  icon: Icons.logout_rounded,
+                  onTap: () =>
+                      context.read<AuthBloc>().add(const LogoutRequested()),
+                  accent: true,
+                ),
+              ],
+            ),
+            BlocBuilder<AssignmentsBloc, AssignmentsState>(
+              builder: (context, state) {
+                if (state is AssignmentsLoaded &&
+                    state.assignments.isNotEmpty) {
+                  return _RouteChip(
+                      routeName: state.assignments.first.routeName);
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RouteChip extends StatelessWidget {
+  const _RouteChip({required this.routeName});
+  final String routeName;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(top: 8.h),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(8.r),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.22),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.route_rounded, size: 12.r, color: AppColors.primary),
             SizedBox(width: 6.w),
-            _NavIconBtn(
-              icon: Icons.logout_rounded,
-              onTap: () =>
-                  context.read<AuthBloc>().add(const LogoutRequested()),
-              accent: true,
+            Text(
+              "TODAY'S ROUTE",
+              style: GoogleFonts.barlowCondensed(
+                fontSize: 9.sp,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.5,
+                color: AppColors.primary,
+              ),
+            ),
+            Container(
+              margin: EdgeInsets.symmetric(horizontal: 8.w),
+              width: 1,
+              height: 10.h,
+              color: AppColors.primary.withValues(alpha: 0.30),
+            ),
+            Flexible(
+              child: Text(
+                routeName,
+                style: GoogleFonts.barlowCondensed(
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.3,
+                  color: AppColors.foreground,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),

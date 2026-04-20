@@ -87,6 +87,14 @@ public class OutletRepository(AppDbContext context) : IOutletRepository
     public async Task<bool> ExistsByNicNoAsync(string nicNo, int excludeId, CancellationToken ct = default)
         => await _context.Outlets.IgnoreQueryFilters().AnyAsync(o => o.NicNo == nicNo && o.Id != excludeId, ct);
 
+    public async Task<IEnumerable<Outlet>> GetByRouteIdAsync(int routeId, CancellationToken ct = default)
+        => await _context.Outlets
+            .Where(o => o.RouteId == routeId && o.IsActive && !o.IsDeleted)
+            .Include(o => o.Route)   // only needed for RouteName — ancestor IDs already denormalized on Outlet
+            .AsNoTracking()
+            .OrderBy(o => o.Name)
+            .ToListAsync(ct);
+
     public async Task<IEnumerable<OutletMapPointDto>> GetMapPointsAsync(CancellationToken ct = default)
         => await _context.Outlets
             .Where(o => o.IsActive)

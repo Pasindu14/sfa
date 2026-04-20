@@ -68,6 +68,19 @@ public class OutletsController(
     }
 
     /// <summary>
+    /// GET /api/v1/outlets/by-route/{routeId}
+    /// Returns all active outlets for a route — used by mobile for offline sync.
+    /// </summary>
+    [HttpGet("by-route/{routeId:int}")]
+    [Authorize]
+    public async Task<IActionResult> GetByRoute(int routeId, CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var result = await _service.GetByRouteIdAsync(routeId, ct);
+        return Ok(ResponseHelper.Ok(result, correlationId));
+    }
+
+    /// <summary>
     /// GET /api/v1/outlets/map-points
     /// Returns slim {id, name, latitude, longitude} for all active outlets with valid coordinates.
     /// </summary>

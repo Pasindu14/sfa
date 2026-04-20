@@ -16,7 +16,7 @@ class _LoginPageState extends State<LoginPage>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final _passwordController = TextEditingController(text: 'Admin@1234');
   bool _obscurePassword = true;
   late AnimationController _animController;
   late Animation<double> _fadeAnim;

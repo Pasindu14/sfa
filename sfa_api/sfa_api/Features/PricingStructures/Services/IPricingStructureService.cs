@@ -13,6 +13,7 @@ public interface IPricingStructureService
     Task DeactivateAsync(int id, CancellationToken ct = default);
     Task DeleteAsync(int id, CancellationToken ct = default);
     Task ActivateAsync(int id, CancellationToken ct = default);
+    Task<IEnumerable<PricingStructureDetailDto>> GetAllActiveWithItemsAsync(CancellationToken ct = default);
     Task<IEnumerable<PricingStructureItemDto>> GetItemsAsync(int id, CancellationToken ct = default);
     Task<IEnumerable<PricingStructureItemDto>> BulkReplaceItemsAsync(int id, BulkUpdateItemsRequest request, int? callerId, CancellationToken ct = default);
 }

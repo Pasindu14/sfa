@@ -12,7 +12,7 @@ namespace sfa_api.Features.DailyRouteAssignments.Controllers;
 
 [ApiController]
 [Route("api/v1/daily-route-assignments")]
-[Authorize(Roles = "Admin,NSM,RSM,Supervisor")]
+[Authorize(Roles = "Admin,NSM,RSM,Supervisor,SalesRep")]
 public class DailyRouteAssignmentsController(
     IDailyRouteAssignmentService service,
     IValidator<CreateDailyRouteAssignmentRequest> createValidator) : ControllerBase
@@ -22,6 +22,7 @@ public class DailyRouteAssignmentsController(
 
     /// <summary>GET /api/v1/daily-route-assignments — list (filterable by userId, routeId, date)</summary>
     [HttpGet]
+    [Authorize(Roles = "Admin,NSM,RSM,Supervisor,SalesRep")]
     public async Task<IActionResult> GetAll(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -31,6 +32,12 @@ public class DailyRouteAssignmentsController(
         CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var callerRole = User.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
+        if (callerRole == "SalesRep")
+        {
+            int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
+            userId = callerId;
+        }
         var result = await _service.GetAllAsync(page, pageSize, userId, routeId, date, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
