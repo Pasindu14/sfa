@@ -13,8 +13,7 @@ import 'package:uswatte/features/bills/presentation/bloc/create_bill_state.dart'
 import 'package:uswatte/features/bills/presentation/widgets/cart_list.dart';
 import 'package:uswatte/features/bills/presentation/widgets/outlet_picker.dart';
 import 'package:uswatte/features/bills/presentation/widgets/pricing_structure_picker.dart';
-import 'package:uswatte/features/bills/presentation/widgets/product_search_field.dart';
-import 'package:uswatte/features/bills/presentation/widgets/quantity_dialog.dart';
+import 'package:uswatte/features/bills/presentation/widgets/product_search_delegate.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_bloc.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_state.dart';
 
@@ -74,11 +73,15 @@ class CreateBillPage extends StatelessWidget {
                           final outlets = oState is OutletsLoaded
                               ? oState.outlets
                               : const [];
+                          final hasAssignment = oState is OutletsLoaded
+                              ? oState.hasActiveAssignment
+                              : true;
                           return OutletPicker(
                             selected: state.outlet,
                             outlets: outlets.cast(),
                             onSelected: (o) =>
                                 ctx.read<CreateBillBloc>().add(OutletSelected(o)),
+                            hasActiveAssignment: hasAssignment,
                           );
                         },
                       ),
@@ -114,7 +117,8 @@ class CreateBillPage extends StatelessWidget {
                       buildWhen: (p, c) =>
                           p.outlet != c.outlet ||
                           p.selectedPricingStructure !=
-                              c.selectedPricingStructure,
+                              c.selectedPricingStructure ||
+                          p.cart.length != c.cart.length,
                       builder: (ctx, state) {
                         final ready = state.outlet != null &&
                             state.selectedPricingStructure != null;
@@ -128,24 +132,21 @@ class CreateBillPage extends StatelessWidget {
                               dimmed: !ready,
                             ),
                             SizedBox(height: 10.h),
-                            ProductSearchField(
+                            _AddProductsButton(
                               enabled: ready,
-                              searchUseCase:
-                                  getIt<SearchProductsForBillUseCase>(),
-                              pricingStructureId:
-                                  state.selectedPricingStructure?.id,
-                              onProductChosen: (product) async {
-                                final qty = await showQuantityDialog(
-                                  ctx,
-                                  product: product,
-                                );
-                                if (qty != null && qty > 0) {
-                                  if (!ctx.mounted) return;
-                                  ctx
+                              cartCount: state.cart.length,
+                              onTap: () => showSearch(
+                                context: ctx,
+                                delegate: ProductSearchDelegate(
+                                  searchUseCase:
+                                      getIt<SearchProductsForBillUseCase>(),
+                                  pricingStructureId:
+                                      state.selectedPricingStructure?.id,
+                                  onProductAdded: (product, qty) => ctx
                                       .read<CreateBillBloc>()
-                                      .add(ProductAdded(product, qty));
-                                }
-                              },
+                                      .add(ProductAdded(product, qty)),
+                                ),
+                              ),
                             ),
                           ],
                         );
@@ -305,6 +306,128 @@ class _SectionLabel extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ── Add Products button ───────────────────────────────────────────────────────
+
+class _AddProductsButton extends StatelessWidget {
+  const _AddProductsButton({
+    required this.enabled,
+    required this.cartCount,
+    required this.onTap,
+  });
+
+  final bool enabled;
+  final int cartCount;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        padding: EdgeInsets.all(16.r),
+        decoration: BoxDecoration(
+          color: enabled ? Colors.white : AppColors.surface,
+          borderRadius: BorderRadius.circular(14.r),
+          border: Border.all(
+            color: enabled
+                ? AppColors.primary.withValues(alpha: 0.30)
+                : AppColors.surfaceVariant,
+          ),
+          boxShadow: enabled
+              ? [
+                  BoxShadow(
+                    color: AppColors.foreground.withValues(alpha: 0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38.r,
+              height: 38.r,
+              decoration: BoxDecoration(
+                color: enabled
+                    ? AppColors.primary.withValues(alpha: 0.10)
+                    : AppColors.surfaceVariant,
+                borderRadius: BorderRadius.circular(10.r),
+              ),
+              child: Icon(
+                Icons.search_rounded,
+                size: 18.r,
+                color: enabled
+                    ? AppColors.primary
+                    : AppColors.foregroundMuted,
+              ),
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    enabled ? 'SEARCH PRODUCTS' : 'COMPLETE STEPS 1 & 2 FIRST',
+                    style: GoogleFonts.barlowCondensed(
+                      fontSize: 9.sp,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 2.0,
+                      color: enabled
+                          ? AppColors.primary
+                          : AppColors.foregroundMuted,
+                    ),
+                  ),
+                  SizedBox(height: 2.h),
+                  Text(
+                    cartCount > 0
+                        ? 'Tap to add more products'
+                        : 'Tap to open product search',
+                    style: GoogleFonts.barlowCondensed(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
+                      color: enabled
+                          ? AppColors.foreground
+                          : AppColors.foregroundMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (cartCount > 0) ...[
+              Container(
+                padding:
+                    EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: Text(
+                  '$cartCount added',
+                  style: GoogleFonts.barlowCondensed(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+              SizedBox(width: 8.w),
+            ],
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 18.r,
+              color: enabled
+                  ? AppColors.foregroundMuted
+                  : AppColors.surfaceVariant,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

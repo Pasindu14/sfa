@@ -33,6 +33,12 @@ class OutletsPage extends StatelessWidget {
                     .read<OutletsBloc>()
                     .add(const LoadOutletsRequested()),
               ),
+              if (state is OutletsLoaded &&
+                  !state.hasActiveAssignment &&
+                  state.outlets.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: _NoAssignmentBanner(lastSyncedAt: state.lastSyncedAt),
+                ),
               if (state is OutletsLoading)
                 const SliverFillRemaining(
                   child: Center(child: CircularProgressIndicator()),
@@ -108,6 +114,50 @@ class OutletsPage extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+// ── No-assignment banner ──────────────────────────────────────────────────────
+
+class _NoAssignmentBanner extends StatelessWidget {
+  const _NoAssignmentBanner({this.lastSyncedAt});
+  final DateTime? lastSyncedAt;
+
+  String _syncLabel() {
+    if (lastSyncedAt == null) return 'Showing last synced data';
+    final diff = DateTime.now().difference(lastSyncedAt!);
+    if (diff.inMinutes < 1) return 'Showing last synced data · just now';
+    if (diff.inHours < 24) return 'Showing last synced data · ${diff.inHours}h ago';
+    return 'Showing last synced data · ${diff.inDays}d ago';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 4.h),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+      decoration: BoxDecoration(
+        color: AppColors.amber.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10.r),
+        border: Border.all(color: AppColors.amber.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline_rounded, size: 15.r, color: AppColors.amber),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Text(
+              'No route assigned today · ${_syncLabel()}',
+              style: GoogleFonts.barlow(
+                fontSize: 11.sp,
+                fontWeight: FontWeight.w600,
+                color: AppColors.amber,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

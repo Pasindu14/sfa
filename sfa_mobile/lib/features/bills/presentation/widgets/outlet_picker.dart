@@ -9,12 +9,14 @@ class OutletPicker extends StatelessWidget {
   final Outlet? selected;
   final List<Outlet> outlets;
   final ValueChanged<Outlet> onSelected;
+  final bool hasActiveAssignment;
 
   const OutletPicker({
     super.key,
     required this.selected,
     required this.outlets,
     required this.onSelected,
+    this.hasActiveAssignment = true,
   });
 
   @override
@@ -124,7 +126,11 @@ class OutletPicker extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
       ),
-      builder: (ctx) => _OutletSheet(outlets: outlets, selected: selected),
+      builder: (ctx) => _OutletSheet(
+            outlets: outlets,
+            selected: selected,
+            hasActiveAssignment: hasActiveAssignment,
+          ),
     );
     if (picked != null) onSelected(picked);
   }
@@ -133,7 +139,12 @@ class OutletPicker extends StatelessWidget {
 class _OutletSheet extends StatefulWidget {
   final List<Outlet> outlets;
   final Outlet? selected;
-  const _OutletSheet({required this.outlets, required this.selected});
+  final bool hasActiveAssignment;
+  const _OutletSheet({
+    required this.outlets,
+    required this.selected,
+    required this.hasActiveAssignment,
+  });
 
   @override
   State<_OutletSheet> createState() => _OutletSheetState();
@@ -190,6 +201,39 @@ class _OutletSheetState extends State<_OutletSheet> {
               ],
             ),
           ),
+          if (!widget.hasActiveAssignment) ...[
+            SizedBox(height: 8.h),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w),
+              child: Container(
+                padding:
+                    EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B).withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8.r),
+                  border: Border.all(
+                      color: const Color(0xFFF59E0B).withValues(alpha: 0.25)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline_rounded,
+                        size: 13.r, color: const Color(0xFFF59E0B)),
+                    SizedBox(width: 6.w),
+                    Expanded(
+                      child: Text(
+                        'No route assigned today · showing last synced outlets',
+                        style: TextStyle(
+                          fontSize: 10.sp,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFFF59E0B),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           SizedBox(height: 12.h),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 16.w),

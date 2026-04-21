@@ -178,7 +178,7 @@ class _CartListState extends State<CartList> {
               ),
               SizedBox(width: 8.w),
               // Create Order button
-              _CtaButton(state: state),
+              _CtaButton(state: state, compact: true),
             ],
           ],
         ),
@@ -396,8 +396,9 @@ class _CartListState extends State<CartList> {
 // ── Shared Create Order button ────────────────────────────────────────────────
 
 class _CtaButton extends StatelessWidget {
-  const _CtaButton({required this.state});
+  const _CtaButton({required this.state, this.compact = false});
   final CreateBillState state;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -410,7 +411,10 @@ class _CtaButton extends StatelessWidget {
             : null,
         borderRadius: BorderRadius.circular(12.r),
         child: Ink(
-          height: 52.h,
+          height: compact ? 44.h : 52.h,
+          padding: compact
+              ? EdgeInsets.symmetric(horizontal: 16.w)
+              : EdgeInsets.zero,
           decoration: BoxDecoration(
             color: state.canSubmit
                 ? AppColors.primary
@@ -438,14 +442,14 @@ class _CtaButton extends StatelessWidget {
                 )
               else
                 Icon(Icons.check_circle_outline_rounded,
-                    size: 18.r, color: Colors.white),
-              SizedBox(width: 10.w),
+                    size: compact ? 15.r : 18.r, color: Colors.white),
+              SizedBox(width: 8.w),
               Text(
                 state.submitting ? 'SAVING…' : 'CREATE ORDER',
                 style: GoogleFonts.barlowCondensed(
-                  fontSize: 17.sp,
+                  fontSize: compact ? 13.sp : 17.sp,
                   fontWeight: FontWeight.w800,
-                  letterSpacing: 2.0,
+                  letterSpacing: compact ? 1.2 : 2.0,
                   color: Colors.white,
                 ),
               ),

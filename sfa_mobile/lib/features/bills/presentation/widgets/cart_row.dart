@@ -69,7 +69,7 @@ class CartRow extends StatelessWidget {
 
             // Line total
             SizedBox(
-              width: 64.w,
+              width: 58.w,
               child: Text(
                 'Rs. ${line.lineTotal.toStringAsFixed(0)}',
                 textAlign: TextAlign.right,
@@ -77,6 +77,24 @@ class CartRow extends StatelessWidget {
                   fontSize: 14.sp,
                   fontWeight: FontWeight.w800,
                   color: AppColors.amber,
+                ),
+              ),
+            ),
+            SizedBox(width: 4.w),
+            // Delete button
+            GestureDetector(
+              onTap: onRemoved,
+              child: Container(
+                width: 26.r,
+                height: 26.r,
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6.r),
+                ),
+                child: Icon(
+                  Icons.close_rounded,
+                  size: 13.r,
+                  color: AppColors.error.withValues(alpha: 0.80),
                 ),
               ),
             ),

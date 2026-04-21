@@ -27,6 +27,11 @@ class OutletsBloc extends Bloc<OutletsEvent, OutletsState> {
     LoadOutletsRequested event,
     Emitter<OutletsState> emit,
   ) async {
+    // Preserve assignment status — only _onSync (fired by home page) knows
+    // whether today has a real assignment. _onLoad must not overwrite it.
+    final wasAssigned =
+        state is OutletsLoaded && (state as OutletsLoaded).hasActiveAssignment;
+
     emit(const OutletsLoading());
     try {
       final local = await _getOutlets();
@@ -34,19 +39,24 @@ class OutletsBloc extends Bloc<OutletsEvent, OutletsState> {
 
       // No stored route or no local data — wait for the assignment to trigger sync
       if (routeId == null || local.isEmpty) {
-        emit(OutletsLoaded(outlets: local, isSyncing: false));
+        emit(OutletsLoaded(
+            outlets: local,
+            isSyncing: false,
+            hasActiveAssignment: wasAssigned));
         return;
       }
 
       // Use the cached routeName from local data for the background sync
       final routeName = local.first.routeName;
-      emit(OutletsLoaded(outlets: local, isSyncing: true));
+      emit(OutletsLoaded(
+          outlets: local, isSyncing: true, hasActiveAssignment: wasAssigned));
 
       final synced = await _syncOutlets(routeId, routeName);
       emit(OutletsLoaded(
         outlets: synced,
         isSyncing: false,
         lastSyncedAt: DateTime.now(),
+        hasActiveAssignment: wasAssigned,
       ));
     } on AppException catch (e) {
       final current = state;
@@ -69,10 +79,13 @@ class OutletsBloc extends Bloc<OutletsEvent, OutletsState> {
 
     try {
       final synced = await _syncOutlets(event.routeId, event.routeName);
+      // hasActiveAssignment: true — this event is only ever fired from the home
+      // page's AssignmentsBloc listener when today's assignment actually exists.
       emit(OutletsLoaded(
         outlets: synced,
         isSyncing: false,
         lastSyncedAt: DateTime.now(),
+        hasActiveAssignment: true,
       ));
     } on AppException catch (e) {
       final prev = state;
