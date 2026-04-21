@@ -23,6 +23,7 @@ export const createProductSchema = z.object({
     .or(z.literal('')),
   remarks: z.string().optional().or(z.literal('')),
   fleetId: z.number().int().positive('Must select a valid fleet').optional(),
+  categoryId: z.number().int().positive('Must select a valid category').optional(),
 })
 
 // Update schema (same shape as create)
@@ -51,6 +52,8 @@ export type ProductDto = {
   remarks: string | null
   fleetId: number | null
   fleetName: string | null
+  categoryId: number | null
+  categoryName: string | null
   isActive: boolean
   createdAt: string
   updatedAt: string

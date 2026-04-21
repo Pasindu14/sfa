@@ -107,6 +107,7 @@ function EditProductDialog() {
                     imageUrl: product.imageUrl ?? '',
                     remarks: product.remarks ?? '',
                     fleetId: product.fleetId ?? undefined,
+                    categoryId: product.categoryId ?? undefined,
                   }
                 : undefined
             }

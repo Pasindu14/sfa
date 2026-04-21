@@ -11,6 +11,7 @@ public class ProductRepository(AppDbContext context) : IProductRepository
     public async Task<Product?> GetByIdAsync(int id, CancellationToken ct = default)
         => await _context.Products.IgnoreQueryFilters()
             .Include(p => p.Fleet)
+            .Include(p => p.Category)
             .FirstOrDefaultAsync(p => p.Id == id, ct);
 
     public async Task<(IEnumerable<Product> Products, int TotalCount)> GetAllAsync(int skip, int take, string? search = null, CancellationToken ct = default)
@@ -30,6 +31,7 @@ public class ProductRepository(AppDbContext context) : IProductRepository
         var products = await query
             .AsNoTracking()
             .Include(p => p.Fleet)
+            .Include(p => p.Category)
             .OrderBy(p => p.ItemDescription)
             .Skip(skip)
             .Take(take)

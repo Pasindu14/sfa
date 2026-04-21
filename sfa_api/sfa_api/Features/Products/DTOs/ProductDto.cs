@@ -10,6 +10,8 @@ public record ProductDto(
     string? Remarks,
     int? FleetId,
     string? FleetName,
+    int? CategoryId,
+    string? CategoryName,
     bool IsActive,
     DateTime CreatedAt,
     DateTime UpdatedAt

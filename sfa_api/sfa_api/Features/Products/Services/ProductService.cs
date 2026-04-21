@@ -1,5 +1,6 @@
 using sfa_api.Common.Errors;
 using sfa_api.Features.Fleets.Repositories;
+using sfa_api.Features.ProductCategories.Repositories;
 using sfa_api.Features.Products.DTOs;
 using sfa_api.Features.Products.Entities;
 using sfa_api.Features.Products.Repositories;
@@ -11,11 +12,13 @@ namespace sfa_api.Features.Products.Services;
 public class ProductService(
     IProductRepository repo,
     IFleetRepository fleetRepo,
+    IProductCategoryRepository categoryRepo,
     ICacheService cache,
     ILogger<ProductService> logger) : IProductService
 {
     private readonly IProductRepository _repo = repo;
     private readonly IFleetRepository _fleetRepo = fleetRepo;
+    private readonly IProductCategoryRepository _categoryRepo = categoryRepo;
     private readonly ICacheService _cache = cache;
     private readonly ILogger<ProductService> _logger = logger;
 
@@ -56,6 +59,9 @@ public class ProductService(
         if (request.FleetId.HasValue && !await _fleetRepo.ExistsByIdAsync(request.FleetId.Value, ct))
             throw new NotFoundException("Fleet", request.FleetId.Value);
 
+        if (request.CategoryId.HasValue && !await _categoryRepo.ExistsByIdAsync(request.CategoryId.Value, ct))
+            throw new NotFoundException("ProductCategory", request.CategoryId.Value);
+
         var product = new Product
         {
             Code = request.Code,
@@ -65,6 +71,7 @@ public class ProductService(
             ImageUrl = request.ImageUrl,
             Remarks = request.Remarks,
             FleetId = request.FleetId,
+            CategoryId = request.CategoryId,
             IsActive = true,
             CreatedBy = callerId,
             UpdatedBy = callerId,
@@ -92,6 +99,9 @@ public class ProductService(
         if (request.FleetId.HasValue && !await _fleetRepo.ExistsByIdAsync(request.FleetId.Value, ct))
             throw new NotFoundException("Fleet", request.FleetId.Value);
 
+        if (request.CategoryId.HasValue && !await _categoryRepo.ExistsByIdAsync(request.CategoryId.Value, ct))
+            throw new NotFoundException("ProductCategory", request.CategoryId.Value);
+
         product.Code = request.Code;
         product.ItemDescription = request.ItemDescription;
         product.PrintDescription = request.PrintDescription;
@@ -99,6 +109,7 @@ public class ProductService(
         product.ImageUrl = request.ImageUrl;
         product.Remarks = request.Remarks;
         product.FleetId = request.FleetId;
+        product.CategoryId = request.CategoryId;
         product.UpdatedBy = callerId;
         product.UpdatedAt = DateTime.UtcNow;
 
@@ -160,6 +171,8 @@ public class ProductService(
         Remarks: product.Remarks,
         FleetId: product.FleetId,
         FleetName: product.Fleet?.Name,
+        CategoryId: product.CategoryId,
+        CategoryName: product.Category?.Name,
         IsActive: product.IsActive,
         CreatedAt: product.CreatedAt,
         UpdatedAt: product.UpdatedAt

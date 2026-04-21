@@ -8,6 +8,7 @@ using sfa_api.Features.Divisions.Entities;
 using sfa_api.Features.Outlets.Entities;
 using sfa_api.Features.Regions.Entities;
 using sfa_api.Features.Territories.Entities;
+using sfa_api.Features.ProductCategories.Entities;
 using sfa_api.Features.ProductCategoryPricings.Entities;
 using sfa_api.Features.PricingStructures.Entities;
 using sfa_api.Features.Products.Entities;
@@ -48,6 +49,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<RouteEntity> Routes => Set<RouteEntity>();
     public DbSet<Outlet> Outlets => Set<Outlet>();
     public DbSet<Product> Products => Set<Product>();
+    public DbSet<ProductCategory> ProductCategories => Set<ProductCategory>();
     public DbSet<ProductCategoryPrice> ProductCategoryPrices => Set<ProductCategoryPrice>();
     public DbSet<PricingStructure> PricingStructures => Set<PricingStructure>();
     public DbSet<PricingStructureItem> PricingStructureItems => Set<PricingStructureItem>();
@@ -336,6 +338,17 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(x => x.Route).WithMany().HasForeignKey(x => x.RouteId).IsRequired();
         });
 
+        // ProductCategory
+        modelBuilder.Entity<ProductCategory>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.HasIndex(x => x.Name).IsUnique();
+            e.HasIndex(x => x.IsDeleted);
+            e.HasIndex(x => x.UpdatedAt).HasFilter("\"IsActive\" = true");
+            e.HasQueryFilter(x => x.IsActive && !x.IsDeleted);
+        });
+
         // Product
         modelBuilder.Entity<Product>(e =>
         {
@@ -346,7 +359,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt);
             e.HasIndex(x => x.FleetId);
+            e.HasIndex(x => x.CategoryId);
             e.HasOne(x => x.Fleet).WithMany().HasForeignKey(x => x.FleetId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Category).WithMany().HasForeignKey(x => x.CategoryId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
             // NOTE: No HasQueryFilter (IsActive or IsDeleted) — repositories use IgnoreQueryFilters() throughout and
             // filter IsActive and IsDeleted explicitly. A global filter here causes EF warnings because
             // GRNItem, PurchaseOrderItem, SalesInvoiceItem, DistributorStock, StockTransaction

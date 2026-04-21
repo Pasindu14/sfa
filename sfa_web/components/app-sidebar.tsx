@@ -55,6 +55,10 @@ const data = {
           url: "/products",
         },
         {
+          title: "Product Categories",
+          url: "/product-categories",
+        },
+        {
           title: "Fleets",
           url: "/fleets",
         },

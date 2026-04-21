@@ -1,4 +1,5 @@
 using sfa_api.Features.Fleets.Entities;
+using sfa_api.Features.ProductCategories.Entities;
 
 namespace sfa_api.Features.Products.Entities;
 
@@ -12,6 +13,7 @@ public class Product
     public string? ImageUrl { get; set; }                         // Storage path or URL
     public string? Remarks { get; set; }
     public int? FleetId { get; set; }
+    public int? CategoryId { get; set; }
     public bool IsActive { get; set; } = true;
     public bool IsDeleted { get; set; } = false;
 
@@ -23,4 +25,5 @@ public class Product
 
     // Navigation
     public Fleet? Fleet { get; set; }
+    public ProductCategory? Category { get; set; }
 }

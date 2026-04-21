@@ -22,7 +22,9 @@ import {
 import { Spinner } from '@/components/ui/spinner'
 import { AsyncSelect } from '@/components/async-select'
 import { fetchFleetsForSelect } from '@/features/fleet/actions/fleet.actions'
+import { fetchProductCategoriesForSelect } from '@/features/product-category/actions/product-category.actions'
 import type { FleetDto } from '@/features/fleet/schema/fleet.schema'
+import type { ProductCategoryDto } from '@/features/product-category/schema/product-category.schema'
 
 interface ProductFormProps {
   mode: 'create' | 'edit'
@@ -51,6 +53,7 @@ export function ProductForm({
       imageUrl: '',
       remarks: '',
       fleetId: undefined,
+      categoryId: undefined,
       ...defaultValues,
     },
   })
@@ -175,32 +178,61 @@ export function ProductForm({
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="fleetId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Fleet (Optional)</FormLabel>
-              <FormControl>
-                <AsyncSelect<FleetDto>
-                  label="Fleet"
-                  placeholder="Select fleet..."
-                  fetcher={fetchFleetsForSelect}
-                  value={field.value ? String(field.value) : ''}
-                  onChange={(v) => field.onChange(v ? Number(v) : undefined)}
-                  getOptionValue={(f) => String(f.id)}
-                  getDisplayValue={(f) => f.name}
-                  renderOption={(f) => (
-                    <span className="font-medium">{f.name}</span>
-                  )}
-                  clearable
-                  width="100%"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="fleetId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Fleet (Optional)</FormLabel>
+                <FormControl>
+                  <AsyncSelect<FleetDto>
+                    label="Fleet"
+                    placeholder="Select fleet..."
+                    fetcher={fetchFleetsForSelect}
+                    value={field.value ? String(field.value) : ''}
+                    onChange={(v) => field.onChange(v ? Number(v) : undefined)}
+                    getOptionValue={(f) => String(f.id)}
+                    getDisplayValue={(f) => f.name}
+                    renderOption={(f) => (
+                      <span className="font-medium">{f.name}</span>
+                    )}
+                    clearable
+                    width="100%"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="categoryId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Category (Optional)</FormLabel>
+                <FormControl>
+                  <AsyncSelect<ProductCategoryDto>
+                    label="Category"
+                    placeholder="Select category..."
+                    fetcher={fetchProductCategoriesForSelect}
+                    value={field.value ? String(field.value) : ''}
+                    onChange={(v) => field.onChange(v ? Number(v) : undefined)}
+                    getOptionValue={(c) => String(c.id)}
+                    getDisplayValue={(c) => c.name}
+                    renderOption={(c) => (
+                      <span className="font-medium">{c.name}</span>
+                    )}
+                    clearable
+                    width="100%"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading ? (
