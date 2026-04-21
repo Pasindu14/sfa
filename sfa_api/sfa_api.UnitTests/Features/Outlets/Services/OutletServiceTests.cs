@@ -10,6 +10,7 @@ using sfa_api.Features.Outlets.Requests;
 using sfa_api.Features.Outlets.Services;
 using sfa_api.Features.Regions.Entities;
 using sfa_api.Features.Territories.Entities;
+using sfa_api.Infrastructure.Caching;
 using RouteEntity = sfa_api.Features.Routes.Entities.Route;
 
 namespace sfa_api.UnitTests.Features.Outlets.Services;
@@ -17,12 +18,14 @@ namespace sfa_api.UnitTests.Features.Outlets.Services;
 public class OutletServiceTests
 {
     private readonly Mock<IOutletRepository> _repoMock;
+    private readonly Mock<ICacheService> _cacheMock;
     private readonly OutletService _sut;
 
     public OutletServiceTests()
     {
-        _repoMock = new Mock<IOutletRepository>();
-        _sut = new OutletService(_repoMock.Object, NullLogger<OutletService>.Instance);
+        _repoMock  = new Mock<IOutletRepository>();
+        _cacheMock = new Mock<ICacheService>();
+        _sut = new OutletService(_repoMock.Object, _cacheMock.Object, NullLogger<OutletService>.Instance);
     }
 
     // ─────────────────────────────────────────────────

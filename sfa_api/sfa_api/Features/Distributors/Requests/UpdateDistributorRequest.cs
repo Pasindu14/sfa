@@ -15,4 +15,5 @@ public class UpdateDistributorRequest
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
     public int? TerritoryId { get; set; }
+    public int? FleetId { get; set; }
 }

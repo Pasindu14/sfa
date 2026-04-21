@@ -1,4 +1,5 @@
 using sfa_api.Common.Errors;
+using sfa_api.Features.Fleets.Repositories;
 using sfa_api.Features.Products.DTOs;
 using sfa_api.Features.Products.Entities;
 using sfa_api.Features.Products.Repositories;
@@ -9,10 +10,12 @@ namespace sfa_api.Features.Products.Services;
 
 public class ProductService(
     IProductRepository repo,
+    IFleetRepository fleetRepo,
     ICacheService cache,
     ILogger<ProductService> logger) : IProductService
 {
     private readonly IProductRepository _repo = repo;
+    private readonly IFleetRepository _fleetRepo = fleetRepo;
     private readonly ICacheService _cache = cache;
     private readonly ILogger<ProductService> _logger = logger;
 
@@ -50,6 +53,9 @@ public class ProductService(
         if (await _repo.ExistsByCodeAsync(request.Code, ct))
             throw new DuplicateResourceException("Code");
 
+        if (request.FleetId.HasValue && !await _fleetRepo.ExistsByIdAsync(request.FleetId.Value, ct))
+            throw new NotFoundException("Fleet", request.FleetId.Value);
+
         var product = new Product
         {
             Code = request.Code,
@@ -58,6 +64,7 @@ public class ProductService(
             PiecesPerPack = request.PiecesPerPack,
             ImageUrl = request.ImageUrl,
             Remarks = request.Remarks,
+            FleetId = request.FleetId,
             IsActive = true,
             CreatedBy = callerId,
             UpdatedBy = callerId,
@@ -82,12 +89,16 @@ public class ProductService(
         if (await _repo.ExistsByCodeAsync(request.Code, id, ct))
             throw new DuplicateResourceException("Code");
 
+        if (request.FleetId.HasValue && !await _fleetRepo.ExistsByIdAsync(request.FleetId.Value, ct))
+            throw new NotFoundException("Fleet", request.FleetId.Value);
+
         product.Code = request.Code;
         product.ItemDescription = request.ItemDescription;
         product.PrintDescription = request.PrintDescription;
         product.PiecesPerPack = request.PiecesPerPack;
         product.ImageUrl = request.ImageUrl;
         product.Remarks = request.Remarks;
+        product.FleetId = request.FleetId;
         product.UpdatedBy = callerId;
         product.UpdatedAt = DateTime.UtcNow;
 
@@ -147,6 +158,8 @@ public class ProductService(
         PiecesPerPack: product.PiecesPerPack,
         ImageUrl: product.ImageUrl,
         Remarks: product.Remarks,
+        FleetId: product.FleetId,
+        FleetName: product.Fleet?.Name,
         IsActive: product.IsActive,
         CreatedAt: product.CreatedAt,
         UpdatedAt: product.UpdatedAt

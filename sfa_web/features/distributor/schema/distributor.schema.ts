@@ -21,6 +21,7 @@ export const createDistributorSchema = z.object({
   latitude: z.number().optional(),
   longitude: z.number().optional(),
   territoryId: z.number().int().positive('Must select a valid territory').optional(),
+  fleetId: z.number().int().positive('Must select a valid fleet').optional(),
   category: z.enum(['A', 'B', 'C', 'D'], { message: 'Category must be A, B, C, or D' }),
 })
 
@@ -59,6 +60,8 @@ export type DistributorDto = {
   territoryName: string | null
   areaId: number | null
   regionId: number | null
+  fleetId: number | null
+  fleetName: string | null
   isActive: boolean
   createdAt: string
   updatedAt: string

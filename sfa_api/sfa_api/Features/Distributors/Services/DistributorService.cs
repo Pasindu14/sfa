@@ -3,6 +3,7 @@ using sfa_api.Features.Distributors.DTOs;
 using sfa_api.Features.Distributors.Entities;
 using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.Distributors.Requests;
+using sfa_api.Features.Fleets.Repositories;
 using sfa_api.Features.Territories.Repositories;
 using sfa_api.Infrastructure.Caching;
 using sfa_api.Infrastructure.Locking;
@@ -12,12 +13,14 @@ namespace sfa_api.Features.Distributors.Services;
 public class DistributorService(
     IDistributorRepository repo,
     ITerritoryRepository territoryRepo,
+    IFleetRepository fleetRepo,
     ICacheService cache,
     IDistributedLockService lockService,
     ILogger<DistributorService> logger) : IDistributorService
 {
     private readonly IDistributorRepository _repo = repo;
     private readonly ITerritoryRepository _territoryRepo = territoryRepo;
+    private readonly IFleetRepository _fleetRepo = fleetRepo;
     private readonly ICacheService _cache = cache;
     private readonly IDistributedLockService _lockService = lockService;
     private readonly ILogger<DistributorService> _logger = logger;
@@ -72,6 +75,9 @@ public class DistributorService(
             regionId = territory.RegionId;
         }
 
+        if (request.FleetId.HasValue && !await _fleetRepo.ExistsByIdAsync(request.FleetId.Value, ct))
+            throw new NotFoundException("Fleet", request.FleetId.Value);
+
         var distributor = new Distributor
         {
             Name = request.Name,
@@ -89,6 +95,7 @@ public class DistributorService(
             TerritoryId = territoryId,
             AreaId = areaId,
             RegionId = regionId,
+            FleetId = request.FleetId,
             IsActive = true,
             CreatedBy = callerId,
             UpdatedBy = callerId,
@@ -134,6 +141,13 @@ public class DistributorService(
                 distributor.AreaId = null;
                 distributor.RegionId = null;
             }
+        }
+
+        if (request.FleetId != distributor.FleetId)
+        {
+            if (request.FleetId.HasValue && !await _fleetRepo.ExistsByIdAsync(request.FleetId.Value, ct))
+                throw new NotFoundException("Fleet", request.FleetId.Value);
+            distributor.FleetId = request.FleetId;
         }
 
         distributor.Name = request.Name;
@@ -221,6 +235,8 @@ public class DistributorService(
         TerritoryName: d.Territory?.Name,
         AreaId: d.AreaId,
         RegionId: d.RegionId,
+        FleetId: d.FleetId,
+        FleetName: d.Fleet?.Name,
         IsActive: d.IsActive,
         CreatedAt: d.CreatedAt,
         UpdatedAt: d.UpdatedAt

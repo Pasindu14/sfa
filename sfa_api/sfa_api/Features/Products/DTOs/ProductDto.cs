@@ -8,6 +8,8 @@ public record ProductDto(
     int PiecesPerPack,
     string? ImageUrl,
     string? Remarks,
+    int? FleetId,
+    string? FleetName,
     bool IsActive,
     DateTime CreatedAt,
     DateTime UpdatedAt

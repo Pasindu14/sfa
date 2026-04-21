@@ -106,6 +106,7 @@ function EditProductDialog() {
                     piecesPerPack: product.piecesPerPack,
                     imageUrl: product.imageUrl ?? '',
                     remarks: product.remarks ?? '',
+                    fleetId: product.fleetId ?? undefined,
                   }
                 : undefined
             }

@@ -30,8 +30,8 @@ public sealed class TestSalesInvoiceRepository(ISalesInvoiceRepository inner) : 
 
     public Task<(List<SalesInvoice> Items, int TotalCount)> GetListAsync(
         int page, int pageSize, string? search, string? status,
-        DateOnly? date, int? distributorId, CancellationToken ct = default)
-        => inner.GetListAsync(page, pageSize, search, status, date, distributorId, ct);
+        DateOnly? dateFrom, DateOnly? dateTo, int? distributorId, CancellationToken ct = default)
+        => inner.GetListAsync(page, pageSize, search, status, dateFrom, dateTo, distributorId, ct);
 
     public Task<SalesInvoice?> GetDetailAsync(int id, CancellationToken ct = default)
         => inner.GetDetailAsync(id, ct);

@@ -22,6 +22,7 @@ export const createProductSchema = z.object({
     .optional()
     .or(z.literal('')),
   remarks: z.string().optional().or(z.literal('')),
+  fleetId: z.number().int().positive('Must select a valid fleet').optional(),
 })
 
 // Update schema (same shape as create)
@@ -48,6 +49,8 @@ export type ProductDto = {
   piecesPerPack: number
   imageUrl: string | null
   remarks: string | null
+  fleetId: number | null
+  fleetName: string | null
   isActive: boolean
   createdAt: string
   updatedAt: string

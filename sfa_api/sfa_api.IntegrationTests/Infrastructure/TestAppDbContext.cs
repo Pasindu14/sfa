@@ -24,7 +24,8 @@ public class TestAppDbContext(DbContextOptions<AppDbContext> options) : AppDbCon
         {
             "purchase_order_number_seq",
             "sales_invoice_import_batch_number_seq",
-            "grn_number_seq"
+            "grn_number_seq",
+            "billing_number_seq"
         })
         {
             var seq = modelBuilder.Model.FindSequence(seqName);

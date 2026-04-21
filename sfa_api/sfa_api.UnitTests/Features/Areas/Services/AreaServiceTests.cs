@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using sfa_api.Common.Errors;
+using sfa_api.Features.Areas.DTOs;
 using sfa_api.Features.Areas.Entities;
 using sfa_api.Features.Areas.Repositories;
 using sfa_api.Features.Areas.Requests;
@@ -92,9 +93,9 @@ public class AreaServiceTests
     [Fact]
     public async Task GetAllAsync_ReturnsPaginatedAreaListDto()
     {
-        var areas = new[] { CreateFakeArea(1), CreateFakeArea(2) };
+        IReadOnlyList<Area> areas = new[] { CreateFakeArea(1), CreateFakeArea(2) };
         _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, null, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync((areas.AsEnumerable(), 2));
+                 .ReturnsAsync((areas, 2));
 
         var result = await _sut.GetAllAsync(1, 10);
 
@@ -107,8 +108,9 @@ public class AreaServiceTests
     [Fact]
     public async Task GetAllAsync_Page2_CalculatesCorrectSkip()
     {
+        IReadOnlyList<Area> emptyList = Array.Empty<Area>();
         _repoMock.Setup(r => r.GetAllAsync(10, 10, null, null, null, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync((Enumerable.Empty<Area>(), 0));
+                 .ReturnsAsync((emptyList, 0));
 
         await _sut.GetAllAsync(2, 10);
 
@@ -119,8 +121,9 @@ public class AreaServiceTests
     [Fact]
     public async Task GetAllAsync_EmptyResult_ReturnsEmptyAreasList()
     {
+        IReadOnlyList<Area> emptyList = Array.Empty<Area>();
         _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, null, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync((Enumerable.Empty<Area>(), 0));
+                 .ReturnsAsync((emptyList, 0));
 
         var result = await _sut.GetAllAsync(1, 10);
 
@@ -135,13 +138,13 @@ public class AreaServiceTests
     [Fact]
     public async Task GetAllActiveAsync_ReturnsOnlyMappedDtos()
     {
-        var activeAreas = new[]
+        IReadOnlyList<AreaDto> activeAreaDtos = new[]
         {
-            new Area { Id = 1, Name = "Alpha Area", RegionId = 1, IsActive = true, Region = CreateFakeRegion(), CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc), UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Area { Id = 2, Name = "Beta Area",  RegionId = 1, IsActive = true, Region = CreateFakeRegion(), CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc), UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+            new AreaDto(1, "Alpha Area", 1, "Test Region", true, 1u, new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)),
+            new AreaDto(2, "Beta Area",  1, "Test Region", true, 1u, new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc))
         };
         _repoMock.Setup(r => r.GetAllActiveAsync(null, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(activeAreas.AsEnumerable());
+                 .ReturnsAsync(activeAreaDtos);
 
         var result = await _sut.GetAllActiveAsync();
 
@@ -152,8 +155,9 @@ public class AreaServiceTests
     [Fact]
     public async Task GetAllActiveAsync_EmptyRepo_ReturnsEmptyEnumerable()
     {
+        IReadOnlyList<AreaDto> emptyList = Array.Empty<AreaDto>();
         _repoMock.Setup(r => r.GetAllActiveAsync(null, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(Enumerable.Empty<Area>());
+                 .ReturnsAsync(emptyList);
 
         var result = await _sut.GetAllActiveAsync();
 
@@ -247,7 +251,7 @@ public class AreaServiceTests
                  .Callback<Area, CancellationToken>((a, _) => captured = a)
                  .Returns(Task.CompletedTask);
 
-        await _sut.CreateAsync(request, callerId: null);
+        await _sut.CreateAsync(request, callerId: 0);
 
         captured!.CreatedBy.Should().BeNull();
         captured.UpdatedBy.Should().BeNull();
@@ -337,7 +341,7 @@ public class AreaServiceTests
         updatedArea.Name = "Renamed Area";
         _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(updatedArea);
-        _repoMock.Setup(r => r.UpdateAsync(It.IsAny<Area>(), It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.UpdateAsync(It.IsAny<Area>()))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
@@ -390,7 +394,7 @@ public class AreaServiceTests
         await _sut.ActivateAsync(1, callerId: 1);
 
         area.IsActive.Should().BeTrue();
-        _repoMock.Verify(r => r.UpdateAsync(area, It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.UpdateAsync(area), Times.Once);
         _repoMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -433,7 +437,7 @@ public class AreaServiceTests
         await _sut.DeactivateAsync(1, callerId: 1);
 
         area.IsActive.Should().BeFalse();
-        _repoMock.Verify(r => r.UpdateAsync(area, It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.UpdateAsync(area), Times.Once);
         _repoMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -496,7 +500,7 @@ public class AreaServiceTests
                  .ReturnsAsync(true);
         _repoMock.Setup(r => r.ExistsByNameAsync(request.Name, request.RegionId, areaId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(false);
-        _repoMock.Setup(r => r.UpdateAsync(existingArea, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.UpdateAsync(existingArea))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
@@ -506,7 +510,7 @@ public class AreaServiceTests
 
     private void SetupGetByIdAfterUpdate(int areaId, Area area)
     {
-        _repoMock.Setup(r => r.UpdateAsync(area, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.UpdateAsync(area))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);

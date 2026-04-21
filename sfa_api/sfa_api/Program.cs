@@ -22,6 +22,7 @@ using sfa_api.Features.MobileSync;
 using sfa_api.Features.GRNs;
 using sfa_api.Features.SalesInvoices;
 using sfa_api.Features.Stock;
+using sfa_api.Features.Fleets;
 using sfa_api.Features.Regions;
 using sfa_api.Features.Routes;
 using sfa_api.Features.Territories;
@@ -156,6 +157,7 @@ try
     builder.Services.AddAuthFeature();
     builder.Services.AddUsersFeature();
     builder.Services.AddDistributorsFeature();
+    builder.Services.AddFleetsFeature();
     builder.Services.AddRegionsFeature();
     builder.Services.AddAreasFeature();
     builder.Services.AddTerritoriesFeature();

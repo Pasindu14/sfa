@@ -8,4 +8,5 @@ public class CreateProductRequest
     public int PiecesPerPack { get; set; }
     public string? ImageUrl { get; set; }
     public string? Remarks { get; set; }
+    public int? FleetId { get; set; }
 }

@@ -1,3 +1,5 @@
+using sfa_api.Features.Fleets.Entities;
+
 namespace sfa_api.Features.Products.Entities;
 
 public class Product
@@ -9,6 +11,7 @@ public class Product
     public int PiecesPerPack { get; set; } = 0;                  // Units per pack
     public string? ImageUrl { get; set; }                         // Storage path or URL
     public string? Remarks { get; set; }
+    public int? FleetId { get; set; }
     public bool IsActive { get; set; } = true;
     public bool IsDeleted { get; set; } = false;
 
@@ -17,4 +20,7 @@ public class Product
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public int? CreatedBy { get; set; }
     public int? UpdatedBy { get; set; }
+
+    // Navigation
+    public Fleet? Fleet { get; set; }
 }

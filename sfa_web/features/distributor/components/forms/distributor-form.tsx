@@ -29,6 +29,8 @@ import { Spinner } from "@/components/ui/spinner";
 import { AsyncSelect } from "@/components/async-select";
 import { fetchTerritoriesForSelect } from "@/features/territory/actions/territory.actions";
 import type { TerritoryDto } from "@/features/territory/schema/territory.schema";
+import { fetchFleetsForSelect } from "@/features/fleet/actions/fleet.actions";
+import type { FleetDto } from "@/features/fleet/schema/fleet.schema";
 
 interface DistributorFormProps {
   mode: "create" | "edit";
@@ -60,7 +62,8 @@ export function DistributorForm({
       vatRegNo: "",
       latitude: undefined,
       longitude: undefined,
-      territoryId: 3,
+      territoryId: undefined,
+      fleetId: undefined,
       ...defaultValues,
     },
   });
@@ -266,6 +269,33 @@ export function DistributorForm({
                         {t.areaName}
                       </span>
                     </div>
+                  )}
+                  clearable
+                  width="100%"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="fleetId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Fleet (Optional)</FormLabel>
+              <FormControl>
+                <AsyncSelect<FleetDto>
+                  label="Fleet"
+                  placeholder="Select fleet..."
+                  fetcher={fetchFleetsForSelect}
+                  value={field.value ? String(field.value) : ""}
+                  onChange={(v) => field.onChange(v ? Number(v) : undefined)}
+                  getOptionValue={(f) => String(f.id)}
+                  getDisplayValue={(f) => f.name}
+                  renderOption={(f) => (
+                    <span className="font-medium">{f.name}</span>
                   )}
                   clearable
                   width="100%"

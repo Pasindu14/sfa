@@ -1,4 +1,5 @@
 using sfa_api.Features.Areas.Entities;
+using sfa_api.Features.Fleets.Entities;
 using sfa_api.Features.Regions.Entities;
 using sfa_api.Features.Territories.Entities;
 
@@ -25,6 +26,8 @@ public class Distributor
     public int? AreaId { get; set; }       // denormalized ancestor
     public int? RegionId { get; set; }     // denormalized ancestor
 
+    public int? FleetId { get; set; }
+
     public bool IsActive { get; set; } = true;
 
     // Audit fields
@@ -38,4 +41,5 @@ public class Distributor
     public Territory? Territory { get; set; }
     public Area? Area { get; set; }
     public Region? Region { get; set; }
+    public Fleet? Fleet { get; set; }
 }

@@ -3,6 +3,7 @@ using sfa_api.Common.Audit;
 using sfa_api.Features.Areas.Entities;
 using sfa_api.Features.Auth.Entities;
 using sfa_api.Features.Distributors.Entities;
+using sfa_api.Features.Fleets.Entities;
 using sfa_api.Features.Divisions.Entities;
 using sfa_api.Features.Outlets.Entities;
 using sfa_api.Features.Regions.Entities;
@@ -39,6 +40,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<User> Users => Set<User>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Distributor> Distributors => Set<Distributor>();
+    public DbSet<Fleet> Fleets => Set<Fleet>();
     public DbSet<Region> Regions => Set<Region>();
     public DbSet<Area> Areas => Set<Area>();
     public DbSet<Territory> Territories => Set<Territory>();
@@ -129,11 +131,24 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.UpdatedAt);
             e.HasIndex(x => x.TerritoryId);
             e.HasIndex(x => x.RegionId);
+            e.HasIndex(x => x.FleetId);
             e.HasOne(x => x.Territory).WithMany().HasForeignKey(x => x.TerritoryId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.Area).WithMany().HasForeignKey(x => x.AreaId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.Region).WithMany().HasForeignKey(x => x.RegionId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Fleet).WithMany().HasForeignKey(x => x.FleetId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
             // NOTE: No HasQueryFilter (IsActive or IsDeleted) - we display both active and inactive records
             // Soft delete is for audit purposes only, records are never physically removed
+        });
+
+        // Fleet
+        modelBuilder.Entity<Fleet>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.HasIndex(x => x.Name).IsUnique();
+            e.HasIndex(x => x.IsDeleted);
+            e.HasIndex(x => x.UpdatedAt).HasFilter("\"IsActive\" = true");
+            e.HasQueryFilter(x => x.IsActive && !x.IsDeleted);
         });
 
         // Region
@@ -330,6 +345,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.IsActive);
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt);
+            e.HasIndex(x => x.FleetId);
+            e.HasOne(x => x.Fleet).WithMany().HasForeignKey(x => x.FleetId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
             // NOTE: No HasQueryFilter (IsActive or IsDeleted) — repositories use IgnoreQueryFilters() throughout and
             // filter IsActive and IsDeleted explicitly. A global filter here causes EF warnings because
             // GRNItem, PurchaseOrderItem, SalesInvoiceItem, DistributorStock, StockTransaction

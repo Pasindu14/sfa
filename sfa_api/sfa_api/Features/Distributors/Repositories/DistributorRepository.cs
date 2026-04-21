@@ -11,6 +11,7 @@ public class DistributorRepository(AppDbContext context) : IDistributorRepositor
     public async Task<Distributor?> GetByIdAsync(int id, CancellationToken ct = default)
         => await _context.Distributors
             .Include(d => d.Territory)
+            .Include(d => d.Fleet)
             .FirstOrDefaultAsync(d => d.Id == id, ct);
 
     public async Task<Distributor?> GetByEmailAsync(string email, CancellationToken ct = default)
@@ -49,6 +50,7 @@ public class DistributorRepository(AppDbContext context) : IDistributorRepositor
         var distributors = await query
             .AsNoTracking()
             .Include(d => d.Territory)
+            .Include(d => d.Fleet)
             .OrderBy(d => d.Name)
             .Skip(skip)
             .Take(take)

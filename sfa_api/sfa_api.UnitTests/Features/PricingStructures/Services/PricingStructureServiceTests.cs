@@ -8,6 +8,7 @@ using sfa_api.Features.PricingStructures.Requests;
 using sfa_api.Features.PricingStructures.Services;
 using sfa_api.Features.Products.Entities;
 using sfa_api.Features.Products.Repositories;
+using sfa_api.Infrastructure.Caching;
 
 namespace sfa_api.UnitTests.Features.PricingStructures.Services;
 
@@ -15,15 +16,18 @@ public class PricingStructureServiceTests
 {
     private readonly Mock<IPricingStructureRepository> _repoMock;
     private readonly Mock<IProductRepository> _productRepoMock;
+    private readonly Mock<ICacheService> _cacheMock;
     private readonly PricingStructureService _sut;
 
     public PricingStructureServiceTests()
     {
-        _repoMock = new Mock<IPricingStructureRepository>();
+        _repoMock        = new Mock<IPricingStructureRepository>();
         _productRepoMock = new Mock<IProductRepository>();
+        _cacheMock       = new Mock<ICacheService>();
         _sut = new PricingStructureService(
             _repoMock.Object,
             _productRepoMock.Object,
+            _cacheMock.Object,
             NullLogger<PricingStructureService>.Instance);
     }
 

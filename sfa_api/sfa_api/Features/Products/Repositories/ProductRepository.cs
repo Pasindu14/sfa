@@ -9,7 +9,9 @@ public class ProductRepository(AppDbContext context) : IProductRepository
     private readonly AppDbContext _context = context;
 
     public async Task<Product?> GetByIdAsync(int id, CancellationToken ct = default)
-        => await _context.Products.IgnoreQueryFilters().FirstOrDefaultAsync(p => p.Id == id, ct);
+        => await _context.Products.IgnoreQueryFilters()
+            .Include(p => p.Fleet)
+            .FirstOrDefaultAsync(p => p.Id == id, ct);
 
     public async Task<(IEnumerable<Product> Products, int TotalCount)> GetAllAsync(int skip, int take, string? search = null, CancellationToken ct = default)
     {
@@ -27,6 +29,7 @@ public class ProductRepository(AppDbContext context) : IProductRepository
         var totalCount = await query.CountAsync(ct);
         var products = await query
             .AsNoTracking()
+            .Include(p => p.Fleet)
             .OrderBy(p => p.ItemDescription)
             .Skip(skip)
             .Take(take)

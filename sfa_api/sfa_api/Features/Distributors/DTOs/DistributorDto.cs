@@ -18,6 +18,8 @@ public record DistributorDto(
     string? TerritoryName,
     int? AreaId,
     int? RegionId,
+    int? FleetId,
+    string? FleetName,
     bool IsActive,
     DateTime CreatedAt,
     DateTime UpdatedAt

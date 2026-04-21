@@ -109,6 +109,7 @@ function EditDistributorDialog() {
                     latitude: distributor.latitude ?? undefined,
                     longitude: distributor.longitude ?? undefined,
                     territoryId: distributor.territoryId ?? undefined,
+                    fleetId: distributor.fleetId ?? undefined,
                   }
                 : undefined
             }
