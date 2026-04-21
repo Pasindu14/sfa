@@ -10,6 +10,7 @@ public interface IUserGeoAssignmentRepository
 {
     Task<UserGeoAssignment?> GetByIdAsync(int id, CancellationToken ct = default);
     Task<UserGeoAssignment?> GetActiveByUserIdAsync(int userId, CancellationToken ct = default);
+    Task<UserGeoAssignment?> GetActiveWithDetailsByUserIdAsync(int userId, CancellationToken ct = default);
 
     Task<(IEnumerable<UserGeoAssignment> Items, int TotalCount)> GetAllAsync(
         int skip,

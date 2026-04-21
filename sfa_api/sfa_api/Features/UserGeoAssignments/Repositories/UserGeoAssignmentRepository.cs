@@ -25,6 +25,13 @@ public class UserGeoAssignmentRepository(AppDbContext context) : IUserGeoAssignm
         => await _context.UserGeoAssignments
             .FirstOrDefaultAsync(g => g.UserId == userId && g.IsActive, ct);
 
+    public async Task<UserGeoAssignment?> GetActiveWithDetailsByUserIdAsync(int userId, CancellationToken ct = default)
+        => await _context.UserGeoAssignments
+            .Include(g => g.Division)
+            .Include(g => g.Territory)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(g => g.UserId == userId && g.IsActive, ct);
+
     public async Task<(IEnumerable<UserGeoAssignment>, int)> GetAllAsync(
         int skip,
         int take,

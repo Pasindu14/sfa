@@ -8,6 +8,7 @@ import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_bloc.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_event.dart';
+import 'package:uswatte/features/rep_assignment/presentation/bloc/rep_assignment_bloc.dart';
 import 'package:uswatte/features/route_assignment/presentation/bloc/assignments_bloc.dart';
 
 class SalesRepHomePage extends StatefulWidget {
@@ -306,6 +307,12 @@ class _HeroCard extends StatelessWidget {
     );
     final displayName = name.isNotEmpty ? name : 'Sales Rep';
 
+    final distributorName = context.select<RepAssignmentBloc, String?>(
+      (bloc) => bloc.state is RepAssignmentLoaded
+          ? (bloc.state as RepAssignmentLoaded).assignment.distributorName
+          : null,
+    );
+
     return Padding(
       padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 0),
       child: Container(
@@ -384,6 +391,26 @@ class _HeroCard extends StatelessWidget {
                       height: 1.0,
                       color: Colors.white,
                     )),
+                if (distributorName != null) ...[
+                  SizedBox(height: 6.h),
+                  Row(
+                    children: [
+                      Icon(Icons.store_rounded,
+                          size: 11.r,
+                          color: Colors.white.withValues(alpha: 0.7)),
+                      SizedBox(width: 5.w),
+                      Text(
+                        distributorName,
+                        style: GoogleFonts.barlowCondensed(
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.3,
+                          color: Colors.white.withValues(alpha: 0.85),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 SizedBox(height: 16.h),
                 Row(
                   children: [

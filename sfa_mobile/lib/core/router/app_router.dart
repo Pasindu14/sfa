@@ -30,6 +30,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uswatte/core/di/injection.dart';
 import 'package:uswatte/features/products/domain/usecases/get_products_usecase.dart';
 import 'package:uswatte/features/products/domain/usecases/sync_products_usecase.dart';
+import 'package:uswatte/features/rep_assignment/domain/usecases/get_rep_assignment_usecase.dart';
+import 'package:uswatte/features/rep_assignment/presentation/bloc/rep_assignment_bloc.dart';
 import 'package:uswatte/features/sync/presentation/pages/sync_page.dart';
 import 'package:uswatte/features/sales_rep/presentation/pages/unsupported_role_page.dart';
 import 'package:uswatte/features/splash/presentation/pages/splash_page.dart';
@@ -108,6 +110,11 @@ class AppRouter {
                       getCurrentRouteIdUseCase:
                           getIt<GetCurrentRouteIdUseCase>(),
                     )..add(const LoadOutletsRequested()),
+                  ),
+                  BlocProvider(
+                    create: (_) => RepAssignmentBloc(
+                      getRepAssignment: getIt<GetRepAssignmentUseCase>(),
+                    )..add(const LoadRepAssignmentRequested()),
                   ),
                 ],
                 child: const SalesRepHomePage(),

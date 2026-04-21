@@ -51,6 +51,10 @@ import 'package:uswatte/features/bills/domain/usecases/get_bill_by_id_usecase.da
 import 'package:uswatte/features/bills/domain/usecases/get_bills_usecase.dart';
 import 'package:uswatte/features/bills/domain/usecases/retry_sync_usecase.dart';
 import 'package:uswatte/features/bills/domain/usecases/search_products_for_bill_usecase.dart';
+import 'package:uswatte/features/rep_assignment/data/datasources/rep_assignment_remote_datasource.dart';
+import 'package:uswatte/features/rep_assignment/data/repositories/rep_assignment_repository_impl.dart';
+import 'package:uswatte/features/rep_assignment/domain/repositories/rep_assignment_repository.dart';
+import 'package:uswatte/features/rep_assignment/domain/usecases/get_rep_assignment_usecase.dart';
 
 final getIt = GetIt.instance;
 
@@ -191,4 +195,13 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton(() => RetrySyncUseCase(getIt<BillsRepository>()));
   getIt.registerLazySingleton(
       () => SearchProductsForBillUseCase(getIt<BillsRepository>()));
+
+  // ── Rep assignment ────────────────────────────────────────────────────────────
+  getIt.registerLazySingleton(
+      () => RepAssignmentRemoteDatasource(getIt<Dio>()));
+  getIt.registerLazySingleton<RepAssignmentRepository>(
+    () => RepAssignmentRepositoryImpl(getIt<RepAssignmentRemoteDatasource>()),
+  );
+  getIt.registerLazySingleton(
+      () => GetRepAssignmentUseCase(getIt<RepAssignmentRepository>()));
 }

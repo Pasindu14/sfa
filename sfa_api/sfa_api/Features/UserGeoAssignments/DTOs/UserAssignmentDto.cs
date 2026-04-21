@@ -28,6 +28,18 @@ public record UserAssignmentListDto(
     int PageSize
 );
 
+// Returned by GET /api/v1/user-assignments/me — mobile rep dashboard
+public record RepAssignmentDto(
+    int? DivisionId,
+    string? DivisionName,
+    int? TerritoryId,
+    string? TerritoryName,
+    int? DistributorId,
+    string? DistributorName,
+    int? FleetId,
+    string? FleetName
+);
+
 public record UserAssignmentStatsDto(
     int TotalAssignments,
     int ActiveAssignments,

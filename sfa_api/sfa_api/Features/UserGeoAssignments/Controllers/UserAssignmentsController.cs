@@ -11,7 +11,7 @@ namespace sfa_api.Features.UserGeoAssignments.Controllers;
 
 [ApiController]
 [Route("api/v1/user-assignments")]
-[Authorize(Roles = "Admin")]
+[Authorize]
 public class UserAssignmentsController(
     IUserGeoAssignmentService service,
     IValidator<CreateUserAssignmentRequest> createValidator,
@@ -21,8 +21,19 @@ public class UserAssignmentsController(
     private readonly IValidator<CreateUserAssignmentRequest> _createValidator = createValidator;
     private readonly IValidator<UpdateUserAssignmentRequest> _updateValidator = updateValidator;
 
+    /// <summary>GET /api/v1/user-assignments/me — active assignment + distributor for the calling rep</summary>
+    [HttpGet("me")]
+    public async Task<IActionResult> GetMyAssignment(CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId);
+        var result = await _service.GetMyAssignmentAsync(userId, ct);
+        return Ok(ResponseHelper.Ok(result, correlationId));
+    }
+
     /// <summary>GET /api/v1/user-assignments/stats — 4 stat card numbers</summary>
     [HttpGet("stats")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetStats(CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
@@ -32,6 +43,7 @@ public class UserAssignmentsController(
 
     /// <summary>GET /api/v1/user-assignments/{id}</summary>
     [HttpGet("{id:int}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetById(int id, CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
@@ -44,6 +56,7 @@ public class UserAssignmentsController(
     /// Supports: ?search= ?role= ?regionId= ?isActive=
     /// </summary>
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetAll(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
@@ -63,6 +76,7 @@ public class UserAssignmentsController(
 
     /// <summary>POST /api/v1/user-assignments — create, writes to both tables atomically</summary>
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create(
         [FromBody] CreateUserAssignmentRequest request,
         CancellationToken ct)
@@ -76,6 +90,7 @@ public class UserAssignmentsController(
 
     /// <summary>PUT /api/v1/user-assignments/{id} — update both tables atomically</summary>
     [HttpPut("{id:int}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Update(
         int id,
         [FromBody] UpdateUserAssignmentRequest request,
@@ -90,6 +105,7 @@ public class UserAssignmentsController(
 
     /// <summary>DELETE /api/v1/user-assignments/{id} — deactivate (IsActive = false)</summary>
     [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
     {
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
@@ -99,6 +115,7 @@ public class UserAssignmentsController(
 
     /// <summary>POST /api/v1/user-assignments/{id}/activate — reactivate a deactivated assignment</summary>
     [HttpPost("{id:int}/activate")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Activate(int id, CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;

@@ -68,6 +68,9 @@ public class DistributorService(
         int? territoryId = null, areaId = null, regionId = null;
         if (request.TerritoryId.HasValue)
         {
+            if (await _repo.ExistsByTerritoryIdAsync(request.TerritoryId.Value, ct))
+                throw new DuplicateResourceException("TerritoryId");
+
             var territory = await _territoryRepo.GetByIdAsync(request.TerritoryId.Value, ct)
                 ?? throw new NotFoundException("Territory", request.TerritoryId.Value);
             territoryId = territory.Id;
@@ -129,6 +132,9 @@ public class DistributorService(
         {
             if (request.TerritoryId.HasValue)
             {
+                if (await _repo.ExistsByTerritoryIdAsync(request.TerritoryId.Value, id, ct))
+                    throw new DuplicateResourceException("TerritoryId");
+
                 var territory = await _territoryRepo.GetByIdAsync(request.TerritoryId.Value, ct)
                     ?? throw new NotFoundException("Territory", request.TerritoryId.Value);
                 distributor.TerritoryId = territory.Id;

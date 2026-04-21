@@ -131,7 +131,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.Phone).IsUnique();
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt);
-            e.HasIndex(x => x.TerritoryId);
+            e.HasIndex(x => x.TerritoryId).IsUnique();  // 1 distributor per territory (business rule)
             e.HasIndex(x => x.RegionId);
             e.HasIndex(x => x.FleetId);
             e.HasOne(x => x.Territory).WithMany().HasForeignKey(x => x.TerritoryId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);

@@ -582,7 +582,8 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("RegionId");
 
-                    b.HasIndex("TerritoryId");
+                    b.HasIndex("TerritoryId")
+                        .IsUnique();
 
                     b.HasIndex("UpdatedAt");
 

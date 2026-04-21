@@ -1,4 +1,5 @@
 using sfa_api.Common.Errors;
+using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.UserGeoAssignments.DTOs;
 using sfa_api.Features.UserGeoAssignments.Entities;
 using sfa_api.Features.UserGeoAssignments.Repositories;
@@ -10,9 +11,11 @@ namespace sfa_api.Features.UserGeoAssignments.Services;
 
 public class UserGeoAssignmentService(
     IUserGeoAssignmentRepository repo,
+    IDistributorRepository distributorRepo,
     ILogger<UserGeoAssignmentService> logger) : IUserGeoAssignmentService
 {
     private readonly IUserGeoAssignmentRepository _repo = repo;
+    private readonly IDistributorRepository _distributorRepo = distributorRepo;
     private readonly ILogger<UserGeoAssignmentService> _logger = logger;
 
     public async Task<UserAssignmentDto> GetByIdAsync(int id, CancellationToken ct = default)
@@ -22,6 +25,37 @@ public class UserGeoAssignmentService(
 
         var rls = await _repo.GetActiveReportingLinesByUserIdsAsync([geo.UserId], ct);
         return MapToDto(geo, rls.FirstOrDefault());
+    }
+
+    public async Task<RepAssignmentDto> GetMyAssignmentAsync(int userId, CancellationToken ct = default)
+    {
+        var geo = await _repo.GetActiveWithDetailsByUserIdAsync(userId, ct)
+            ?? throw new NotFoundException("UserAssignment", userId);
+
+        string? distributorName = null;
+        int? distributorId = null;
+        int? fleetId = null;
+        string? fleetName = null;
+
+        if (geo.TerritoryId.HasValue)
+        {
+            var distributor = await _distributorRepo.GetByTerritoryIdAsync(geo.TerritoryId.Value, ct);
+            distributorId = distributor?.Id;
+            distributorName = distributor?.Name;
+            fleetId = distributor?.FleetId;
+            fleetName = distributor?.Fleet?.Name;
+        }
+
+        return new RepAssignmentDto(
+            DivisionId: geo.DivisionId,
+            DivisionName: geo.Division?.Name,
+            TerritoryId: geo.TerritoryId,
+            TerritoryName: geo.Territory?.Name,
+            DistributorId: distributorId,
+            DistributorName: distributorName,
+            FleetId: fleetId,
+            FleetName: fleetName
+        );
     }
 
     public async Task<UserAssignmentListDto> GetAllAsync(

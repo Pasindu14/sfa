@@ -32,6 +32,18 @@ public class DistributorRepository(AppDbContext context) : IDistributorRepositor
     public async Task<bool> ExistsByPhoneAsync(string phone, int excludeId, CancellationToken ct = default)
         => await _context.Distributors.AnyAsync(d => d.Phone == phone && d.Id != excludeId, ct);
 
+    public async Task<bool> ExistsByTerritoryIdAsync(int territoryId, CancellationToken ct = default)
+        => await _context.Distributors.AnyAsync(d => d.TerritoryId == territoryId && !d.IsDeleted, ct);
+
+    public async Task<bool> ExistsByTerritoryIdAsync(int territoryId, int excludeId, CancellationToken ct = default)
+        => await _context.Distributors.AnyAsync(d => d.TerritoryId == territoryId && d.Id != excludeId && !d.IsDeleted, ct);
+
+    public async Task<Distributor?> GetByTerritoryIdAsync(int territoryId, CancellationToken ct = default)
+        => await _context.Distributors
+            .AsNoTracking()
+            .Include(d => d.Fleet)
+            .FirstOrDefaultAsync(d => d.TerritoryId == territoryId && d.IsActive && !d.IsDeleted, ct);
+
     public async Task<(IEnumerable<Distributor> Distributors, int TotalCount)> GetAllAsync(int skip, int take, string? search = null, bool? isActive = null, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, 200);

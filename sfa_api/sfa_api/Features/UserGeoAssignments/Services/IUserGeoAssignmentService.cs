@@ -6,6 +6,7 @@ namespace sfa_api.Features.UserGeoAssignments.Services;
 public interface IUserGeoAssignmentService
 {
     Task<UserAssignmentDto> GetByIdAsync(int id, CancellationToken ct = default);
+    Task<RepAssignmentDto> GetMyAssignmentAsync(int userId, CancellationToken ct = default);
 
     Task<UserAssignmentListDto> GetAllAsync(
         int page,
