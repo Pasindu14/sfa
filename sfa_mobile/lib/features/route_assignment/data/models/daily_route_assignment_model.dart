@@ -17,12 +17,12 @@ class DailyRouteAssignmentModel extends DailyRouteAssignment {
   });
 
   factory DailyRouteAssignmentModel.fromJson(Map<String, dynamic> json) {
-    final rawStatus = json['deletionStatus'] as int? ?? 0;
-    final deletionStatus = switch (rawStatus) {
-      1 => DeletionStatus.pendingApproval,
-      2 => DeletionStatus.approved,
-      3 => DeletionStatus.rejected,
-      _ => DeletionStatus.none,
+    final raw = json['deletionStatus'];
+    final deletionStatus = switch (raw) {
+      1 || 'PendingApproval' => DeletionStatus.pendingApproval,
+      2 || 'Approved'        => DeletionStatus.approved,
+      3 || 'Rejected'        => DeletionStatus.rejected,
+      _                      => DeletionStatus.none,
     };
 
     return DailyRouteAssignmentModel(

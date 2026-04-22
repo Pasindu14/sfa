@@ -6,8 +6,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:uswatte/features/bills/domain/entities/bill.dart';
+import 'package:uswatte/features/bills/presentation/bloc/bills_list_bloc.dart';
+import 'package:uswatte/features/bills/presentation/bloc/bills_list_state.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_bloc.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_event.dart';
+import 'package:uswatte/features/outlets/presentation/bloc/outlets_state.dart';
 import 'package:uswatte/features/rep_assignment/presentation/bloc/rep_assignment_bloc.dart';
 import 'package:uswatte/features/route_assignment/presentation/bloc/assignments_bloc.dart';
 
@@ -559,45 +563,76 @@ class _SectionLabel extends StatelessWidget {
 class _MetricsGrid extends StatelessWidget {
   const _MetricsGrid();
 
+  static bool _isToday(DateTime dt) {
+    final now = DateTime.now();
+    return dt.year == now.year && dt.month == now.month && dt.day == now.day;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: _MetricTile(
-              icon: Icons.receipt_long_rounded,
-              label: 'Orders\nPlaced',
-              value: '—',
-              color: AppColors.primary,
-              large: true,
-            ),
-          ),
-          SizedBox(width: 10.w),
-          Expanded(
-            child: Column(
-              children: [
-                _MetricTile(
-                  icon: Icons.storefront_rounded,
-                  label: 'Outlets Visited',
-                  value: '—',
-                  color: AppColors.primaryMedium,
-                  large: false,
-                ),
-                SizedBox(height: 10.h),
-                _MetricTile(
-                  icon: Icons.map_outlined,
-                  label: 'Route Progress',
-                  value: '—',
-                  color: AppColors.amber,
-                  large: false,
-                ),
-              ],
-            ),
-          ),
-        ],
+      child: BlocBuilder<BillsListBloc, BillsListState>(
+        builder: (context, billsState) {
+          final todaysBills = billsState is BillsListLoaded
+              ? billsState.bills.where((b) => _isToday(b.billingDate)).toList()
+              : <Bill>[];
+          final visitedIds = todaysBills.map((b) => b.outletId).toSet();
+          final ordersValue =
+              billsState is BillsListLoaded ? todaysBills.length.toString() : '—';
+
+          return BlocBuilder<OutletsBloc, OutletsState>(
+            builder: (context, outletsState) {
+              final totalOutlets = outletsState is OutletsLoaded
+                  ? outletsState.outlets.length
+                  : 0;
+              final visitedValue = billsState is BillsListLoaded
+                  ? visitedIds.length.toString()
+                  : '—';
+              final progressValue =
+                  (billsState is BillsListLoaded && outletsState is OutletsLoaded)
+                      ? '${visitedIds.length}/$totalOutlets'
+                      : '—';
+
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _MetricTile(
+                      icon: Icons.receipt_long_rounded,
+                      label: 'Orders\nPlaced',
+                      value: ordersValue,
+                      color: AppColors.primary,
+                      large: true,
+                    ),
+                  ),
+                  SizedBox(width: 10.w),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        _MetricTile(
+                          icon: Icons.storefront_rounded,
+                          label: 'Outlets Visited',
+                          value: visitedValue,
+                          color: AppColors.primaryMedium,
+                          large: false,
+                        ),
+                        SizedBox(height: 10.h),
+                        _MetricTile(
+                          icon: Icons.map_outlined,
+                          label: 'Route Progress',
+                          value: progressValue,
+                          color: AppColors.amber,
+                          large: false,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+        },
       ),
     );
   }
@@ -733,6 +768,15 @@ class _ActionsGrid extends StatelessWidget {
                   label: 'Products',
                   color: AppColors.foregroundMuted,
                   onTap: () => context.push('/sales-rep/products'),
+                ),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: _SecondaryAction(
+                  icon: Icons.bug_report_rounded,
+                  label: 'Debug',
+                  color: AppColors.foregroundMuted,
+                  onTap: () => context.push('/sales-rep/debug'),
                 ),
               ),
             ],

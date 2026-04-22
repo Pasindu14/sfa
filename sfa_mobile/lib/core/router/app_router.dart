@@ -5,6 +5,7 @@ import 'package:uswatte/features/auth/domain/entities/user_role.dart';
 import 'package:uswatte/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:uswatte/features/auth/presentation/pages/login_page.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_current_route_id_usecase.dart';
+import 'package:uswatte/features/outlets/domain/usecases/get_outlets_last_synced_at_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_outlets_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/sync_outlets_usecase.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_bloc.dart';
@@ -48,6 +49,7 @@ import 'package:uswatte/features/bills/presentation/bloc/create_bill_bloc.dart';
 import 'package:uswatte/features/bills/presentation/pages/bill_detail_page.dart';
 import 'package:uswatte/features/bills/presentation/pages/bills_list_page.dart';
 import 'package:uswatte/features/bills/presentation/pages/create_bill_page.dart';
+import 'package:uswatte/features/debug/presentation/pages/debug_page.dart';
 
 class AppRouter {
   AppRouter._();
@@ -109,12 +111,22 @@ class AppRouter {
                       syncOutletsUseCase: getIt<SyncOutletsUseCase>(),
                       getCurrentRouteIdUseCase:
                           getIt<GetCurrentRouteIdUseCase>(),
+                      getOutletsLastSyncedAtUseCase:
+                          getIt<GetOutletsLastSyncedAtUseCase>(),
                     )..add(const LoadOutletsRequested()),
                   ),
                   BlocProvider(
                     create: (_) => RepAssignmentBloc(
                       getRepAssignment: getIt<GetRepAssignmentUseCase>(),
                     )..add(const LoadRepAssignmentRequested()),
+                  ),
+                  BlocProvider(
+                    create: (_) => BillsListBloc(
+                      getBillsUseCase: getIt<GetBillsUseCase>(),
+                      retrySyncUseCase: getIt<RetrySyncUseCase>(),
+                      deleteBillUseCase: getIt<DeleteBillUseCase>(),
+                      syncService: getIt<BillSyncService>(),
+                    )..add(const LoadBillsRequested()),
                   ),
                 ],
                 child: const SalesRepHomePage(),
@@ -143,6 +155,8 @@ class AppRouter {
                       syncOutletsUseCase: getIt<SyncOutletsUseCase>(),
                       getCurrentRouteIdUseCase:
                           getIt<GetCurrentRouteIdUseCase>(),
+                      getOutletsLastSyncedAtUseCase:
+                          getIt<GetOutletsLastSyncedAtUseCase>(),
                     )..add(const LoadOutletsRequested()),
                   ),
                   BlocProvider(
@@ -163,6 +177,8 @@ class AppRouter {
                   getOutletsUseCase: getIt<GetOutletsUseCase>(),
                   syncOutletsUseCase: getIt<SyncOutletsUseCase>(),
                   getCurrentRouteIdUseCase: getIt<GetCurrentRouteIdUseCase>(),
+                  getOutletsLastSyncedAtUseCase:
+                      getIt<GetOutletsLastSyncedAtUseCase>(),
                 )..add(const LoadOutletsRequested()),
                 child: const OutletsPage(),
               ),
@@ -228,6 +244,8 @@ class AppRouter {
                           syncOutletsUseCase: getIt<SyncOutletsUseCase>(),
                           getCurrentRouteIdUseCase:
                               getIt<GetCurrentRouteIdUseCase>(),
+                          getOutletsLastSyncedAtUseCase:
+                              getIt<GetOutletsLastSyncedAtUseCase>(),
                         )..add(const LoadOutletsRequested()),
                       ),
                     ],
@@ -250,6 +268,11 @@ class AppRouter {
                   ),
                 ),
               ],
+            ),
+            GoRoute(
+              path: 'debug',
+              name: 'salesRepDebug',
+              builder: (_, __) => const DebugPage(),
             ),
           ],
         ),

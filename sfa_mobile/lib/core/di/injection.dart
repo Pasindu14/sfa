@@ -32,6 +32,7 @@ import 'package:uswatte/features/outlets/data/repositories/outlets_repository_im
 import 'package:uswatte/features/outlets/domain/repositories/outlets_repository.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_outlets_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_current_route_id_usecase.dart';
+import 'package:uswatte/features/outlets/domain/usecases/get_outlets_last_synced_at_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/sync_outlets_usecase.dart';
 import 'package:uswatte/features/pricing/data/datasources/pricing_local_datasource.dart';
 import 'package:uswatte/features/pricing/data/datasources/pricing_remote_datasource.dart';
@@ -144,6 +145,8 @@ Future<void> configureDependencies() async {
       () => SyncOutletsUseCase(getIt<OutletsRepository>()));
   getIt.registerLazySingleton(
       () => GetCurrentRouteIdUseCase(getIt<OutletsRepository>()));
+  getIt.registerLazySingleton(
+      () => GetOutletsLastSyncedAtUseCase(getIt<OutletsRepository>()));
 
   // ── Pricing ──────────────────────────────────────────────────────────────────
   getIt.registerLazySingleton(

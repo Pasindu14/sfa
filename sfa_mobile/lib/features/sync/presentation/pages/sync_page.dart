@@ -125,9 +125,7 @@ class SyncPage extends StatelessWidget {
                     ),
                     _OutletsCategoryCard(
                       state: outletsState,
-                      onSync: () => context
-                          .read<AssignmentsBloc>()
-                          .add(LoadAssignmentsRequested(date: DateTime.now())),
+                      onSync: () => _syncOutlets(context),
                       onView: () => context.push('/sales-rep/outlets'),
                     ),
                     _PricingCategoryCard(
@@ -156,9 +154,7 @@ class SyncPage extends StatelessWidget {
                               context
                                   .read<ProductsBloc>()
                                   .add(const SyncProductsRequested());
-                              context
-                                  .read<AssignmentsBloc>()
-                                  .add(LoadAssignmentsRequested(date: DateTime.now()));
+                              _syncOutlets(context);
                               context
                                   .read<PricingBloc>()
                                   .add(const SyncPricingRequested());
@@ -170,6 +166,18 @@ class SyncPage extends StatelessWidget {
             ],
           ),
         );
+  }
+
+  // Always refetch today's assignment from the server so route changes made
+  // on the backend are picked up. The BlocListener above then fires
+  // SyncDailyOutletsRequested with the fresh routeId — which is the only path
+  // that updates metadata.current_route_id and the daily_outlets table.
+  // Do NOT read AssignmentsBloc.state here: that state was captured when the
+  // page mounted and can be stale if the DB changed in the meantime.
+  static void _syncOutlets(BuildContext context) {
+    context
+        .read<AssignmentsBloc>()
+        .add(LoadAssignmentsRequested(date: DateTime.now()));
   }
 
   static bool _isAnySyncing(

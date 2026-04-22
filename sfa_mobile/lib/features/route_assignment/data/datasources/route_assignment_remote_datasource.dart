@@ -89,15 +89,15 @@ class RouteAssignmentRemoteDatasource {
       );
       final body = response.data as Map<String, dynamic>;
       final data = body['data'] as Map<String, dynamic>;
-      final assignmentList = (data['assignments'] as List<dynamic>)
+      final assignmentList = ((data['assignments'] as List<dynamic>?) ?? [])
           .map((e) =>
               DailyRouteAssignmentModel.fromJson(e as Map<String, dynamic>))
           .toList();
       return AssignmentsResult(
         assignments: assignmentList,
-        totalCount: data['totalCount'] as int,
-        page: data['page'] as int,
-        pageSize: data['pageSize'] as int,
+        totalCount: (data['totalCount'] as int?) ?? 0,
+        page: (data['page'] as int?) ?? 1,
+        pageSize: (data['pageSize'] as int?) ?? 50,
       );
     } on AppException {
       rethrow;
