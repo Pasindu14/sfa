@@ -1,3 +1,4 @@
+import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uswatte/core/errors/app_exception.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_current_route_id_usecase.dart';
@@ -19,44 +20,54 @@ class OutletsBloc extends Bloc<OutletsEvent, OutletsState> {
         _syncOutlets = syncOutletsUseCase,
         _getCurrentRouteId = getCurrentRouteIdUseCase,
         super(const OutletsInitial()) {
-    on<LoadOutletsRequested>(_onLoad);
-    on<SyncDailyOutletsRequested>(_onSync);
+    // Sequential transformer ensures _onLoad and _onSync never run at the same
+    // time. If both fire on page open, _onLoad finishes first, then _onSync
+    // runs last and always wins with the correct fresh routeId.
+    on<LoadOutletsRequested>(_onLoad, transformer: sequential());
+    on<SyncDailyOutletsRequested>(_onSync, transformer: sequential());
   }
 
   Future<void> _onLoad(
     LoadOutletsRequested event,
     Emitter<OutletsState> emit,
   ) async {
-    // Preserve assignment status — only _onSync (fired by home page) knows
-    // whether today has a real assignment. _onLoad must not overwrite it.
-    final wasAssigned =
-        state is OutletsLoaded && (state as OutletsLoaded).hasActiveAssignment;
+    // If _onSync already ran in this instance, preserve its assignment status.
+    // For fresh instances (e.g. create-bill page's own bloc), derive the flag
+    // from stored data: outlets in SQLite + a saved routeId means a real sync
+    // happened at some point with a valid assignment.
+    final wasAssigned = state is OutletsLoaded
+        ? (state as OutletsLoaded).hasActiveAssignment
+        : null; // null = unknown, will be derived below
 
     emit(const OutletsLoading());
     try {
       final local = await _getOutlets();
       final routeId = await _getCurrentRouteId();
 
-      // No stored route or no local data — wait for the assignment to trigger sync
+      // Derive hasActiveAssignment: trust _onSync result if available,
+      // otherwise infer from whether a prior sync left data in SQLite.
+      final hasAssignment = wasAssigned ?? (local.isNotEmpty && routeId != null);
+
+      // No stored route or no local data — nothing to sync yet
       if (routeId == null || local.isEmpty) {
         emit(OutletsLoaded(
             outlets: local,
             isSyncing: false,
-            hasActiveAssignment: wasAssigned));
+            hasActiveAssignment: hasAssignment));
         return;
       }
 
       // Use the cached routeName from local data for the background sync
       final routeName = local.first.routeName;
       emit(OutletsLoaded(
-          outlets: local, isSyncing: true, hasActiveAssignment: wasAssigned));
+          outlets: local, isSyncing: true, hasActiveAssignment: hasAssignment));
 
       final synced = await _syncOutlets(routeId, routeName);
       emit(OutletsLoaded(
         outlets: synced,
         isSyncing: false,
         lastSyncedAt: DateTime.now(),
-        hasActiveAssignment: wasAssigned,
+        hasActiveAssignment: hasAssignment,
       ));
     } on AppException catch (e) {
       final current = state;

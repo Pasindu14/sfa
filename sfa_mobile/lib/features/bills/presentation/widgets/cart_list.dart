@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -284,6 +283,9 @@ class _CartListState extends State<CartList> {
                   onChanged: (q) => ctx
                       .read<CreateBillBloc>()
                       .add(CartItemQtyChanged(line.lineNumber, q)),
+                  onDiscountChanged: (d) => ctx
+                      .read<CreateBillBloc>()
+                      .add(CartItemDiscountChanged(line.lineNumber, d)),
                   onRemoved: () => ctx
                       .read<CreateBillBloc>()
                       .add(CartItemRemoved(line.lineNumber)),
@@ -296,89 +298,25 @@ class _CartListState extends State<CartList> {
           Divider(color: Colors.white.withValues(alpha: 0.10), height: 1),
           SizedBox(height: 10.h),
 
-          // Discount + totals
+          // Total
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              SizedBox(
-                width: 120.w,
-                child: TextField(
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                  ],
-                  style: GoogleFonts.barlowCondensed(
-                    fontSize: 14.sp,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: 'Discount %',
-                    labelStyle: GoogleFonts.barlowCondensed(
-                      fontSize: 11.sp,
-                      letterSpacing: 0.8,
-                      color: Colors.white.withValues(alpha: 0.50),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.07),
-                    contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12.w, vertical: 10.h),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8.r),
-                      borderSide: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.15)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8.r),
-                      borderSide: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.15)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8.r),
-                      borderSide:
-                          BorderSide(color: AppColors.amber, width: 1.5),
-                    ),
-                  ),
-                  onChanged: (v) {
-                    final rate = double.tryParse(v) ?? 0;
-                    context
-                        .read<CreateBillBloc>()
-                        .add(BillDiscountChanged(rate));
-                  },
+              Text(
+                'TOTAL',
+                style: GoogleFonts.barlowCondensed(
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.2,
+                  color: Colors.white.withValues(alpha: 0.45),
                 ),
               ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      'Subtotal  Rs. ${state.subTotal.toStringAsFixed(2)}',
-                      style: GoogleFonts.barlow(
-                        fontSize: 11.sp,
-                        color: Colors.white.withValues(alpha: 0.45),
-                      ),
-                    ),
-                    if (state.billDiscountAmount > 0) ...[
-                      SizedBox(height: 1.h),
-                      Text(
-                        '− Rs. ${state.billDiscountAmount.toStringAsFixed(2)}',
-                        style: GoogleFonts.barlow(
-                          fontSize: 11.sp,
-                          color: AppColors.amber.withValues(alpha: 0.70),
-                        ),
-                      ),
-                    ],
-                    SizedBox(height: 2.h),
-                    Text(
-                      'Total  Rs. ${state.total.toStringAsFixed(2)}',
-                      style: GoogleFonts.barlowCondensed(
-                        fontSize: 15.sp,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
+              Text(
+                'Rs. ${state.total.toStringAsFixed(2)}',
+                style: GoogleFonts.barlowCondensed(
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
                 ),
               ),
             ],

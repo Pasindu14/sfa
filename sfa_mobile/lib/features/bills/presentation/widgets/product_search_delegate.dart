@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
@@ -6,114 +7,234 @@ import 'package:uswatte/features/bills/data/datasources/bills_local_datasource.d
 import 'package:uswatte/features/bills/domain/usecases/search_products_for_bill_usecase.dart';
 import 'package:uswatte/features/bills/presentation/widgets/quantity_dialog.dart';
 
-/// Full-screen product search using Flutter's built-in [showSearch] route.
-///
-/// Stays open for multiple adds — the rep closes it with the back arrow.
-/// Each tap opens a [QuantityDialog]; on confirm the [onProductAdded] callback
-/// fires directly into the BLoC (passed in as a closure from the page).
-class ProductSearchDelegate extends SearchDelegate<void> {
+/// Opens the product search screen with a fade transition.
+/// Keyboard stays hidden on open — autofocus is disabled.
+void showProductSearch(
+  BuildContext context, {
+  required SearchProductsForBillUseCase searchUseCase,
+  required void Function(ProductWithPrice, double, double, double) onProductAdded,
+  int? pricingStructureId,
+}) {
+  Navigator.of(context).push(
+    PageRouteBuilder<void>(
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (_, __, ___) => _ProductSearchPage(
+        searchUseCase: searchUseCase,
+        onProductAdded: onProductAdded,
+        pricingStructureId: pricingStructureId,
+      ),
+      transitionsBuilder: (_, animation, __, child) =>
+          FadeTransition(opacity: animation, child: child),
+    ),
+  );
+}
+
+class _ProductSearchPage extends StatefulWidget {
   final SearchProductsForBillUseCase searchUseCase;
   final int? pricingStructureId;
-  final void Function(ProductWithPrice product, double qty) onProductAdded;
+  final void Function(
+    ProductWithPrice product,
+    double qty,
+    double unitPrice,
+    double discountRate,
+  ) onProductAdded;
 
-  // Cache the last future so rapid rebuilds of buildSuggestions don't each
-  // launch a separate SQLite query while the user is still typing.
-  String? _lastQuery; // null = never fetched yet; fires immediately on first build
-  Future<List<ProductWithPrice>>? _pendingSearch;
-
-  ProductSearchDelegate({
+  const _ProductSearchPage({
     required this.searchUseCase,
     required this.onProductAdded,
     this.pricingStructureId,
-  }) : super(
-          searchFieldLabel: 'Search by code or name…',
-          searchFieldStyle: GoogleFonts.barlow(fontSize: 15),
-        );
-
-  // ── AppBar actions ──────────────────────────────────────────────────────────
+  });
 
   @override
-  List<Widget> buildActions(BuildContext context) => [
-        if (query.isNotEmpty)
-          IconButton(
-            icon: const Icon(Icons.clear_rounded),
-            onPressed: () {
-              query = '';
-              showSuggestions(context);
-            },
-          ),
-      ];
+  State<_ProductSearchPage> createState() => _ProductSearchPageState();
+}
+
+class _ProductSearchPageState extends State<_ProductSearchPage> {
+  final TextEditingController _controller = TextEditingController();
+  String _query = '';
+  Future<List<ProductWithPrice>>? _searchFuture;
 
   @override
-  Widget buildLeading(BuildContext context) => IconButton(
-        icon: Icon(Icons.arrow_back_ios_new_rounded, size: 18.r),
-        onPressed: () => close(context, null),
-      );
-
-  // ── Results / Suggestions ───────────────────────────────────────────────────
-
-  @override
-  Widget buildResults(BuildContext context) => _buildList(context);
-
-  @override
-  Widget buildSuggestions(BuildContext context) => _buildList(context);
-
-  Widget _buildList(BuildContext context) {
-    final q = query.trim();
-
-    // Re-use the cached future if the query hasn't changed.
-    // Empty query intentionally passes through — the datasource uses
-    // LIKE '%%' which matches all products, so the list is pre-populated.
-    if (q != _lastQuery) {
-      _lastQuery = q;
-      _pendingSearch = searchUseCase(
-        q,
-        pricingStructureId: pricingStructureId,
-        limit: 200,
-      );
-    }
-
-    return FutureBuilder<List<ProductWithPrice>>(
-      future: _pendingSearch,
-      builder: (ctx, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: AppColors.primary,
-            ),
-          );
-        }
-        final results = snapshot.data ?? [];
-        if (results.isEmpty) {
-          return _Prompt(
-            icon: Icons.inventory_2_outlined,
-            message: 'No products matched "$q"',
-          );
-        }
-        return ListView.separated(
-          padding: EdgeInsets.symmetric(vertical: 8.h),
-          itemCount: results.length,
-          separatorBuilder: (_, __) =>
-              Divider(height: 1, color: AppColors.surfaceVariant),
-          itemBuilder: (_, i) => _ProductTile(
-            product: results[i],
-            onTap: () => _pickProduct(context, results[i]),
-          ),
-        );
-      },
-    );
+  void initState() {
+    super.initState();
+    _searchFuture = _search('');
   }
 
-  Future<void> _pickProduct(
-      BuildContext context, ProductWithPrice product) async {
-    final qty = await showQuantityDialog(context, product: product);
-    if (qty != null && qty > 0 && context.mounted) {
-      onProductAdded(product, qty);
-      // Clear the field so the rep can immediately search the next product.
-      query = '';
-      showSuggestions(context);
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<List<ProductWithPrice>> _search(String q) => widget.searchUseCase(
+        q,
+        pricingStructureId: widget.pricingStructureId,
+        limit: 200,
+      );
+
+  void _onQueryChanged(String value) {
+    final trimmed = value.trim();
+    if (trimmed == _query) return;
+    setState(() {
+      _query = trimmed;
+      _searchFuture = _search(trimmed);
+    });
+  }
+
+  Future<void> _pickProduct(ProductWithPrice product) async {
+    final result = await showQuantityDialog(context, product: product);
+    if (result != null && result.quantity > 0 && mounted) {
+      widget.onProductAdded(
+        product,
+        result.quantity,
+        result.unitPrice,
+        result.discountRate,
+      );
+      _controller.clear();
+      setState(() {
+        _query = '';
+        _searchFuture = _search('');
+      });
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+    ));
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Column(
+        children: [
+          // ── Gradient header ─────────────────────────────────────────────────
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [AppColors.primaryDark, AppColors.primary],
+              ),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(8.w, 4.h, 8.w, 16.h),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: Container(
+                        width: 40.r,
+                        height: 40.r,
+                        margin: EdgeInsets.all(4.r),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10.r),
+                          border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.25)),
+                        ),
+                        child: Icon(Icons.arrow_back_ios_new_rounded,
+                            size: 15.r, color: Colors.white),
+                      ),
+                    ),
+                    SizedBox(width: 4.w),
+                    Text(
+                      'ADD PRODUCTS',
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 18.sp,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.5,
+                        height: 1.0,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // ── Search bar ──────────────────────────────────────────────────────
+          Padding(
+            padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 4.h),
+            child: Container(
+              height: 40.h,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(10.r),
+                border: Border.all(color: AppColors.surfaceVariant),
+              ),
+              child: TextField(
+                controller: _controller,
+                autofocus: false,
+                onChanged: _onQueryChanged,
+                style: GoogleFonts.barlow(
+                    fontSize: 13.sp, color: AppColors.foreground),
+                decoration: InputDecoration(
+                  hintText: 'Search by code or name…',
+                  hintStyle: GoogleFonts.barlow(
+                      fontSize: 13.sp, color: AppColors.foregroundMuted),
+                  prefixIcon: Icon(Icons.search_rounded,
+                      size: 16.r, color: AppColors.foregroundMuted),
+                  suffixIcon: _controller.text.isNotEmpty
+                      ? IconButton(
+                          icon: Icon(Icons.clear_rounded,
+                              size: 16.r, color: AppColors.foregroundMuted),
+                          onPressed: () {
+                            _controller.clear();
+                            _onQueryChanged('');
+                          },
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(
+                      vertical: 10.h, horizontal: 4.w),
+                ),
+              ),
+            ),
+          ),
+
+          // ── Product list ────────────────────────────────────────────────────
+          Expanded(
+            child: FutureBuilder<List<ProductWithPrice>>(
+              future: _searchFuture,
+              builder: (ctx, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primary,
+                    ),
+                  );
+                }
+                final results = snapshot.data ?? [];
+                if (results.isEmpty) {
+                  return _Prompt(
+                    icon: Icons.inventory_2_outlined,
+                    message: _query.isEmpty
+                        ? 'No products available'
+                        : 'No products matched "$_query"',
+                  );
+                }
+                return ListView.separated(
+                  padding: EdgeInsets.symmetric(vertical: 8.h),
+                  itemCount: results.length,
+                  separatorBuilder: (_, __) =>
+                      Divider(height: 1, color: AppColors.surfaceVariant),
+                  itemBuilder: (_, i) => _ProductTile(
+                    product: results[i],
+                    onTap: () => _pickProduct(results[i]),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

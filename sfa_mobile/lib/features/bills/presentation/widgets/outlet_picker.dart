@@ -21,6 +21,8 @@ class OutletPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!hasActiveAssignment) return _LockedCard();
+
     return GestureDetector(
       onTap: () => _openSheet(context),
       child: Container(
@@ -118,6 +120,67 @@ class OutletPicker extends StatelessWidget {
     );
   }
 
+  Widget _LockedCard() {
+    return Container(
+      padding: EdgeInsets.all(16.r),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: AppColors.surfaceVariant),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38.r,
+            height: 38.r,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceVariant,
+              borderRadius: BorderRadius.circular(10.r),
+            ),
+            child: Icon(Icons.lock_outline_rounded,
+                size: 17.r, color: AppColors.foregroundMuted),
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'OUTLET UNAVAILABLE',
+                  style: GoogleFonts.barlowCondensed(
+                    fontSize: 9.sp,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 2.0,
+                    color: AppColors.foregroundMuted,
+                  ),
+                ),
+                SizedBox(height: 2.h),
+                Text(
+                  'No route assigned for today',
+                  style: GoogleFonts.barlowCondensed(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                    height: 1.1,
+                    color: AppColors.foregroundMuted,
+                  ),
+                ),
+                SizedBox(height: 2.h),
+                Text(
+                  'Orders can only be created on assigned routes.',
+                  style: GoogleFonts.barlow(
+                    fontSize: 10.sp,
+                    color: AppColors.foregroundMuted.withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _openSheet(BuildContext context) async {
     final picked = await showModalBottomSheet<Outlet>(
       context: context,
@@ -201,39 +264,6 @@ class _OutletSheetState extends State<_OutletSheet> {
               ],
             ),
           ),
-          if (!widget.hasActiveAssignment) ...[
-            SizedBox(height: 8.h),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.w),
-              child: Container(
-                padding:
-                    EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF59E0B).withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8.r),
-                  border: Border.all(
-                      color: const Color(0xFFF59E0B).withValues(alpha: 0.25)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline_rounded,
-                        size: 13.r, color: const Color(0xFFF59E0B)),
-                    SizedBox(width: 6.w),
-                    Expanded(
-                      child: Text(
-                        'No route assigned today · showing last synced outlets',
-                        style: TextStyle(
-                          fontSize: 10.sp,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFFF59E0B),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
           SizedBox(height: 12.h),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 16.w),

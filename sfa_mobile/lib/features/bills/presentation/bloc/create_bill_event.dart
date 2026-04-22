@@ -20,9 +20,16 @@ final class OutletSelected extends CreateBillEvent {
 final class ProductAdded extends CreateBillEvent {
   final ProductWithPrice product;
   final double quantity;
-  const ProductAdded(this.product, this.quantity);
+  final double unitPrice;
+  final double discountRate;
+  const ProductAdded(
+    this.product,
+    this.quantity, {
+    required this.unitPrice,
+    this.discountRate = 0,
+  });
   @override
-  List<Object?> get props => [product, quantity];
+  List<Object?> get props => [product, quantity, unitPrice, discountRate];
 }
 
 final class CartItemQtyChanged extends CreateBillEvent {
@@ -38,6 +45,14 @@ final class CartItemRemoved extends CreateBillEvent {
   const CartItemRemoved(this.lineNumber);
   @override
   List<Object?> get props => [lineNumber];
+}
+
+final class CartItemDiscountChanged extends CreateBillEvent {
+  final int lineNumber;
+  final double discountRate;
+  const CartItemDiscountChanged(this.lineNumber, this.discountRate);
+  @override
+  List<Object?> get props => [lineNumber, discountRate];
 }
 
 final class BillDiscountChanged extends CreateBillEvent {

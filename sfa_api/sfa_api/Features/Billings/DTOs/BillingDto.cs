@@ -29,6 +29,7 @@ public record BillingDto(
     string? NsmName,
 
     // Geo chain
+    int? RouteId,
     int? DivisionId,
     int? TerritoryId,
     int? AreaId,

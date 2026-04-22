@@ -19,7 +19,7 @@ class SalesRepHomePage extends StatefulWidget {
 }
 
 class _SalesRepHomePageState extends State<SalesRepHomePage>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _ctrl;
 
   Animation<double> _fade(double from, double to) => CurvedAnimation(
@@ -34,13 +34,24 @@ class _SalesRepHomePageState extends State<SalesRepHomePage>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _ctrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1000))
       ..forward();
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      context
+          .read<AssignmentsBloc>()
+          .add(LoadAssignmentsRequested(date: DateTime.now()));
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _ctrl.dispose();
     super.dispose();
   }
@@ -702,6 +713,8 @@ class _ActionsGrid extends StatelessWidget {
             onTap: () => context.push('/sales-rep/bills/create'),
           ),
           SizedBox(height: 10.h),
+          _MyOrdersAction(onTap: () => context.push('/sales-rep/bills')),
+          SizedBox(height: 10.h),
           _SyncDataAction(onTap: () => context.push('/sales-rep/sync')),
           SizedBox(height: 10.h),
           Row(
@@ -716,15 +729,6 @@ class _ActionsGrid extends StatelessWidget {
               SizedBox(width: 10.w),
               Expanded(
                 child: _SecondaryAction(
-                  icon: Icons.bar_chart_rounded,
-                  label: 'My Sales',
-                  color: AppColors.foreground,
-                  onTap: () => context.push('/sales-rep/bills'),
-                ),
-              ),
-              SizedBox(width: 10.w),
-              Expanded(
-                child: _SecondaryAction(
                   icon: Icons.inventory_2_rounded,
                   label: 'Products',
                   color: AppColors.foregroundMuted,
@@ -734,6 +738,78 @@ class _ActionsGrid extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MyOrdersAction extends StatelessWidget {
+  const _MyOrdersAction({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12.r),
+        child: Ink(
+          height: 56.h,
+          decoration: BoxDecoration(
+            color: AppColors.amber.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(12.r),
+            border: Border.all(
+              color: AppColors.amber.withValues(alpha: 0.35),
+              width: 1.5,
+            ),
+          ),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: Row(
+              children: [
+                Container(
+                  width: 32.r,
+                  height: 32.r,
+                  decoration: BoxDecoration(
+                    color: AppColors.amber.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  child: Icon(Icons.receipt_long_rounded,
+                      color: AppColors.amber, size: 16.r),
+                ),
+                SizedBox(width: 14.w),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'MY ORDERS',
+                        style: GoogleFonts.barlowCondensed(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                          height: 1.0,
+                          color: AppColors.amber,
+                        ),
+                      ),
+                      Text(
+                        'View orders & sync status',
+                        style: GoogleFonts.barlow(
+                          fontSize: 11.sp,
+                          color: AppColors.foregroundMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.arrow_forward_ios_rounded,
+                    color: AppColors.amber.withValues(alpha: 0.6), size: 12.r),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

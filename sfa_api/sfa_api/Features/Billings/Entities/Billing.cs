@@ -27,7 +27,8 @@ public class Billing
     public int? RsmUserId { get; set; }         // ASM's manager
     public int? NsmUserId { get; set; }         // RSM's manager
 
-    // Full geo chain — all denormalized at write time from UserGeoAssignment
+    // Full geo chain — all denormalized at write time from Outlet
+    public int? RouteId { get; set; }
     public int? DivisionId { get; set; }
     public int? TerritoryId { get; set; }
     public int? AreaId { get; set; }

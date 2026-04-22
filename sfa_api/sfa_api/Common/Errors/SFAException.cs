@@ -76,7 +76,7 @@ public class InsufficientStockException : BusinessRuleException
         Shortages = shortages;
         Fields = shortages.ToDictionary(
             s => $"product:{s.ProductId}",
-            s => new[] { $"No stock of '{s.ProductName}' (requested {s.Requested}, available {s.Available})" });
+            s => new[] { $"{s.ProductName}: you ordered {s.Requested}, only {s.Available} available" });
     }
 }
 public class InvalidOrderStateException(string currentState, string attemptedTransition) : BusinessRuleException("INVALID_ORDER_STATE",

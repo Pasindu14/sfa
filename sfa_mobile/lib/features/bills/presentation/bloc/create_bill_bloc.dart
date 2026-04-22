@@ -28,6 +28,7 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     on<ProductAdded>(_onProductAdded);
     on<CartItemQtyChanged>(_onQtyChanged);
     on<CartItemRemoved>(_onRemoved);
+    on<CartItemDiscountChanged>(_onLineDiscountChanged);
     on<BillDiscountChanged>(_onDiscountChanged);
     on<SubmitPressed>(_onSubmit);
     _loadPricingStructures();
@@ -89,14 +90,14 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     }
 
     final nextLine = state.cart.length + 1;
-    final unit = e.product.dealerPackPrice ?? 0.0;
     emit(state.copyWith(cart: [
       ...state.cart,
       CartLine(
         lineNumber: nextLine,
         product: e.product,
         quantity: e.quantity,
-        unitPrice: unit,
+        unitPrice: e.unitPrice,
+        discountRate: e.discountRate,
       ),
     ]));
   }
@@ -124,6 +125,16 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
       ));
     }
     emit(state.copyWith(cart: renumbered));
+  }
+
+  void _onLineDiscountChanged(
+      CartItemDiscountChanged e, Emitter<CreateBillState> emit) {
+    final clamped = e.discountRate.clamp(0.0, 100.0);
+    final updated = state.cart.map((l) {
+      if (l.lineNumber != e.lineNumber) return l;
+      return l.copyWith(discountRate: clamped);
+    }).toList();
+    emit(state.copyWith(cart: updated));
   }
 
   void _onDiscountChanged(

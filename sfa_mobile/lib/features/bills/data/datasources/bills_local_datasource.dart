@@ -11,12 +11,16 @@ class ProductWithPrice {
   final String code;
   final String itemDescription;
   final double? dealerPackPrice;
+  final double? dealerCasePrice;
+  final int packsPerCase;
 
   const ProductWithPrice({
     required this.id,
     required this.code,
     required this.itemDescription,
     this.dealerPackPrice,
+    this.dealerCasePrice,
+    this.packsPerCase = 1,
   });
 }
 
@@ -78,11 +82,16 @@ class BillsLocalDatasource {
       limit: 1,
     );
     if (billRows.isEmpty) return null;
-    final itemRows = await db.query(
-      'bill_items',
-      where: 'client_bill_id = ?',
-      whereArgs: [clientBillId],
-      orderBy: 'line_number ASC',
+    final itemRows = await db.rawQuery(
+      '''
+      SELECT bi.*,
+             p.item_description AS product_name
+      FROM bill_items bi
+      LEFT JOIN products p ON p.id = bi.product_id
+      WHERE bi.client_bill_id = ?
+      ORDER BY bi.line_number ASC
+      ''',
+      [clientBillId],
     );
     return BillModel.fromMap(
       billRows.first,
@@ -251,7 +260,9 @@ class BillsLocalDatasource {
     final rows = await db.rawQuery(
       '''
       SELECT p.id, p.code, p.item_description,
-             pi.dealer_pack_price AS dealer_pack_price
+             p.pieces_per_pack AS packs_per_case,
+             pi.dealer_pack_price AS dealer_pack_price,
+             pi.dealer_case_price AS dealer_case_price
       FROM products p
       LEFT JOIN pricing_items pi
         ON pi.product_id = p.id
@@ -268,6 +279,8 @@ class BillsLocalDatasource {
               code: r['code'] as String,
               itemDescription: r['item_description'] as String,
               dealerPackPrice: (r['dealer_pack_price'] as num?)?.toDouble(),
+              dealerCasePrice: (r['dealer_case_price'] as num?)?.toDouble(),
+              packsPerCase: (r['packs_per_case'] as int?) ?? 1,
             ))
         .toList();
   }

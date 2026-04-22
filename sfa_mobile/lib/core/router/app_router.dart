@@ -126,6 +126,12 @@ class AppRouter {
               builder: (_, __) => MultiBlocProvider(
                 providers: [
                   BlocProvider(
+                    create: (_) => AssignmentsBloc(
+                      getAssignments: getIt<GetAssignmentsUseCase>(),
+                      deleteAssignment: getIt<DeleteAssignmentUseCase>(),
+                    )..add(LoadAssignmentsRequested(date: DateTime.now())),
+                  ),
+                  BlocProvider(
                     create: (_) => ProductsBloc(
                       getProductsUseCase: getIt<GetProductsUseCase>(),
                       syncProductsUseCase: getIt<SyncProductsUseCase>(),

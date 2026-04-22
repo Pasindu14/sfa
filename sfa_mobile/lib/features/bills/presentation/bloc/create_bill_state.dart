@@ -28,12 +28,12 @@ class CartLine extends Equatable {
     return gross - disc;
   }
 
-  CartLine copyWith({double? quantity, double? unitPrice}) => CartLine(
+  CartLine copyWith({double? quantity, double? unitPrice, double? discountRate}) => CartLine(
         lineNumber: lineNumber,
         product: product,
         quantity: quantity ?? this.quantity,
         unitPrice: unitPrice ?? this.unitPrice,
-        discountRate: discountRate,
+        discountRate: discountRate ?? this.discountRate,
         isFreeIssue: isFreeIssue,
       );
 

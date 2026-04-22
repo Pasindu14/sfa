@@ -716,6 +716,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => new { x.AsmUserId,        x.BillingDate });
             e.HasIndex(x => new { x.RsmUserId,        x.BillingDate });
             e.HasIndex(x => new { x.NsmUserId,        x.BillingDate });
+            e.HasIndex(x => new { x.RouteId,          x.BillingDate });
             e.HasIndex(x => new { x.TerritoryId,      x.BillingDate });
             e.HasIndex(x => new { x.AreaId,           x.BillingDate });
             e.HasIndex(x => new { x.RegionId,         x.BillingDate });
@@ -759,6 +760,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .WithMany()
              .HasForeignKey(x => x.OriginalBillingId)
              .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne<sfa_api.Features.Routes.Entities.Route>()
+             .WithMany()
+             .HasForeignKey(x => x.RouteId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.Restrict);
             e.HasMany(x => x.Items)
              .WithOne(i => i.Billing)
              .HasForeignKey(i => i.BillingId)

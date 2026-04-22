@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/features/bills/domain/entities/bill.dart';
 import 'package:uswatte/features/bills/domain/entities/sync_status.dart';
@@ -13,52 +16,123 @@ class BillsListPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+    ));
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Bills'),
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.foreground,
-        elevation: 0,
-        shape: const Border(
-          bottom: BorderSide(color: AppColors.surfaceVariant),
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Sync pending',
-            icon: const Icon(Icons.cloud_sync_outlined),
-            onPressed: () =>
-                context.read<BillsListBloc>().add(const FlushAllRequested()),
-          ),
-        ],
-      ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('New Order',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        label: Text('New Order',
+            style: GoogleFonts.barlowCondensed(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 15.sp,
+              letterSpacing: 0.5,
+            )),
         onPressed: () => context.goNamed('createBill'),
       ),
-      body: BlocBuilder<BillsListBloc, BillsListState>(
-        builder: (ctx, state) {
-          if (state is BillsListLoading || state is BillsListInitial) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (state is BillsListError) {
-            return Center(child: Text(state.message));
-          }
-          final loaded = state as BillsListLoaded;
-          if (loaded.bills.isEmpty) {
-            return const _EmptyView();
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.only(bottom: 96),
-            itemCount: loaded.bills.length,
-            separatorBuilder: (_, __) =>
-                const Divider(height: 1, color: AppColors.surfaceVariant),
-            itemBuilder: (_, i) => _BillTile(bill: loaded.bills[i]),
-          );
-        },
+      body: Column(
+        children: [
+          // ── Gradient header ───────────────────────────────────────────────
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [AppColors.primaryDark, AppColors.primary],
+              ),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(8.w, 4.h, 8.w, 16.h),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => context.canPop()
+                          ? context.pop()
+                          : context.goNamed('salesRepHome'),
+                      child: Container(
+                        width: 40.r,
+                        height: 40.r,
+                        margin: EdgeInsets.all(4.r),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10.r),
+                          border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.25)),
+                        ),
+                        child: Icon(Icons.arrow_back_ios_new_rounded,
+                            size: 15.r, color: Colors.white),
+                      ),
+                    ),
+                    SizedBox(width: 4.w),
+                    Expanded(
+                      child: Text(
+                        'MY ORDERS',
+                        style: GoogleFonts.barlowCondensed(
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.5,
+                          height: 1.0,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    // Sync button
+                    GestureDetector(
+                      onTap: () => context
+                          .read<BillsListBloc>()
+                          .add(const FlushAllRequested()),
+                      child: Container(
+                        width: 40.r,
+                        height: 40.r,
+                        margin: EdgeInsets.all(4.r),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10.r),
+                          border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.25)),
+                        ),
+                        child: Icon(Icons.cloud_sync_rounded,
+                            size: 16.r, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // ── Body ──────────────────────────────────────────────────────────
+          Expanded(
+            child: BlocBuilder<BillsListBloc, BillsListState>(
+              builder: (ctx, state) {
+                if (state is BillsListLoading || state is BillsListInitial) {
+                  return const Center(
+                      child: CircularProgressIndicator(
+                          color: AppColors.primary, strokeWidth: 2));
+                }
+                if (state is BillsListError) {
+                  return Center(child: Text(state.message));
+                }
+                final loaded = state as BillsListLoaded;
+                if (loaded.bills.isEmpty) return const _EmptyView();
+                return ListView.separated(
+                  padding: EdgeInsets.only(bottom: 100.h),
+                  itemCount: loaded.bills.length,
+                  separatorBuilder: (_, __) => const Divider(
+                      height: 1, color: AppColors.surfaceVariant),
+                  itemBuilder: (_, i) => _BillTile(bill: loaded.bills[i]),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -72,37 +146,53 @@ class _BillTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final label = bill.syncStatus == SyncStatus.synced
         ? (bill.serverBillNumber ?? '—')
-        : '#${bill.clientBillId.substring(0, 6)}';
-    return ListTile(
-      onTap: () =>
-          context.goNamed('billDetail', pathParameters: {'id': bill.clientBillId}),
-      title: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-          _StatusChip(status: bill.syncStatus),
-        ],
-      ),
-      subtitle: Padding(
-        padding: const EdgeInsets.only(top: 4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        : '#${bill.clientBillId.substring(0, 6).toUpperCase()}';
+
+    return InkWell(
+      onTap: () => context.pushNamed('billDetail',
+          pathParameters: {'id': bill.clientBillId}),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+        child: Row(
           children: [
-            Text(
-              '${bill.items.length} items · Rs. ${bill.totalAmount.toStringAsFixed(2)}',
-              style: const TextStyle(color: AppColors.foregroundMuted),
-            ),
-            Text(
-              _formatDateTime(bill.createdAt),
-              style: const TextStyle(
-                color: AppColors.foregroundMuted,
-                fontSize: 11,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        label,
+                        style: GoogleFonts.barlowCondensed(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.foreground,
+                        ),
+                      ),
+                      SizedBox(width: 8.w),
+                      _StatusChip(status: bill.syncStatus),
+                    ],
+                  ),
+                  SizedBox(height: 3.h),
+                  Text(
+                    '${bill.items.length} items  ·  Rs. ${bill.totalAmount.toStringAsFixed(2)}',
+                    style: GoogleFonts.barlow(
+                      fontSize: 12.sp,
+                      color: AppColors.foregroundMuted,
+                    ),
+                  ),
+                  Text(
+                    _formatDateTime(bill.createdAt),
+                    style: GoogleFonts.barlow(
+                      fontSize: 11.sp,
+                      color: AppColors.foregroundMuted.withValues(alpha: 0.65),
+                    ),
+                  ),
+                ],
               ),
             ),
+            Icon(Icons.chevron_right_rounded,
+                size: 18.r, color: AppColors.foregroundMuted),
           ],
         ),
       ),
@@ -118,26 +208,30 @@ class _StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final (color, label, icon) = switch (status) {
       SyncStatus.synced => (AppColors.success, 'Synced', Icons.cloud_done),
-      SyncStatus.syncing => (AppColors.primary, 'Syncing', Icons.cloud_upload),
+      SyncStatus.syncing =>
+        (AppColors.primary, 'Syncing', Icons.cloud_upload_rounded),
       SyncStatus.pending => (AppColors.warning, 'Pending', Icons.schedule),
       SyncStatus.failed => (AppColors.error, 'Failed', Icons.error_outline),
     };
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 4),
+          Icon(icon, size: 10.r, color: color),
+          SizedBox(width: 3.w),
           Text(
             label,
-            style: TextStyle(
-                color: color, fontWeight: FontWeight.w600, fontSize: 11),
+            style: GoogleFonts.barlow(
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontSize: 10.sp,
+            ),
           ),
         ],
       ),
@@ -147,8 +241,7 @@ class _StatusChip extends StatelessWidget {
 
 String _formatDateTime(DateTime d) {
   String two(int n) => n.toString().padLeft(2, '0');
-  return '${d.year}-${two(d.month)}-${two(d.day)} '
-      '${two(d.hour)}:${two(d.minute)}';
+  return '${d.year}-${two(d.month)}-${two(d.day)}  ${two(d.hour)}:${two(d.minute)}';
 }
 
 class _EmptyView extends StatelessWidget {
@@ -158,22 +251,28 @@ class _EmptyView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: EdgeInsets.all(32.r),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.receipt_long,
-                size: 64, color: AppColors.foregroundMuted),
-            const SizedBox(height: 12),
-            const Text(
-              'No bills yet',
-              style:
-                  TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            Icon(Icons.receipt_long_rounded,
+                size: 56.r, color: AppColors.surfaceVariant),
+            SizedBox(height: 14.h),
+            Text(
+              'No orders yet',
+              style: GoogleFonts.barlowCondensed(
+                fontSize: 20.sp,
+                fontWeight: FontWeight.w700,
+                color: AppColors.foreground,
+              ),
             ),
-            const SizedBox(height: 6),
-            const Text(
+            SizedBox(height: 4.h),
+            Text(
               'Tap New Order to create your first bill.',
-              style: TextStyle(color: AppColors.foregroundMuted),
+              style: GoogleFonts.barlow(
+                fontSize: 13.sp,
+                color: AppColors.foregroundMuted,
+              ),
               textAlign: TextAlign.center,
             ),
           ],

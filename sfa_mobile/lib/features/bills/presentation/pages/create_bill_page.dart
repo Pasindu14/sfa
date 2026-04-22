@@ -135,17 +135,15 @@ class CreateBillPage extends StatelessWidget {
                             _AddProductsButton(
                               enabled: ready,
                               cartCount: state.cart.length,
-                              onTap: () => showSearch(
-                                context: ctx,
-                                delegate: ProductSearchDelegate(
-                                  searchUseCase:
-                                      getIt<SearchProductsForBillUseCase>(),
-                                  pricingStructureId:
-                                      state.selectedPricingStructure?.id,
-                                  onProductAdded: (product, qty) => ctx
-                                      .read<CreateBillBloc>()
-                                      .add(ProductAdded(product, qty)),
-                                ),
+                              onTap: () => showProductSearch(
+                                ctx,
+                                searchUseCase:
+                                    getIt<SearchProductsForBillUseCase>(),
+                                pricingStructureId:
+                                    state.selectedPricingStructure?.id,
+                                onProductAdded: (product, qty, unitPrice, discountRate) => ctx
+                                    .read<CreateBillBloc>()
+                                    .add(ProductAdded(product, qty, unitPrice: unitPrice, discountRate: discountRate)),
                               ),
                             ),
                           ],

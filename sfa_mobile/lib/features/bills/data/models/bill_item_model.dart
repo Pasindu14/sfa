@@ -4,6 +4,7 @@ class BillItemModel {
   final int? id;
   final String clientBillId;
   final int productId;
+  final String? productName;
   final double quantity;
   final double unitPrice;
   final double discountRate;
@@ -14,6 +15,7 @@ class BillItemModel {
     this.id,
     required this.clientBillId,
     required this.productId,
+    this.productName,
     required this.quantity,
     required this.unitPrice,
     this.discountRate = 0,
@@ -25,6 +27,7 @@ class BillItemModel {
         id: map['id'] as int?,
         clientBillId: map['client_bill_id'] as String,
         productId: map['product_id'] as int,
+        productName: map['product_name'] as String?,
         quantity: (map['quantity'] as num).toDouble(),
         unitPrice: (map['unit_price'] as num).toDouble(),
         discountRate: (map['discount_rate'] as num?)?.toDouble() ?? 0,
@@ -55,6 +58,7 @@ class BillItemModel {
         id: id,
         clientBillId: clientBillId,
         productId: productId,
+        productName: productName,
         quantity: quantity,
         unitPrice: unitPrice,
         discountRate: discountRate,

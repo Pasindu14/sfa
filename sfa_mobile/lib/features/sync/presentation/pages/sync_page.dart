@@ -14,6 +14,7 @@ import 'package:uswatte/features/pricing/presentation/bloc/pricing_state.dart';
 import 'package:uswatte/features/products/presentation/bloc/products_bloc.dart';
 import 'package:uswatte/features/products/presentation/bloc/products_event.dart';
 import 'package:uswatte/features/products/presentation/bloc/products_state.dart';
+import 'package:uswatte/features/route_assignment/presentation/bloc/assignments_bloc.dart';
 
 class SyncPage extends StatelessWidget {
   const SyncPage({super.key});
@@ -25,19 +26,32 @@ class SyncPage extends StatelessWidget {
       statusBarIconBrightness: Brightness.light,
     ));
 
-    return BlocBuilder<PricingBloc, PricingState>(
-      builder: (context, pricingState) {
-        return BlocBuilder<OutletsBloc, OutletsState>(
-          builder: (context, outletsState) {
-            return BlocBuilder<ProductsBloc, ProductsState>(
-              builder: (context, productsState) {
-                return _buildBody(
-                    context, productsState, outletsState, pricingState);
-              },
-            );
-          },
-        );
+    return BlocListener<AssignmentsBloc, AssignmentsState>(
+      listenWhen: (_, curr) =>
+          curr is AssignmentsLoaded && curr.assignments.isNotEmpty,
+      listener: (context, state) {
+        if (state is AssignmentsLoaded && state.assignments.isNotEmpty) {
+          final assignment = state.assignments.first;
+          context.read<OutletsBloc>().add(SyncDailyOutletsRequested(
+                routeId: assignment.routeId,
+                routeName: assignment.routeName,
+              ));
+        }
       },
+      child: BlocBuilder<PricingBloc, PricingState>(
+        builder: (context, pricingState) {
+          return BlocBuilder<OutletsBloc, OutletsState>(
+            builder: (context, outletsState) {
+              return BlocBuilder<ProductsBloc, ProductsState>(
+                builder: (context, productsState) {
+                  return _buildBody(
+                      context, productsState, outletsState, pricingState);
+                },
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
@@ -112,8 +126,8 @@ class SyncPage extends StatelessWidget {
                     _OutletsCategoryCard(
                       state: outletsState,
                       onSync: () => context
-                          .read<OutletsBloc>()
-                          .add(const LoadOutletsRequested()),
+                          .read<AssignmentsBloc>()
+                          .add(LoadAssignmentsRequested(date: DateTime.now())),
                       onView: () => context.push('/sales-rep/outlets'),
                     ),
                     _PricingCategoryCard(
@@ -143,8 +157,8 @@ class SyncPage extends StatelessWidget {
                                   .read<ProductsBloc>()
                                   .add(const SyncProductsRequested());
                               context
-                                  .read<OutletsBloc>()
-                                  .add(const LoadOutletsRequested());
+                                  .read<AssignmentsBloc>()
+                                  .add(LoadAssignmentsRequested(date: DateTime.now()));
                               context
                                   .read<PricingBloc>()
                                   .add(const SyncPricingRequested());

@@ -4,6 +4,7 @@ class BillItem extends Equatable {
   final int? id;
   final String clientBillId;
   final int productId;
+  final String? productName;
   final double quantity;
   final double unitPrice;
   final double discountRate;
@@ -14,6 +15,7 @@ class BillItem extends Equatable {
     this.id,
     required this.clientBillId,
     required this.productId,
+    this.productName,
     required this.quantity,
     required this.unitPrice,
     this.discountRate = 0,
@@ -26,6 +28,7 @@ class BillItem extends Equatable {
         id,
         clientBillId,
         productId,
+        productName,
         quantity,
         unitPrice,
         discountRate,

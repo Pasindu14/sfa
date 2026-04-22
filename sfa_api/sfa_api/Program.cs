@@ -123,6 +123,10 @@ try
     // ── HTTP & API ────────────────────────────────────────────────────────
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddControllers()
+        .AddJsonOptions(options =>
+        {
+            options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+        })
         .ConfigureApiBehaviorOptions(options =>
         {
             options.InvalidModelStateResponseFactory = ctx =>

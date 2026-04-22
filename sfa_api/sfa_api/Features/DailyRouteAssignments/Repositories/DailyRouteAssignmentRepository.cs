@@ -30,6 +30,7 @@ public class DailyRouteAssignmentRepository(AppDbContext context) : IDailyRouteA
         var query = _context.DailyRouteAssignments
             .Include(a => a.User)
             .Include(a => a.Route)
+            .Where(a => a.IsActive && !a.IsDeleted)
             .AsQueryable();
 
         if (userId.HasValue)
@@ -89,12 +90,12 @@ public class DailyRouteAssignmentRepository(AppDbContext context) : IDailyRouteA
 
     public async Task<bool> IsRepAlreadyAssignedOnDateAsync(int userId, DateOnly date, CancellationToken ct = default)
         => await _context.DailyRouteAssignments
-            .AnyAsync(a => a.UserId == userId && a.AssignedDate == date, ct);
+            .AnyAsync(a => a.UserId == userId && a.AssignedDate == date && a.IsActive && !a.IsDeleted, ct);
 
     public async Task<DailyRouteAssignment?> GetByRouteAndDateAsync(int routeId, DateOnly date, CancellationToken ct = default)
         => await _context.DailyRouteAssignments
             .Include(a => a.User)
-            .FirstOrDefaultAsync(a => a.RouteId == routeId && a.AssignedDate == date, ct);
+            .FirstOrDefaultAsync(a => a.RouteId == routeId && a.AssignedDate == date && a.IsActive && !a.IsDeleted, ct);
 
     public async Task<bool> UserExistsAsync(int userId, CancellationToken ct = default)
         => await _context.Users.AnyAsync(u => u.Id == userId && !u.IsDeleted, ct);
