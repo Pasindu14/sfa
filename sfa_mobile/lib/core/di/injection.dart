@@ -57,6 +57,16 @@ import 'package:uswatte/features/rep_assignment/data/repositories/rep_assignment
 import 'package:uswatte/features/rep_assignment/domain/repositories/rep_assignment_repository.dart';
 import 'package:uswatte/features/rep_assignment/domain/usecases/get_rep_assignment_usecase.dart';
 import 'package:uswatte/features/outlet_bill_history/data/datasources/outlet_bill_history_remote_datasource.dart';
+import 'package:uswatte/core/sync/not_billing_sync_service.dart';
+import 'package:uswatte/features/not_billings/data/datasources/not_billings_local_datasource.dart';
+import 'package:uswatte/features/not_billings/data/datasources/not_billings_remote_datasource.dart';
+import 'package:uswatte/features/not_billings/data/repositories/not_billings_repository_impl.dart';
+import 'package:uswatte/features/not_billings/domain/repositories/not_billings_repository.dart';
+import 'package:uswatte/features/not_billings/domain/usecases/create_not_billing_usecase.dart';
+import 'package:uswatte/features/not_billings/domain/usecases/delete_not_billing_usecase.dart';
+import 'package:uswatte/features/not_billings/domain/usecases/get_not_billing_by_id_usecase.dart';
+import 'package:uswatte/features/not_billings/domain/usecases/get_not_billings_usecase.dart';
+import 'package:uswatte/features/not_billings/domain/usecases/retry_not_billing_sync_usecase.dart';
 
 final getIt = GetIt.instance;
 
@@ -199,6 +209,35 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton(() => RetrySyncUseCase(getIt<BillsRepository>()));
   getIt.registerLazySingleton(
       () => SearchProductsForBillUseCase(getIt<BillsRepository>()));
+
+  // ── Not Billings ─────────────────────────────────────────────────────────────
+  getIt.registerLazySingleton(
+      () => NotBillingsLocalDatasource(getIt<DatabaseHelper>()));
+  getIt.registerLazySingleton(
+      () => NotBillingsRemoteDatasource(getIt<Dio>()));
+  getIt.registerLazySingleton<NotBillingSyncService>(
+    () => NotBillingSyncService(
+      getIt<NotBillingsLocalDatasource>(),
+      getIt<NotBillingsRemoteDatasource>(),
+      getIt<ConnectivityService>(),
+    ),
+  );
+  getIt.registerLazySingleton<NotBillingsRepository>(
+    () => NotBillingsRepositoryImpl(
+      getIt<NotBillingsLocalDatasource>(),
+      getIt<NotBillingSyncService>(),
+    ),
+  );
+  getIt.registerLazySingleton(
+      () => CreateNotBillingUseCase(getIt<NotBillingsRepository>()));
+  getIt.registerLazySingleton(
+      () => GetNotBillingsUseCase(getIt<NotBillingsRepository>()));
+  getIt.registerLazySingleton(
+      () => GetNotBillingByIdUseCase(getIt<NotBillingsRepository>()));
+  getIt.registerLazySingleton(
+      () => DeleteNotBillingUseCase(getIt<NotBillingsRepository>()));
+  getIt.registerLazySingleton(
+      () => RetryNotBillingSyncUseCase(getIt<NotBillingsRepository>()));
 
   // ── Outlet bill history ───────────────────────────────────────────────────────
   getIt.registerLazySingleton(

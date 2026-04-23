@@ -19,6 +19,7 @@ using sfa_api.Features.PricingStructures;
 using sfa_api.Features.Products;
 using sfa_api.Features.PurchaseOrders;
 using sfa_api.Features.Billings;
+using sfa_api.Features.NotBillings;
 using sfa_api.Features.MobileSync;
 using sfa_api.Features.GRNs;
 using sfa_api.Features.SalesInvoices;
@@ -180,6 +181,7 @@ try
     builder.Services.AddSalesInvoicesFeature();
     builder.Services.AddGrnsFeature();
     builder.Services.AddBillingsFeature();
+    builder.Services.AddNotBillingsFeature();
     builder.Services.AddStockFeature();
     builder.Services.AddMobileSyncFeature();
 

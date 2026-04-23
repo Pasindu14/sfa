@@ -15,6 +15,8 @@ using sfa_api.Features.Products.Entities;
 using sfa_api.Features.PurchaseOrders.Entities;
 using sfa_api.Features.Billings.Entities;
 using sfa_api.Features.Billings.Enums;
+using sfa_api.Features.NotBillings.Entities;
+using sfa_api.Features.NotBillings.Enums;
 using sfa_api.Features.GRNs.Entities;
 using sfa_api.Features.GRNs.Enums;
 using sfa_api.Features.SalesInvoices.Entities;
@@ -68,6 +70,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<DailyRouteAssignment> DailyRouteAssignments => Set<DailyRouteAssignment>();
     public DbSet<Billing> Billings => Set<Billing>();
     public DbSet<BillingItem> BillingItems => Set<BillingItem>();
+    public DbSet<NotBilling> NotBillings => Set<NotBilling>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -784,6 +787,63 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(x => x.Product)
              .WithMany()
              .HasForeignKey(x => x.ProductId)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── NotBilling sequence ───────────────────────────────────────────────
+        modelBuilder.HasSequence<long>("not_billing_number_seq").StartsAt(1).IncrementsBy(1);
+
+        // ── NotBilling ────────────────────────────────────────────────────────
+        modelBuilder.Entity<NotBilling>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.NotBillingNumber).IsRequired().HasMaxLength(30);
+            e.HasIndex(x => x.NotBillingNumber).IsUnique();
+            e.Property(x => x.Reason).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Notes).HasMaxLength(500);
+
+            // Report indexes — every org/geo level paired with NotBillingDate for range queries
+            e.HasIndex(x => new { x.SalesRepId,       x.NotBillingDate });
+            e.HasIndex(x => new { x.SupervisorUserId, x.NotBillingDate });
+            e.HasIndex(x => new { x.AsmUserId,        x.NotBillingDate });
+            e.HasIndex(x => new { x.RsmUserId,        x.NotBillingDate });
+            e.HasIndex(x => new { x.NsmUserId,        x.NotBillingDate });
+            e.HasIndex(x => new { x.TerritoryId,      x.NotBillingDate });
+            e.HasIndex(x => new { x.AreaId,           x.NotBillingDate });
+            e.HasIndex(x => new { x.RegionId,         x.NotBillingDate });
+            e.HasIndex(x => new { x.OutletId,         x.NotBillingDate });
+            e.HasIndex(x => x.Reason);
+            e.HasIndex(x => x.IsDeleted).HasFilter("\"IsDeleted\" = false");
+            e.HasQueryFilter(x => !x.IsDeleted);
+
+            e.HasOne(x => x.Outlet)
+             .WithMany()
+             .HasForeignKey(x => x.OutletId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.SalesRep)
+             .WithMany()
+             .HasForeignKey(x => x.SalesRepId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Supervisor)
+             .WithMany()
+             .HasForeignKey(x => x.SupervisorUserId)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Asm)
+             .WithMany()
+             .HasForeignKey(x => x.AsmUserId)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Rsm)
+             .WithMany()
+             .HasForeignKey(x => x.RsmUserId)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Nsm)
+             .WithMany()
+             .HasForeignKey(x => x.NsmUserId)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne<sfa_api.Features.Routes.Entities.Route>()
+             .WithMany()
+             .HasForeignKey(x => x.RouteId)
+             .IsRequired(false)
              .OnDelete(DeleteBehavior.Restrict);
         });
 

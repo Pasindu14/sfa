@@ -50,6 +50,17 @@ import 'package:uswatte/features/bills/presentation/pages/bill_detail_page.dart'
 import 'package:uswatte/features/bills/presentation/pages/bills_list_page.dart';
 import 'package:uswatte/features/bills/presentation/pages/create_bill_page.dart';
 import 'package:uswatte/features/debug/presentation/pages/debug_page.dart';
+import 'package:uswatte/core/sync/not_billing_sync_service.dart';
+import 'package:uswatte/features/not_billings/domain/usecases/create_not_billing_usecase.dart';
+import 'package:uswatte/features/not_billings/domain/usecases/delete_not_billing_usecase.dart';
+import 'package:uswatte/features/not_billings/domain/usecases/get_not_billings_usecase.dart';
+import 'package:uswatte/features/not_billings/domain/usecases/retry_not_billing_sync_usecase.dart';
+import 'package:uswatte/features/not_billings/presentation/bloc/create_not_billing_bloc.dart';
+import 'package:uswatte/features/not_billings/presentation/bloc/not_billings_list_bloc.dart';
+import 'package:uswatte/features/not_billings/presentation/bloc/not_billings_list_event.dart';
+import 'package:uswatte/features/not_billings/presentation/pages/create_not_billing_page.dart';
+import 'package:uswatte/features/not_billings/presentation/pages/not_billing_detail_page.dart';
+import 'package:uswatte/features/not_billings/presentation/pages/not_billings_list_page.dart';
 import 'package:uswatte/features/outlet_bill_history/data/datasources/outlet_bill_history_remote_datasource.dart';
 import 'package:uswatte/features/outlet_bill_history/data/repositories/outlet_bill_history_repository_impl.dart';
 import 'package:uswatte/features/outlet_bill_history/presentation/cubit/outlet_bill_detail_cubit.dart';
@@ -308,6 +319,62 @@ class AppRouter {
                     ),
                     child: BillDetailPage(
                       clientBillId: state.pathParameters['id']!,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            GoRoute(
+              path: 'not-billings',
+              name: 'notBillingsList',
+              builder: (_, __) => BlocProvider(
+                create: (_) => NotBillingsListBloc(
+                  getNotBillingsUseCase: getIt<GetNotBillingsUseCase>(),
+                  retrySyncUseCase: getIt<RetryNotBillingSyncUseCase>(),
+                  deleteNotBillingUseCase: getIt<DeleteNotBillingUseCase>(),
+                  syncService: getIt<NotBillingSyncService>(),
+                )..add(const LoadNotBillingsRequested()),
+                child: const NotBillingsListPage(),
+              ),
+              routes: [
+                GoRoute(
+                  path: 'create',
+                  name: 'createNotBilling',
+                  builder: (_, __) => MultiBlocProvider(
+                    providers: [
+                      BlocProvider(
+                        create: (_) => CreateNotBillingBloc(
+                          createNotBillingUseCase:
+                              getIt<CreateNotBillingUseCase>(),
+                        ),
+                      ),
+                      BlocProvider(
+                        create: (_) => OutletsBloc(
+                          getOutletsUseCase: getIt<GetOutletsUseCase>(),
+                          syncOutletsUseCase: getIt<SyncOutletsUseCase>(),
+                          getCurrentRouteIdUseCase:
+                              getIt<GetCurrentRouteIdUseCase>(),
+                          getOutletsLastSyncedAtUseCase:
+                              getIt<GetOutletsLastSyncedAtUseCase>(),
+                        )..add(const LoadOutletsRequested()),
+                      ),
+                    ],
+                    child: const CreateNotBillingPage(),
+                  ),
+                ),
+                GoRoute(
+                  path: ':id',
+                  name: 'notBillingDetail',
+                  builder: (_, state) => BlocProvider(
+                    create: (_) => NotBillingsListBloc(
+                      getNotBillingsUseCase: getIt<GetNotBillingsUseCase>(),
+                      retrySyncUseCase: getIt<RetryNotBillingSyncUseCase>(),
+                      deleteNotBillingUseCase:
+                          getIt<DeleteNotBillingUseCase>(),
+                      syncService: getIt<NotBillingSyncService>(),
+                    )..add(const LoadNotBillingsRequested()),
+                    child: NotBillingDetailPage(
+                      clientNotBillingId: state.pathParameters['id']!,
                     ),
                   ),
                 ),

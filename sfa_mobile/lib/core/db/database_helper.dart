@@ -6,7 +6,7 @@ import 'package:sqflite/sqflite.dart';
 /// [onUpgrade] when schema changes.
 class DatabaseHelper {
   static const _dbName = 'sfa_local.db';
-  static const _dbVersion = 6;
+  static const _dbVersion = 7;
 
   DatabaseHelper._private();
   static final DatabaseHelper instance = DatabaseHelper._private();
@@ -53,6 +53,7 @@ class DatabaseHelper {
     await _createPricingStructuresTable(db);
     await _createPricingItemsTable(db);
     await _createBillsTables(db);
+    await _createNotBillingsTable(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -61,6 +62,7 @@ class DatabaseHelper {
     if (oldVersion < 4) await _createPricingStructuresTable(db);
     if (oldVersion < 5) await _createBillsTables(db);
     if (oldVersion < 6) await _migrateBillItemsV6(db);
+    if (oldVersion < 7) await _createNotBillingsTable(db);
   }
 
   Future<void> _createPricingStructuresTable(Database db) async {
@@ -144,6 +146,29 @@ class DatabaseHelper {
         "ALTER TABLE bill_items ADD COLUMN billing_item_type TEXT NOT NULL DEFAULT 'Sale'");
     await db.execute('ALTER TABLE bill_items ADD COLUMN return_type TEXT');
     await db.execute('ALTER TABLE bill_items ADD COLUMN expire_date TEXT');
+  }
+
+  /// Offline outbox for not-billing records created by the field rep.
+  /// Mirrors the bills outbox pattern: UUID as idempotency key, sync state machine.
+  Future<void> _createNotBillingsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE not_billings (
+        client_not_billing_id  TEXT    PRIMARY KEY,
+        outlet_id              INTEGER NOT NULL,
+        not_billing_date       TEXT    NOT NULL,
+        reason                 TEXT    NOT NULL,
+        notes                  TEXT,
+        created_at             TEXT    NOT NULL,
+        sync_status            TEXT    NOT NULL,
+        sync_attempts          INTEGER NOT NULL DEFAULT 0,
+        last_sync_error        TEXT,
+        last_sync_error_code   TEXT,
+        server_not_billing_id     INTEGER,
+        server_not_billing_number TEXT
+      )
+    ''');
+    await db.execute('CREATE INDEX idx_not_billings_sync_status ON not_billings(sync_status)');
+    await db.execute('CREATE INDEX idx_not_billings_outlet ON not_billings(outlet_id)');
   }
 
   Future<void> _createDailyOutletsTable(Database db) async {
