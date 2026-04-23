@@ -9,6 +9,9 @@ class BillItem extends Equatable {
   final double unitPrice;
   final double discountRate;
   final bool isFreeIssue;
+  final String billingItemType; // 'Sale' | 'Return'
+  final String? returnType;     // 'Damage' | 'Expire' | 'MarketResell' — null for Sale
+  final DateTime? expireDate;   // Only when returnType == 'Expire'
   final int lineNumber;
 
   const BillItem({
@@ -20,6 +23,9 @@ class BillItem extends Equatable {
     required this.unitPrice,
     this.discountRate = 0,
     this.isFreeIssue = false,
+    this.billingItemType = 'Sale',
+    this.returnType,
+    this.expireDate,
     required this.lineNumber,
   });
 
@@ -33,6 +39,9 @@ class BillItem extends Equatable {
         unitPrice,
         discountRate,
         isFreeIssue,
+        billingItemType,
+        returnType,
+        expireDate,
         lineNumber,
       ];
 }

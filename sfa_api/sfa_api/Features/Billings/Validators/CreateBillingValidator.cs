@@ -14,19 +14,12 @@ public class CreateBillingValidator : AbstractValidator<CreateBillingRequest>
         RuleFor(x => x.BillDiscountRate)
             .InclusiveBetween(0, 100).WithMessage("BillDiscountRate must be between 0 and 100.");
 
-        // Offline-sync guardrails: mobile may have created the bill up to 7 days ago.
-        // Reject future dates (clock skew / rogue client) and anything older than 7 days
-        // (likely indicates a corrupted outbox that should be escalated manually).
         RuleFor(x => x.BillingDate!.Value)
             .LessThanOrEqualTo(_ => DateOnly.FromDateTime(DateTime.UtcNow))
                 .WithMessage("BillingDate cannot be in the future.")
             .GreaterThanOrEqualTo(_ => DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7)))
                 .WithMessage("BillingDate cannot be more than 7 days in the past.")
             .When(x => x.BillingDate.HasValue);
-
-        RuleFor(x => x.ReturnType)
-            .NotNull().WithMessage("ReturnType is required when BillingType is Return.")
-            .When(x => x.BillingType == BillingType.Return);
 
         RuleFor(x => x.Items)
             .NotEmpty().WithMessage("At least one billing item is required.")
@@ -46,10 +39,31 @@ public class CreateBillingValidator : AbstractValidator<CreateBillingRequest>
             item.RuleFor(i => i.DiscountRate)
                 .InclusiveBetween(0, 100).WithMessage("DiscountRate must be between 0 and 100.");
 
-            // Free-issue items must have UnitPrice = 0
             item.RuleFor(i => i.UnitPrice)
                 .Equal(0).WithMessage("UnitPrice must be 0 for free-issue items.")
                 .When(i => i.IsFreeIssue);
+
+            // Return items must specify a return reason
+            item.RuleFor(i => i.ReturnType)
+                .NotNull().WithMessage("ReturnType is required for return items.")
+                .When(i => i.BillingItemType == BillingItemType.Return);
+
+            // Sale items must not have a return reason
+            item.RuleFor(i => i.ReturnType)
+                .Null().WithMessage("ReturnType must be null for sale items.")
+                .When(i => i.BillingItemType == BillingItemType.Sale);
+
+            // Expire items must include an expire date (must not be in the future — it's already expired)
+            item.RuleFor(i => i.ExpireDate)
+                .NotNull().WithMessage("ExpireDate is required when ReturnType is Expire.")
+                .LessThanOrEqualTo(_ => DateOnly.FromDateTime(DateTime.UtcNow))
+                    .WithMessage("ExpireDate must not be in the future.")
+                .When(i => i.ReturnType == ReturnType.Expire);
+
+            // Non-expire items must not carry an expire date
+            item.RuleFor(i => i.ExpireDate)
+                .Null().WithMessage("ExpireDate must be null when ReturnType is not Expire.")
+                .When(i => i.ReturnType != ReturnType.Expire);
         });
     }
 }

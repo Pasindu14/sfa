@@ -68,7 +68,7 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
 
     public async Task<(List<BillingListDto> Items, int TotalCount)> GetListAsync(
         int page, int pageSize,
-        BillingType? billingType, BillingStatus? status,
+        BillingStatus? status,
         int? outletId, int? distributorId, int? salesRepId,
         DateOnly? dateFrom, DateOnly? dateTo,
         CancellationToken ct = default)
@@ -81,9 +81,6 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
             .Include(x => x.SalesRep)
             .Include(x => x.Distributor)
             .Where(x => !x.IsDeleted);
-
-        if (billingType.HasValue)
-            query = query.Where(x => x.BillingType == billingType.Value);
 
         if (status.HasValue)
             query = query.Where(x => x.Status == status.Value);
@@ -112,8 +109,6 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
             .Select(x => new BillingListDto(
                 x.Id,
                 x.BillingNumber,
-                x.BillingType,
-                x.ReturnType,
                 x.BillingDate,
                 x.OutletId,
                 x.Outlet.Name,

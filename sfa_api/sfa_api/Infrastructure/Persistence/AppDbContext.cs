@@ -700,8 +700,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(x => x.Id);
             e.Property(x => x.BillingNumber).IsRequired().HasMaxLength(30);
             e.HasIndex(x => x.BillingNumber).IsUnique();
-            e.Property(x => x.BillingType).HasConversion<string>().HasMaxLength(10);
-            e.Property(x => x.ReturnType).HasConversion<string>().HasMaxLength(15);
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(15);
             e.Property(x => x.Notes).HasMaxLength(1000);
             e.Property(x => x.SubTotalAmount).HasColumnType("decimal(18,2)");
@@ -756,10 +754,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .WithMany()
              .HasForeignKey(x => x.NsmUserId)
              .OnDelete(DeleteBehavior.SetNull);
-            e.HasOne(x => x.OriginalBilling)
-             .WithMany()
-             .HasForeignKey(x => x.OriginalBillingId)
-             .OnDelete(DeleteBehavior.SetNull);
             e.HasOne<sfa_api.Features.Routes.Entities.Route>()
              .WithMany()
              .HasForeignKey(x => x.RouteId)
@@ -780,10 +774,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.DiscountRate).HasColumnType("decimal(5,2)");
             e.Property(x => x.DiscountAmount).HasColumnType("decimal(18,2)");
             e.Property(x => x.TotalPrice).HasColumnType("decimal(18,2)");
+            e.Property(x => x.BillingItemType).HasConversion<string>().HasMaxLength(10).IsRequired().HasDefaultValue(BillingItemType.Sale);
+            e.Property(x => x.ReturnType).HasConversion<string>().HasMaxLength(15);
             // Matching filter for Billing's HasQueryFilter
             e.HasQueryFilter(x => !x.IsDeleted);
             e.HasIndex(x => x.BillingId);
             e.HasIndex(x => x.ProductId);
+            e.HasIndex(x => x.BillingItemType);
             e.HasOne(x => x.Product)
              .WithMany()
              .HasForeignKey(x => x.ProductId)

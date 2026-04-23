@@ -6,7 +6,7 @@ import 'package:sqflite/sqflite.dart';
 /// [onUpgrade] when schema changes.
 class DatabaseHelper {
   static const _dbName = 'sfa_local.db';
-  static const _dbVersion = 5;
+  static const _dbVersion = 6;
 
   DatabaseHelper._private();
   static final DatabaseHelper instance = DatabaseHelper._private();
@@ -60,6 +60,7 @@ class DatabaseHelper {
     if (oldVersion < 3) await _createPricingItemsTable(db);
     if (oldVersion < 4) await _createPricingStructuresTable(db);
     if (oldVersion < 5) await _createBillsTables(db);
+    if (oldVersion < 6) await _migrateBillItemsV6(db);
   }
 
   Future<void> _createPricingStructuresTable(Database db) async {
@@ -121,18 +122,28 @@ class DatabaseHelper {
 
     await db.execute('''
       CREATE TABLE bill_items (
-        id             INTEGER PRIMARY KEY AUTOINCREMENT,
-        client_bill_id TEXT    NOT NULL,
-        product_id     INTEGER NOT NULL,
-        quantity       REAL    NOT NULL,
-        unit_price     REAL    NOT NULL,
-        discount_rate  REAL    NOT NULL DEFAULT 0,
-        is_free_issue  INTEGER NOT NULL DEFAULT 0,
-        line_number    INTEGER NOT NULL,
+        id                INTEGER PRIMARY KEY AUTOINCREMENT,
+        client_bill_id    TEXT    NOT NULL,
+        product_id        INTEGER NOT NULL,
+        quantity          REAL    NOT NULL,
+        unit_price        REAL    NOT NULL,
+        discount_rate     REAL    NOT NULL DEFAULT 0,
+        is_free_issue     INTEGER NOT NULL DEFAULT 0,
+        billing_item_type TEXT    NOT NULL DEFAULT 'Sale',
+        return_type       TEXT,
+        expire_date       TEXT,
+        line_number       INTEGER NOT NULL,
         FOREIGN KEY(client_bill_id) REFERENCES bills(client_bill_id) ON DELETE CASCADE
       )
     ''');
     await db.execute('CREATE INDEX idx_bill_items_bill ON bill_items(client_bill_id)');
+  }
+
+  Future<void> _migrateBillItemsV6(Database db) async {
+    await db.execute(
+        "ALTER TABLE bill_items ADD COLUMN billing_item_type TEXT NOT NULL DEFAULT 'Sale'");
+    await db.execute('ALTER TABLE bill_items ADD COLUMN return_type TEXT');
+    await db.execute('ALTER TABLE bill_items ADD COLUMN expire_date TEXT');
   }
 
   Future<void> _createDailyOutletsTable(Database db) async {

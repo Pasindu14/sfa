@@ -34,7 +34,6 @@ public class BillingsController(
     public async Task<IActionResult> GetList(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
-        [FromQuery] string? billingType = null,
         [FromQuery] string? status = null,
         [FromQuery] int? outletId = null,
         [FromQuery] int? distributorId = null,
@@ -45,13 +44,12 @@ public class BillingsController(
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
 
-        BillingType? parsedType = Enum.TryParse<BillingType>(billingType, true, out var bt) ? bt : null;
-        BillingStatus? parsedStatus = Enum.TryParse<BillingStatus>(status, true, out var bs) ? bs : null;
-        DateOnly? parsedDateFrom = DateOnly.TryParse(dateFrom, out var df) ? df : null;
-        DateOnly? parsedDateTo   = DateOnly.TryParse(dateTo, out var dt) ? dt : null;
+        BillingStatus? parsedStatus  = Enum.TryParse<BillingStatus>(status, true, out var bs) ? bs : null;
+        DateOnly? parsedDateFrom     = DateOnly.TryParse(dateFrom, out var df) ? df : null;
+        DateOnly? parsedDateTo       = DateOnly.TryParse(dateTo, out var dt) ? dt : null;
 
         var (items, total) = await _billingService.GetListAsync(
-            page, pageSize, parsedType, parsedStatus,
+            page, pageSize, parsedStatus,
             outletId, distributorId, salesRepId,
             parsedDateFrom, parsedDateTo, ct);
 

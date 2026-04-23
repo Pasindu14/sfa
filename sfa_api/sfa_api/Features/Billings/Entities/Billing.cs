@@ -8,11 +8,7 @@ namespace sfa_api.Features.Billings.Entities;
 public class Billing
 {
     public int Id { get; set; }
-    public string BillingNumber { get; set; } = string.Empty;  // BIL-2026-00001 / RET-2026-00001
-
-    public BillingType BillingType { get; set; } = BillingType.Sale;
-    public ReturnType? ReturnType { get; set; }           // null for Sale; required for Return
-    public int? OriginalBillingId { get; set; }           // Return → FK to original Sale billing
+    public string BillingNumber { get; set; } = string.Empty;
 
     public DateOnly BillingDate { get; set; }
 
@@ -59,6 +55,5 @@ public class Billing
     public User? Asm { get; set; }
     public User? Rsm { get; set; }
     public User? Nsm { get; set; }
-    public Billing? OriginalBilling { get; set; }
     public ICollection<BillingItem> Items { get; set; } = [];
 }

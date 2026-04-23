@@ -5,9 +5,6 @@ namespace sfa_api.Features.Billings.DTOs;
 public record BillingDto(
     int Id,
     string BillingNumber,
-    BillingType BillingType,
-    ReturnType? ReturnType,
-    int? OriginalBillingId,
     DateOnly BillingDate,
 
     // Core references

@@ -11,6 +11,9 @@ class CartLine extends Equatable {
   final double unitPrice;
   final double discountRate;
   final bool isFreeIssue;
+  final String billingItemType; // 'Sale' | 'Return'
+  final String? returnType;     // 'Damage' | 'Expire' | 'MarketResell'
+  final DateTime? expireDate;   // Only when returnType == 'Expire'
 
   const CartLine({
     required this.lineNumber,
@@ -19,6 +22,9 @@ class CartLine extends Equatable {
     required this.unitPrice,
     this.discountRate = 0,
     this.isFreeIssue = false,
+    this.billingItemType = 'Sale',
+    this.returnType,
+    this.expireDate,
   });
 
   double get lineTotal {
@@ -28,18 +34,42 @@ class CartLine extends Equatable {
     return gross - disc;
   }
 
-  CartLine copyWith({double? quantity, double? unitPrice, double? discountRate}) => CartLine(
+  bool get isReturn => billingItemType == 'Return';
+
+  CartLine copyWith({
+    double? quantity,
+    double? unitPrice,
+    double? discountRate,
+    String? billingItemType,
+    String? returnType,
+    bool clearReturnType = false,
+    DateTime? expireDate,
+    bool clearExpireDate = false,
+  }) =>
+      CartLine(
         lineNumber: lineNumber,
         product: product,
         quantity: quantity ?? this.quantity,
         unitPrice: unitPrice ?? this.unitPrice,
         discountRate: discountRate ?? this.discountRate,
         isFreeIssue: isFreeIssue,
+        billingItemType: billingItemType ?? this.billingItemType,
+        returnType: clearReturnType ? null : (returnType ?? this.returnType),
+        expireDate: clearExpireDate ? null : (expireDate ?? this.expireDate),
       );
 
   @override
-  List<Object?> get props =>
-      [lineNumber, product.id, quantity, unitPrice, discountRate, isFreeIssue];
+  List<Object?> get props => [
+        lineNumber,
+        product.id,
+        quantity,
+        unitPrice,
+        discountRate,
+        isFreeIssue,
+        billingItemType,
+        returnType,
+        expireDate,
+      ];
 }
 
 class CreateBillState extends Equatable {
@@ -71,6 +101,7 @@ class CreateBillState extends Equatable {
       outlet != null &&
       selectedPricingStructure != null &&
       cart.isNotEmpty &&
+      cart.every((l) => !l.isReturn || l.returnType != null) &&
       !submitting;
 
   CreateBillState copyWith({

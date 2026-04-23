@@ -75,14 +75,16 @@ public class BillingService(
             ? await _reportingLineRepository.GetActiveByUserIdAsync(rsmId.Value, ct) : null;
         int? nsmId = l4?.ReportsToUserId;
 
-        // ⑥ Pre-check stock availability for Sale billings (fast fail before acquiring lock).
-        // Collect ALL shortages across line items so the rep sees every missing product in one response,
-        // not just the first — this avoids retry-discover-retry-discover loops from mobile.
-        if (request.BillingType == BillingType.Sale)
+        // ⑥ Pre-check stock availability for Sale items only (fast fail before acquiring lock).
+        // Collect ALL shortages across sale line items so the rep sees every missing product in one
+        // response — avoids retry-discover-retry-discover loops from mobile.
+        var saleItems      = request.Items.Where(i => i.BillingItemType == BillingItemType.Sale).ToList();
+        var saleProductIds = saleItems.Select(i => i.ProductId).Distinct().ToList();
+        if (saleProductIds.Count > 0)
         {
-            var snapshot = await _billingRepository.GetStockSnapshotAsync(distributor.Id, requestedProductIds, ct);
+            var snapshot = await _billingRepository.GetStockSnapshotAsync(distributor.Id, saleProductIds, ct);
             var shortages = new List<StockShortage>();
-            foreach (var item in request.Items)
+            foreach (var item in saleItems)
             {
                 var stock     = snapshot.FirstOrDefault(s => s.ProductId == item.ProductId);
                 var available = stock?.QuantityOnHand ?? 0m;
@@ -119,6 +121,9 @@ public class BillingService(
                 DiscountAmount = discountAmount,
                 TotalPrice     = totalPrice,
                 IsFreeIssue    = item.IsFreeIssue,
+                BillingItemType = item.BillingItemType,
+                ReturnType     = item.ReturnType,
+                ExpireDate     = item.ExpireDate,
                 LineNumber     = idx + 1,
                 CreatedAt      = DateTime.UtcNow
             };
@@ -134,17 +139,13 @@ public class BillingService(
 
         // ⑨ Generate billing number
         var seqNo         = await _billingRepository.GetNextBillingNumberAsync(ct);
-        var prefix        = request.BillingType == BillingType.Sale ? "BIL" : "RET";
-        var billingNumber = $"{prefix}-{DateTime.UtcNow.Year}-{seqNo:D5}";
+        var billingNumber = $"BIL-{DateTime.UtcNow.Year}-{seqNo:D5}";
 
         // ⑩ Build entity
         var billing = new Billing
         {
-            BillingNumber     = billingNumber,
-            BillingType       = request.BillingType,
-            ReturnType        = request.ReturnType,
-            OriginalBillingId = request.OriginalBillingId,
-            BillingDate       = request.BillingDate ?? DateOnly.FromDateTime(DateTime.UtcNow),
+            BillingNumber = billingNumber,
+            BillingDate   = request.BillingDate ?? DateOnly.FromDateTime(DateTime.UtcNow),
             OutletId          = request.OutletId,
             SalesRepId        = salesRepId,
             DistributorId     = distributor.Id,
@@ -179,9 +180,9 @@ public class BillingService(
                 await _billingRepository.AddAsync(billing, ct);
                 await _billingRepository.SaveChangesAsync(ct);  // billingId assigned here
 
-                if (billing.BillingType == BillingType.Sale)
+                foreach (var item in billing.Items)
                 {
-                    foreach (var item in billing.Items)
+                    if (item.BillingItemType == BillingItemType.Sale)
                     {
                         await _stockRepository.GetStockForUpdateAsync(distributor.Id, item.ProductId, ct);
                         await _stockRepository.DeductStockAsync(
@@ -189,11 +190,7 @@ public class BillingService(
                             item.IsFreeIssue ? StockTransactionType.FreeIssue : StockTransactionType.Sale,
                             "Billing", billing.Id, salesRepId, ct: ct);
                     }
-                }
-                else if (billing.BillingType == BillingType.Return
-                    && billing.ReturnType == Enums.ReturnType.MarketResell)
-                {
-                    foreach (var item in billing.Items)
+                    else if (item.ReturnType == Enums.ReturnType.MarketResell)
                     {
                         await _stockRepository.GetStockForUpdateAsync(distributor.Id, item.ProductId, ct);
                         await _stockRepository.CreditStockAsync(
@@ -201,8 +198,8 @@ public class BillingService(
                             StockTransactionType.Return,
                             "Billing", billing.Id, salesRepId, ct: ct);
                     }
+                    // Damage / Expire: billing record only — no stock movement
                 }
-                // Damage / Expire: billing record only — no stock movement
 
                 await _billingRepository.SaveChangesAsync(ct);
                 await transaction.CommitAsync(ct);
@@ -229,12 +226,12 @@ public class BillingService(
 
     public Task<(List<BillingListDto> Items, int TotalCount)> GetListAsync(
         int page, int pageSize,
-        BillingType? billingType, BillingStatus? status,
+        BillingStatus? status,
         int? outletId, int? distributorId, int? salesRepId,
         DateOnly? dateFrom, DateOnly? dateTo,
         CancellationToken ct = default)
         => _billingRepository.GetListAsync(
-            page, pageSize, billingType, status,
+            page, pageSize, status,
             outletId, distributorId, salesRepId,
             dateFrom, dateTo, ct);
 
@@ -243,9 +240,6 @@ public class BillingService(
     private static BillingDto ProjectToDto(Billing b) => new(
         b.Id,
         b.BillingNumber,
-        b.BillingType,
-        b.ReturnType,
-        b.OriginalBillingId,
         b.BillingDate,
         b.OutletId,
         b.Outlet?.Name ?? string.Empty,
@@ -284,6 +278,9 @@ public class BillingService(
             i.DiscountAmount,
             i.TotalPrice,
             i.IsFreeIssue,
+            i.BillingItemType,
+            i.ReturnType,
+            i.ExpireDate,
             i.LineNumber)).ToList()
     );
 }

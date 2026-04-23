@@ -6,9 +6,6 @@ import 'bill_item_model.dart';
 class BillModel {
   final String clientBillId;
   final int outletId;
-  final String billingType;
-  final String? returnType;
-  final int? originalBillId;
   final DateTime billingDate;
   final double billDiscountRate;
   final double subTotalAmount;
@@ -27,9 +24,6 @@ class BillModel {
   const BillModel({
     required this.clientBillId,
     required this.outletId,
-    required this.billingType,
-    this.returnType,
-    this.originalBillId,
     required this.billingDate,
     required this.billDiscountRate,
     required this.subTotalAmount,
@@ -49,9 +43,6 @@ class BillModel {
   factory BillModel.fromMap(Map<String, dynamic> map, List<BillItemModel> items) => BillModel(
         clientBillId: map['client_bill_id'] as String,
         outletId: map['outlet_id'] as int,
-        billingType: map['billing_type'] as String,
-        returnType: map['return_type'] as String?,
-        originalBillId: map['original_bill_id'] as int?,
         billingDate: DateTime.parse(map['billing_date'] as String),
         billDiscountRate: (map['bill_discount_rate'] as num).toDouble(),
         subTotalAmount: (map['sub_total_amount'] as num).toDouble(),
@@ -71,9 +62,11 @@ class BillModel {
   Map<String, dynamic> toMap() => {
         'client_bill_id': clientBillId,
         'outlet_id': outletId,
-        'billing_type': billingType,
-        'return_type': returnType,
-        'original_bill_id': originalBillId,
+        // Legacy schema columns — kept to satisfy NOT NULL constraint on old installs.
+        // These are no longer meaningful; item-level type drives all logic.
+        'billing_type': 'Sale',
+        'return_type': null,
+        'original_bill_id': null,
         'billing_date': _dateOnly(billingDate),
         'bill_discount_rate': billDiscountRate,
         'sub_total_amount': subTotalAmount,
@@ -93,9 +86,6 @@ class BillModel {
   /// The client_bill_id is used as the X-Idempotency-Key header, not in the body.
   Map<String, dynamic> toCreateRequestJson() => {
         'outletId': outletId,
-        'billingType': billingType,
-        'returnType': returnType,
-        'originalBillingId': originalBillId,
         'billingDate': _dateOnly(billingDate),
         'billDiscountRate': billDiscountRate,
         'notes': notes,
@@ -105,9 +95,6 @@ class BillModel {
   Bill toEntity() => Bill(
         clientBillId: clientBillId,
         outletId: outletId,
-        billingType: billingType,
-        returnType: returnType,
-        originalBillId: originalBillId,
         billingDate: billingDate,
         billDiscountRate: billDiscountRate,
         subTotalAmount: subTotalAmount,
@@ -135,9 +122,6 @@ class BillModel {
       BillModel(
         clientBillId: clientBillId,
         outletId: outletId,
-        billingType: billingType,
-        returnType: returnType,
-        originalBillId: originalBillId,
         billingDate: billingDate,
         billDiscountRate: billDiscountRate,
         subTotalAmount: subTotalAmount,

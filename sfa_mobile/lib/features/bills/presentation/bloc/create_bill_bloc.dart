@@ -29,6 +29,10 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     on<CartItemQtyChanged>(_onQtyChanged);
     on<CartItemRemoved>(_onRemoved);
     on<CartItemDiscountChanged>(_onLineDiscountChanged);
+    on<CartItemPriceChanged>(_onPriceChanged);
+    on<CartItemTypeChanged>(_onTypeChanged);
+    on<CartItemReturnTypeChanged>(_onReturnTypeChanged);
+    on<CartItemExpireDateChanged>(_onExpireDateChanged);
     on<BillDiscountChanged>(_onDiscountChanged);
     on<SubmitPressed>(_onSubmit);
     _loadPricingStructures();
@@ -40,14 +44,12 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
       final structures = models.map((m) => m.toEntity()).toList();
       add(PricingStructuresLoaded(structures));
     } catch (_) {
-      // If structures fail to load (e.g. never synced), the picker shows empty.
       add(const PricingStructuresLoaded([]));
     }
   }
 
   void _onStructuresLoaded(
       PricingStructuresLoaded e, Emitter<CreateBillState> emit) {
-    // Auto-select the default structure so the rep rarely needs to change it.
     final defaultStructure = e.structures.where((s) => s.isDefault).firstOrNull
         ?? e.structures.firstOrNull;
     emit(state.copyWith(
@@ -62,8 +64,9 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
 
   void _onStructureSelected(
       PricingStructureSelected e, Emitter<CreateBillState> emit) {
-    // Re-price any cart items already added using the new structure's prices.
+    // Re-price sale items using the new structure; return items keep their custom price.
     final repricedCart = state.cart.map((line) {
+      if (line.isReturn) return line;
       final item = e.structure.items
           .where((i) => i.productId == line.product.id)
           .firstOrNull;
@@ -78,15 +81,19 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
   }
 
   void _onProductAdded(ProductAdded e, Emitter<CreateBillState> emit) {
-    final existingIdx =
-        state.cart.indexWhere((l) => l.product.id == e.product.id);
-    if (existingIdx >= 0) {
-      final existing = state.cart[existingIdx];
-      final updated = [...state.cart];
-      updated[existingIdx] =
-          existing.copyWith(quantity: existing.quantity + e.quantity);
-      emit(state.copyWith(cart: updated));
-      return;
+    // Only merge quantities for sale items with the same product.
+    // Return items are always added as separate lines (different return type/price).
+    if (e.billingItemType == 'Sale') {
+      final existingIdx = state.cart.indexWhere(
+          (l) => l.product.id == e.product.id && !l.isReturn);
+      if (existingIdx >= 0) {
+        final existing = state.cart[existingIdx];
+        final updated = [...state.cart];
+        updated[existingIdx] =
+            existing.copyWith(quantity: existing.quantity + e.quantity);
+        emit(state.copyWith(cart: updated));
+        return;
+      }
     }
 
     final nextLine = state.cart.length + 1;
@@ -98,6 +105,9 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
         quantity: e.quantity,
         unitPrice: e.unitPrice,
         discountRate: e.discountRate,
+        billingItemType: e.billingItemType,
+        returnType: e.returnType,
+        expireDate: e.expireDate,
       ),
     ]));
   }
@@ -113,17 +123,19 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
   void _onRemoved(CartItemRemoved e, Emitter<CreateBillState> emit) {
     final filtered =
         state.cart.where((l) => l.lineNumber != e.lineNumber).toList();
-    final renumbered = <CartLine>[];
-    for (var i = 0; i < filtered.length; i++) {
-      renumbered.add(CartLine(
-        lineNumber: i + 1,
-        product: filtered[i].product,
-        quantity: filtered[i].quantity,
-        unitPrice: filtered[i].unitPrice,
-        discountRate: filtered[i].discountRate,
-        isFreeIssue: filtered[i].isFreeIssue,
-      ));
-    }
+    final renumbered = filtered.indexed
+        .map((t) => CartLine(
+              lineNumber: t.$1 + 1,
+              product: t.$2.product,
+              quantity: t.$2.quantity,
+              unitPrice: t.$2.unitPrice,
+              discountRate: t.$2.discountRate,
+              isFreeIssue: t.$2.isFreeIssue,
+              billingItemType: t.$2.billingItemType,
+              returnType: t.$2.returnType,
+              expireDate: t.$2.expireDate,
+            ))
+        .toList();
     emit(state.copyWith(cart: renumbered));
   }
 
@@ -133,6 +145,55 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     final updated = state.cart.map((l) {
       if (l.lineNumber != e.lineNumber) return l;
       return l.copyWith(discountRate: clamped);
+    }).toList();
+    emit(state.copyWith(cart: updated));
+  }
+
+  void _onPriceChanged(CartItemPriceChanged e, Emitter<CreateBillState> emit) {
+    final updated = state.cart.map((l) {
+      if (l.lineNumber != e.lineNumber) return l;
+      return l.copyWith(unitPrice: e.unitPrice.clamp(0.0, double.infinity));
+    }).toList();
+    emit(state.copyWith(cart: updated));
+  }
+
+  void _onTypeChanged(CartItemTypeChanged e, Emitter<CreateBillState> emit) {
+    final updated = state.cart.map((l) {
+      if (l.lineNumber != e.lineNumber) return l;
+      // Switching to Sale clears return-specific fields.
+      if (e.billingItemType == 'Sale') {
+        return l.copyWith(
+          billingItemType: 'Sale',
+          clearReturnType: true,
+          clearExpireDate: true,
+        );
+      }
+      return l.copyWith(billingItemType: e.billingItemType);
+    }).toList();
+    emit(state.copyWith(cart: updated));
+  }
+
+  void _onReturnTypeChanged(
+      CartItemReturnTypeChanged e, Emitter<CreateBillState> emit) {
+    final updated = state.cart.map((l) {
+      if (l.lineNumber != e.lineNumber) return l;
+      // Switching away from Expire clears the expire date.
+      final clearDate = e.returnType != 'Expire';
+      return l.copyWith(
+        returnType: e.returnType,
+        clearExpireDate: clearDate,
+      );
+    }).toList();
+    emit(state.copyWith(cart: updated));
+  }
+
+  void _onExpireDateChanged(
+      CartItemExpireDateChanged e, Emitter<CreateBillState> emit) {
+    final updated = state.cart.map((l) {
+      if (l.lineNumber != e.lineNumber) return l;
+      return e.expireDate != null
+          ? l.copyWith(expireDate: e.expireDate)
+          : l.copyWith(clearExpireDate: true);
     }).toList();
     emit(state.copyWith(cart: updated));
   }
@@ -160,6 +221,9 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
               unitPrice: l.unitPrice,
               discountRate: l.discountRate,
               isFreeIssue: l.isFreeIssue,
+              billingItemType: l.billingItemType,
+              returnType: l.returnType,
+              expireDate: l.expireDate,
               lineNumber: l.lineNumber,
             ))
         .toList();
@@ -167,7 +231,6 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     final bill = Bill(
       clientBillId: clientBillId,
       outletId: state.outlet!.id,
-      billingType: 'Sale',
       billingDate: today,
       billDiscountRate: state.billDiscountRate,
       subTotalAmount: state.subTotal,

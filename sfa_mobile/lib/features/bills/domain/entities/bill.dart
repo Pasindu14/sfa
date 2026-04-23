@@ -8,9 +8,6 @@ import 'sync_status.dart';
 class Bill extends Equatable {
   final String clientBillId;
   final int outletId;
-  final String billingType; // 'Sale' | 'Return'
-  final String? returnType;
-  final int? originalBillId;
   final DateTime billingDate;
   final double billDiscountRate;
   final double subTotalAmount;
@@ -29,9 +26,6 @@ class Bill extends Equatable {
   const Bill({
     required this.clientBillId,
     required this.outletId,
-    required this.billingType,
-    this.returnType,
-    this.originalBillId,
     required this.billingDate,
     required this.billDiscountRate,
     required this.subTotalAmount,
@@ -52,9 +46,6 @@ class Bill extends Equatable {
   List<Object?> get props => [
         clientBillId,
         outletId,
-        billingType,
-        returnType,
-        originalBillId,
         billingDate,
         billDiscountRate,
         subTotalAmount,

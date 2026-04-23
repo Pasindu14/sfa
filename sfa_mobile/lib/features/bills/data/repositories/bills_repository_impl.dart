@@ -17,9 +17,6 @@ class BillsRepositoryImpl implements BillsRepository {
     final model = BillModel(
       clientBillId: bill.clientBillId,
       outletId: bill.outletId,
-      billingType: bill.billingType,
-      returnType: bill.returnType,
-      originalBillId: bill.originalBillId,
       billingDate: bill.billingDate,
       billDiscountRate: bill.billDiscountRate,
       subTotalAmount: bill.subTotalAmount,
@@ -36,6 +33,9 @@ class BillsRepositoryImpl implements BillsRepository {
                 unitPrice: i.unitPrice,
                 discountRate: i.discountRate,
                 isFreeIssue: i.isFreeIssue,
+                billingItemType: i.billingItemType,
+                returnType: i.returnType,
+                expireDate: i.expireDate,
                 lineNumber: i.lineNumber,
               ))
           .toList(),

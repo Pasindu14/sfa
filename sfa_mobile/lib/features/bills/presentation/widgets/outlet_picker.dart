@@ -21,7 +21,7 @@ class OutletPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!hasActiveAssignment) return _LockedCard();
+    if (!hasActiveAssignment) return _lockedCard();
 
     return GestureDetector(
       onTap: () => _openSheet(context),
@@ -120,7 +120,7 @@ class OutletPicker extends StatelessWidget {
     );
   }
 
-  Widget _LockedCard() {
+  Widget _lockedCard() {
     return Container(
       padding: EdgeInsets.all(16.r),
       decoration: BoxDecoration(

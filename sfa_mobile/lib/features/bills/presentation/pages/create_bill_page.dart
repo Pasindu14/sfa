@@ -141,9 +141,15 @@ class CreateBillPage extends StatelessWidget {
                                     getIt<SearchProductsForBillUseCase>(),
                                 pricingStructureId:
                                     state.selectedPricingStructure?.id,
-                                onProductAdded: (product, qty, unitPrice, discountRate) => ctx
+                                onProductAdded: (product, qty, unitPrice, discountRate, billingItemType, returnType, expireDate) => ctx
                                     .read<CreateBillBloc>()
-                                    .add(ProductAdded(product, qty, unitPrice: unitPrice, discountRate: discountRate)),
+                                    .add(ProductAdded(product, qty,
+                                      unitPrice: unitPrice,
+                                      discountRate: discountRate,
+                                      billingItemType: billingItemType,
+                                      returnType: returnType,
+                                      expireDate: expireDate,
+                                    )),
                               ),
                             ),
                           ],

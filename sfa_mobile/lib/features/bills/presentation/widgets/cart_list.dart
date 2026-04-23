@@ -289,6 +289,18 @@ class _CartListState extends State<CartList> {
                   onRemoved: () => ctx
                       .read<CreateBillBloc>()
                       .add(CartItemRemoved(line.lineNumber)),
+                  onTypeChanged: (t) => ctx
+                      .read<CreateBillBloc>()
+                      .add(CartItemTypeChanged(line.lineNumber, t)),
+                  onReturnTypeChanged: (rt) => ctx
+                      .read<CreateBillBloc>()
+                      .add(CartItemReturnTypeChanged(line.lineNumber, rt)),
+                  onExpireDateChanged: (d) => ctx
+                      .read<CreateBillBloc>()
+                      .add(CartItemExpireDateChanged(line.lineNumber, d)),
+                  onPriceChanged: (p) => ctx
+                      .read<CreateBillBloc>()
+                      .add(CartItemPriceChanged(line.lineNumber, p)),
                 );
               },
             ),

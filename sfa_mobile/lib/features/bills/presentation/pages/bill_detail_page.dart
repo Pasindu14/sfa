@@ -340,7 +340,7 @@ class _InfoCard extends StatelessWidget {
           SizedBox(height: 10.h),
           _infoRow(Icons.storefront_rounded, 'Outlet', '#${bill.outletId}'),
           SizedBox(height: 6.h),
-          _infoRow(Icons.receipt_rounded, 'Type', bill.billingType),
+          _infoRow(Icons.receipt_rounded, 'Type', _billTypeLabel(bill)),
           SizedBox(height: 6.h),
           _infoRow(Icons.calendar_today_rounded, 'Date',
               _formatDate(bill.billingDate)),
@@ -590,14 +590,17 @@ class _ItemRow extends StatelessWidget {
             ],
           ),
           SizedBox(height: 5.h),
-          // Row 2: qty · unit price · discount
+          // Row 2: qty · unit price · type badges
           Row(
             children: [
               _chip(Icons.tag_rounded, 'Qty: $qtyStr'),
               SizedBox(width: 8.w),
               _chip(Icons.sell_rounded,
                   'Rs. ${item.unitPrice.toStringAsFixed(2)} / pack'),
-              if (item.discountRate > 0) ...[
+              if (item.billingItemType == 'Return') ...[
+                SizedBox(width: 8.w),
+                _returnTypeChip(item.returnType ?? 'Return'),
+              ] else if (item.discountRate > 0) ...[
                 SizedBox(width: 8.w),
                 _discountChip(item.discountRate, _discountAmount),
               ],
@@ -624,6 +627,32 @@ class _ItemRow extends StatelessWidget {
               fontSize: 11.sp, color: AppColors.foregroundMuted),
         ),
       ],
+    );
+  }
+
+  Widget _returnTypeChip(String returnType) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.undo_rounded, size: 9.r, color: AppColors.error),
+          SizedBox(width: 3.w),
+          Text(
+            returnType,
+            style: GoogleFonts.barlow(
+              fontSize: 10.sp,
+              fontWeight: FontWeight.w600,
+              color: AppColors.error,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -892,6 +921,14 @@ class _ActionButton extends StatelessWidget {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+String _billTypeLabel(Bill bill) {
+  final hasSale   = bill.items.any((i) => i.billingItemType == 'Sale');
+  final hasReturn = bill.items.any((i) => i.billingItemType == 'Return');
+  if (hasSale && hasReturn) return 'Mixed';
+  if (hasReturn) return 'Return';
+  return 'Sale';
+}
 
 String _formatDate(DateTime d) {
   String two(int n) => n.toString().padLeft(2, '0');

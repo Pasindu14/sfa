@@ -1,3 +1,5 @@
+using sfa_api.Features.Billings.Enums;
+
 namespace sfa_api.Features.Billings.DTOs;
 
 public record BillingItemDto(
@@ -11,5 +13,8 @@ public record BillingItemDto(
     decimal DiscountAmount,
     decimal TotalPrice,
     bool IsFreeIssue,
+    BillingItemType BillingItemType,
+    ReturnType? ReturnType,
+    DateOnly? ExpireDate,
     int LineNumber
 );

@@ -22,14 +22,28 @@ final class ProductAdded extends CreateBillEvent {
   final double quantity;
   final double unitPrice;
   final double discountRate;
+  final String billingItemType;
+  final String? returnType;
+  final DateTime? expireDate;
   const ProductAdded(
     this.product,
     this.quantity, {
     required this.unitPrice,
     this.discountRate = 0,
+    this.billingItemType = 'Sale',
+    this.returnType,
+    this.expireDate,
   });
   @override
-  List<Object?> get props => [product, quantity, unitPrice, discountRate];
+  List<Object?> get props => [
+        product,
+        quantity,
+        unitPrice,
+        discountRate,
+        billingItemType,
+        returnType,
+        expireDate,
+      ];
 }
 
 final class CartItemQtyChanged extends CreateBillEvent {
@@ -53,6 +67,38 @@ final class CartItemDiscountChanged extends CreateBillEvent {
   const CartItemDiscountChanged(this.lineNumber, this.discountRate);
   @override
   List<Object?> get props => [lineNumber, discountRate];
+}
+
+final class CartItemPriceChanged extends CreateBillEvent {
+  final int lineNumber;
+  final double unitPrice;
+  const CartItemPriceChanged(this.lineNumber, this.unitPrice);
+  @override
+  List<Object?> get props => [lineNumber, unitPrice];
+}
+
+final class CartItemTypeChanged extends CreateBillEvent {
+  final int lineNumber;
+  final String billingItemType; // 'Sale' | 'Return'
+  const CartItemTypeChanged(this.lineNumber, this.billingItemType);
+  @override
+  List<Object?> get props => [lineNumber, billingItemType];
+}
+
+final class CartItemReturnTypeChanged extends CreateBillEvent {
+  final int lineNumber;
+  final String returnType; // 'Damage' | 'Expire' | 'MarketResell'
+  const CartItemReturnTypeChanged(this.lineNumber, this.returnType);
+  @override
+  List<Object?> get props => [lineNumber, returnType];
+}
+
+final class CartItemExpireDateChanged extends CreateBillEvent {
+  final int lineNumber;
+  final DateTime? expireDate;
+  const CartItemExpireDateChanged(this.lineNumber, this.expireDate);
+  @override
+  List<Object?> get props => [lineNumber, expireDate];
 }
 
 final class BillDiscountChanged extends CreateBillEvent {

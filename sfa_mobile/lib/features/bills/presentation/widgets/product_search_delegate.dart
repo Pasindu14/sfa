@@ -12,7 +12,15 @@ import 'package:uswatte/features/bills/presentation/widgets/quantity_dialog.dart
 void showProductSearch(
   BuildContext context, {
   required SearchProductsForBillUseCase searchUseCase,
-  required void Function(ProductWithPrice, double, double, double) onProductAdded,
+  required void Function(
+    ProductWithPrice product,
+    double qty,
+    double unitPrice,
+    double discountRate,
+    String billingItemType,
+    String? returnType,
+    DateTime? expireDate,
+  ) onProductAdded,
   int? pricingStructureId,
 }) {
   Navigator.of(context).push(
@@ -37,6 +45,9 @@ class _ProductSearchPage extends StatefulWidget {
     double qty,
     double unitPrice,
     double discountRate,
+    String billingItemType,
+    String? returnType,
+    DateTime? expireDate,
   ) onProductAdded;
 
   const _ProductSearchPage({
@@ -89,6 +100,9 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
         result.quantity,
         result.unitPrice,
         result.discountRate,
+        result.billingItemType,
+        result.returnType,
+        result.expireDate,
       );
       _controller.clear();
       setState(() {

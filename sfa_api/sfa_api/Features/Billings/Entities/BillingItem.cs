@@ -1,3 +1,4 @@
+using sfa_api.Features.Billings.Enums;
 using sfa_api.Features.Products.Entities;
 
 namespace sfa_api.Features.Billings.Entities;
@@ -9,10 +10,13 @@ public class BillingItem
     public int ProductId { get; set; }
     public decimal Quantity { get; set; }
     public decimal UnitPrice { get; set; }
-    public decimal DiscountRate { get; set; }    // Item-level discount % (0–100), default 0
-    public decimal DiscountAmount { get; set; }  // Quantity × UnitPrice × DiscountRate / 100, stored
-    public decimal TotalPrice { get; set; }      // Quantity × UnitPrice − DiscountAmount, stored
+    public decimal DiscountRate { get; set; }
+    public decimal DiscountAmount { get; set; }
+    public decimal TotalPrice { get; set; }
     public bool IsFreeIssue { get; set; } = false;
+    public BillingItemType BillingItemType { get; set; } = BillingItemType.Sale;
+    public ReturnType? ReturnType { get; set; }
+    public DateOnly? ExpireDate { get; set; }
     public int LineNumber { get; set; }
 
     // Audit
