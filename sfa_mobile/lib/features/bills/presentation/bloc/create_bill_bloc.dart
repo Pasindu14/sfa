@@ -233,7 +233,7 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
       outletId: state.outlet!.id,
       billingDate: today,
       billDiscountRate: state.billDiscountRate,
-      subTotalAmount: state.subTotal,
+      subTotalAmount: state.saleSubTotal,
       billDiscountAmount: state.billDiscountAmount,
       totalAmount: state.total,
       createdAt: now,

@@ -80,6 +80,7 @@ class _QuantitySheetState extends State<_QuantitySheet> {
 
   bool get _hasCasesOption => widget.product.packsPerCase > 1;
   bool get _isReturn => _billingItemType == 'Return';
+  Color get _accentColor => _isReturn ? AppColors.error : AppColors.primary;
 
   double get _packPrice => widget.product.dealerPackPrice ?? 0.0;
   double get _returnPrice =>
@@ -108,6 +109,9 @@ class _QuantitySheetState extends State<_QuantitySheet> {
         _expireDate = null;
         _returnTypeError = null;
         _expireDateError = null;
+      } else {
+        _returnType = 'Damage';
+        _returnTypeError = null;
       }
     });
   }
@@ -170,12 +174,23 @@ class _QuantitySheetState extends State<_QuantitySheet> {
       }
     }
 
-    if (hasError) return;
+    if (hasError) {
+      final msg = _qtyError ?? _returnTypeError ?? _expireDateError ?? _discError;
+      if (msg != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg, style: GoogleFonts.barlow(fontWeight: FontWeight.w600)),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
 
-    final finalQty = _unitType == _UnitType.cases
-        ? qty! * _packsPerCase
-        : qty!;
-
+    final finalQty =
+        _unitType == _UnitType.cases ? qty! * _packsPerCase : qty!;
     final disc = double.tryParse(_discController.text.trim()) ?? 0;
 
     Navigator.of(context).pop(QuantityDialogResult(
@@ -191,22 +206,22 @@ class _QuantitySheetState extends State<_QuantitySheet> {
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
-    return Container(
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
         color: AppColors.background,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
       ),
-      padding: EdgeInsets.only(bottom: bottom),
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 24.h),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Handle ─────────────────────────────────────────────────
-              Center(
-                child: Container(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ── Drag handle + mode accent bar ────────────────────────────────
+          Padding(
+            padding: EdgeInsets.only(top: 10.h),
+            child: Column(
+              children: [
+                Container(
                   width: 36.w,
                   height: 4.h,
                   decoration: BoxDecoration(
@@ -214,454 +229,648 @@ class _QuantitySheetState extends State<_QuantitySheet> {
                     borderRadius: BorderRadius.circular(2.r),
                   ),
                 ),
-              ),
-              SizedBox(height: 16.h),
-
-              // ── Product name + code ─────────────────────────────────────
-              Text(
-                widget.product.itemDescription,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.barlowCondensed(
-                  fontSize: 20.sp,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.foreground,
-                ),
-              ),
-              SizedBox(height: 6.h),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceVariant,
-                  borderRadius: BorderRadius.circular(4.r),
-                ),
-                child: Text(
-                  widget.product.code,
-                  style: GoogleFonts.barlow(
-                    fontSize: 11.sp,
-                    color: AppColors.foregroundMuted,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              SizedBox(height: 20.h),
-
-              // ── Item type: Sale / Return ─────────────────────────────────
-              _sectionLabel('ITEM TYPE'),
-              SizedBox(height: 8.h),
-              Row(
-                children: [
-                  Expanded(
-                    child: _UnitButton(
-                      label: 'Sale',
-                      icon: Icons.sell_rounded,
-                      selected: !_isReturn,
-                      selectedColor: AppColors.primary,
-                      onTap: () => _setItemType('Sale'),
-                    ),
-                  ),
-                  SizedBox(width: 10.w),
-                  Expanded(
-                    child: _UnitButton(
-                      label: 'Return',
-                      icon: Icons.undo_rounded,
-                      selected: _isReturn,
-                      selectedColor: AppColors.error,
-                      onTap: () => _setItemType('Return'),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 16.h),
-
-              // ── Return type chips (only when Return) ─────────────────────
-              if (_isReturn) ...[
-                _sectionLabel('RETURN TYPE'),
-                if (_returnTypeError != null) ...[
-                  SizedBox(height: 4.h),
-                  Text(
-                    _returnTypeError!,
-                    style: GoogleFonts.barlow(
-                        fontSize: 11.sp, color: AppColors.error),
-                  ),
-                ],
                 SizedBox(height: 8.h),
-                Row(
-                  children: [
-                    _ReturnTypeChip(
-                      label: 'Damage',
-                      selected: _returnType == 'Damage',
-                      onTap: () => _setReturnType('Damage'),
-                    ),
-                    SizedBox(width: 10.w),
-                    _ReturnTypeChip(
-                      label: 'Expire',
-                      selected: _returnType == 'Expire',
-                      onTap: () => _setReturnType('Expire'),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 12.h),
-
-                // ── Expire date picker ──────────────────────────────────────
-                if (_returnType == 'Expire') ...[
-                  GestureDetector(
-                    onTap: _pickExpireDate,
-                    child: Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.symmetric(
-                          horizontal: 16.w, vertical: 14.h),
-                      decoration: BoxDecoration(
-                        color: _expireDate != null
-                            ? AppColors.error.withValues(alpha: 0.06)
-                            : AppColors.surface,
-                        borderRadius: BorderRadius.circular(8.r),
-                        border: Border.all(
-                          color: _expireDateError != null
-                              ? AppColors.error
-                              : _expireDate != null
-                                  ? AppColors.error.withValues(alpha: 0.4)
-                                  : AppColors.surfaceVariant,
-                          width: _expireDateError != null ? 1.5 : 1,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.calendar_today_rounded,
-                            size: 14.r,
-                            color: _expireDate != null
-                                ? AppColors.error
-                                : AppColors.foregroundMuted,
-                          ),
-                          SizedBox(width: 10.w),
-                          Expanded(
-                            child: Text(
-                              _expireDate != null
-                                  ? _formatDate(_expireDate!)
-                                  : 'Select expire date',
-                              style: GoogleFonts.barlow(
-                                fontSize: 13.sp,
-                                color: _expireDate != null
-                                    ? AppColors.error
-                                    : AppColors.foregroundMuted,
-                                fontWeight: _expireDate != null
-                                    ? FontWeight.w600
-                                    : FontWeight.w400,
-                              ),
-                            ),
-                          ),
-                          Icon(Icons.chevron_right_rounded,
-                              size: 16.r, color: AppColors.foregroundMuted),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (_expireDateError != null) ...[
-                    SizedBox(height: 4.h),
-                    Text(
-                      _expireDateError!,
-                      style: GoogleFonts.barlow(
-                          fontSize: 11.sp, color: AppColors.error),
-                    ),
-                  ],
-                  SizedBox(height: 16.h),
-                ],
-              ],
-
-              // ── Unit type (Cases / Packets) ──────────────────────────────
-              if (_hasCasesOption) ...[
-                _sectionLabel('UNIT TYPE'),
-                SizedBox(height: 8.h),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _UnitButton(
-                        label: 'Cases',
-                        icon: Icons.inventory_2_rounded,
-                        selected: _unitType == _UnitType.cases,
-                        selectedColor: AppColors.primary,
-                        onTap: () =>
-                            setState(() => _unitType = _UnitType.cases),
-                      ),
-                    ),
-                    SizedBox(width: 10.w),
-                    Expanded(
-                      child: _UnitButton(
-                        label: 'Packets',
-                        icon: Icons.local_mall_rounded,
-                        selected: _unitType == _UnitType.packets,
-                        selectedColor: AppColors.primary,
-                        onTap: () =>
-                            setState(() => _unitType = _UnitType.packets),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 16.h),
-              ],
-
-              // ── Price display (static for Sale, editable for Return) ──────
-              if (_isReturn) ...[
-                TextField(
-                  controller: _priceController,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                  ],
-                  decoration: InputDecoration(
-                    labelText: 'Return Price (per pack)',
-                    prefixText: 'Rs. ',
-                    suffixText: '/ pack',
-                  ),
-                  onChanged: (_) => setState(() {}),
-                ),
-              ] else ...[
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    RichText(
-                      text: TextSpan(
-                        children: [
-                          TextSpan(
-                            text: 'Rs. ${_packPrice.toStringAsFixed(2)}',
-                            style: GoogleFonts.barlowCondensed(
-                              fontSize: 20.sp,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                          TextSpan(
-                            text: ' / pack',
-                            style: GoogleFonts.barlow(
-                              fontSize: 13.sp,
-                              color: AppColors.foregroundMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              if (_unitType == _UnitType.cases && _hasCasesOption) ...[
-                SizedBox(height: 2.h),
-                Text(
-                  '1 case = $_packsPerCase packs',
-                  style: GoogleFonts.barlow(
-                    fontSize: 12.sp,
-                    color: AppColors.foregroundMuted,
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOut,
+                  width: 40.w,
+                  height: 3.h,
+                  decoration: BoxDecoration(
+                    color: _accentColor,
+                    borderRadius: BorderRadius.circular(2.r),
                   ),
                 ),
               ],
-              SizedBox(height: 20.h),
+            ),
+          ),
 
-              // ── Qty + Discount ───────────────────────────────────────────
-              Row(
+          // ── Scrollable body ──────────────────────────────────────────────
+          Flexible(
+            child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w,
+                  bottom > 0 ? bottom + 16.h : 28.h),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    flex: _isReturn ? 1 : 3,
-                    child: TextField(
-                      controller: _qtyController,
-                      autofocus: !_isReturn,
+                  // ── Product header ────────────────────────────────────────
+                  Text(
+                    widget.product.itemDescription,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.barlowCondensed(
+                      fontSize: 22.sp,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.1,
+                      color: AppColors.foreground,
+                    ),
+                  ),
+                  SizedBox(height: 6.h),
+                  Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 8.w, vertical: 3.h),
+                        decoration: BoxDecoration(
+                          color: _accentColor.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(4.r),
+                          border: Border.all(
+                              color: _accentColor.withValues(alpha: 0.25)),
+                        ),
+                        child: Text(
+                          widget.product.code,
+                          style: GoogleFonts.barlow(
+                            fontSize: 11.sp,
+                            color: _accentColor,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: 20.h),
+                  _Divider(),
+                  SizedBox(height: 16.h),
+
+                  // ── Item type toggle ──────────────────────────────────────
+                  _sectionLabel('ITEM TYPE'),
+                  SizedBox(height: 8.h),
+                  _SegmentedTrack(
+                    segments: const [
+                      _Segment('Sale', Icons.sell_rounded),
+                      _Segment('Return', Icons.undo_rounded),
+                    ],
+                    selectedIndex: _isReturn ? 1 : 0,
+                    activeColor: _accentColor,
+                    onChanged: (i) => _setItemType(i == 0 ? 'Sale' : 'Return'),
+                  ),
+
+                  // ── Return type (animated) ────────────────────────────────
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeInOut,
+                    child: _isReturn
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(height: 16.h),
+                              _Divider(),
+                              SizedBox(height: 14.h),
+                              Row(
+                                children: [
+                                  _sectionLabel('RETURN TYPE'),
+                                  if (_returnTypeError != null) ...[
+                                    SizedBox(width: 8.w),
+                                    Text(
+                                      '· ${_returnTypeError!}',
+                                      style: GoogleFonts.barlow(
+                                        fontSize: 11.sp,
+                                        color: AppColors.error,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              SizedBox(height: 10.h),
+                              Row(
+                                children: [
+                                  _ReturnChip(
+                                    label: 'Damage',
+                                    icon: Icons.warning_amber_rounded,
+                                    selected: _returnType == 'Damage',
+                                    onTap: () => _setReturnType('Damage'),
+                                  ),
+                                  SizedBox(width: 10.w),
+                                  _ReturnChip(
+                                    label: 'Expire',
+                                    icon: Icons.event_rounded,
+                                    selected: _returnType == 'Expire',
+                                    onTap: () => _setReturnType('Expire'),
+                                  ),
+                                  SizedBox(width: 10.w),
+                                  _ReturnChip(
+                                    label: 'Resell',
+                                    icon: Icons.storefront_rounded,
+                                    selected: _returnType == 'MarketResell',
+                                    onTap: () => _setReturnType('MarketResell'),
+                                  ),
+                                ],
+                              ),
+
+                              // ── Expire date ───────────────────────────────
+                              AnimatedSize(
+                                duration: const Duration(milliseconds: 200),
+                                curve: Curves.easeInOut,
+                                child: _returnType == 'Expire'
+                                    ? Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          SizedBox(height: 12.h),
+                                          GestureDetector(
+                                            onTap: _pickExpireDate,
+                                            child: AnimatedContainer(
+                                              duration: const Duration(
+                                                  milliseconds: 200),
+                                              padding: EdgeInsets.symmetric(
+                                                  horizontal: 14.w,
+                                                  vertical: 13.h),
+                                              decoration: BoxDecoration(
+                                                color: _expireDate != null
+                                                    ? AppColors.error
+                                                        .withValues(alpha: 0.06)
+                                                    : AppColors.surface,
+                                                borderRadius:
+                                                    BorderRadius.circular(10.r),
+                                                border: Border.all(
+                                                  color: _expireDateError != null
+                                                      ? AppColors.error
+                                                      : _expireDate != null
+                                                          ? AppColors.error
+                                                              .withValues(
+                                                                  alpha: 0.45)
+                                                          : AppColors
+                                                              .surfaceVariant,
+                                                  width: 1.5,
+                                                ),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Container(
+                                                    width: 28.r,
+                                                    height: 28.r,
+                                                    decoration: BoxDecoration(
+                                                      color: _expireDate != null
+                                                          ? AppColors.error
+                                                              .withValues(
+                                                                  alpha: 0.12)
+                                                          : AppColors
+                                                              .surfaceVariant,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              7.r),
+                                                    ),
+                                                    child: Icon(
+                                                      Icons
+                                                          .calendar_today_rounded,
+                                                      size: 14.r,
+                                                      color: _expireDate != null
+                                                          ? AppColors.error
+                                                          : AppColors
+                                                              .foregroundMuted,
+                                                    ),
+                                                  ),
+                                                  SizedBox(width: 12.w),
+                                                  Expanded(
+                                                    child: Text(
+                                                      _expireDate != null
+                                                          ? _formatDate(
+                                                              _expireDate!)
+                                                          : 'Select expire date',
+                                                      style: GoogleFonts.barlow(
+                                                        fontSize: 13.sp,
+                                                        color: _expireDate !=
+                                                                null
+                                                            ? AppColors.error
+                                                            : AppColors
+                                                                .foregroundMuted,
+                                                        fontWeight:
+                                                            _expireDate != null
+                                                                ? FontWeight.w600
+                                                                : FontWeight.w400,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  Icon(
+                                                    Icons
+                                                        .chevron_right_rounded,
+                                                    size: 18.r,
+                                                    color: _expireDate != null
+                                                        ? AppColors.error
+                                                            .withValues(
+                                                                alpha: 0.5)
+                                                        : AppColors
+                                                            .foregroundMuted,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                          if (_expireDateError != null)
+                                            Padding(
+                                              padding: EdgeInsets.only(
+                                                  top: 4.h, left: 4.w),
+                                              child: Text(
+                                                _expireDateError!,
+                                                style: GoogleFonts.barlow(
+                                                    fontSize: 11.sp,
+                                                    color: AppColors.error),
+                                              ),
+                                            ),
+                                        ],
+                                      )
+                                    : const SizedBox.shrink(),
+                              ),
+                            ],
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+
+                  SizedBox(height: 16.h),
+                  _Divider(),
+                  SizedBox(height: 16.h),
+
+                  // ── Unit type (Cases / Packets) ───────────────────────────
+                  if (_hasCasesOption) ...[
+                    _sectionLabel('UNIT TYPE'),
+                    SizedBox(height: 8.h),
+                    _SegmentedTrack(
+                      segments: const [
+                        _Segment('Cases', Icons.inventory_2_rounded),
+                        _Segment('Packets', Icons.local_mall_rounded),
+                      ],
+                      selectedIndex:
+                          _unitType == _UnitType.cases ? 0 : 1,
+                      activeColor: AppColors.primary,
+                      onChanged: (i) => setState(() =>
+                          _unitType = i == 0
+                              ? _UnitType.cases
+                              : _UnitType.packets),
+                    ),
+                    SizedBox(height: 16.h),
+                  ],
+
+                  // ── Price ─────────────────────────────────────────────────
+                  if (_isReturn) ...[
+                    _sectionLabel('RETURN PRICE'),
+                    SizedBox(height: 8.h),
+                    TextField(
+                      controller: _priceController,
                       keyboardType:
                           const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [
                         FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                       ],
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 20.sp,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.foreground,
+                      ),
                       decoration: InputDecoration(
-                        labelText: 'Quantity',
-                        hintText: _unitType == _UnitType.cases
-                            ? '# cases'
-                            : '# packs',
-                        errorText: _qtyError,
+                        prefixText: 'Rs. ',
+                        prefixStyle: GoogleFonts.barlow(
+                          fontSize: 14.sp,
+                          color: AppColors.foregroundMuted,
+                        ),
+                        suffixText: '/ pack',
+                        suffixStyle: GoogleFonts.barlow(
+                          fontSize: 12.sp,
+                          color: AppColors.foregroundMuted,
+                        ),
                       ),
                       onChanged: (_) => setState(() {}),
-                      onSubmitted: (_) => _submit(),
                     ),
-                  ),
-                  if (!_isReturn) ...[
-                    SizedBox(width: 12.w),
-                    Expanded(
-                      flex: 2,
-                      child: TextField(
-                        controller: _discController,
-                        keyboardType:
-                            const TextInputType.numberWithOptions(decimal: true),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                        ],
-                        decoration: InputDecoration(
-                          labelText: 'Discount',
-                          hintText: '0',
-                          suffixText: '%',
-                          errorText: _discError,
+                  ] else ...[
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          'Rs.',
+                          style: GoogleFonts.barlow(
+                            fontSize: 14.sp,
+                            color: AppColors.foregroundMuted,
+                          ),
                         ),
-                        onChanged: (_) => setState(() {}),
-                        onSubmitted: (_) => _submit(),
-                      ),
+                        SizedBox(width: 4.w),
+                        Text(
+                          _packPrice.toStringAsFixed(2),
+                          style: GoogleFonts.barlowCondensed(
+                            fontSize: 26.sp,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        SizedBox(width: 4.w),
+                        Text(
+                          '/ pack',
+                          style: GoogleFonts.barlow(
+                            fontSize: 12.sp,
+                            color: AppColors.foregroundMuted,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
-                ],
-              ),
-              if (_unitType == _UnitType.cases &&
-                  _enteredQty > 0 &&
-                  _hasCasesOption) ...[
-                SizedBox(height: 6.h),
-                Text(
-                  '= ${(_enteredQty * _packsPerCase).toStringAsFixed(0)} packs total',
-                  style: GoogleFonts.barlow(
-                    fontSize: 12.sp,
-                    color: AppColors.foregroundMuted,
-                  ),
-                ),
-              ],
-              SizedBox(height: 16.h),
-
-              // ── Line total ───────────────────────────────────────────────
-              Container(
-                width: double.infinity,
-                padding:
-                    EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
-                decoration: BoxDecoration(
-                  color: _isReturn
-                      ? AppColors.error.withValues(alpha: 0.06)
-                      : AppColors.surface,
-                  borderRadius: BorderRadius.circular(8.r),
-                  border: Border.all(
-                    color: _isReturn
-                        ? AppColors.error.withValues(alpha: 0.25)
-                        : AppColors.surfaceVariant,
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
+                  if (_unitType == _UnitType.cases && _hasCasesOption) ...[
+                    SizedBox(height: 4.h),
                     Text(
-                      'Line Total',
+                      '1 case = $_packsPerCase packs',
                       style: GoogleFonts.barlow(
-                        fontSize: 13.sp,
+                        fontSize: 11.sp,
                         color: AppColors.foregroundMuted,
                       ),
                     ),
+                  ],
+
+                  SizedBox(height: 18.h),
+
+                  // ── Quantity + Discount ───────────────────────────────────
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: _isReturn ? 1 : 3,
+                        child: TextField(
+                          controller: _qtyController,
+                          autofocus: !_isReturn,
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                                RegExp(r'[0-9.]')),
+                          ],
+                          decoration: InputDecoration(
+                            labelText: 'Quantity',
+                            hintText: _unitType == _UnitType.cases
+                                ? '# cases'
+                                : '# packs',
+                            errorText: _qtyError,
+                          ),
+                          onChanged: (_) => setState(() {}),
+                          onSubmitted: (_) => _submit(),
+                        ),
+                      ),
+                      if (!_isReturn) ...[
+                        SizedBox(width: 12.w),
+                        Expanded(
+                          flex: 2,
+                          child: TextField(
+                            controller: _discController,
+                            keyboardType:
+                                const TextInputType.numberWithOptions(
+                                    decimal: true),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                  RegExp(r'[0-9.]')),
+                            ],
+                            decoration: InputDecoration(
+                              labelText: 'Discount',
+                              hintText: '0',
+                              suffixText: '%',
+                              errorText: _discError,
+                            ),
+                            onChanged: (_) => setState(() {}),
+                            onSubmitted: (_) => _submit(),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (_unitType == _UnitType.cases &&
+                      _enteredQty > 0 &&
+                      _hasCasesOption) ...[
+                    SizedBox(height: 5.h),
                     Text(
-                      _isReturn
-                          ? '−Rs. ${_lineTotal.toStringAsFixed(2)}'
-                          : 'Rs. ${_lineTotal.toStringAsFixed(2)}',
-                      style: GoogleFonts.barlowCondensed(
-                        fontSize: 20.sp,
-                        fontWeight: FontWeight.w800,
-                        color: _isReturn
-                            ? AppColors.error
-                            : (_enteredDisc > 0
-                                ? AppColors.success
-                                : AppColors.foreground),
+                      '= ${(_enteredQty * _packsPerCase).toStringAsFixed(0)} packs total',
+                      style: GoogleFonts.barlow(
+                        fontSize: 11.sp,
+                        color: AppColors.foregroundMuted,
                       ),
                     ),
                   ],
-                ),
-              ),
-              SizedBox(height: 20.h),
 
-              // ── Cancel / Add to Cart ─────────────────────────────────────
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
+                  SizedBox(height: 18.h),
+
+                  // ── Line total — dark premium card ────────────────────────
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(
+                        horizontal: 18.w, vertical: 16.h),
+                    decoration: BoxDecoration(
+                      color: AppColors.darkSurface,
+                      borderRadius: BorderRadius.circular(14.r),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'LINE TOTAL',
+                              style: GoogleFonts.barlowCondensed(
+                                fontSize: 10.sp,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1.5,
+                                color: Colors.white.withValues(alpha: 0.40),
+                              ),
+                            ),
+                            SizedBox(height: 2.h),
+                            Text(
+                              _isReturn ? 'Credit to distributor' : 'Charged to outlet',
+                              style: GoogleFonts.barlow(
+                                fontSize: 11.sp,
+                                color: Colors.white.withValues(alpha: 0.30),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          _isReturn
+                              ? '−Rs. ${_lineTotal.toStringAsFixed(2)}'
+                              : 'Rs. ${_lineTotal.toStringAsFixed(2)}',
+                          style: GoogleFonts.barlowCondensed(
+                            fontSize: 24.sp,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
+                            color: _isReturn
+                                ? AppColors.error
+                                : (_enteredDisc > 0
+                                    ? AppColors.success
+                                    : AppColors.amber),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  SizedBox(width: 12.w),
-                  Expanded(
-                    flex: 2,
-                    child: FilledButton(
-                      onPressed: _submit,
-                      style: _isReturn
-                          ? FilledButton.styleFrom(
-                              backgroundColor: AppColors.error)
-                          : null,
-                      child: Text(_isReturn ? 'Add Return' : 'Add to Cart'),
-                    ),
+
+                  SizedBox(height: 16.h),
+
+                  // ── Action buttons ────────────────────────────────────────
+                  Row(
+                    children: [
+                      SizedBox(
+                        height: 50.h,
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          style: OutlinedButton.styleFrom(
+                            padding: EdgeInsets.symmetric(horizontal: 20.w),
+                            side: BorderSide(color: AppColors.surfaceVariant, width: 1.5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            foregroundColor: AppColors.foregroundMuted,
+                          ),
+                          child: Text(
+                            'Cancel',
+                            style: GoogleFonts.barlow(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12.w),
+                      Expanded(
+                        child: SizedBox(
+                          height: 50.h,
+                          child: FilledButton(
+                            onPressed: _submit,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: _accentColor,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  _isReturn
+                                      ? Icons.undo_rounded
+                                      : Icons.add_shopping_cart_rounded,
+                                  size: 16.r,
+                                  color: Colors.white,
+                                ),
+                                SizedBox(width: 8.w),
+                                Text(
+                                  _isReturn ? 'Add Return' : 'Add to Cart',
+                                  style: GoogleFonts.barlowCondensed(
+                                    fontSize: 16.sp,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.5,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
   Widget _sectionLabel(String text) => Text(
         text,
-        style: GoogleFonts.barlow(
-          fontSize: 11.sp,
+        style: GoogleFonts.barlowCondensed(
+          fontSize: 10.sp,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.8,
           color: AppColors.foregroundMuted,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.8,
         ),
       );
 
   String _formatDate(DateTime d) =>
-      '${d.day.toString().padLeft(2, '0')}/'
-      '${d.month.toString().padLeft(2, '0')}/'
+      '${d.day.toString().padLeft(2, '0')} / '
+      '${d.month.toString().padLeft(2, '0')} / '
       '${d.year}';
 }
 
-// ── Sale/Return unit button ────────────────────────────────────────────────────
+// ── Segmented track control ───────────────────────────────────────────────────
 
-class _UnitButton extends StatelessWidget {
+class _Segment {
   final String label;
   final IconData icon;
-  final bool selected;
-  final Color selectedColor;
-  final VoidCallback onTap;
+  const _Segment(this.label, this.icon);
+}
 
-  const _UnitButton({
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.selectedColor,
-    required this.onTap,
+class _SegmentedTrack extends StatelessWidget {
+  final List<_Segment> segments;
+  final int selectedIndex;
+  final Color activeColor;
+  final ValueChanged<int> onChanged;
+
+  const _SegmentedTrack({
+    required this.segments,
+    required this.selectedIndex,
+    required this.activeColor,
+    required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: selected ? null : onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: EdgeInsets.symmetric(vertical: 11.h),
-        decoration: BoxDecoration(
-          color: selected ? selectedColor : AppColors.surface,
-          borderRadius: BorderRadius.circular(8.r),
-          border: Border.all(
-            color: selected ? selectedColor : AppColors.surfaceVariant,
-            width: 1.5,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 15.r,
-              color: selected ? AppColors.onPrimary : AppColors.foregroundMuted,
-            ),
-            SizedBox(width: 6.w),
-            Text(
-              label,
-              style: GoogleFonts.barlow(
-                fontSize: 13.sp,
-                fontWeight: FontWeight.w600,
-                color: selected ? AppColors.onPrimary : AppColors.foreground,
+    return Container(
+      height: 46.h,
+      padding: EdgeInsets.all(3.r),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(11.r),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: segments.asMap().entries.map((entry) {
+          final i = entry.key;
+          final seg = entry.value;
+          final isActive = selectedIndex == i;
+          return Expanded(
+            child: GestureDetector(
+              onTap: isActive ? null : () => onChanged(i),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? activeColor.withValues(alpha: 0.12)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8.r),
+                  border: isActive
+                      ? Border.all(
+                          color: activeColor.withValues(alpha: 0.35), width: 1)
+                      : null,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      seg.icon,
+                      size: 14.r,
+                      color: isActive
+                          ? activeColor
+                          : AppColors.foregroundMuted,
+                    ),
+                    SizedBox(width: 5.w),
+                    Text(
+                      seg.label,
+                      style: GoogleFonts.barlow(
+                        fontSize: 13.sp,
+                        fontWeight:
+                            isActive ? FontWeight.w700 : FontWeight.w500,
+                        color: isActive
+                            ? activeColor
+                            : AppColors.foregroundMuted,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ],
-        ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -669,13 +878,15 @@ class _UnitButton extends StatelessWidget {
 
 // ── Return type chip ──────────────────────────────────────────────────────────
 
-class _ReturnTypeChip extends StatelessWidget {
+class _ReturnChip extends StatelessWidget {
   final String label;
+  final IconData icon;
   final bool selected;
   final VoidCallback onTap;
 
-  const _ReturnTypeChip({
+  const _ReturnChip({
     required this.label,
+    required this.icon,
     required this.selected,
     required this.onTap,
   });
@@ -686,32 +897,53 @@ class _ReturnTypeChip extends StatelessWidget {
       child: GestureDetector(
         onTap: selected ? null : onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: EdgeInsets.symmetric(vertical: 11.h),
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          padding: EdgeInsets.symmetric(vertical: 12.h),
           decoration: BoxDecoration(
             color: selected
                 ? AppColors.error.withValues(alpha: 0.10)
                 : AppColors.surface,
-            borderRadius: BorderRadius.circular(8.r),
+            borderRadius: BorderRadius.circular(10.r),
             border: Border.all(
               color: selected
-                  ? AppColors.error
+                  ? AppColors.error.withValues(alpha: 0.55)
                   : AppColors.surfaceVariant,
-              width: selected ? 1.5 : 1,
+              width: 1.5,
             ),
           ),
-          child: Center(
-            child: Text(
-              label,
-              style: GoogleFonts.barlow(
-                fontSize: 13.sp,
-                fontWeight: FontWeight.w600,
-                color: selected ? AppColors.error : AppColors.foreground,
+          child: Column(
+            children: [
+              Icon(
+                icon,
+                size: 18.r,
+                color: selected ? AppColors.error : AppColors.foregroundMuted,
               ),
-            ),
+              SizedBox(height: 4.h),
+              Text(
+                label,
+                style: GoogleFonts.barlowCondensed(
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.3,
+                  color: selected ? AppColors.error : AppColors.foreground,
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
+}
+
+// ── Thin section divider ──────────────────────────────────────────────────────
+
+class _Divider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Divider(
+        height: 1,
+        thickness: 1,
+        color: AppColors.surfaceVariant,
+      );
 }

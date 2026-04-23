@@ -36,6 +36,7 @@ class CartRow extends StatelessWidget {
 
   double get _gross => line.quantity * line.unitPrice;
   double get _discountAmount => _gross * line.discountRate / 100;
+  Color get _accentColor => line.isReturn ? AppColors.error : AppColors.success;
 
   @override
   Widget build(BuildContext context) {
@@ -49,8 +50,34 @@ class CartRow extends StatelessWidget {
         child: Icon(Icons.delete_rounded, color: Colors.white, size: 18.r),
       ),
       onDismissed: (_) => onRemoved(),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(2.w, 8.h, 2.w, 8.h),
+      child: Container(
+        margin: EdgeInsets.symmetric(vertical: 4.h),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10.r),
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            stops: const [0.0, 0.35, 1.0],
+            colors: [
+              _accentColor.withValues(alpha: 0.13),
+              _accentColor.withValues(alpha: 0.05),
+              _accentColor.withValues(alpha: 0.01),
+            ],
+          ),
+          border: Border.all(
+            color: _accentColor.withValues(alpha: 0.28),
+            width: 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: _accentColor.withValues(alpha: 0.18),
+              blurRadius: 12.r,
+              spreadRadius: -2,
+              offset: Offset(0, 4.h),
+            ),
+          ],
+        ),
+        padding: EdgeInsets.fromLTRB(8.w, 8.h, 6.w, 8.h),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

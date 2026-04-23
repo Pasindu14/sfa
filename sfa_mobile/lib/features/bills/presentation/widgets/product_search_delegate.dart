@@ -25,7 +25,9 @@ void showProductSearch(
 }) {
   Navigator.of(context).push(
     PageRouteBuilder<void>(
+      opaque: false,
       transitionDuration: const Duration(milliseconds: 300),
+      reverseTransitionDuration: const Duration(milliseconds: 220),
       pageBuilder: (_, __, ___) => _ProductSearchPage(
         searchUseCase: searchUseCase,
         onProductAdded: onProductAdded,

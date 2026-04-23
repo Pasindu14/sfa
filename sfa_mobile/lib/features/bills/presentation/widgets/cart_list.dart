@@ -140,15 +140,41 @@ class _CartListState extends State<CartList> {
                             color: Colors.white.withValues(alpha: 0.50),
                           ),
                         ),
-                        Text(
-                          'Rs. ${state.total.toStringAsFixed(2)}',
-                          style: GoogleFonts.barlowCondensed(
-                            fontSize: 18.sp,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.3,
-                            color: AppColors.amber,
+                        if (state.hasReturns)
+                          Row(
+                            children: [
+                              Text(
+                                'Rs. ${state.saleSubTotal.toStringAsFixed(2)}',
+                                style: GoogleFonts.barlowCondensed(
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white.withValues(alpha: 0.50),
+                                  decoration: TextDecoration.lineThrough,
+                                  decorationColor: Colors.white.withValues(alpha: 0.30),
+                                ),
+                              ),
+                              SizedBox(width: 6.w),
+                              Text(
+                                'Rs. ${state.total.toStringAsFixed(2)}',
+                                style: GoogleFonts.barlowCondensed(
+                                  fontSize: 18.sp,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -0.3,
+                                  color: AppColors.amber,
+                                ),
+                              ),
+                            ],
+                          )
+                        else
+                          Text(
+                            'Rs. ${state.total.toStringAsFixed(2)}',
+                            style: GoogleFonts.barlowCondensed(
+                              fontSize: 18.sp,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.3,
+                              color: AppColors.amber,
+                            ),
                           ),
-                        ),
                       ],
                     )
                   : Text(
@@ -238,14 +264,31 @@ class _CartListState extends State<CartList> {
                   ),
                 ),
                 const Spacer(),
-                Text(
-                  'Rs. ${state.total.toStringAsFixed(2)}',
-                  style: GoogleFonts.barlowCondensed(
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.3,
-                    color: AppColors.amber,
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (state.hasReturns)
+                      Text(
+                        'Rs. ${state.saleSubTotal.toStringAsFixed(2)}',
+                        style: GoogleFonts.barlowCondensed(
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withValues(alpha: 0.40),
+                          decoration: TextDecoration.lineThrough,
+                          decorationColor: Colors.white.withValues(alpha: 0.25),
+                        ),
+                      ),
+                    Text(
+                      'Rs. ${state.total.toStringAsFixed(2)}',
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 18.sp,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.3,
+                        color: AppColors.amber,
+                      ),
+                    ),
+                  ],
                 ),
                 SizedBox(width: 8.w),
                 Container(
@@ -272,10 +315,7 @@ class _CartListState extends State<CartList> {
               shrinkWrap: true,
               padding: EdgeInsets.zero,
               itemCount: state.cart.length,
-              separatorBuilder: (_, __) => Divider(
-                height: 1,
-                color: Colors.white.withValues(alpha: 0.08),
-              ),
+              separatorBuilder: (_, __) => SizedBox(height: 2.h),
               itemBuilder: (ctx, i) {
                 final line = state.cart[i];
                 return CartRow(
@@ -310,28 +350,33 @@ class _CartListState extends State<CartList> {
           Divider(color: Colors.white.withValues(alpha: 0.10), height: 1),
           SizedBox(height: 10.h),
 
-          // Total
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'TOTAL',
-                style: GoogleFonts.barlowCondensed(
-                  fontSize: 11.sp,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.2,
-                  color: Colors.white.withValues(alpha: 0.45),
-                ),
+          // Total breakdown
+          if (state.hasReturns) ...[
+            _TotalRow(
+              label: 'SALES',
+              value: 'Rs. ${state.saleSubTotal.toStringAsFixed(2)}',
+              valueColor: Colors.white.withValues(alpha: 0.70),
+            ),
+            if (state.billDiscountRate > 0)
+              _TotalRow(
+                label: 'DISCOUNT',
+                value: '−Rs. ${state.billDiscountAmount.toStringAsFixed(2)}',
+                valueColor: AppColors.success,
               ),
-              Text(
-                'Rs. ${state.total.toStringAsFixed(2)}',
-                style: GoogleFonts.barlowCondensed(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                ),
-              ),
-            ],
+            _TotalRow(
+              label: 'RETURNS',
+              value: '−Rs. ${state.returnTotal.toStringAsFixed(2)}',
+              valueColor: AppColors.error,
+            ),
+            SizedBox(height: 6.h),
+            Divider(color: Colors.white.withValues(alpha: 0.10), height: 1),
+            SizedBox(height: 6.h),
+          ],
+          _TotalRow(
+            label: 'NET TOTAL',
+            value: 'Rs. ${state.total.toStringAsFixed(2)}',
+            valueColor: Colors.white,
+            large: true,
           ),
 
           SizedBox(height: 14.h),
@@ -339,6 +384,48 @@ class _CartListState extends State<CartList> {
           _CtaButton(state: state),
         ],
       ),
+    );
+  }
+}
+
+// ── Total row helper ──────────────────────────────────────────────────────────
+
+class _TotalRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color valueColor;
+  final bool large;
+
+  const _TotalRow({
+    required this.label,
+    required this.value,
+    required this.valueColor,
+    this.large = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.barlowCondensed(
+            fontSize: large ? 12.sp : 10.sp,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 1.2,
+            color: Colors.white.withValues(alpha: large ? 0.55 : 0.40),
+          ),
+        ),
+        Text(
+          value,
+          style: GoogleFonts.barlowCondensed(
+            fontSize: large ? 18.sp : 13.sp,
+            fontWeight: large ? FontWeight.w800 : FontWeight.w600,
+            color: valueColor,
+          ),
+        ),
+      ],
     );
   }
 }

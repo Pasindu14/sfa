@@ -93,9 +93,11 @@ class CreateBillState extends Equatable {
     this.submittedClientBillId,
   });
 
-  double get subTotal => cart.fold<double>(0, (s, l) => s + l.lineTotal);
-  double get billDiscountAmount => subTotal * billDiscountRate / 100.0;
-  double get total => subTotal - billDiscountAmount;
+  double get saleSubTotal => cart.where((l) => !l.isReturn).fold<double>(0, (s, l) => s + l.lineTotal);
+  double get returnTotal  => cart.where((l) =>  l.isReturn).fold<double>(0, (s, l) => s + l.lineTotal);
+  double get billDiscountAmount => saleSubTotal * billDiscountRate / 100.0;
+  double get total => saleSubTotal - billDiscountAmount - returnTotal;
+  bool   get hasReturns => cart.any((l) => l.isReturn);
 
   bool get canSubmit =>
       outlet != null &&
