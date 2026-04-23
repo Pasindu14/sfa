@@ -16,6 +16,8 @@ class NotBillingsRepositoryImpl implements NotBillingsRepository {
     final model = NotBillingModel(
       clientNotBillingId: record.clientNotBillingId,
       outletId: record.outletId,
+      outletName: record.outletName,
+      routeName: record.routeName,
       notBillingDate: record.notBillingDate,
       reason: record.reason,
       notes: record.notes,

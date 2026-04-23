@@ -4,6 +4,7 @@ import 'package:uswatte/features/not_billings/domain/entities/not_billing_reason
 class CreateNotBillingState extends Equatable {
   final int? outletId;
   final String? outletName;
+  final String? routeName;
   final NotBillingReason? reason;
   final String? notes;
   final bool submitting;
@@ -13,6 +14,7 @@ class CreateNotBillingState extends Equatable {
   const CreateNotBillingState({
     this.outletId,
     this.outletName,
+    this.routeName,
     this.reason,
     this.notes,
     this.submitting = false,
@@ -25,6 +27,7 @@ class CreateNotBillingState extends Equatable {
   CreateNotBillingState copyWith({
     int? outletId,
     String? outletName,
+    String? routeName,
     NotBillingReason? reason,
     String? notes,
     bool? submitting,
@@ -36,6 +39,7 @@ class CreateNotBillingState extends Equatable {
       CreateNotBillingState(
         outletId: outletId ?? this.outletId,
         outletName: outletName ?? this.outletName,
+        routeName: routeName ?? this.routeName,
         reason: reason ?? this.reason,
         notes: notes ?? this.notes,
         submitting: submitting ?? this.submitting,
@@ -47,6 +51,7 @@ class CreateNotBillingState extends Equatable {
   List<Object?> get props => [
         outletId,
         outletName,
+        routeName,
         reason,
         notes,
         submitting,

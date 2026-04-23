@@ -146,6 +146,7 @@ class _CreateNotBillingPageState extends State<CreateNotBillingPage> {
                                   OutletSelectedForNotBilling(
                                     outletId: outlet.id,
                                     outletName: outlet.name,
+                                    routeName: outlet.routeName,
                                   ),
                                 );
                           },

@@ -5,6 +5,8 @@ import 'package:uswatte/features/not_billings/domain/entities/not_billing_reason
 class NotBillingModel {
   final String clientNotBillingId;
   final int outletId;
+  final String? outletName;
+  final String? routeName;
   final DateTime notBillingDate;
   final NotBillingReason reason;
   final String? notes;
@@ -19,6 +21,8 @@ class NotBillingModel {
   const NotBillingModel({
     required this.clientNotBillingId,
     required this.outletId,
+    this.outletName,
+    this.routeName,
     required this.notBillingDate,
     required this.reason,
     this.notes,
@@ -34,6 +38,8 @@ class NotBillingModel {
   factory NotBillingModel.fromMap(Map<String, dynamic> map) => NotBillingModel(
         clientNotBillingId: map['client_not_billing_id'] as String,
         outletId: map['outlet_id'] as int,
+        outletName: map['outlet_name'] as String?,
+        routeName: map['route_name'] as String?,
         notBillingDate: DateTime.parse(map['not_billing_date'] as String),
         reason: NotBillingReason.fromApi(map['reason'] as String),
         notes: map['notes'] as String?,
@@ -49,6 +55,8 @@ class NotBillingModel {
   Map<String, dynamic> toMap() => {
         'client_not_billing_id': clientNotBillingId,
         'outlet_id': outletId,
+        'outlet_name': outletName,
+        'route_name': routeName,
         'not_billing_date': _dateOnly(notBillingDate),
         'reason': reason.apiValue,
         'notes': notes,
@@ -71,6 +79,8 @@ class NotBillingModel {
   NotBilling toEntity() => NotBilling(
         clientNotBillingId: clientNotBillingId,
         outletId: outletId,
+        outletName: outletName,
+        routeName: routeName,
         notBillingDate: notBillingDate,
         reason: reason,
         notes: notes,
@@ -84,6 +94,8 @@ class NotBillingModel {
       );
 
   NotBillingModel copyWith({
+    String? outletName,
+    String? routeName,
     SyncStatus? syncStatus,
     int? syncAttempts,
     String? lastSyncError,
@@ -94,6 +106,8 @@ class NotBillingModel {
       NotBillingModel(
         clientNotBillingId: clientNotBillingId,
         outletId: outletId,
+        outletName: outletName ?? this.outletName,
+        routeName: routeName ?? this.routeName,
         notBillingDate: notBillingDate,
         reason: reason,
         notes: notes,

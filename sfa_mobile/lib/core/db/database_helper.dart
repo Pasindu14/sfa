@@ -6,7 +6,7 @@ import 'package:sqflite/sqflite.dart';
 /// [onUpgrade] when schema changes.
 class DatabaseHelper {
   static const _dbName = 'sfa_local.db';
-  static const _dbVersion = 7;
+  static const _dbVersion = 8;
 
   DatabaseHelper._private();
   static final DatabaseHelper instance = DatabaseHelper._private();
@@ -63,6 +63,7 @@ class DatabaseHelper {
     if (oldVersion < 5) await _createBillsTables(db);
     if (oldVersion < 6) await _migrateBillItemsV6(db);
     if (oldVersion < 7) await _createNotBillingsTable(db);
+    if (oldVersion < 8) await _migrateNotBillingsV8(db);
   }
 
   Future<void> _createPricingStructuresTable(Database db) async {
@@ -155,6 +156,8 @@ class DatabaseHelper {
       CREATE TABLE not_billings (
         client_not_billing_id  TEXT    PRIMARY KEY,
         outlet_id              INTEGER NOT NULL,
+        outlet_name            TEXT,
+        route_name             TEXT,
         not_billing_date       TEXT    NOT NULL,
         reason                 TEXT    NOT NULL,
         notes                  TEXT,
@@ -169,6 +172,11 @@ class DatabaseHelper {
     ''');
     await db.execute('CREATE INDEX idx_not_billings_sync_status ON not_billings(sync_status)');
     await db.execute('CREATE INDEX idx_not_billings_outlet ON not_billings(outlet_id)');
+  }
+
+  Future<void> _migrateNotBillingsV8(Database db) async {
+    await db.execute('ALTER TABLE not_billings ADD COLUMN outlet_name TEXT');
+    await db.execute('ALTER TABLE not_billings ADD COLUMN route_name TEXT');
   }
 
   Future<void> _createDailyOutletsTable(Database db) async {

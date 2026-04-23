@@ -7,6 +7,8 @@ import 'package:uswatte/features/not_billings/domain/entities/not_billing_reason
 class NotBilling extends Equatable {
   final String clientNotBillingId;
   final int outletId;
+  final String? outletName;
+  final String? routeName;
   final DateTime notBillingDate;
   final NotBillingReason reason;
   final String? notes;
@@ -21,6 +23,8 @@ class NotBilling extends Equatable {
   const NotBilling({
     required this.clientNotBillingId,
     required this.outletId,
+    this.outletName,
+    this.routeName,
     required this.notBillingDate,
     required this.reason,
     this.notes,
@@ -37,6 +41,8 @@ class NotBilling extends Equatable {
   List<Object?> get props => [
         clientNotBillingId,
         outletId,
+        outletName,
+        routeName,
         notBillingDate,
         reason,
         notes,

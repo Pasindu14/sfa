@@ -29,6 +29,7 @@ class CreateNotBillingBloc
     emit(state.copyWith(
       outletId: e.outletId,
       outletName: e.outletName,
+      routeName: e.routeName,
       clearError: true,
     ));
   }
@@ -56,6 +57,8 @@ class CreateNotBillingBloc
       final record = NotBilling(
         clientNotBillingId: clientId,
         outletId: state.outletId!,
+        outletName: state.outletName,
+        routeName: state.routeName,
         notBillingDate: DateTime(now.year, now.month, now.day),
         reason: state.reason!,
         notes: state.notes?.trim().isEmpty == true ? null : state.notes?.trim(),

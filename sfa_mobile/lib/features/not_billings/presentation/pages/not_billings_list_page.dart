@@ -269,18 +269,22 @@ class _NotBillingCard extends StatelessWidget {
             ),
             SizedBox(height: 6.h),
             Text(
-              record.reason.displayLabel,
+              record.outletName ?? 'Outlet #${record.outletId}',
               style: GoogleFonts.barlowCondensed(
                 fontSize: 13.sp,
                 fontWeight: FontWeight.w600,
-                color: AppColors.foregroundMuted,
+                color: AppColors.foreground,
               ),
             ),
             SizedBox(height: 2.h),
             Text(
-              '${record.notBillingDate.day.toString().padLeft(2, '0')}/'
-              '${record.notBillingDate.month.toString().padLeft(2, '0')}/'
-              '${record.notBillingDate.year}  ·  Outlet #${record.outletId}',
+              [
+                '${record.notBillingDate.day.toString().padLeft(2, '0')}/'
+                    '${record.notBillingDate.month.toString().padLeft(2, '0')}/'
+                    '${record.notBillingDate.year}',
+                if (record.routeName != null) record.routeName!,
+                record.reason.displayLabel,
+              ].join('  ·  '),
               style: GoogleFonts.barlow(
                 fontSize: 11.sp,
                 color: AppColors.foregroundMuted,

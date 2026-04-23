@@ -10,9 +10,14 @@ sealed class CreateNotBillingEvent extends Equatable {
 final class OutletSelectedForNotBilling extends CreateNotBillingEvent {
   final int outletId;
   final String outletName;
-  const OutletSelectedForNotBilling({required this.outletId, required this.outletName});
+  final String routeName;
+  const OutletSelectedForNotBilling({
+    required this.outletId,
+    required this.outletName,
+    required this.routeName,
+  });
   @override
-  List<Object?> get props => [outletId, outletName];
+  List<Object?> get props => [outletId, outletName, routeName];
 }
 
 final class NotBillingReasonSelected extends CreateNotBillingEvent {

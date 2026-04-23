@@ -137,8 +137,12 @@ class _DetailBody extends StatelessWidget {
           SizedBox(height: 16.h),
 
           _InfoCard(children: [
-            _InfoRow('Outlet ID', '#${record.outletId}'),
-            _InfoRow('Date', '${record.notBillingDate.day.toString().padLeft(2, '0')}/'
+            _InfoRow('Outlet',
+                record.outletName ?? 'Outlet #${record.outletId}'),
+            if (record.routeName != null)
+              _InfoRow('Route', record.routeName!),
+            _InfoRow('Date',
+                '${record.notBillingDate.day.toString().padLeft(2, '0')}/'
                 '${record.notBillingDate.month.toString().padLeft(2, '0')}/'
                 '${record.notBillingDate.year}'),
             _InfoRow('Reason', record.reason.displayLabel),
