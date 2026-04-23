@@ -140,41 +140,15 @@ class _CartListState extends State<CartList> {
                             color: Colors.white.withValues(alpha: 0.50),
                           ),
                         ),
-                        if (state.hasReturns)
-                          Row(
-                            children: [
-                              Text(
-                                'Rs. ${state.saleSubTotal.toStringAsFixed(2)}',
-                                style: GoogleFonts.barlowCondensed(
-                                  fontSize: 13.sp,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white.withValues(alpha: 0.50),
-                                  decoration: TextDecoration.lineThrough,
-                                  decorationColor: Colors.white.withValues(alpha: 0.30),
-                                ),
-                              ),
-                              SizedBox(width: 6.w),
-                              Text(
-                                'Rs. ${state.total.toStringAsFixed(2)}',
-                                style: GoogleFonts.barlowCondensed(
-                                  fontSize: 18.sp,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: -0.3,
-                                  color: AppColors.amber,
-                                ),
-                              ),
-                            ],
-                          )
-                        else
-                          Text(
-                            'Rs. ${state.total.toStringAsFixed(2)}',
-                            style: GoogleFonts.barlowCondensed(
-                              fontSize: 18.sp,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.3,
-                              color: AppColors.amber,
-                            ),
+                        Text(
+                          'Rs. ${state.total.toStringAsFixed(2)}',
+                          style: GoogleFonts.barlowCondensed(
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.3,
+                            color: AppColors.amber,
                           ),
+                        ),
                       ],
                     )
                   : Text(

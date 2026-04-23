@@ -207,7 +207,9 @@ class _QuantitySheetState extends State<_QuantitySheet> {
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
 
-    return AnimatedContainer(
+    return ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(overscroll: false),
+      child: AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
         color: AppColors.background,
@@ -247,6 +249,7 @@ class _QuantitySheetState extends State<_QuantitySheet> {
           // ── Scrollable body ──────────────────────────────────────────────
           Flexible(
             child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w,
                   bottom > 0 ? bottom + 16.h : 28.h),
@@ -770,6 +773,7 @@ class _QuantitySheetState extends State<_QuantitySheet> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

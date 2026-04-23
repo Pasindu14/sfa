@@ -71,6 +71,12 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
   void initState() {
     super.initState();
     _searchFuture = _search('');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+      ));
+    });
   }
 
   @override
@@ -116,11 +122,6 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-    ));
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(
