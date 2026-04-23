@@ -49,6 +49,9 @@ class NotBillingsListBloc
               r.syncStatus.name == 'pending' || r.syncStatus.name == 'failed')
           .length;
       emit(NotBillingsListLoaded(records: records, pendingOrFailedCount: pending));
+      // Kick a sync pass every time the list loads — catches records that were
+      // created while no subscriber was on status$ (e.g. during navigation).
+      _syncService.flushAll();
     } on AppException catch (ex) {
       emit(NotBillingsListError(ex.message));
     }

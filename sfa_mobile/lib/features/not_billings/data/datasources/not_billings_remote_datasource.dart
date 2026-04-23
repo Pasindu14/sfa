@@ -51,6 +51,20 @@ class NotBillingsRemoteDatasource {
         }
       }
 
+      // 4xx with no parseable body (e.g. 403 from role auth) — surface as
+      // a terminal failure so the chip flips red with a visible message instead
+      // of silently staying pending with no indication of what went wrong.
+      if (statusCode >= 400 && statusCode < 500) {
+        throw BusinessRuleException(
+          code: 'HTTP_$statusCode',
+          message: statusCode == 403
+              ? 'Not authorized to create not-billing records.'
+              : statusCode == 401
+                  ? 'Session expired. Please log in again.'
+                  : 'Request failed ($statusCode).',
+        );
+      }
+
       throw NetworkException(message: _networkMessage(e));
     } catch (_) {
       throw const ParseException(
