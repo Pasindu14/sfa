@@ -750,6 +750,9 @@ class _ActionsGrid extends StatelessWidget {
           SizedBox(height: 10.h),
           _MyOrdersAction(onTap: () => context.push('/sales-rep/bills')),
           SizedBox(height: 10.h),
+          _NotBillingAction(
+              onTap: () => context.push('/sales-rep/not-billings')),
+          SizedBox(height: 10.h),
           _SyncDataAction(onTap: () => context.push('/sales-rep/sync')),
           SizedBox(height: 10.h),
           Row(
@@ -1001,6 +1004,79 @@ class _PrimaryAction extends StatelessWidget {
                 ),
                 Icon(Icons.arrow_forward_ios_rounded,
                     color: Colors.white.withValues(alpha: 0.7), size: 13.r),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NotBillingAction extends StatelessWidget {
+  const _NotBillingAction({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12.r),
+        child: Ink(
+          height: 56.h,
+          decoration: BoxDecoration(
+            color: AppColors.warning.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(12.r),
+            border: Border.all(
+              color: AppColors.warning.withValues(alpha: 0.35),
+              width: 1.5,
+            ),
+          ),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: Row(
+              children: [
+                Container(
+                  width: 32.r,
+                  height: 32.r,
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  child: Icon(Icons.report_problem_outlined,
+                      color: AppColors.warning, size: 16.r),
+                ),
+                SizedBox(width: 14.w),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'NOT BILLING',
+                        style: GoogleFonts.barlowCondensed(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                          height: 1.0,
+                          color: AppColors.warning,
+                        ),
+                      ),
+                      Text(
+                        'Record a non-sale outlet visit',
+                        style: GoogleFonts.barlow(
+                          fontSize: 11.sp,
+                          color: AppColors.foregroundMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.arrow_forward_ios_rounded,
+                    color: AppColors.warning.withValues(alpha: 0.6),
+                    size: 12.r),
               ],
             ),
           ),
