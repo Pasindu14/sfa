@@ -35,7 +35,7 @@ class NotBillingsListPage extends StatelessWidget {
             letterSpacing: 0.5,
           ),
         ),
-        onPressed: () => context.goNamed('createNotBilling'),
+        onPressed: () => context.pushNamed('createNotBilling'),
       ),
       body: Column(
         children: [
@@ -169,7 +169,7 @@ class NotBillingsListPage extends StatelessWidget {
                             .read<NotBillingsListBloc>()
                             .add(DeleteNotBillingRequested(
                                 r.clientNotBillingId)),
-                        onTap: () => context.goNamed(
+                        onTap: () => context.pushNamed(
                           'notBillingDetail',
                           pathParameters: {'id': r.clientNotBillingId},
                         ),
