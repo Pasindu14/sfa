@@ -56,6 +56,7 @@ import 'package:uswatte/features/rep_assignment/data/datasources/rep_assignment_
 import 'package:uswatte/features/rep_assignment/data/repositories/rep_assignment_repository_impl.dart';
 import 'package:uswatte/features/rep_assignment/domain/repositories/rep_assignment_repository.dart';
 import 'package:uswatte/features/rep_assignment/domain/usecases/get_rep_assignment_usecase.dart';
+import 'package:uswatte/features/outlet_bill_history/data/datasources/outlet_bill_history_remote_datasource.dart';
 
 final getIt = GetIt.instance;
 
@@ -198,6 +199,10 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton(() => RetrySyncUseCase(getIt<BillsRepository>()));
   getIt.registerLazySingleton(
       () => SearchProductsForBillUseCase(getIt<BillsRepository>()));
+
+  // ── Outlet bill history ───────────────────────────────────────────────────────
+  getIt.registerLazySingleton(
+      () => OutletBillHistoryRemoteDatasource(getIt<Dio>()));
 
   // ── Rep assignment ────────────────────────────────────────────────────────────
   getIt.registerLazySingleton(

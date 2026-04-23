@@ -14,6 +14,7 @@ import 'package:uswatte/features/bills/presentation/widgets/cart_list.dart';
 import 'package:uswatte/features/bills/presentation/widgets/outlet_picker.dart';
 import 'package:uswatte/features/bills/presentation/widgets/pricing_structure_picker.dart';
 import 'package:uswatte/features/bills/presentation/widgets/product_search_delegate.dart';
+import 'package:uswatte/core/connectivity/connectivity_service.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_bloc.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_state.dart';
 
@@ -76,12 +77,24 @@ class CreateBillPage extends StatelessWidget {
                           final hasAssignment = oState is OutletsLoaded
                               ? oState.hasActiveAssignment
                               : true;
-                          return OutletPicker(
-                            selected: state.outlet,
-                            outlets: outlets.cast(),
-                            onSelected: (o) =>
-                                ctx.read<CreateBillBloc>().add(OutletSelected(o)),
-                            hasActiveAssignment: hasAssignment,
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              OutletPicker(
+                                selected: state.outlet,
+                                outlets: outlets.cast(),
+                                onSelected: (o) =>
+                                    ctx.read<CreateBillBloc>().add(OutletSelected(o)),
+                                hasActiveAssignment: hasAssignment,
+                              ),
+                              if (state.outlet != null) ...[
+                                SizedBox(height: 8.h),
+                                _HistoryButton(
+                                  outletId: state.outlet!.id,
+                                  outletName: state.outlet!.name,
+                                ),
+                              ],
+                            ],
                           );
                         },
                       ),
@@ -167,6 +180,72 @@ class CreateBillPage extends StatelessWidget {
             BlocBuilder<CreateBillBloc, CreateBillState>(
               builder: (_, state) => CartList(state: state),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── History button (shown when outlet selected) ───────────────────────────────
+
+class _HistoryButton extends StatelessWidget {
+  final int outletId;
+  final String outletName;
+
+  const _HistoryButton({
+    required this.outletId,
+    required this.outletName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () async {
+        final online = await getIt<ConnectivityService>().hasInternet();
+        if (!context.mounted) return;
+        if (!online) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'No internet connection — history unavailable',
+                style: GoogleFonts.barlow(fontWeight: FontWeight.w500),
+              ),
+              backgroundColor: AppColors.darkSurface,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+          return;
+        }
+        context.pushNamed(
+          'outletBillHistory',
+          extra: {'outletId': outletId, 'outletName': outletName},
+        );
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(10.r),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.20)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.history_rounded, size: 15.r, color: AppColors.primary),
+            SizedBox(width: 6.w),
+            Text(
+              'View Outlet Bill History',
+              style: GoogleFonts.barlowCondensed(
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+                color: AppColors.primary,
+              ),
+            ),
+            const Spacer(),
+            Icon(Icons.chevron_right_rounded,
+                size: 14.r, color: AppColors.primary),
           ],
         ),
       ),

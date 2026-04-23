@@ -50,6 +50,12 @@ import 'package:uswatte/features/bills/presentation/pages/bill_detail_page.dart'
 import 'package:uswatte/features/bills/presentation/pages/bills_list_page.dart';
 import 'package:uswatte/features/bills/presentation/pages/create_bill_page.dart';
 import 'package:uswatte/features/debug/presentation/pages/debug_page.dart';
+import 'package:uswatte/features/outlet_bill_history/data/datasources/outlet_bill_history_remote_datasource.dart';
+import 'package:uswatte/features/outlet_bill_history/data/repositories/outlet_bill_history_repository_impl.dart';
+import 'package:uswatte/features/outlet_bill_history/presentation/cubit/outlet_bill_detail_cubit.dart';
+import 'package:uswatte/features/outlet_bill_history/presentation/cubit/outlet_bill_history_cubit.dart';
+import 'package:uswatte/features/outlet_bill_history/presentation/pages/outlet_bill_detail_page.dart';
+import 'package:uswatte/features/outlet_bill_history/presentation/pages/outlet_bill_history_page.dart';
 
 class AppRouter {
   AppRouter._();
@@ -251,6 +257,44 @@ class AppRouter {
                     ],
                     child: const CreateBillPage(),
                   ),
+                  routes: [
+                    GoRoute(
+                      path: 'outlet-history',
+                      name: 'outletBillHistory',
+                      builder: (_, state) {
+                        final args =
+                            state.extra as Map<String, dynamic>;
+                        return BlocProvider(
+                          create: (_) => OutletBillHistoryCubit(
+                            OutletBillHistoryRepositoryImpl(
+                              getIt<OutletBillHistoryRemoteDatasource>(),
+                            ),
+                          ),
+                          child: OutletBillHistoryPage(
+                            outletId: args['outletId'] as int,
+                            outletName: args['outletName'] as String,
+                          ),
+                        );
+                      },
+                      routes: [
+                        GoRoute(
+                          path: ':billingId',
+                          name: 'outletBillDetail',
+                          builder: (_, state) => BlocProvider(
+                            create: (_) => OutletBillDetailCubit(
+                              OutletBillHistoryRepositoryImpl(
+                                getIt<OutletBillHistoryRemoteDatasource>(),
+                              ),
+                            ),
+                            child: OutletBillDetailPage(
+                              billingId: int.parse(
+                                  state.pathParameters['billingId']!),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
                 GoRoute(
                   path: ':id',
