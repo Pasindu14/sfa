@@ -164,6 +164,8 @@ public class BillingService(
             TotalAmount       = totalAmount,
             Status            = BillingStatus.Submitted,
             Notes             = request.Notes,
+            Latitude          = request.Latitude,
+            Longitude         = request.Longitude,
             CreatedAt         = DateTime.UtcNow,
             UpdatedAt         = DateTime.UtcNow,
             CreatedBy         = salesRepId,
@@ -266,6 +268,8 @@ public class BillingService(
         b.TotalAmount,
         b.Status,
         b.Notes,
+        b.Latitude,
+        b.Longitude,
         b.CreatedAt,
         b.Items.OrderBy(i => i.LineNumber).Select(i => new BillingItemDto(
             i.Id,

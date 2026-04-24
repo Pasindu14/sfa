@@ -81,6 +81,8 @@ class CreateBillState extends Equatable {
   final bool submitting;
   final String? errorMessage;
   final String? submittedClientBillId;
+  final double? latitude;
+  final double? longitude;
 
   const CreateBillState({
     this.outlet,
@@ -91,6 +93,8 @@ class CreateBillState extends Equatable {
     this.submitting = false,
     this.errorMessage,
     this.submittedClientBillId,
+    this.latitude,
+    this.longitude,
   });
 
   double get saleSubTotal => cart.where((l) => !l.isReturn).fold<double>(0, (s, l) => s + l.lineTotal);
@@ -117,6 +121,8 @@ class CreateBillState extends Equatable {
     String? errorMessage,
     String? submittedClientBillId,
     bool clearError = false,
+    double? latitude,
+    double? longitude,
   }) =>
       CreateBillState(
         outlet: outlet ?? this.outlet,
@@ -130,6 +136,8 @@ class CreateBillState extends Equatable {
         errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
         submittedClientBillId:
             submittedClientBillId ?? this.submittedClientBillId,
+        latitude: latitude ?? this.latitude,
+        longitude: longitude ?? this.longitude,
       );
 
   @override
@@ -142,5 +150,7 @@ class CreateBillState extends Equatable {
         submitting,
         errorMessage,
         submittedClientBillId,
+        latitude,
+        longitude,
       ];
 }

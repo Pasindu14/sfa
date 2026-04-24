@@ -4,7 +4,6 @@ namespace sfa_api.Features.Outlets.Entities;
 
 public enum OutletType { Small, Medium, Large }
 public enum OutletCategory { Wholesale, SMMT }
-public enum BillingPriceType { DealerPrice, OldPrice, MarketPrice }
 
 public class Outlet
 {
@@ -24,7 +23,6 @@ public class Outlet
     public string? Image { get; set; }
     public OutletType OutletType { get; set; }
     public OutletCategory OutletCategory { get; set; }
-    public BillingPriceType? BillingPriceType { get; set; }
     public int? ProvinceCode { get; set; }
     public int? DistrictCode { get; set; }
 

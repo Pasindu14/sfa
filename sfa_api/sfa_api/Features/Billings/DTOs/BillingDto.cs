@@ -40,6 +40,8 @@ public record BillingDto(
 
     BillingStatus Status,
     string? Notes,
+    double? Latitude,
+    double? Longitude,
     DateTime CreatedAt,
     List<BillingItemDto> Items
 );

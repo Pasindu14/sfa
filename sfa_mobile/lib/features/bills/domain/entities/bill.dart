@@ -14,6 +14,8 @@ class Bill extends Equatable {
   final double billDiscountAmount;
   final double totalAmount;
   final String? notes;
+  final double? latitude;
+  final double? longitude;
   final DateTime createdAt;
   final SyncStatus syncStatus;
   final int syncAttempts;
@@ -32,6 +34,8 @@ class Bill extends Equatable {
     required this.billDiscountAmount,
     required this.totalAmount,
     this.notes,
+    this.latitude,
+    this.longitude,
     required this.createdAt,
     required this.syncStatus,
     this.syncAttempts = 0,
@@ -52,6 +56,8 @@ class Bill extends Equatable {
         billDiscountAmount,
         totalAmount,
         notes,
+        latitude,
+        longitude,
         createdAt,
         syncStatus,
         syncAttempts,

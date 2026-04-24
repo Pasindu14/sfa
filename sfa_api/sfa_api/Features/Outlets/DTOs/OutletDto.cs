@@ -17,7 +17,6 @@ public record OutletDto(
     string? Image,
     string OutletType,
     string OutletCategory,
-    string? BillingPriceType,
     int? ProvinceCode,
     int? DistrictCode,
     int RouteId,

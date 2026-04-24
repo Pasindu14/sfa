@@ -5,5 +5,7 @@ public record CreateBillingRequest(
     decimal BillDiscountRate,
     string? Notes,
     List<CreateBillingItemRequest> Items,
-    DateOnly? BillingDate = null
+    DateOnly? BillingDate = null,
+    double? Latitude = null,
+    double? Longitude = null
 );

@@ -347,6 +347,14 @@ class _InfoCard extends StatelessWidget {
           SizedBox(height: 6.h),
           _infoRow(Icons.access_time_rounded, 'Created',
               _formatDateTime(bill.createdAt)),
+          if (bill.latitude != null && bill.longitude != null) ...[
+            SizedBox(height: 6.h),
+            _infoRow(
+              Icons.location_on_rounded,
+              'Location',
+              '${bill.latitude!.toStringAsFixed(6)}, ${bill.longitude!.toStringAsFixed(6)}',
+            ),
+          ],
           if (bill.syncAttempts > 0) ...[
             SizedBox(height: 6.h),
             _infoRow(Icons.replay_rounded, 'Sync attempts',

@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:uswatte/core/errors/app_exception.dart';
 import 'package:uswatte/features/bills/domain/entities/bill.dart';
 import 'package:uswatte/features/bills/domain/entities/bill_item.dart';
@@ -23,6 +24,7 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
         _uuid = uuid ?? const Uuid(),
         super(const CreateBillState()) {
     on<PricingStructuresLoaded>(_onStructuresLoaded);
+    on<BillLocationCaptured>(_onLocationCaptured);
     on<OutletSelected>(_onOutletSelected);
     on<PricingStructureSelected>(_onStructureSelected);
     on<ProductAdded>(_onProductAdded);
@@ -36,6 +38,37 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     on<BillDiscountChanged>(_onDiscountChanged);
     on<SubmitPressed>(_onSubmit);
     _loadPricingStructures();
+    _captureLocation();
+  }
+
+  Future<void> _captureLocation() async {
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) return;
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      );
+      add(BillLocationCaptured(position.latitude, position.longitude));
+    } catch (_) {
+      // Silent — billing continues without location
+    }
+  }
+
+  void _onLocationCaptured(
+      BillLocationCaptured e, Emitter<CreateBillState> emit) {
+    if (e.latitude != null && e.longitude != null) {
+      emit(state.copyWith(latitude: e.latitude, longitude: e.longitude));
+    }
   }
 
   Future<void> _loadPricingStructures() async {
@@ -236,6 +269,8 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
       subTotalAmount: state.saleSubTotal,
       billDiscountAmount: state.billDiscountAmount,
       totalAmount: state.total,
+      latitude: state.latitude,
+      longitude: state.longitude,
       createdAt: now,
       syncStatus: SyncStatus.pending,
       items: items,

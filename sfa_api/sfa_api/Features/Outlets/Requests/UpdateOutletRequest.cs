@@ -17,7 +17,6 @@ public class UpdateOutletRequest
     public string? Image { get; set; }
     public string OutletType { get; set; } = string.Empty;
     public string OutletCategory { get; set; } = string.Empty;
-    public string? BillingPriceType { get; set; }
     public int? ProvinceCode { get; set; }
     public int? DistrictCode { get; set; }
     public int RouteId { get; set; }

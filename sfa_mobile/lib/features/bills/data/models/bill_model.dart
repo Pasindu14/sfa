@@ -12,6 +12,8 @@ class BillModel {
   final double billDiscountAmount;
   final double totalAmount;
   final String? notes;
+  final double? latitude;
+  final double? longitude;
   final DateTime createdAt;
   final SyncStatus syncStatus;
   final int syncAttempts;
@@ -30,6 +32,8 @@ class BillModel {
     required this.billDiscountAmount,
     required this.totalAmount,
     this.notes,
+    this.latitude,
+    this.longitude,
     required this.createdAt,
     required this.syncStatus,
     this.syncAttempts = 0,
@@ -49,6 +53,8 @@ class BillModel {
         billDiscountAmount: (map['bill_discount_amount'] as num).toDouble(),
         totalAmount: (map['total_amount'] as num).toDouble(),
         notes: map['notes'] as String?,
+        latitude: (map['latitude'] as num?)?.toDouble(),
+        longitude: (map['longitude'] as num?)?.toDouble(),
         createdAt: DateTime.parse(map['created_at'] as String),
         syncStatus: SyncStatusX.fromDb(map['sync_status'] as String),
         syncAttempts: map['sync_attempts'] as int? ?? 0,
@@ -73,6 +79,8 @@ class BillModel {
         'bill_discount_amount': billDiscountAmount,
         'total_amount': totalAmount,
         'notes': notes,
+        'latitude': latitude,
+        'longitude': longitude,
         'created_at': createdAt.toIso8601String(),
         'sync_status': syncStatus.dbValue,
         'sync_attempts': syncAttempts,
@@ -89,6 +97,8 @@ class BillModel {
         'billingDate': _dateOnly(billingDate),
         'billDiscountRate': billDiscountRate,
         'notes': notes,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
         'items': items.map((i) => i.toCreateRequestJson()).toList(),
       };
 
@@ -101,6 +111,8 @@ class BillModel {
         billDiscountAmount: billDiscountAmount,
         totalAmount: totalAmount,
         notes: notes,
+        latitude: latitude,
+        longitude: longitude,
         createdAt: createdAt,
         syncStatus: syncStatus,
         syncAttempts: syncAttempts,
@@ -128,6 +140,8 @@ class BillModel {
         billDiscountAmount: billDiscountAmount,
         totalAmount: totalAmount,
         notes: notes,
+        latitude: latitude,
+        longitude: longitude,
         createdAt: createdAt,
         syncStatus: syncStatus ?? this.syncStatus,
         syncAttempts: syncAttempts ?? this.syncAttempts,

@@ -60,11 +60,6 @@ public class UpdateOutletValidator : AbstractValidator<UpdateOutletRequest>
             .Must(v => Enum.TryParse<OutletCategory>(v, out _))
             .WithMessage("Invalid OutletCategory. Valid values: Wholesale, SMMT.");
 
-        RuleFor(x => x.BillingPriceType)
-            .Must(v => Enum.TryParse<BillingPriceType>(v!, out _))
-            .WithMessage("Invalid BillingPriceType. Valid values: DealerPrice, OldPrice, MarketPrice.")
-            .When(x => x.BillingPriceType != null);
-
         RuleFor(x => x.ProvinceCode)
             .GreaterThan(0).WithMessage("ProvinceCode must be greater than 0.")
             .When(x => x.ProvinceCode.HasValue);

@@ -23,6 +23,8 @@ class BillsRepositoryImpl implements BillsRepository {
       billDiscountAmount: bill.billDiscountAmount,
       totalAmount: bill.totalAmount,
       notes: bill.notes,
+      latitude: bill.latitude,
+      longitude: bill.longitude,
       createdAt: bill.createdAt,
       syncStatus: SyncStatus.pending,
       items: bill.items

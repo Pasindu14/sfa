@@ -72,15 +72,6 @@ public class OutletService(
             throw new ValidationException(new Dictionary<string, string[]>
                 { { "OutletCategory", new[] { "Invalid OutletCategory." } } });
 
-        BillingPriceType? billingPriceType = null;
-        if (request.BillingPriceType != null)
-        {
-            if (!Enum.TryParse<BillingPriceType>(request.BillingPriceType, out var parsedBillingType))
-                throw new ValidationException(new Dictionary<string, string[]>
-                    { { "BillingPriceType", new[] { "Invalid BillingPriceType." } } });
-            billingPriceType = parsedBillingType;
-        }
-
         if (await _repo.ExistsByNicNoAsync(request.NicNo, ct))
             throw new DuplicateResourceException("NicNo");
 
@@ -101,7 +92,6 @@ public class OutletService(
             Image = request.Image,
             OutletType = outletType,
             OutletCategory = outletCategory,
-            BillingPriceType = billingPriceType,
             ProvinceCode = request.ProvinceCode,
             DistrictCode = request.DistrictCode,
             RouteId = route.Id,
@@ -143,15 +133,6 @@ public class OutletService(
             throw new ValidationException(new Dictionary<string, string[]>
                 { { "OutletCategory", new[] { "Invalid OutletCategory." } } });
 
-        BillingPriceType? billingPriceType = null;
-        if (request.BillingPriceType != null)
-        {
-            if (!Enum.TryParse<BillingPriceType>(request.BillingPriceType, out var parsedBillingType))
-                throw new ValidationException(new Dictionary<string, string[]>
-                    { { "BillingPriceType", new[] { "Invalid BillingPriceType." } } });
-            billingPriceType = parsedBillingType;
-        }
-
         if (await _repo.ExistsByNicNoAsync(request.NicNo, id, ct))
             throw new DuplicateResourceException("NicNo");
 
@@ -170,7 +151,6 @@ public class OutletService(
         outlet.Image = request.Image;
         outlet.OutletType = outletType;
         outlet.OutletCategory = outletCategory;
-        outlet.BillingPriceType = billingPriceType;
         outlet.ProvinceCode = request.ProvinceCode;
         outlet.DistrictCode = request.DistrictCode;
         outlet.RouteId = route.Id;
@@ -253,7 +233,6 @@ public class OutletService(
         Image: o.Image,
         OutletType: o.OutletType.ToString(),
         OutletCategory: o.OutletCategory.ToString(),
-        BillingPriceType: o.BillingPriceType?.ToString(),
         ProvinceCode: o.ProvinceCode,
         DistrictCode: o.DistrictCode,
         RouteId: o.RouteId,

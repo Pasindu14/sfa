@@ -126,3 +126,12 @@ final class PricingStructuresLoaded extends CreateBillEvent {
 final class SubmitPressed extends CreateBillEvent {
   const SubmitPressed();
 }
+
+/// Internal event — fired by the bloc itself after GPS resolves on init.
+final class BillLocationCaptured extends CreateBillEvent {
+  final double? latitude;
+  final double? longitude;
+  const BillLocationCaptured(this.latitude, this.longitude);
+  @override
+  List<Object?> get props => [latitude, longitude];
+}

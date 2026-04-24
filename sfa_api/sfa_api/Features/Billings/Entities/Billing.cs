@@ -39,6 +39,10 @@ public class Billing
     public BillingStatus Status { get; set; } = BillingStatus.Submitted;
     public string? Notes { get; set; }
 
+    // Location captured on the device at time of billing
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+
     // Audit
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
