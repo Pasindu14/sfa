@@ -24,6 +24,24 @@ class OutletsPage extends StatelessWidget {
       builder: (context, state) {
         return Scaffold(
           backgroundColor: AppColors.background,
+          floatingActionButton: state is OutletsLoaded && state.hasActiveAssignment
+              ? FloatingActionButton.extended(
+                  onPressed: () => context.pushNamed('createOutlet'),
+                  backgroundColor: AppColors.primary,
+                  elevation: 3,
+                  icon: Icon(Icons.add_rounded,
+                      color: AppColors.onPrimary, size: 20.r),
+                  label: Text(
+                    'ADD OUTLET',
+                    style: GoogleFonts.barlowCondensed(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.0,
+                      color: AppColors.onPrimary,
+                    ),
+                  ),
+                )
+              : null,
           body: CustomScrollView(
             slivers: [
               _OutletsAppBar(

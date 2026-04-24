@@ -97,7 +97,7 @@ public class OutletsController(
     /// POST /api/v1/outlets
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,SalesRep")]
     public async Task<IActionResult> Create([FromBody] CreateOutletRequest request, CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;

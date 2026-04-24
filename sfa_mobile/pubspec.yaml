@@ -58,6 +58,10 @@ dependencies:
   sqflite: ^2.4.2
   path: ^1.9.1
 
+  # Location
+  geolocator: ^13.0.0
+  permission_handler: ^11.3.0
+
   # Utilities
   get_it: ^8.0.3
   injectable: ^2.5.0

@@ -753,6 +753,9 @@ class _ActionsGrid extends StatelessWidget {
           _NotBillingAction(
               onTap: () => context.push('/sales-rep/not-billings')),
           SizedBox(height: 10.h),
+          _AddOutletAction(
+              onTap: () => context.push('/sales-rep/outlets/create')),
+          SizedBox(height: 10.h),
           _SyncDataAction(onTap: () => context.push('/sales-rep/sync')),
           SizedBox(height: 10.h),
           Row(
@@ -1076,6 +1079,79 @@ class _NotBillingAction extends StatelessWidget {
                 ),
                 Icon(Icons.arrow_forward_ios_rounded,
                     color: AppColors.warning.withValues(alpha: 0.6),
+                    size: 12.r),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AddOutletAction extends StatelessWidget {
+  const _AddOutletAction({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12.r),
+        child: Ink(
+          height: 56.h,
+          decoration: BoxDecoration(
+            color: AppColors.success.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(12.r),
+            border: Border.all(
+              color: AppColors.success.withValues(alpha: 0.35),
+              width: 1.5,
+            ),
+          ),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: Row(
+              children: [
+                Container(
+                  width: 32.r,
+                  height: 32.r,
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  child: Icon(Icons.storefront_rounded,
+                      color: AppColors.success, size: 16.r),
+                ),
+                SizedBox(width: 14.w),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'ADD OUTLET',
+                        style: GoogleFonts.barlowCondensed(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                          height: 1.0,
+                          color: AppColors.success,
+                        ),
+                      ),
+                      Text(
+                        'Register a new outlet on your route',
+                        style: GoogleFonts.barlow(
+                          fontSize: 11.sp,
+                          color: AppColors.foregroundMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.arrow_forward_ios_rounded,
+                    color: AppColors.success.withValues(alpha: 0.6),
                     size: 12.r),
               ],
             ),

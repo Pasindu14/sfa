@@ -4,6 +4,9 @@ import 'package:uswatte/core/router/go_router_refresh_stream.dart';
 import 'package:uswatte/features/auth/domain/entities/user_role.dart';
 import 'package:uswatte/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:uswatte/features/auth/presentation/pages/login_page.dart';
+import 'package:uswatte/features/create_outlet/domain/usecases/create_outlet_usecase.dart';
+import 'package:uswatte/features/create_outlet/presentation/bloc/create_outlet_bloc.dart';
+import 'package:uswatte/features/create_outlet/presentation/pages/create_outlet_page.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_current_route_id_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_outlets_last_synced_at_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_outlets_usecase.dart';
@@ -199,6 +202,20 @@ class AppRouter {
                 )..add(const LoadOutletsRequested()),
                 child: const OutletsPage(),
               ),
+              routes: [
+                GoRoute(
+                  path: 'create',
+                  name: 'createOutlet',
+                  builder: (_, __) => BlocProvider(
+                    create: (_) => CreateOutletBloc(
+                      createOutletUseCase: getIt<CreateOutletUseCase>(),
+                      getCurrentRouteIdUseCase:
+                          getIt<GetCurrentRouteIdUseCase>(),
+                    ),
+                    child: const CreateOutletPage(),
+                  ),
+                ),
+              ],
             ),
             GoRoute(
               path: 'products',
