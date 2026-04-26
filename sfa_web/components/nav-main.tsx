@@ -2,7 +2,7 @@
 import { ChevronRight, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -43,30 +43,28 @@ export function NavMain({
     );
   }
 
-  // Manually opened sections (in addition to the always-open active section)
-  const [manualOpen, setManualOpen] = useState<Set<string>>(new Set());
-
-  // When route changes, clear manual overrides — active section will show on its own
-  useEffect(() => {
-    setManualOpen(new Set());
-  }, [pathname]);
+  const [manualOpen, setManualOpen] = useState<{ pathname: string; opens: Set<string> }>({
+    pathname,
+    opens: new Set(),
+  });
 
   const activeTitle = getActiveTitle();
+  const effectiveOpens = manualOpen.pathname === pathname ? manualOpen.opens : new Set<string>();
 
   function isOpen(title: string) {
-    return title === activeTitle || manualOpen.has(title);
+    return title === activeTitle || effectiveOpens.has(title);
   }
 
   function toggle(title: string) {
-    if (title === activeTitle) return; // active section is always open, never toggle it
+    if (title === activeTitle) return;
     setManualOpen((prev) => {
-      const next = new Set(prev);
-      if (next.has(title)) {
-        next.delete(title);
+      const opens = new Set(prev.pathname === pathname ? prev.opens : []);
+      if (opens.has(title)) {
+        opens.delete(title);
       } else {
-        next.add(title);
+        opens.add(title);
       }
-      return next;
+      return { pathname, opens };
     });
   }
 
