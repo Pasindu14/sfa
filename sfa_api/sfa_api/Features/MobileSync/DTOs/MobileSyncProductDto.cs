@@ -6,11 +6,24 @@ public record MobileSyncProductDto(
     string ItemDescription,
     string? PrintDescription,
     int PiecesPerPack,
-    string? ImageUrl
+    string? ImageUrl,
+    int? CategoryId,
+    string? CategoryName
 );
 
 public record MobileProductListDto(
     List<MobileSyncProductDto> Products,
+    int TotalCount,
+    DateTime CachedAt
+);
+
+public record MobileProductCategoryDto(
+    int Id,
+    string Name
+);
+
+public record MobileProductCategoryListDto(
+    List<MobileProductCategoryDto> Categories,
     int TotalCount,
     DateTime CachedAt
 );

@@ -6,7 +6,7 @@ import 'package:sqflite/sqflite.dart';
 /// [onUpgrade] when schema changes.
 class DatabaseHelper {
   static const _dbName = 'sfa_local.db';
-  static const _dbVersion = 9;
+  static const _dbVersion = 10;
 
   DatabaseHelper._private();
   static final DatabaseHelper instance = DatabaseHelper._private();
@@ -29,15 +29,25 @@ class DatabaseHelper {
   }
 
   Future<void> _onCreate(Database db, int version) async {
+    // Product categories — full replace on every sync
+    await db.execute('''
+      CREATE TABLE product_categories (
+        id         INTEGER PRIMARY KEY,
+        name       TEXT    NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+
     // Products catalog — full replace on every sync
     await db.execute('''
       CREATE TABLE products (
-        id              INTEGER PRIMARY KEY,
-        code            TEXT    NOT NULL,
-        item_description TEXT   NOT NULL,
+        id               INTEGER PRIMARY KEY,
+        code             TEXT    NOT NULL,
+        item_description TEXT    NOT NULL,
         print_description TEXT,
-        pieces_per_pack INTEGER NOT NULL,
-        image_url       TEXT
+        pieces_per_pack  INTEGER NOT NULL,
+        image_url        TEXT,
+        category_id      INTEGER
       )
     ''');
 
@@ -65,6 +75,7 @@ class DatabaseHelper {
     if (oldVersion < 7) await _createNotBillingsTable(db);
     if (oldVersion < 8) await _migrateNotBillingsV8(db);
     if (oldVersion < 9) await _migrateBillsV9(db);
+    if (oldVersion < 10) await _migrateProductCategoriesV10(db);
   }
 
   Future<void> _createPricingStructuresTable(Database db) async {
@@ -180,6 +191,17 @@ class DatabaseHelper {
   Future<void> _migrateBillsV9(Database db) async {
     await db.execute('ALTER TABLE bills ADD COLUMN latitude REAL');
     await db.execute('ALTER TABLE bills ADD COLUMN longitude REAL');
+  }
+
+  Future<void> _migrateProductCategoriesV10(Database db) async {
+    await db.execute('''
+      CREATE TABLE product_categories (
+        id         INTEGER PRIMARY KEY,
+        name       TEXT    NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+    await db.execute('ALTER TABLE products ADD COLUMN category_id INTEGER');
   }
 
   Future<void> _migrateNotBillingsV8(Database db) async {

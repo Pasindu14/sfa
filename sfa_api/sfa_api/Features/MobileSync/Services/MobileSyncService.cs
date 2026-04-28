@@ -12,7 +12,8 @@ public class MobileSyncService(
     private readonly ICacheService _cache = cache;
 
     internal const string ProductsCacheKey = "mobile:products";
-    private static readonly TimeSpan ProductsCacheTtl = TimeSpan.FromHours(1);
+    internal const string CategoriesCacheKey = "mobile:product-categories";
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(1);
 
     public async Task<MobileProductListDto> GetProductsAsync(CancellationToken ct = default)
     {
@@ -22,7 +23,19 @@ public class MobileSyncService(
         var products = await _repo.GetActiveProductsAsync(ct);
         var result = new MobileProductListDto(products, products.Count, DateTime.UtcNow);
 
-        await _cache.SetAsync(ProductsCacheKey, result, ProductsCacheTtl, ct);
+        await _cache.SetAsync(ProductsCacheKey, result, CacheTtl, ct);
+        return result;
+    }
+
+    public async Task<MobileProductCategoryListDto> GetProductCategoriesAsync(CancellationToken ct = default)
+    {
+        var cached = await _cache.GetAsync<MobileProductCategoryListDto>(CategoriesCacheKey, ct);
+        if (cached is not null) return cached;
+
+        var categories = await _repo.GetActiveProductCategoriesAsync(ct);
+        var result = new MobileProductCategoryListDto(categories, categories.Count, DateTime.UtcNow);
+
+        await _cache.SetAsync(CategoriesCacheKey, result, CacheTtl, ct);
         return result;
     }
 }

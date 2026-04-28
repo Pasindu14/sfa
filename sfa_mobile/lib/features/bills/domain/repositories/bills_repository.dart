@@ -25,11 +25,11 @@ abstract class BillsRepository {
   Future<void> retrySync(String clientBillId);
 
   /// Product search for the Create Bill picker.
-  /// Pass [pricingStructureId] to price results against a specific structure;
-  /// omit to fall back to the default structure.
+  /// Results are grouped by category (uncategorized last) in the returned list.
+  /// Pass [pricingStructureId] to price results against a specific structure.
   Future<List<ProductWithPrice>> searchProducts(
     String query, {
-    int limit = 50,
+    int limit = 200,
     int? pricingStructureId,
   });
 }

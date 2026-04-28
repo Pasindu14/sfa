@@ -77,7 +77,7 @@ class BillsRepositoryImpl implements BillsRepository {
   @override
   Future<List<ProductWithPrice>> searchProducts(
     String query, {
-    int limit = 50,
+    int limit = 200,
     int? pricingStructureId,
   }) =>
       _local.searchProducts(query, limit: limit, pricingStructureId: pricingStructureId);

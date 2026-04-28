@@ -5,4 +5,5 @@ namespace sfa_api.Features.MobileSync.Services;
 public interface IMobileSyncService
 {
     Task<MobileProductListDto> GetProductsAsync(CancellationToken ct = default);
+    Task<MobileProductCategoryListDto> GetProductCategoriesAsync(CancellationToken ct = default);
 }

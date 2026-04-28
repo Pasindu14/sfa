@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:uswatte/core/di/injection.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/features/bills/data/datasources/bills_local_datasource.dart';
 import 'package:uswatte/features/bills/domain/usecases/search_products_for_bill_usecase.dart';
 import 'package:uswatte/features/bills/presentation/widgets/quantity_dialog.dart';
+import 'package:uswatte/features/products/domain/usecases/sync_product_categories_usecase.dart';
 
-/// Opens the product search screen with a fade transition.
-/// Keyboard stays hidden on open — autofocus is disabled.
+/// Opens the product search screen with products grouped by category.
 void showProductSearch(
   BuildContext context, {
   required SearchProductsForBillUseCase searchUseCase,
@@ -39,6 +40,23 @@ void showProductSearch(
   );
 }
 
+// ── Grouped list item sealed types ────────────────────────────────────────────
+
+sealed class _ListItem {}
+
+final class _Header extends _ListItem {
+  final String label;
+  final bool isExpanded;
+  _Header(this.label, {required this.isExpanded});
+}
+
+final class _Product extends _ListItem {
+  final ProductWithPrice product;
+  _Product(this.product);
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 class _ProductSearchPage extends StatefulWidget {
   final SearchProductsForBillUseCase searchUseCase;
   final int? pricingStructureId;
@@ -66,6 +84,7 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
   final TextEditingController _controller = TextEditingController();
   String _query = '';
   Future<List<ProductWithPrice>>? _searchFuture;
+  final Set<String> _expandedCategories = {};
 
   @override
   void initState() {
@@ -76,6 +95,11 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
       ));
+      // Sync categories in the background so grouping is always fresh.
+      // After sync, re-run the current query to pick up new category names.
+      getIt<SyncProductCategoriesUseCase>()().then((_) {
+        if (mounted) setState(() => _searchFuture = _search(_query));
+      }).ignore();
     });
   }
 
@@ -88,7 +112,6 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
   Future<List<ProductWithPrice>> _search(String q) => widget.searchUseCase(
         q,
         pricingStructureId: widget.pricingStructureId,
-        limit: 200,
       );
 
   void _onQueryChanged(String value) {
@@ -118,6 +141,39 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
         _searchFuture = _search('');
       });
     }
+  }
+
+  void _toggleCategory(String label) {
+    setState(() {
+      if (_expandedCategories.contains(label)) {
+        _expandedCategories.remove(label);
+      } else {
+        _expandedCategories.add(label);
+      }
+    });
+  }
+
+  /// Converts a flat sorted list into grouped [_ListItem]s with [_Header]s.
+  /// SQL already orders by category name (nulls last) then product code,
+  /// so we just scan for boundary changes.
+  /// Products under collapsed headers are omitted from the list.
+  List<_ListItem> _buildGrouped(List<ProductWithPrice> products) {
+    final items = <_ListItem>[];
+    String? lastLabel;
+    for (final p in products) {
+      final label = p.categoryName ?? 'Uncategorized';
+      if (label != lastLabel) {
+        items.add(_Header(
+          label,
+          isExpanded: _expandedCategories.contains(label),
+        ));
+        lastLabel = label;
+      }
+      if (_expandedCategories.contains(label)) {
+        items.add(_Product(p));
+      }
+    }
+    return items;
   }
 
   @override
@@ -214,7 +270,7 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
             ),
           ),
 
-          // ── Product list ────────────────────────────────────────────────────
+          // ── Grouped product list ────────────────────────────────────────────
           Expanded(
             child: FutureBuilder<List<ProductWithPrice>>(
               future: _searchFuture,
@@ -236,20 +292,110 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
                         : 'No products matched "$_query"',
                   );
                 }
-                return ListView.separated(
-                  padding: EdgeInsets.symmetric(vertical: 8.h),
-                  itemCount: results.length,
-                  separatorBuilder: (_, __) =>
-                      Divider(height: 1, color: AppColors.surfaceVariant),
-                  itemBuilder: (_, i) => _ProductTile(
-                    product: results[i],
-                    onTap: () => _pickProduct(results[i]),
-                  ),
+
+                final items = _buildGrouped(results);
+                return ListView.builder(
+                  padding: EdgeInsets.only(bottom: 16.h),
+                  itemCount: items.length,
+                  itemBuilder: (_, i) {
+                    final item = items[i];
+                    return switch (item) {
+                      _Header h => _CategoryHeader(
+                          label: h.label,
+                          isExpanded: h.isExpanded,
+                          onTap: () => _toggleCategory(h.label),
+                        ),
+                      _Product p => _ProductTile(
+                          product: p.product,
+                          onTap: () => _pickProduct(p.product),
+                        ),
+                    };
+                  },
                 );
               },
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Category section header ───────────────────────────────────────────────────
+
+class _CategoryHeader extends StatelessWidget {
+  const _CategoryHeader({
+    required this.label,
+    required this.isExpanded,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool isExpanded;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isUncategorized = label == 'Uncategorized';
+    final accentColor =
+        isExpanded ? AppColors.primary : AppColors.foregroundMuted;
+
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        margin: EdgeInsets.only(top: 6.h),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          border: Border(
+            left: BorderSide(
+              color: accentColor.withValues(alpha: isExpanded ? 1.0 : 0.35),
+              width: 3.w,
+            ),
+          ),
+        ),
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 13.h),
+        child: Row(
+          children: [
+            Container(
+              width: 34.r,
+              height: 34.r,
+              decoration: BoxDecoration(
+                color: accentColor.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(9.r),
+              ),
+              child: Icon(
+                isUncategorized
+                    ? Icons.label_off_rounded
+                    : Icons.label_rounded,
+                size: 17.r,
+                color: accentColor,
+              ),
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Text(
+                label.toUpperCase(),
+                style: GoogleFonts.barlowCondensed(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.4,
+                  color: isExpanded
+                      ? AppColors.foreground
+                      : AppColors.foregroundMuted,
+                ),
+              ),
+            ),
+            AnimatedRotation(
+              turns: isExpanded ? 0.0 : -0.25,
+              duration: const Duration(milliseconds: 200),
+              child: Icon(
+                Icons.expand_more_rounded,
+                size: 20.r,
+                color: accentColor,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -268,82 +414,88 @@ class _ProductTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: _hasPrice ? onTap : null,
-      child: Opacity(
-        opacity: _hasPrice ? 1.0 : 0.45,
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
-          child: Row(
-            children: [
-              Container(
-                width: 36.r,
-                height: 36.r,
-                decoration: BoxDecoration(
-                  color: _hasPrice
-                      ? AppColors.primary.withValues(alpha: 0.08)
-                      : AppColors.surfaceVariant,
-                  borderRadius: BorderRadius.circular(9.r),
-                ),
-                child: Icon(Icons.inventory_2_rounded,
-                    size: 16.r,
-                    color: _hasPrice
-                        ? AppColors.primary
-                        : AppColors.foregroundMuted),
-              ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      product.itemDescription,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.barlowCondensed(
-                        fontSize: 15.sp,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.2,
-                        color: AppColors.foreground,
-                      ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        InkWell(
+          onTap: _hasPrice ? onTap : null,
+          child: Opacity(
+            opacity: _hasPrice ? 1.0 : 0.45,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36.r,
+                    height: 36.r,
+                    decoration: BoxDecoration(
+                      color: _hasPrice
+                          ? AppColors.primary.withValues(alpha: 0.08)
+                          : AppColors.surfaceVariant,
+                      borderRadius: BorderRadius.circular(9.r),
                     ),
-                    Text(
-                      product.code,
-                      style: GoogleFonts.barlow(
-                        fontSize: 11.sp,
-                        color: AppColors.foregroundMuted,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: 8.w),
-              Container(
-                padding:
-                    EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-                decoration: BoxDecoration(
-                  color: _hasPrice
-                      ? AppColors.primary.withValues(alpha: 0.08)
-                      : AppColors.surfaceVariant,
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-                child: Text(
-                  _hasPrice
-                      ? 'Rs. ${product.dealerPackPrice!.toStringAsFixed(0)}'
-                      : 'No price',
-                  style: GoogleFonts.barlowCondensed(
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w800,
-                    color: _hasPrice
-                        ? AppColors.primary
-                        : AppColors.foregroundMuted,
+                    child: Icon(Icons.inventory_2_rounded,
+                        size: 16.r,
+                        color: _hasPrice
+                            ? AppColors.primary
+                            : AppColors.foregroundMuted),
                   ),
-                ),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          product.itemDescription,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.barlowCondensed(
+                            fontSize: 15.sp,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.2,
+                            color: AppColors.foreground,
+                          ),
+                        ),
+                        Text(
+                          product.code,
+                          style: GoogleFonts.barlow(
+                            fontSize: 11.sp,
+                            color: AppColors.foregroundMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  Container(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                    decoration: BoxDecoration(
+                      color: _hasPrice
+                          ? AppColors.primary.withValues(alpha: 0.08)
+                          : AppColors.surfaceVariant,
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                    child: Text(
+                      _hasPrice
+                          ? 'Rs. ${product.dealerPackPrice!.toStringAsFixed(0)}'
+                          : 'No price',
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w800,
+                        color: _hasPrice
+                            ? AppColors.primary
+                            : AppColors.foregroundMuted,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
-      ),
+        Divider(height: 1, color: AppColors.surfaceVariant),
+      ],
     );
   }
 }

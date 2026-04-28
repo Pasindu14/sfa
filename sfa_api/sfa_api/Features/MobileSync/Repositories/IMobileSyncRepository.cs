@@ -5,4 +5,5 @@ namespace sfa_api.Features.MobileSync.Repositories;
 public interface IMobileSyncRepository
 {
     Task<List<MobileSyncProductDto>> GetActiveProductsAsync(CancellationToken ct = default);
+    Task<List<MobileProductCategoryDto>> GetActiveProductCategoriesAsync(CancellationToken ct = default);
 }

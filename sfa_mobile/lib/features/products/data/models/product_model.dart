@@ -7,6 +7,7 @@ class ProductModel {
   final String? printDescription;
   final int piecesPerPack;
   final String? imageUrl;
+  final int? categoryId;
 
   const ProductModel({
     required this.id,
@@ -15,6 +16,7 @@ class ProductModel {
     this.printDescription,
     required this.piecesPerPack,
     this.imageUrl,
+    this.categoryId,
   });
 
   /// Deserializes from the SFA API JSON (camelCase keys).
@@ -25,6 +27,7 @@ class ProductModel {
         printDescription: json['printDescription'] as String?,
         piecesPerPack: json['piecesPerPack'] as int,
         imageUrl: json['imageUrl'] as String?,
+        categoryId: json['categoryId'] as int?,
       );
 
   /// Deserializes from a SQLite row map (snake_case keys).
@@ -35,6 +38,7 @@ class ProductModel {
         printDescription: map['print_description'] as String?,
         piecesPerPack: map['pieces_per_pack'] as int,
         imageUrl: map['image_url'] as String?,
+        categoryId: map['category_id'] as int?,
       );
 
   /// Serializes to a SQLite row map for insert/replace.
@@ -45,6 +49,7 @@ class ProductModel {
         'print_description': printDescription,
         'pieces_per_pack': piecesPerPack,
         'image_url': imageUrl,
+        'category_id': categoryId,
       };
 
   Product toEntity() => Product(
@@ -54,6 +59,7 @@ class ProductModel {
         printDescription: printDescription,
         piecesPerPack: piecesPerPack,
         imageUrl: imageUrl,
+        categoryId: categoryId,
       );
 }
 

@@ -27,6 +27,13 @@ import 'package:uswatte/features/products/data/repositories/products_repository_
 import 'package:uswatte/features/products/domain/repositories/products_repository.dart';
 import 'package:uswatte/features/products/domain/usecases/get_products_usecase.dart';
 import 'package:uswatte/features/products/domain/usecases/sync_products_usecase.dart';
+import 'package:uswatte/features/products/data/datasources/product_categories_local_datasource.dart';
+import 'package:uswatte/features/products/data/datasources/product_categories_remote_datasource.dart';
+import 'package:uswatte/features/products/data/repositories/product_categories_repository_impl.dart';
+import 'package:uswatte/features/products/domain/repositories/product_categories_repository.dart';
+import 'package:uswatte/features/products/domain/usecases/get_product_categories_usecase.dart';
+import 'package:uswatte/features/products/domain/usecases/sync_product_categories_usecase.dart';
+import 'package:uswatte/features/products/presentation/bloc/product_categories_bloc.dart';
 import 'package:uswatte/features/outlets/data/datasources/outlets_local_datasource.dart';
 import 'package:uswatte/features/outlets/data/datasources/outlets_remote_datasource.dart';
 import 'package:uswatte/features/outlets/data/repositories/outlets_repository_impl.dart';
@@ -149,6 +156,26 @@ Future<void> configureDependencies() async {
       () => GetProductsUseCase(getIt<ProductsRepository>()));
   getIt.registerLazySingleton(
       () => SyncProductsUseCase(getIt<ProductsRepository>()));
+
+  // ── Product Categories ────────────────────────────────────────────────────────
+  getIt.registerLazySingleton(
+      () => ProductCategoriesLocalDatasource(getIt<DatabaseHelper>()));
+  getIt.registerLazySingleton(
+      () => ProductCategoriesRemoteDatasource(getIt<Dio>()));
+  getIt.registerLazySingleton<ProductCategoriesRepository>(
+    () => ProductCategoriesRepositoryImpl(
+      getIt<ProductCategoriesRemoteDatasource>(),
+      getIt<ProductCategoriesLocalDatasource>(),
+    ),
+  );
+  getIt.registerLazySingleton(
+      () => GetProductCategoriesUseCase(getIt<ProductCategoriesRepository>()));
+  getIt.registerLazySingleton(
+      () => SyncProductCategoriesUseCase(getIt<ProductCategoriesRepository>()));
+  getIt.registerFactory(() => ProductCategoriesBloc(
+        getProductCategoriesUseCase: getIt<GetProductCategoriesUseCase>(),
+        syncProductCategoriesUseCase: getIt<SyncProductCategoriesUseCase>(),
+      ));
 
   // ── Outlets ──────────────────────────────────────────────────────────────────
   getIt.registerLazySingleton(

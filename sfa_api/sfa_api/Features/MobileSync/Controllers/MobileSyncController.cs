@@ -24,4 +24,17 @@ public class MobileSyncController(IMobileSyncService mobileSyncService) : Contro
         var result = await _mobileSyncService.GetProductsAsync(ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
+
+    /// <summary>
+    /// GET /api/v1/mobile/product-categories
+    /// Returns all active product categories for mobile catalog sync.
+    /// Cached server-side for 1 hour.
+    /// </summary>
+    [HttpGet("product-categories")]
+    public async Task<IActionResult> GetProductCategories(CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var result = await _mobileSyncService.GetProductCategoriesAsync(ct);
+        return Ok(ResponseHelper.Ok(result, correlationId));
+    }
 }
