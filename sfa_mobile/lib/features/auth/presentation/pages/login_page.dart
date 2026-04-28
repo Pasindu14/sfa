@@ -181,7 +181,7 @@ class _LoginPageState extends State<LoginPage>
 
                           Center(
                             child: Text(
-                              'SFA Uswatte  ·  Field Sales Platform',
+                              'SFA Uswatte  ·  SALES FORCE APPLICATION',
                               style: GoogleFonts.barlowCondensed(
                                 fontSize: 11.sp,
                                 fontWeight: FontWeight.w500,
@@ -274,7 +274,7 @@ class _HeaderBlock extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'FIELD SALES\nPLATFORM',
+                              'SALES FORCES\nAPPLICATION',
                               style: GoogleFonts.barlowCondensed(
                                 fontSize: 28.sp,
                                 fontWeight: FontWeight.w800,

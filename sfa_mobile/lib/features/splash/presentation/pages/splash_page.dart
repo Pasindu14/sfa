@@ -24,7 +24,7 @@ class SplashPage extends StatelessWidget {
             ),
             SizedBox(height: 8.h),
             Text(
-              'FIELD SALES PLATFORM',
+              'SALES FORCE APPLICATION',
               style: GoogleFonts.barlowCondensed(
                 fontSize: 11.sp,
                 fontWeight: FontWeight.w700,
