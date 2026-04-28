@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:uswatte/core/device/device_id_service.dart';
 import 'package:uswatte/core/di/injection.dart';
+import 'package:uswatte/core/network/session_expired_notifier.dart';
 import 'package:uswatte/core/router/app_router.dart';
 import 'package:uswatte/core/sync/bill_sync_service.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
@@ -36,14 +39,20 @@ class SfaApp extends StatefulWidget {
 }
 
 class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
+  StreamSubscription<void>? _sessionExpiredSub;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _sessionExpiredSub = getIt<SessionExpiredNotifier>().stream.listen((_) {
+      widget.authBloc.add(LogoutRequested());
+    });
   }
 
   @override
   void dispose() {
+    _sessionExpiredSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

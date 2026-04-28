@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:uswatte/core/device/device_id_service.dart';
 import 'package:uswatte/core/network/dio_client.dart';
+import 'package:uswatte/core/network/session_expired_notifier.dart';
 import 'package:uswatte/core/network/token_cache.dart';
 import 'package:uswatte/features/auth/data/datasources/auth_local_datasource.dart';
 import 'package:uswatte/features/auth/data/datasources/auth_remote_datasource.dart';
@@ -85,8 +86,14 @@ Future<void> configureDependencies() async {
 
   getIt.registerLazySingleton<FlutterSecureStorage>(() => storage);
   getIt.registerLazySingleton<TokenCache>(() => cache);
-  getIt.registerLazySingleton<Dio>(() => createDioClient(storage, cache));
+  getIt.registerLazySingleton<SessionExpiredNotifier>(() => SessionExpiredNotifier());
   getIt.registerLazySingleton(() => DeviceIdService(getIt<FlutterSecureStorage>()));
+  getIt.registerLazySingleton<Dio>(() => createDioClient(
+        storage,
+        cache,
+        getIt<DeviceIdService>(),
+        getIt<SessionExpiredNotifier>(),
+      ));
 
   // ── Auth datasources ─────────────────────────────────────────────────────────
   getIt.registerLazySingleton(
