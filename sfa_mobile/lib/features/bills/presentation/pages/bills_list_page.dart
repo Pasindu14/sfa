@@ -21,10 +21,7 @@ class BillsListPage extends StatelessWidget {
       statusBarIconBrightness: Brightness.light,
     ));
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (_, __) => context.goNamed('salesRepHome'),
-      child: Scaffold(
+    return Scaffold(
       backgroundColor: AppColors.background,
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,
@@ -36,7 +33,7 @@ class BillsListPage extends StatelessWidget {
               fontSize: 15.sp,
               letterSpacing: 0.5,
             )),
-        onPressed: () => context.goNamed('createBill'),
+        onPressed: () => context.pushNamed('createBill'),
       ),
       body: Column(
         children: [
@@ -56,7 +53,13 @@ class BillsListPage extends StatelessWidget {
                 child: Row(
                   children: [
                     GestureDetector(
-                      onTap: () => context.goNamed('salesRepHome'),
+                      onTap: () {
+                        if (context.canPop()) {
+                          context.pop();
+                        } else {
+                          context.goNamed('salesRepHome');
+                        }
+                      },
                       child: Container(
                         width: 40.r,
                         height: 40.r,
@@ -135,7 +138,6 @@ class BillsListPage extends StatelessWidget {
           ),
         ],
       ),
-    ),
     );
   }
 }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:go_router/go_router.dart';
 import 'package:uswatte/core/device/device_id_service.dart';
 import 'package:uswatte/core/di/injection.dart';
 import 'package:uswatte/core/network/session_expired_notifier.dart';
@@ -40,11 +41,16 @@ class SfaApp extends StatefulWidget {
 
 class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
   StreamSubscription<void>? _sessionExpiredSub;
+  // Built once. Recreating GoRouter on every build (e.g. inside MaterialApp.router)
+  // tears down its listenables mid-frame and produces "markNeedsBuild during build"
+  // errors during route transitions.
+  late final GoRouter _router;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _router = AppRouter.createRouter(widget.authBloc);
     _sessionExpiredSub = getIt<SessionExpiredNotifier>().stream.listen((_) {
       widget.authBloc.add(LogoutRequested());
     });
@@ -86,7 +92,7 @@ class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
             title: 'SFA Uswatte',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light,
-            routerConfig: AppRouter.createRouter(widget.authBloc),
+            routerConfig: _router,
           ),
         );
       },

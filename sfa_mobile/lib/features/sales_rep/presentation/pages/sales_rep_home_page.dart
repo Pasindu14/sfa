@@ -741,22 +741,60 @@ class _ActionsGrid extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Column(
         children: [
-          _PrimaryAction(
+          _HeroActionCard(
             icon: Icons.add_shopping_cart_rounded,
             title: 'NEW ORDER',
             subtitle: 'Place a customer order',
             onTap: () => context.push('/sales-rep/bills/create'),
           ),
+          SizedBox(height: 12.h),
+          Row(
+            children: [
+              Expanded(
+                child: _TileActionCard(
+                  icon: Icons.receipt_long_rounded,
+                  title: 'MY ORDERS',
+                  subtitle: 'View & sync status',
+                  color: AppColors.amber,
+                  onTap: () => context.push('/sales-rep/bills'),
+                ),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: _TileActionCard(
+                  icon: Icons.report_problem_outlined,
+                  title: 'NOT BILLING',
+                  subtitle: 'Record outlet visit',
+                  color: AppColors.warning,
+                  onTap: () => context.push('/sales-rep/not-billings'),
+                ),
+              ),
+            ],
+          ),
           SizedBox(height: 10.h),
-          _MyOrdersAction(onTap: () => context.push('/sales-rep/bills')),
-          SizedBox(height: 10.h),
-          _NotBillingAction(
-              onTap: () => context.push('/sales-rep/not-billings')),
-          SizedBox(height: 10.h),
-          _AddOutletAction(
-              onTap: () => context.push('/sales-rep/outlets/create')),
-          SizedBox(height: 10.h),
-          _SyncDataAction(onTap: () => context.push('/sales-rep/sync')),
+          Row(
+            children: [
+              Expanded(
+                child: _TileActionCard(
+                  icon: Icons.storefront_rounded,
+                  title: 'ADD OUTLET',
+                  subtitle: 'Register new outlet',
+                  color: AppColors.success,
+                  onTap: () => context.push('/sales-rep/outlets/create'),
+                ),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: _TileActionCard(
+                  icon: Icons.sync_rounded,
+                  title: 'SYNC DATA',
+                  subtitle: 'Keep device updated',
+                  color: AppColors.primaryMedium,
+                  onTap: () => context.push('/sales-rep/sync'),
+                ),
+              ),
+            ],
+          ),
           SizedBox(height: 10.h),
           Row(
             children: [
@@ -793,154 +831,8 @@ class _ActionsGrid extends StatelessWidget {
   }
 }
 
-class _MyOrdersAction extends StatelessWidget {
-  const _MyOrdersAction({required this.onTap});
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12.r),
-        child: Ink(
-          height: 56.h,
-          decoration: BoxDecoration(
-            color: AppColors.amber.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(12.r),
-            border: Border.all(
-              color: AppColors.amber.withValues(alpha: 0.35),
-              width: 1.5,
-            ),
-          ),
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: Row(
-              children: [
-                Container(
-                  width: 32.r,
-                  height: 32.r,
-                  decoration: BoxDecoration(
-                    color: AppColors.amber.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                  child: Icon(Icons.receipt_long_rounded,
-                      color: AppColors.amber, size: 16.r),
-                ),
-                SizedBox(width: 14.w),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'MY ORDERS',
-                        style: GoogleFonts.barlowCondensed(
-                          fontSize: 15.sp,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.2,
-                          height: 1.0,
-                          color: AppColors.amber,
-                        ),
-                      ),
-                      Text(
-                        'View orders & sync status',
-                        style: GoogleFonts.barlow(
-                          fontSize: 11.sp,
-                          color: AppColors.foregroundMuted,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(Icons.arrow_forward_ios_rounded,
-                    color: AppColors.amber.withValues(alpha: 0.6), size: 12.r),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SyncDataAction extends StatelessWidget {
-  const _SyncDataAction({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12.r),
-        child: Ink(
-          height: 56.h,
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(12.r),
-            border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.35),
-              width: 1.5,
-            ),
-          ),
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: Row(
-              children: [
-                Container(
-                  width: 32.r,
-                  height: 32.r,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                  child: Icon(Icons.sync_rounded,
-                      color: AppColors.primary, size: 16.r),
-                ),
-                SizedBox(width: 14.w),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'SYNC DATA',
-                        style: GoogleFonts.barlowCondensed(
-                          fontSize: 15.sp,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.2,
-                          height: 1.0,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      Text(
-                        'Keep your device data up to date',
-                        style: GoogleFonts.barlow(
-                          fontSize: 11.sp,
-                          color: AppColors.foregroundMuted,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(Icons.arrow_forward_ios_rounded,
-                    color: AppColors.primary.withValues(alpha: 0.6),
-                    size: 12.r),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PrimaryAction extends StatelessWidget {
-  const _PrimaryAction({
+class _HeroActionCard extends StatelessWidget {
+  const _HeroActionCard({
     required this.icon,
     required this.title,
     required this.subtitle,
@@ -956,59 +848,121 @@ class _PrimaryAction extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(16.r),
         child: Ink(
-          height: 66.h,
+          height: 92.h,
           decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(12.r),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [AppColors.primaryDark, AppColors.primary, AppColors.primaryLight],
+              stops: const [0.0, 0.55, 1.0],
+            ),
+            borderRadius: BorderRadius.circular(16.r),
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.30),
-                blurRadius: 14,
-                offset: const Offset(0, 5),
+                color: AppColors.primary.withValues(alpha: 0.38),
+                blurRadius: 22,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: Row(
-              children: [
-                Container(
-                  width: 36.r,
-                  height: 36.r,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                right: -12.w,
+                top: -18.h,
+                child: Container(
+                  width: 110.r,
+                  height: 110.r,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                  child: Icon(icon, color: Colors.white, size: 18.r),
-                ),
-                SizedBox(width: 14.w),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title,
-                          style: GoogleFonts.barlowCondensed(
-                            fontSize: 17.sp,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.2,
-                            height: 1.0,
-                            color: Colors.white,
-                          )),
-                      Text(subtitle,
-                          style: GoogleFonts.barlow(
-                            fontSize: 11.sp,
-                            color: Colors.white.withValues(alpha: 0.7),
-                          )),
-                    ],
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.07),
                   ),
                 ),
-                Icon(Icons.arrow_forward_ios_rounded,
-                    color: Colors.white.withValues(alpha: 0.7), size: 13.r),
-              ],
-            ),
+              ),
+              Positioned(
+                right: 50.w,
+                bottom: -14.h,
+                child: Container(
+                  width: 55.r,
+                  height: 55.r,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.05),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 22.w),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 52.r,
+                      height: 52.r,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(14.r),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.22),
+                        ),
+                      ),
+                      child: Icon(icon, color: Colors.white, size: 24.r),
+                    ),
+                    SizedBox(width: 18.w),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 7.w, vertical: 2.h),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(4.r),
+                            ),
+                            child: Text('PRIMARY ACTION',
+                                style: GoogleFonts.barlowCondensed(
+                                  fontSize: 8.sp,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1.5,
+                                  color: Colors.white.withValues(alpha: 0.88),
+                                )),
+                          ),
+                          SizedBox(height: 5.h),
+                          Text(title,
+                              style: GoogleFonts.barlowCondensed(
+                                fontSize: 23.sp,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.0,
+                                height: 1.0,
+                                color: Colors.white,
+                              )),
+                          SizedBox(height: 3.h),
+                          Text(subtitle,
+                              style: GoogleFonts.barlow(
+                                fontSize: 11.sp,
+                                color: Colors.white.withValues(alpha: 0.72),
+                              )),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      width: 32.r,
+                      height: 32.r,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.arrow_forward_rounded,
+                          color: Colors.white, size: 15.r),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1016,9 +970,18 @@ class _PrimaryAction extends StatelessWidget {
   }
 }
 
-class _NotBillingAction extends StatelessWidget {
-  const _NotBillingAction({required this.onTap});
-  final VoidCallback onTap;
+class _TileActionCard extends StatelessWidget {
+  const _TileActionCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    this.onTap,
+  });
+  final IconData icon;
+  final String title, subtitle;
+  final Color color;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1026,135 +989,93 @@ class _NotBillingAction extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(14.r),
         child: Ink(
-          height: 56.h,
           decoration: BoxDecoration(
-            color: AppColors.warning.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(12.r),
-            border: Border.all(
-              color: AppColors.warning.withValues(alpha: 0.35),
-              width: 1.5,
-            ),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14.r),
+            border: Border.all(color: color.withValues(alpha: 0.14)),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.09),
+                blurRadius: 14,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: Row(
-              children: [
-                Container(
-                  width: 32.r,
-                  height: 32.r,
-                  decoration: BoxDecoration(
-                    color: AppColors.warning.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8.r),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                height: 64.h,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.09),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(14.r),
+                    topRight: Radius.circular(14.r),
                   ),
-                  child: Icon(Icons.report_problem_outlined,
-                      color: AppColors.warning, size: 16.r),
                 ),
-                SizedBox(width: 14.w),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'NOT BILLING',
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned(
+                      right: -10.w,
+                      top: -10.h,
+                      child: Container(
+                        width: 54.r,
+                        height: 54.r,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: color.withValues(alpha: 0.07),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 36.r,
+                            height: 36.r,
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.16),
+                              borderRadius: BorderRadius.circular(10.r),
+                            ),
+                            child: Icon(icon, color: color, size: 18.r),
+                          ),
+                          Icon(Icons.arrow_outward_rounded,
+                              color: color.withValues(alpha: 0.40), size: 14.r),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.fromLTRB(14.w, 10.h, 14.w, 14.h),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
                         style: GoogleFonts.barlowCondensed(
-                          fontSize: 15.sp,
+                          fontSize: 14.sp,
                           fontWeight: FontWeight.w800,
-                          letterSpacing: 1.2,
+                          letterSpacing: 0.6,
                           height: 1.0,
-                          color: AppColors.warning,
-                        ),
-                      ),
-                      Text(
-                        'Record a non-sale outlet visit',
+                          color: AppColors.foreground,
+                        )),
+                    SizedBox(height: 3.h),
+                    Text(subtitle,
                         style: GoogleFonts.barlow(
-                          fontSize: 11.sp,
+                          fontSize: 10.sp,
                           color: AppColors.foregroundMuted,
-                        ),
-                      ),
-                    ],
-                  ),
+                        )),
+                  ],
                 ),
-                Icon(Icons.arrow_forward_ios_rounded,
-                    color: AppColors.warning.withValues(alpha: 0.6),
-                    size: 12.r),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AddOutletAction extends StatelessWidget {
-  const _AddOutletAction({required this.onTap});
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12.r),
-        child: Ink(
-          height: 56.h,
-          decoration: BoxDecoration(
-            color: AppColors.success.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(12.r),
-            border: Border.all(
-              color: AppColors.success.withValues(alpha: 0.35),
-              width: 1.5,
-            ),
-          ),
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: Row(
-              children: [
-                Container(
-                  width: 32.r,
-                  height: 32.r,
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                  child: Icon(Icons.storefront_rounded,
-                      color: AppColors.success, size: 16.r),
-                ),
-                SizedBox(width: 14.w),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'ADD OUTLET',
-                        style: GoogleFonts.barlowCondensed(
-                          fontSize: 15.sp,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.2,
-                          height: 1.0,
-                          color: AppColors.success,
-                        ),
-                      ),
-                      Text(
-                        'Register a new outlet on your route',
-                        style: GoogleFonts.barlow(
-                          fontSize: 11.sp,
-                          color: AppColors.foregroundMuted,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(Icons.arrow_forward_ios_rounded,
-                    color: AppColors.success.withValues(alpha: 0.6),
-                    size: 12.r),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

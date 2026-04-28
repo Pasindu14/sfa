@@ -1,6 +1,7 @@
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uswatte/core/errors/app_exception.dart';
+import 'package:uswatte/features/outlets/domain/entities/outlet.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_current_route_id_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_outlets_last_synced_at_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_outlets_usecase.dart';
@@ -44,9 +45,16 @@ class OutletsBloc extends Bloc<OutletsEvent, OutletsState> {
       final local = await _getOutlets();
       final routeId = await _getCurrentRouteId();
       final lastSyncedAt = await _getLastSyncedAt();
-      final hasAssignment = wasAssigned ?? (local.isNotEmpty && routeId != null);
+
+      // The daily_outlets table is a full-replace snapshot keyed to a sync date.
+      // If the last sync was on a previous calendar day, the rows are stale —
+      // show nothing until today's SyncDailyOutletsRequested runs from the home page.
+      final todayOutlets = _isSyncedToday(lastSyncedAt) ? local : const <Outlet>[];
+      final hasAssignment =
+          wasAssigned ?? (todayOutlets.isNotEmpty && routeId != null);
+
       emit(OutletsLoaded(
-        outlets: local,
+        outlets: todayOutlets,
         isSyncing: false,
         lastSyncedAt: lastSyncedAt,
         hasActiveAssignment: hasAssignment,
@@ -54,6 +62,14 @@ class OutletsBloc extends Bloc<OutletsEvent, OutletsState> {
     } on AppException catch (e) {
       emit(OutletsError(message: e.message));
     }
+  }
+
+  bool _isSyncedToday(DateTime? lastSyncedAt) {
+    if (lastSyncedAt == null) return false;
+    final now = DateTime.now();
+    return lastSyncedAt.year == now.year &&
+        lastSyncedAt.month == now.month &&
+        lastSyncedAt.day == now.day;
   }
 
   Future<void> _onSync(
