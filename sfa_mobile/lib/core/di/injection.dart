@@ -79,6 +79,12 @@ import 'package:uswatte/features/not_billings/domain/usecases/delete_not_billing
 import 'package:uswatte/features/not_billings/domain/usecases/get_not_billing_by_id_usecase.dart';
 import 'package:uswatte/features/not_billings/domain/usecases/get_not_billings_usecase.dart';
 import 'package:uswatte/features/not_billings/domain/usecases/retry_not_billing_sync_usecase.dart';
+import 'package:uswatte/features/outlet_billings/data/datasources/outlet_billings_remote_datasource.dart';
+import 'package:uswatte/features/outlet_billings/data/repositories/outlet_billings_repository_impl.dart';
+import 'package:uswatte/features/outlet_billings/domain/repositories/outlet_billings_repository.dart';
+import 'package:uswatte/features/outlet_billings/domain/usecases/get_assigned_routes_usecase.dart';
+import 'package:uswatte/features/outlet_billings/domain/usecases/get_outlet_summary_usecase.dart';
+import 'package:uswatte/features/outlet_billings/presentation/cubit/outlet_billings_cubit.dart';
 
 final getIt = GetIt.instance;
 
@@ -298,4 +304,19 @@ Future<void> configureDependencies() async {
   );
   getIt.registerLazySingleton(
       () => GetRepAssignmentUseCase(getIt<RepAssignmentRepository>()));
+
+  // ── Outlet Billings ───────────────────────────────────────────────────────────
+  getIt.registerLazySingleton(
+      () => OutletBillingsRemoteDatasource(getIt<Dio>()));
+  getIt.registerLazySingleton<OutletBillingsRepository>(
+    () => OutletBillingsRepositoryImpl(getIt<OutletBillingsRemoteDatasource>()),
+  );
+  getIt.registerLazySingleton(
+      () => GetAssignedRoutesUseCase(getIt<OutletBillingsRepository>()));
+  getIt.registerLazySingleton(
+      () => GetOutletSummaryUseCase(getIt<OutletBillingsRepository>()));
+  getIt.registerFactory(() => OutletBillingsCubit(
+        getIt<GetAssignedRoutesUseCase>(),
+        getIt<GetOutletSummaryUseCase>(),
+      ));
 }

@@ -287,4 +287,31 @@ public class BillingService(
             i.ExpireDate,
             i.LineNumber)).ToList()
     );
+
+    public async Task<OutletBillingSummaryResponseDto> GetOutletSummaryAsync(
+        int salesRepId, int routeId,
+        DateOnly dateFrom, DateOnly dateTo,
+        CancellationToken ct = default)
+    {
+        var rows = await _billingRepository.GetOutletSummaryRawAsync(
+            salesRepId, routeId, dateFrom, dateTo, ct);
+
+        var outletSummaries = rows
+            .GroupBy(r => new { r.OutletId, r.OutletName })
+            .Select(g => new OutletBillingSummaryDto(
+                g.Key.OutletId,
+                g.Key.OutletName,
+                g.Count(),
+                g.Sum(r => r.TotalAmount),
+                g.OrderByDescending(r => r.BillingDate)
+                 .Select(r => new BillLineDto(r.Id, r.BillingNumber, r.BillingDate, r.TotalAmount, r.Status.ToString()))
+                 .ToList()))
+            .OrderByDescending(x => x.TotalAmount)
+            .ToList();
+
+        return new OutletBillingSummaryResponseDto(
+            GrandTotal: outletSummaries.Sum(x => x.TotalAmount),
+            TotalBillingCount: outletSummaries.Sum(x => x.BillingCount),
+            OutletSummaries: outletSummaries);
+    }
 }

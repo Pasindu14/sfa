@@ -70,6 +70,32 @@ public class BillingsController(
     }
 
     /// <summary>
+    /// GET /api/v1/billings/outlet-summary
+    /// Returns billings grouped and aggregated by outlet for the caller's route and date range.
+    /// SalesRep is resolved from the JWT — no salesRepId param needed from mobile.
+    /// </summary>
+    [HttpGet("outlet-summary")]
+    public async Task<IActionResult> GetOutletSummary(
+        [FromQuery] int? routeId,
+        [FromQuery] string? dateFrom,
+        [FromQuery] string? dateTo,
+        CancellationToken ct = default)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+
+        if (!routeId.HasValue)
+            return BadRequest(new { code = "VALIDATION_ERROR", message = "routeId is required." });
+
+        if (!DateOnly.TryParse(dateFrom, out var parsedFrom) || !DateOnly.TryParse(dateTo, out var parsedTo))
+            return BadRequest(new { code = "VALIDATION_ERROR", message = "dateFrom and dateTo must be valid dates (YYYY-MM-DD)." });
+
+        var result = await _billingService.GetOutletSummaryAsync(
+            GetCallerId(), routeId.Value, parsedFrom, parsedTo, ct);
+
+        return Ok(ResponseHelper.Ok(result, correlationId));
+    }
+
+    /// <summary>
     /// POST /api/v1/billings
     /// SalesRep only — creates a billing for an outlet and deducts stock atomically.
     ///

@@ -70,6 +70,7 @@ import 'package:uswatte/features/outlet_bill_history/presentation/cubit/outlet_b
 import 'package:uswatte/features/outlet_bill_history/presentation/cubit/outlet_bill_history_cubit.dart';
 import 'package:uswatte/features/outlet_bill_history/presentation/pages/outlet_bill_detail_page.dart';
 import 'package:uswatte/features/outlet_bill_history/presentation/pages/outlet_bill_history_page.dart';
+import 'package:uswatte/features/outlet_billings/presentation/pages/outlet_billings_page.dart';
 
 class AppRouter {
   AppRouter._();
@@ -396,6 +397,11 @@ class AppRouter {
                   ),
                 ),
               ],
+            ),
+            GoRoute(
+              path: 'outlet-billings',
+              name: 'outletBillings',
+              builder: (_, __) => const OutletBillingsPage(),
             ),
             GoRoute(
               path: 'debug',

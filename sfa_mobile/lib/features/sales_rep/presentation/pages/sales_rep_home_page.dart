@@ -762,6 +762,20 @@ class _ActionsGrid extends StatelessWidget {
               SizedBox(width: 10.w),
               Expanded(
                 child: _TileActionCard(
+                  icon: Icons.bar_chart_rounded,
+                  title: 'BILLING\nREPORT',
+                  subtitle: 'Outlet-wise summary',
+                  color: AppColors.success,
+                  onTap: () => context.push('/sales-rep/outlet-billings'),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 10.h),
+          Row(
+            children: [
+              Expanded(
+                child: _TileActionCard(
                   icon: Icons.report_problem_outlined,
                   title: 'NOT BILLING',
                   subtitle: 'Record outlet visit',
@@ -769,6 +783,8 @@ class _ActionsGrid extends StatelessWidget {
                   onTap: () => context.push('/sales-rep/not-billings'),
                 ),
               ),
+              SizedBox(width: 10.w),
+              const Expanded(child: SizedBox.shrink()),
             ],
           ),
           SizedBox(height: 10.h),

@@ -124,6 +124,27 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
         return (items, total);
     }
 
+    public async Task<List<OutletBillingSummaryRawRow>> GetOutletSummaryRawAsync(
+        int salesRepId, int routeId,
+        DateOnly dateFrom, DateOnly dateTo,
+        CancellationToken ct = default)
+        => await _db.Billings
+            .AsNoTracking()
+            .Where(b => b.SalesRepId == salesRepId
+                     && b.RouteId == routeId
+                     && b.BillingDate >= dateFrom
+                     && b.BillingDate <= dateTo
+                     && !b.IsDeleted)
+            .Select(b => new OutletBillingSummaryRawRow(
+                b.OutletId,
+                b.Outlet.Name,
+                b.Id,
+                b.BillingNumber,
+                b.BillingDate,
+                b.TotalAmount,
+                b.Status))
+            .ToListAsync(ct);
+
     public Task AddAsync(Billing billing, CancellationToken ct = default)
     {
         _db.Billings.Add(billing);

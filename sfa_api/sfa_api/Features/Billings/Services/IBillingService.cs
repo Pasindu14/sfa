@@ -14,4 +14,9 @@ public interface IBillingService
         int? outletId, int? distributorId, int? salesRepId,
         DateOnly? dateFrom, DateOnly? dateTo,
         CancellationToken ct = default);
+
+    Task<OutletBillingSummaryResponseDto> GetOutletSummaryAsync(
+        int salesRepId, int routeId,
+        DateOnly dateFrom, DateOnly dateTo,
+        CancellationToken ct = default);
 }
