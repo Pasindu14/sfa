@@ -264,6 +264,8 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     final bill = Bill(
       clientBillId: clientBillId,
       outletId: state.outlet!.id,
+      outletName: state.outlet!.name,
+      outletCategory: state.outlet!.outletCategory,
       billingDate: today,
       billDiscountRate: state.billDiscountRate,
       subTotalAmount: state.saleSubTotal,

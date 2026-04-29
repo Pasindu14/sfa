@@ -21,6 +21,8 @@ class BillModel {
   final String? lastSyncErrorCode;
   final int? serverBillId;
   final String? serverBillNumber;
+  final String? outletName;
+  final String? outletCategory;
   final List<BillItemModel> items;
 
   const BillModel({
@@ -41,6 +43,8 @@ class BillModel {
     this.lastSyncErrorCode,
     this.serverBillId,
     this.serverBillNumber,
+    this.outletName,
+    this.outletCategory,
     this.items = const [],
   });
 
@@ -62,6 +66,8 @@ class BillModel {
         lastSyncErrorCode: map['last_sync_error_code'] as String?,
         serverBillId: map['server_bill_id'] as int?,
         serverBillNumber: map['server_bill_number'] as String?,
+        outletName: map['outlet_name'] as String?,
+        outletCategory: map['outlet_category'] as String?,
         items: items,
       );
 
@@ -88,6 +94,8 @@ class BillModel {
         'last_sync_error_code': lastSyncErrorCode,
         'server_bill_id': serverBillId,
         'server_bill_number': serverBillNumber,
+        'outlet_name': outletName,
+        'outlet_category': outletCategory,
       };
 
   /// Payload sent to POST /api/v1/billings. Matches CreateBillingRequest on the server.
@@ -120,6 +128,8 @@ class BillModel {
         lastSyncErrorCode: lastSyncErrorCode,
         serverBillId: serverBillId,
         serverBillNumber: serverBillNumber,
+        outletName: outletName,
+        outletCategory: outletCategory,
         items: items.map((i) => i.toEntity()).toList(),
       );
 
@@ -149,6 +159,8 @@ class BillModel {
         lastSyncErrorCode: lastSyncErrorCode ?? this.lastSyncErrorCode,
         serverBillId: serverBillId ?? this.serverBillId,
         serverBillNumber: serverBillNumber ?? this.serverBillNumber,
+        outletName: this.outletName,
+        outletCategory: this.outletCategory,
         items: items,
       );
 

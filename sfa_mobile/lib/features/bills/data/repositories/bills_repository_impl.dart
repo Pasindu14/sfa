@@ -17,6 +17,8 @@ class BillsRepositoryImpl implements BillsRepository {
     final model = BillModel(
       clientBillId: bill.clientBillId,
       outletId: bill.outletId,
+      outletName: bill.outletName,
+      outletCategory: bill.outletCategory,
       billingDate: bill.billingDate,
       billDiscountRate: bill.billDiscountRate,
       subTotalAmount: bill.subTotalAmount,

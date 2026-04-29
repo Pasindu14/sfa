@@ -338,7 +338,12 @@ class _InfoCard extends StatelessWidget {
           SizedBox(height: 10.h),
           Divider(height: 1, color: AppColors.surfaceVariant),
           SizedBox(height: 10.h),
-          _infoRow(Icons.storefront_rounded, 'Outlet', '#${bill.outletId}'),
+          _infoRow(Icons.storefront_rounded, 'Outlet',
+              bill.outletName ?? '#${bill.outletId}'),
+          if (bill.outletCategory != null) ...[
+            SizedBox(height: 6.h),
+            _infoRow(Icons.category_rounded, 'Category', bill.outletCategory!),
+          ],
           SizedBox(height: 6.h),
           _infoRow(Icons.receipt_rounded, 'Type', _billTypeLabel(bill)),
           SizedBox(height: 6.h),

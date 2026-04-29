@@ -179,7 +179,22 @@ class _BillTile extends StatelessWidget {
                   ),
                   SizedBox(height: 3.h),
                   Text(
-                    '${bill.items.length} items  ·  Rs. ${bill.totalAmount.toStringAsFixed(2)}',
+                    bill.outletName ?? '#${bill.outletId}',
+                    style: GoogleFonts.barlow(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.foreground,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 2.h),
+                  Text(
+                    [
+                      if (bill.outletCategory != null) bill.outletCategory!,
+                      '${bill.items.length} items',
+                      'Rs. ${bill.totalAmount.toStringAsFixed(2)}',
+                    ].join('  ·  '),
                     style: GoogleFonts.barlow(
                       fontSize: 12.sp,
                       color: AppColors.foregroundMuted,

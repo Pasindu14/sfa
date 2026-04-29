@@ -52,10 +52,18 @@ class BillsLocalDatasource {
 
   Future<List<BillModel>> getAll({int? limit}) async {
     final db = await _dbHelper.database;
-    final billRows = await db.query(
-      'bills',
-      orderBy: 'created_at DESC',
-      limit: limit,
+    final since = DateTime.now()
+        .subtract(const Duration(days: 7))
+        .toUtc()
+        .toIso8601String();
+    final billRows = await db.rawQuery(
+      '''
+      SELECT * FROM bills
+      WHERE created_at >= ? OR sync_status IN ('pending', 'failed')
+      ORDER BY created_at DESC
+      ${limit != null ? 'LIMIT $limit' : ''}
+      ''',
+      [since],
     );
     if (billRows.isEmpty) return [];
 

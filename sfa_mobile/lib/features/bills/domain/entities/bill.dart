@@ -23,6 +23,8 @@ class Bill extends Equatable {
   final String? lastSyncErrorCode;
   final int? serverBillId;
   final String? serverBillNumber;
+  final String? outletName;
+  final String? outletCategory;
   final List<BillItem> items;
 
   const Bill({
@@ -43,6 +45,8 @@ class Bill extends Equatable {
     this.lastSyncErrorCode,
     this.serverBillId,
     this.serverBillNumber,
+    this.outletName,
+    this.outletCategory,
     this.items = const [],
   });
 
@@ -65,6 +69,8 @@ class Bill extends Equatable {
         lastSyncErrorCode,
         serverBillId,
         serverBillNumber,
+        outletName,
+        outletCategory,
         items,
       ];
 }
