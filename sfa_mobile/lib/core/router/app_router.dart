@@ -71,6 +71,14 @@ import 'package:uswatte/features/outlet_bill_history/presentation/cubit/outlet_b
 import 'package:uswatte/features/outlet_bill_history/presentation/pages/outlet_bill_detail_page.dart';
 import 'package:uswatte/features/outlet_bill_history/presentation/pages/outlet_bill_history_page.dart';
 import 'package:uswatte/features/outlet_billings/presentation/pages/outlet_billings_page.dart';
+import 'package:uswatte/features/supervisor_billing/domain/usecases/get_billing_detail_usecase.dart';
+import 'package:uswatte/features/supervisor_billing/domain/usecases/get_supervisor_billings_usecase.dart';
+import 'package:uswatte/features/supervisor_billing/presentation/bloc/supervisor_billing_bloc.dart';
+import 'package:uswatte/features/supervisor_billing/presentation/bloc/supervisor_billing_event.dart';
+import 'package:uswatte/features/supervisor_billing/presentation/cubit/billing_detail_cubit.dart';
+import 'package:uswatte/features/supervisor_billing/presentation/pages/billing_detail_page.dart';
+import 'package:uswatte/features/supervisor_billing/presentation/pages/supervisor_billing_page.dart';
+import 'package:uswatte/features/route_assignment/domain/usecases/get_my_reps_usecase.dart';
 
 class AppRouter {
   AppRouter._();
@@ -428,6 +436,32 @@ class AppRouter {
               path: 'assignments',
               name: 'assignments',
               builder: (_, __) => const AssignmentsListPage(),
+            ),
+            GoRoute(
+              path: 'billing',
+              name: 'supervisorBilling',
+              builder: (_, __) => BlocProvider(
+                create: (_) => SupervisorBillingBloc(
+                  getMyReps: getIt<GetMyRepsUseCase>(),
+                  getSupervisorBillings:
+                      getIt<GetSupervisorBillingsUseCase>(),
+                )..add(const LoadRepsRequested()),
+                child: const SupervisorBillingPage(),
+              ),
+              routes: [
+                GoRoute(
+                  path: ':id',
+                  name: 'billingDetail',
+                  builder: (_, state) => BlocProvider(
+                    create: (_) => BillingDetailCubit(
+                        getIt<GetBillingDetailUseCase>()),
+                    child: BillingDetailPage(
+                      billingId: int.parse(state.pathParameters['id']!),
+                      billingNumber: state.extra as String?,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

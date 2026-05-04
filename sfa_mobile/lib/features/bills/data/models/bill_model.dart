@@ -159,8 +159,8 @@ class BillModel {
         lastSyncErrorCode: lastSyncErrorCode ?? this.lastSyncErrorCode,
         serverBillId: serverBillId ?? this.serverBillId,
         serverBillNumber: serverBillNumber ?? this.serverBillNumber,
-        outletName: this.outletName,
-        outletCategory: this.outletCategory,
+        outletName: outletName,
+        outletCategory: outletCategory,
         items: items,
       );
 

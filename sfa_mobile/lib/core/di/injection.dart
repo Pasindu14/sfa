@@ -85,6 +85,11 @@ import 'package:uswatte/features/outlet_billings/domain/repositories/outlet_bill
 import 'package:uswatte/features/outlet_billings/domain/usecases/get_assigned_routes_usecase.dart';
 import 'package:uswatte/features/outlet_billings/domain/usecases/get_outlet_summary_usecase.dart';
 import 'package:uswatte/features/outlet_billings/presentation/cubit/outlet_billings_cubit.dart';
+import 'package:uswatte/features/supervisor_billing/data/datasources/supervisor_billing_remote_datasource.dart';
+import 'package:uswatte/features/supervisor_billing/data/repositories/supervisor_billing_repository_impl.dart';
+import 'package:uswatte/features/supervisor_billing/domain/repositories/supervisor_billing_repository.dart';
+import 'package:uswatte/features/supervisor_billing/domain/usecases/get_billing_detail_usecase.dart';
+import 'package:uswatte/features/supervisor_billing/domain/usecases/get_supervisor_billings_usecase.dart';
 
 final getIt = GetIt.instance;
 
@@ -319,4 +324,16 @@ Future<void> configureDependencies() async {
         getIt<GetAssignedRoutesUseCase>(),
         getIt<GetOutletSummaryUseCase>(),
       ));
+
+  // ── Supervisor Billing ────────────────────────────────────────────────────────
+  getIt.registerLazySingleton(
+      () => SupervisorBillingRemoteDatasource(getIt<Dio>()));
+  getIt.registerLazySingleton<SupervisorBillingRepository>(
+    () => SupervisorBillingRepositoryImpl(
+        getIt<SupervisorBillingRemoteDatasource>()),
+  );
+  getIt.registerLazySingleton(
+      () => GetSupervisorBillingsUseCase(getIt<SupervisorBillingRepository>()));
+  getIt.registerLazySingleton(
+      () => GetBillingDetailUseCase(getIt<SupervisorBillingRepository>()));
 }

@@ -51,7 +51,9 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
         permission = await Geolocator.requestPermission();
       }
       if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) return;
+          permission == LocationPermission.deniedForever) {
+        return;
+      }
 
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(

@@ -389,6 +389,13 @@ class _ActionsSection extends StatelessWidget {
             subtitle: "See today's route assignments",
             onTap: () => context.push('/supervisor/assignments'),
           ),
+          SizedBox(height: 10.h),
+          _SecondaryAction(
+            icon: Icons.receipt_long_rounded,
+            title: 'VIEW REP BILLS',
+            subtitle: "Review bills created by your reps",
+            onTap: () => context.push('/supervisor/billing'),
+          ),
         ],
       ),
     );
