@@ -53,7 +53,11 @@ class _SupervisorHomePageState extends State<SupervisorHomePage>
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: CustomScrollView(
+      body: RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: () async =>
+            context.read<SupervisorSummaryCubit>().refresh(),
+        child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
             child: FadeTransition(
@@ -106,6 +110,7 @@ class _SupervisorHomePageState extends State<SupervisorHomePage>
           ),
           SliverToBoxAdapter(child: SizedBox(height: 40.h)),
         ],
+      ),
       ),
     );
   }
@@ -329,6 +334,36 @@ class _MetricsSection extends StatelessWidget {
         builder: (context, state) {
           final summary = state is SupervisorSummaryLoaded ? state.summary : null;
           final loading = state is SupervisorSummaryLoading;
+          final hasError = state is SupervisorSummaryError;
+
+          if (hasError) {
+            return GestureDetector(
+              onTap: () => context.read<SupervisorSummaryCubit>().refresh(),
+              child: Container(
+                padding: EdgeInsets.symmetric(vertical: 20.h, horizontal: 12.w),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(color: AppColors.surfaceVariant),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.refresh_rounded,
+                        size: 16.r, color: AppColors.primary),
+                    SizedBox(width: 8.w),
+                    Text(
+                      'Could not load data — tap to retry',
+                      style: GoogleFonts.barlow(
+                        fontSize: 13.sp,
+                        color: AppColors.foregroundMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
 
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -520,7 +555,12 @@ class _ActionsSection extends StatelessWidget {
             icon: Icons.map_rounded,
             title: 'ASSIGN DAILY ROUTE',
             subtitle: 'Schedule a route for a sales rep',
-            onTap: () => context.push('/supervisor/assign-route'),
+            onTap: () async {
+              await context.push('/supervisor/assign-route');
+              if (context.mounted) {
+                context.read<SupervisorSummaryCubit>().refresh();
+              }
+            },
           ),
           SizedBox(height: 12.h),
           Row(
@@ -531,7 +571,12 @@ class _ActionsSection extends StatelessWidget {
                   title: 'VIEW\nASSIGNMENTS',
                   subtitle: "Today's route assignments",
                   color: AppColors.primary,
-                  onTap: () => context.push('/supervisor/assignments'),
+                  onTap: () async {
+                    await context.push('/supervisor/assignments');
+                    if (context.mounted) {
+                      context.read<SupervisorSummaryCubit>().refresh();
+                    }
+                  },
                 ),
               ),
               SizedBox(width: 10.w),
@@ -541,7 +586,12 @@ class _ActionsSection extends StatelessWidget {
                   title: 'VIEW REP\nBILLS',
                   subtitle: 'Bills created by your reps',
                   color: AppColors.primary,
-                  onTap: () => context.push('/supervisor/billing'),
+                  onTap: () async {
+                    await context.push('/supervisor/billing');
+                    if (context.mounted) {
+                      context.read<SupervisorSummaryCubit>().refresh();
+                    }
+                  },
                 ),
               ),
             ],
@@ -555,11 +605,24 @@ class _ActionsSection extends StatelessWidget {
                   title: 'VIEW\nNON-BILLINGS',
                   subtitle: 'Non-billing visits by reps',
                   color: AppColors.primary,
-                  onTap: () => context.push('/supervisor/not-billing'),
+                  onTap: () async {
+                    await context.push('/supervisor/not-billing');
+                    if (context.mounted) {
+                      context.read<SupervisorSummaryCubit>().refresh();
+                    }
+                  },
                 ),
               ),
               SizedBox(width: 10.w),
-              const Expanded(child: SizedBox.shrink()),
+              Expanded(
+                child: _TileActionCard(
+                  icon: Icons.map_rounded,
+                  title: "REP ROUTE\nMAP",
+                  subtitle: "View a rep's route on map",
+                  color: AppColors.primary,
+                  onTap: () => context.push('/supervisor/rep-route-map'),
+                ),
+              ),
             ],
           ),
         ],

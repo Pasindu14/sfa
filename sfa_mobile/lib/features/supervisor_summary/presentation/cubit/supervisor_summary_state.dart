@@ -25,5 +25,9 @@ class SupervisorSummaryLoaded extends SupervisorSummaryState {
 }
 
 class SupervisorSummaryError extends SupervisorSummaryState {
-  const SupervisorSummaryError();
+  final String message;
+  const SupervisorSummaryError([this.message = 'Failed to load summary.']);
+
+  @override
+  List<Object?> get props => [message];
 }

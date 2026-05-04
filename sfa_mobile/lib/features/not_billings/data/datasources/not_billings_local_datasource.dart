@@ -124,6 +124,14 @@ class NotBillingsLocalDatasource {
     );
   }
 
+  Future<Set<int>> getTodaysNotBilledOutletIds() async {
+    final db = await _dbHelper.database;
+    final rows = await db.rawQuery(
+      "SELECT DISTINCT outlet_id FROM not_billings WHERE not_billing_date = DATE('now')",
+    );
+    return rows.map((r) => r['outlet_id'] as int).toSet();
+  }
+
   Future<int> purgeSyncedOlderThan(DateTime cutoff) async {
     final db = await _dbHelper.database;
     final cutoffIso = cutoff.toUtc().toIso8601String();

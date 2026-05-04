@@ -87,6 +87,14 @@ import 'package:uswatte/features/supervisor_billing/presentation/pages/billing_d
 import 'package:uswatte/features/supervisor_billing/presentation/pages/supervisor_billing_page.dart';
 import 'package:uswatte/features/route_assignment/domain/usecases/get_my_reps_usecase.dart';
 import 'package:uswatte/features/supervisor_summary/domain/usecases/get_supervisor_summary_usecase.dart';
+import 'package:uswatte/features/supervisor_route_map/domain/usecases/get_supervisor_route_map_usecase.dart';
+import 'package:uswatte/features/supervisor_route_map/presentation/bloc/supervisor_route_map_bloc.dart';
+import 'package:uswatte/features/supervisor_route_map/presentation/bloc/supervisor_route_map_event.dart';
+import 'package:uswatte/features/supervisor_route_map/presentation/pages/supervisor_route_map_page.dart';
+import 'package:uswatte/features/todays_route_map/domain/usecases/get_todays_route_map_usecase.dart';
+import 'package:uswatte/features/todays_route_map/presentation/bloc/todays_route_map_bloc.dart';
+import 'package:uswatte/features/todays_route_map/presentation/bloc/todays_route_map_event.dart';
+import 'package:uswatte/features/todays_route_map/presentation/pages/todays_route_map_page.dart';
 import 'package:uswatte/features/supervisor_summary/presentation/cubit/supervisor_summary_cubit.dart';
 
 class AppRouter {
@@ -425,6 +433,16 @@ class AppRouter {
               name: 'salesRepDebug',
               builder: (_, __) => const DebugPage(),
             ),
+            GoRoute(
+              path: 'todays-route-map',
+              name: 'todaysRouteMap',
+              builder: (_, __) => BlocProvider(
+                create: (_) => TodaysRouteMapBloc(
+                  getIt<GetTodaysRouteMapUseCase>(),
+                )..add(const LoadTodaysRouteMapRequested()),
+                child: const TodaysRouteMapPage(),
+              ),
+            ),
           ],
         ),
         GoRoute(
@@ -476,6 +494,17 @@ class AppRouter {
                   ),
                 ),
               ],
+            ),
+            GoRoute(
+              path: 'rep-route-map',
+              name: 'supervisorRepRouteMap',
+              builder: (_, __) => BlocProvider(
+                create: (_) => SupervisorRouteMapBloc(
+                  getMyReps: getIt<GetMyRepsUseCase>(),
+                  getRouteMap: getIt<GetSupervisorRouteMapUseCase>(),
+                )..add(const SupervisorRouteMapRepsRequested()),
+                child: const SupervisorRouteMapPage(),
+              ),
             ),
             GoRoute(
               path: 'billing',

@@ -99,6 +99,13 @@ import 'package:uswatte/features/supervisor_summary/data/datasources/supervisor_
 import 'package:uswatte/features/supervisor_summary/data/repositories/supervisor_summary_repository_impl.dart';
 import 'package:uswatte/features/supervisor_summary/domain/repositories/supervisor_summary_repository.dart';
 import 'package:uswatte/features/supervisor_summary/domain/usecases/get_supervisor_summary_usecase.dart';
+import 'package:uswatte/features/supervisor_route_map/data/datasources/supervisor_route_map_remote_datasource.dart';
+import 'package:uswatte/features/supervisor_route_map/data/repositories/supervisor_route_map_repository_impl.dart';
+import 'package:uswatte/features/supervisor_route_map/domain/repositories/supervisor_route_map_repository.dart';
+import 'package:uswatte/features/supervisor_route_map/domain/usecases/get_supervisor_route_map_usecase.dart';
+import 'package:uswatte/features/todays_route_map/data/repositories/todays_route_map_repository_impl.dart';
+import 'package:uswatte/features/todays_route_map/domain/repositories/todays_route_map_repository.dart';
+import 'package:uswatte/features/todays_route_map/domain/usecases/get_todays_route_map_usecase.dart';
 
 final getIt = GetIt.instance;
 
@@ -367,4 +374,25 @@ Future<void> configureDependencies() async {
       () => GetSupervisorBillingsUseCase(getIt<SupervisorBillingRepository>()));
   getIt.registerLazySingleton(
       () => GetBillingDetailUseCase(getIt<SupervisorBillingRepository>()));
+
+  // ── Supervisor Route Map ──────────────────────────────────────────────────
+  getIt.registerLazySingleton(
+      () => SupervisorRouteMapRemoteDatasource(getIt<Dio>()));
+  getIt.registerLazySingleton<SupervisorRouteMapRepository>(
+    () => SupervisorRouteMapRepositoryImpl(
+        getIt<SupervisorRouteMapRemoteDatasource>()),
+  );
+  getIt.registerLazySingleton(
+      () => GetSupervisorRouteMapUseCase(getIt<SupervisorRouteMapRepository>()));
+
+  // ── Today's Route Map ─────────────────────────────────────────────────────
+  getIt.registerLazySingleton<TodaysRouteMapRepository>(
+    () => TodaysRouteMapRepositoryImpl(
+      outletsDatasource: getIt<OutletsLocalDatasource>(),
+      billsDatasource: getIt<BillsLocalDatasource>(),
+      notBillingsDatasource: getIt<NotBillingsLocalDatasource>(),
+    ),
+  );
+  getIt.registerLazySingleton(
+      () => GetTodaysRouteMapUseCase(getIt<TodaysRouteMapRepository>()));
 }

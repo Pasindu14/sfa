@@ -253,6 +253,25 @@ class BillsLocalDatasource {
     return rowsDeleted;
   }
 
+  // ── Today's map helpers ────────────────────────────────────────────────────
+
+  Future<Set<int>> getTodaysBilledOutletIds() async {
+    final db = await _dbHelper.database;
+    final rows = await db.rawQuery(
+      "SELECT DISTINCT outlet_id FROM bills WHERE billing_date = DATE('now')",
+    );
+    return rows.map((r) => r['outlet_id'] as int).toSet();
+  }
+
+  Future<int?> getTodaysMostRecentBilledOutletId() async {
+    final db = await _dbHelper.database;
+    final rows = await db.rawQuery(
+      "SELECT outlet_id FROM bills WHERE billing_date = DATE('now') ORDER BY created_at DESC LIMIT 1",
+    );
+    if (rows.isEmpty) return null;
+    return rows.first['outlet_id'] as int?;
+  }
+
   // ── Product search for the Create Bill picker ─────────────────────────────
 
   /// Searches `products` by code OR description, joined with the selected

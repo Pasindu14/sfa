@@ -62,6 +62,10 @@ dependencies:
   geolocator: ^13.0.0
   permission_handler: ^11.3.0
 
+  # Maps & deep-linking
+  google_maps_flutter: ^2.10.0
+  url_launcher: ^6.3.1
+
   # Utilities
   get_it: ^8.0.3
   injectable: ^2.5.0

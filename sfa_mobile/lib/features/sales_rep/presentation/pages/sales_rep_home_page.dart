@@ -784,7 +784,15 @@ class _ActionsGrid extends StatelessWidget {
                 ),
               ),
               SizedBox(width: 10.w),
-              const Expanded(child: SizedBox.shrink()),
+              Expanded(
+                child: _TileActionCard(
+                  icon: Icons.map_rounded,
+                  title: "TODAY'S\nMAP",
+                  subtitle: 'View route on map',
+                  color: AppColors.primary,
+                  onTap: () => context.push('/sales-rep/todays-route-map'),
+                ),
+              ),
             ],
           ),
           SizedBox(height: 10.h),

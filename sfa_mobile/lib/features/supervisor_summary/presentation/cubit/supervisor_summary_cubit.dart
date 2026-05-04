@@ -19,8 +19,8 @@ class SupervisorSummaryCubit extends Cubit<SupervisorSummaryState> {
     try {
       final summary = await _getSummary(_today);
       emit(SupervisorSummaryLoaded(summary));
-    } catch (_) {
-      emit(const SupervisorSummaryError());
+    } catch (e) {
+      emit(SupervisorSummaryError(e.toString()));
     }
   }
 
