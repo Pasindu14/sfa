@@ -71,7 +71,7 @@ class _SupervisorHomePageState extends State<SupervisorHomePage>
               opacity: _fade(0.25, 0.75),
               child: SlideTransition(
                 position: _slide(0.25, 0.75),
-                child: _SectionLabel('QUICK ACTIONS'),
+                child: const _SectionLabel('QUICK ACTIONS'),
               ),
             ),
           ),
@@ -196,11 +196,8 @@ class _HeroCard extends StatelessWidget {
     );
     final displayName = name.isNotEmpty ? name : 'Supervisor';
 
-    final isLandscape =
-        MediaQuery.orientationOf(context) == Orientation.landscape;
-
     return Padding(
-      padding: EdgeInsets.fromLTRB(16.w, 8.r, 16.w, 0),
+      padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 0),
       child: Container(
         decoration: BoxDecoration(
           gradient: const LinearGradient(
@@ -217,116 +214,81 @@ class _HeroCard extends StatelessWidget {
             ),
           ],
         ),
-        padding: EdgeInsets.fromLTRB(
-          22.w,
-          isLandscape ? 12.r : 22.r,
-          22.w,
-          isLandscape ? 12.r : 22.r,
-        ),
+        padding: EdgeInsets.fromLTRB(22.w, 22.h, 22.w, 22.h),
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            if (!isLandscape)
-              Positioned(
-                right: -20.w,
-                top: -20.r,
-                child: Container(
-                  width: 120.r,
-                  height: 120.r,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.07),
-                  ),
+            Positioned(
+              right: -20.w,
+              top: -20.h,
+              child: Container(
+                width: 120.r,
+                height: 120.r,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.07),
                 ),
               ),
-            isLandscape
-                ? Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 10.w, vertical: 4.r),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(20.r),
-                        ),
-                        child: Text('SUPERVISOR',
-                            style: GoogleFonts.barlowCondensed(
-                              fontSize: 10.sp,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 2.5,
-                              color: Colors.white,
-                            )),
-                      ),
-                      SizedBox(width: 16.w),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(_greeting,
-                              style: GoogleFonts.barlow(
-                                fontSize: 11.sp,
-                                color: Colors.white.withValues(alpha: 0.75),
-                              )),
-                          Text(displayName,
-                              style: GoogleFonts.barlowCondensed(
-                                fontSize: 26.sp,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.5,
-                                height: 1.0,
-                                color: Colors.white,
-                              )),
-                        ],
-                      ),
-                    ],
-                  )
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 10.w, vertical: 4.r),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(20.r),
-                        ),
-                        child: Text('SUPERVISOR',
-                            style: GoogleFonts.barlowCondensed(
-                              fontSize: 10.sp,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 2.5,
-                              color: Colors.white,
-                            )),
-                      ),
-                      SizedBox(height: 14.r),
-                      Text(_greeting,
-                          style: GoogleFonts.barlow(
-                            fontSize: 13.sp,
-                            color: Colors.white.withValues(alpha: 0.75),
-                          )),
-                      Text(displayName,
-                          style: GoogleFonts.barlowCondensed(
-                            fontSize: 32.sp,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.5,
-                            height: 1.0,
-                            color: Colors.white,
-                          )),
-                      SizedBox(height: 16.r),
-                      Row(
-                        children: [
-                          Container(
-                              height: 2,
-                              width: 20.w,
-                              color: Colors.white.withValues(alpha: 0.5)),
-                          SizedBox(width: 4.w),
-                          Container(
-                              height: 2,
-                              width: 7.w,
-                              color: Colors.white.withValues(alpha: 0.25)),
-                        ],
-                      ),
-                    ],
+            ),
+            Positioned(
+              right: 20.w,
+              bottom: -10.h,
+              child: Container(
+                width: 70.r,
+                height: 70.r,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.05),
+                ),
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(20.r),
                   ),
+                  child: Text('SUPERVISOR',
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 2.5,
+                        color: Colors.white,
+                      )),
+                ),
+                SizedBox(height: 14.h),
+                Text(_greeting,
+                    style: GoogleFonts.barlow(
+                      fontSize: 13.sp,
+                      color: Colors.white.withValues(alpha: 0.75),
+                    )),
+                Text(displayName,
+                    style: GoogleFonts.barlowCondensed(
+                      fontSize: 32.sp,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
+                      height: 1.0,
+                      color: Colors.white,
+                    )),
+                SizedBox(height: 16.h),
+                Row(
+                  children: [
+                    Container(
+                        height: 2.h,
+                        width: 20.w,
+                        color: Colors.white.withValues(alpha: 0.5)),
+                    SizedBox(width: 4.w),
+                    Container(
+                        height: 2.h,
+                        width: 7.w,
+                        color: Colors.white.withValues(alpha: 0.25)),
+                  ],
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -377,32 +339,51 @@ class _ActionsSection extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Column(
         children: [
-          _PrimaryAction(
+          _HeroActionCard(
             icon: Icons.map_rounded,
             title: 'ASSIGN DAILY ROUTE',
             subtitle: 'Schedule a route for a sales rep',
             onTap: () => context.push('/supervisor/assign-route'),
           ),
-          SizedBox(height: 10.h),
-          _SecondaryAction(
-            icon: Icons.list_alt_rounded,
-            title: "VIEW ASSIGNMENTS",
-            subtitle: "See today's route assignments",
-            onTap: () => context.push('/supervisor/assignments'),
+          SizedBox(height: 12.h),
+          Row(
+            children: [
+              Expanded(
+                child: _TileActionCard(
+                  icon: Icons.list_alt_rounded,
+                  title: 'VIEW\nASSIGNMENTS',
+                  subtitle: "Today's route assignments",
+                  color: AppColors.primary,
+                  onTap: () => context.push('/supervisor/assignments'),
+                ),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: _TileActionCard(
+                  icon: Icons.receipt_long_rounded,
+                  title: 'VIEW REP\nBILLS',
+                  subtitle: 'Bills created by your reps',
+                  color: AppColors.primary,
+                  onTap: () => context.push('/supervisor/billing'),
+                ),
+              ),
+            ],
           ),
           SizedBox(height: 10.h),
-          _SecondaryAction(
-            icon: Icons.receipt_long_rounded,
-            title: 'VIEW REP BILLS',
-            subtitle: "Review bills created by your reps",
-            onTap: () => context.push('/supervisor/billing'),
-          ),
-          SizedBox(height: 10.h),
-          _SecondaryAction(
-            icon: Icons.block_rounded,
-            title: 'VIEW NON-BILLINGS',
-            subtitle: "Review non-billing visits by your reps",
-            onTap: () => context.push('/supervisor/not-billing'),
+          Row(
+            children: [
+              Expanded(
+                child: _TileActionCard(
+                  icon: Icons.block_rounded,
+                  title: 'VIEW\nNON-BILLINGS',
+                  subtitle: 'Non-billing visits by reps',
+                  color: AppColors.primary,
+                  onTap: () => context.push('/supervisor/not-billing'),
+                ),
+              ),
+              SizedBox(width: 10.w),
+              const Expanded(child: SizedBox.shrink()),
+            ],
           ),
         ],
       ),
@@ -410,8 +391,9 @@ class _ActionsSection extends StatelessWidget {
   }
 }
 
-class _SecondaryAction extends StatelessWidget {
-  const _SecondaryAction({
+// ── Hero action card (primary CTA) ────────────────────────────────────────────
+class _HeroActionCard extends StatelessWidget {
+  const _HeroActionCard({
     required this.icon,
     required this.title,
     required this.subtitle,
@@ -427,53 +409,121 @@ class _SecondaryAction extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(16.r),
         child: Ink(
+          height: 92.h,
           decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(12.r),
-            border: Border.all(color: AppColors.surfaceVariant),
-          ),
-          child: Padding(
-            padding:
-                EdgeInsets.symmetric(horizontal: 20.w, vertical: 13.r),
-            child: Row(
-              children: [
-                Container(
-                  width: 36.r,
-                  height: 36.r,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                  child: Icon(icon, color: AppColors.primary, size: 18.r),
-                ),
-                SizedBox(width: 14.w),
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title,
-                          style: GoogleFonts.barlowCondensed(
-                            fontSize: 17.sp,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.2,
-                            height: 1.0,
-                            color: AppColors.foreground,
-                          )),
-                      Text(subtitle,
-                          style: GoogleFonts.barlow(
-                            fontSize: 11.sp,
-                            color: AppColors.foregroundMuted,
-                          )),
-                    ],
-                  ),
-                ),
-                Icon(Icons.arrow_forward_ios_rounded,
-                    color: AppColors.foregroundMuted, size: 13.r),
-              ],
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [AppColors.primaryDark, AppColors.primary, AppColors.primaryLight],
+              stops: const [0.0, 0.55, 1.0],
             ),
+            borderRadius: BorderRadius.circular(16.r),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.38),
+                blurRadius: 22,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                right: -12.w,
+                top: -18.h,
+                child: Container(
+                  width: 110.r,
+                  height: 110.r,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.07),
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 50.w,
+                bottom: -14.h,
+                child: Container(
+                  width: 55.r,
+                  height: 55.r,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.05),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 22.w),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 52.r,
+                      height: 52.r,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(14.r),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.22),
+                        ),
+                      ),
+                      child: Icon(icon, color: Colors.white, size: 24.r),
+                    ),
+                    SizedBox(width: 18.w),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 7.w, vertical: 2.h),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(4.r),
+                            ),
+                            child: Text('PRIMARY ACTION',
+                                style: GoogleFonts.barlowCondensed(
+                                  fontSize: 8.sp,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1.5,
+                                  color: Colors.white.withValues(alpha: 0.88),
+                                )),
+                          ),
+                          SizedBox(height: 5.h),
+                          Text(title,
+                              style: GoogleFonts.barlowCondensed(
+                                fontSize: 23.sp,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.0,
+                                height: 1.0,
+                                color: Colors.white,
+                              )),
+                          SizedBox(height: 3.h),
+                          Text(subtitle,
+                              style: GoogleFonts.barlow(
+                                fontSize: 11.sp,
+                                color: Colors.white.withValues(alpha: 0.72),
+                              )),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      width: 32.r,
+                      height: 32.r,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.arrow_forward_rounded,
+                          color: Colors.white, size: 15.r),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -481,16 +531,19 @@ class _SecondaryAction extends StatelessWidget {
   }
 }
 
-class _PrimaryAction extends StatelessWidget {
-  const _PrimaryAction({
+// ── Tile action card (secondary CTA) ─────────────────────────────────────────
+class _TileActionCard extends StatelessWidget {
+  const _TileActionCard({
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.onTap,
+    required this.color,
+    this.onTap,
   });
   final IconData icon;
   final String title, subtitle;
-  final VoidCallback onTap;
+  final Color color;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -498,59 +551,93 @@ class _PrimaryAction extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(14.r),
         child: Ink(
           decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(12.r),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14.r),
+            border: Border.all(color: color.withValues(alpha: 0.14)),
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.30),
+                color: color.withValues(alpha: 0.09),
                 blurRadius: 14,
-                offset: const Offset(0, 5),
+                offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: Padding(
-            padding:
-                EdgeInsets.symmetric(horizontal: 20.w, vertical: 13.r),
-            child: Row(
-              children: [
-                Container(
-                  width: 36.r,
-                  height: 36.r,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                  child: Icon(icon, color: Colors.white, size: 18.r),
-                ),
-                SizedBox(width: 14.w),
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title,
-                          style: GoogleFonts.barlowCondensed(
-                            fontSize: 17.sp,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.2,
-                            height: 1.0,
-                            color: Colors.white,
-                          )),
-                      Text(subtitle,
-                          style: GoogleFonts.barlow(
-                            fontSize: 11.sp,
-                            color: Colors.white.withValues(alpha: 0.7),
-                          )),
-                    ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                height: 64.h,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.09),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(14.r),
+                    topRight: Radius.circular(14.r),
                   ),
                 ),
-                Icon(Icons.arrow_forward_ios_rounded,
-                    color: Colors.white.withValues(alpha: 0.7), size: 13.r),
-              ],
-            ),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned(
+                      right: -10.w,
+                      top: -10.h,
+                      child: Container(
+                        width: 54.r,
+                        height: 54.r,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: color.withValues(alpha: 0.07),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 36.r,
+                            height: 36.r,
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.16),
+                              borderRadius: BorderRadius.circular(10.r),
+                            ),
+                            child: Icon(icon, color: color, size: 18.r),
+                          ),
+                          Icon(Icons.arrow_outward_rounded,
+                              color: color.withValues(alpha: 0.40), size: 14.r),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.fromLTRB(14.w, 10.h, 14.w, 14.h),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: GoogleFonts.barlowCondensed(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.6,
+                          height: 1.0,
+                          color: AppColors.foreground,
+                        )),
+                    SizedBox(height: 3.h),
+                    Text(subtitle,
+                        style: GoogleFonts.barlow(
+                          fontSize: 10.sp,
+                          color: AppColors.foregroundMuted,
+                        )),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
