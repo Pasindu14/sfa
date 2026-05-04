@@ -95,6 +95,10 @@ import 'package:uswatte/features/supervisor_billing/data/repositories/supervisor
 import 'package:uswatte/features/supervisor_billing/domain/repositories/supervisor_billing_repository.dart';
 import 'package:uswatte/features/supervisor_billing/domain/usecases/get_billing_detail_usecase.dart';
 import 'package:uswatte/features/supervisor_billing/domain/usecases/get_supervisor_billings_usecase.dart';
+import 'package:uswatte/features/supervisor_summary/data/datasources/supervisor_summary_remote_datasource.dart';
+import 'package:uswatte/features/supervisor_summary/data/repositories/supervisor_summary_repository_impl.dart';
+import 'package:uswatte/features/supervisor_summary/domain/repositories/supervisor_summary_repository.dart';
+import 'package:uswatte/features/supervisor_summary/domain/usecases/get_supervisor_summary_usecase.dart';
 
 final getIt = GetIt.instance;
 
@@ -341,6 +345,16 @@ Future<void> configureDependencies() async {
       () => GetSupervisorNotBillingsUseCase(getIt<SupervisorNotBillingRepository>()));
   getIt.registerLazySingleton(
       () => GetNotBillingDetailUseCase(getIt<SupervisorNotBillingRepository>()));
+
+  // ── Supervisor Summary ────────────────────────────────────────────────────────
+  getIt.registerLazySingleton(
+      () => SupervisorSummaryRemoteDatasource(getIt<Dio>()));
+  getIt.registerLazySingleton<SupervisorSummaryRepository>(
+    () => SupervisorSummaryRepositoryImpl(
+        getIt<SupervisorSummaryRemoteDatasource>()),
+  );
+  getIt.registerLazySingleton(
+      () => GetSupervisorSummaryUseCase(getIt<SupervisorSummaryRepository>()));
 
   // ── Supervisor Billing ────────────────────────────────────────────────────────
   getIt.registerLazySingleton(

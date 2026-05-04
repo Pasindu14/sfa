@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:uswatte/features/supervisor_summary/presentation/cubit/supervisor_summary_cubit.dart';
+import 'package:uswatte/features/supervisor_summary/presentation/cubit/supervisor_summary_state.dart';
 
 
 class SupervisorHomePage extends StatefulWidget {
@@ -68,18 +70,36 @@ class _SupervisorHomePageState extends State<SupervisorHomePage>
           ),
           SliverToBoxAdapter(
             child: FadeTransition(
-              opacity: _fade(0.25, 0.75),
+              opacity: _fade(0.15, 0.65),
               child: SlideTransition(
-                position: _slide(0.25, 0.75),
+                position: _slide(0.15, 0.65),
+                child: const _SectionLabel("TODAY'S TEAM"),
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: FadeTransition(
+              opacity: _fade(0.20, 0.70),
+              child: SlideTransition(
+                position: _slide(0.20, 0.70),
+                child: const _MetricsSection(),
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: FadeTransition(
+              opacity: _fade(0.35, 0.80),
+              child: SlideTransition(
+                position: _slide(0.35, 0.80),
                 child: const _SectionLabel('QUICK ACTIONS'),
               ),
             ),
           ),
           SliverToBoxAdapter(
             child: FadeTransition(
-              opacity: _fade(0.35, 0.85),
+              opacity: _fade(0.45, 0.90),
               child: SlideTransition(
-                position: _slide(0.35, 0.85),
+                position: _slide(0.45, 0.90),
                 child: const _ActionsSection(),
               ),
             ),
@@ -292,6 +312,163 @@ class _HeroCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Today's team metrics ──────────────────────────────────────────────────────
+class _MetricsSection extends StatelessWidget {
+  const _MetricsSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 0),
+      child: BlocBuilder<SupervisorSummaryCubit, SupervisorSummaryState>(
+        buildWhen: (prev, curr) => curr != prev,
+        builder: (context, state) {
+          final summary = state is SupervisorSummaryLoaded ? state.summary : null;
+          final loading = state is SupervisorSummaryLoading;
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _MetricTile(
+                  icon: Icons.people_rounded,
+                  label: 'Reps\nAssigned',
+                  value: loading
+                      ? '…'
+                      : summary != null
+                          ? '${summary.assignedReps}/${summary.totalReps}'
+                          : '—',
+                  large: true,
+                ),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Column(
+                  children: [
+                    _MetricTile(
+                      icon: Icons.receipt_long_rounded,
+                      label: 'Bills Today',
+                      value: loading
+                          ? '…'
+                          : summary != null
+                              ? '${summary.billsToday}'
+                              : '—',
+                      large: false,
+                    ),
+                    SizedBox(height: 10.h),
+                    _MetricTile(
+                      icon: Icons.block_rounded,
+                      label: 'Non-Billings',
+                      value: loading
+                          ? '…'
+                          : summary != null
+                              ? '${summary.nonBillingsToday}'
+                              : '—',
+                      large: false,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _MetricTile extends StatelessWidget {
+  const _MetricTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.large,
+  });
+  final IconData icon;
+  final String label, value;
+  final bool large;
+
+  @override
+  Widget build(BuildContext context) {
+    const color = AppColors.primary;
+    return Container(
+      height: large ? 158.h : 74.h,
+      padding: EdgeInsets.all(14.r),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: AppColors.surfaceVariant),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: large
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  width: 34.r,
+                  height: 34.r,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  child: Icon(icon, color: color, size: 17.r),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(value,
+                        style: GoogleFonts.barlowCondensed(
+                          fontSize: 46.sp,
+                          fontWeight: FontWeight.w900,
+                          height: 1.0,
+                          letterSpacing: -1.5,
+                          color: color,
+                        )),
+                    Text(label,
+                        style: GoogleFonts.barlowCondensed(
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w600,
+                          height: 1.25,
+                          color: AppColors.foregroundMuted,
+                        )),
+                  ],
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                Icon(icon, color: color, size: 16.r),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: Text(label,
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w600,
+                        height: 1.2,
+                        color: AppColors.foregroundMuted,
+                      )),
+                ),
+                Text(value,
+                    style: GoogleFonts.barlowCondensed(
+                      fontSize: 24.sp,
+                      fontWeight: FontWeight.w900,
+                      height: 1.0,
+                      letterSpacing: -1,
+                      color: color,
+                    )),
+              ],
+            ),
     );
   }
 }

@@ -86,6 +86,8 @@ import 'package:uswatte/features/supervisor_billing/presentation/cubit/billing_d
 import 'package:uswatte/features/supervisor_billing/presentation/pages/billing_detail_page.dart';
 import 'package:uswatte/features/supervisor_billing/presentation/pages/supervisor_billing_page.dart';
 import 'package:uswatte/features/route_assignment/domain/usecases/get_my_reps_usecase.dart';
+import 'package:uswatte/features/supervisor_summary/domain/usecases/get_supervisor_summary_usecase.dart';
+import 'package:uswatte/features/supervisor_summary/presentation/cubit/supervisor_summary_cubit.dart';
 
 class AppRouter {
   AppRouter._();
@@ -432,7 +434,11 @@ class AppRouter {
             GoRoute(
               path: 'home',
               name: 'supervisorHome',
-              builder: (_, __) => const SupervisorHomePage(),
+              builder: (_, __) => BlocProvider(
+                create: (_) => SupervisorSummaryCubit(
+                    getIt<GetSupervisorSummaryUseCase>()),
+                child: const SupervisorHomePage(),
+              ),
             ),
             GoRoute(
               path: 'assign-route',
