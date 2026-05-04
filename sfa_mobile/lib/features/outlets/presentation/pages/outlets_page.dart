@@ -58,8 +58,10 @@ class OutletsPage extends StatelessWidget {
                   child: _NoAssignmentBanner(lastSyncedAt: state.lastSyncedAt),
                 ),
               if (state is OutletsLoading)
-                const SliverFillRemaining(
-                  child: Center(child: CircularProgressIndicator()),
+                SliverFillRemaining(
+                  child: Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  ),
                 )
               else if (state is OutletsError)
                 SliverFillRemaining(

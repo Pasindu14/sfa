@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using sfa_api.Common.Errors;
 using sfa_api.Features.Fleets.Repositories;
+using sfa_api.Features.ProductCategories.Repositories;
 using sfa_api.Features.Products.Entities;
 using sfa_api.Features.Products.Repositories;
 using sfa_api.Features.Products.Requests;
@@ -15,15 +16,17 @@ public class ProductServiceTests
 {
     private readonly Mock<IProductRepository> _repoMock;
     private readonly Mock<IFleetRepository> _fleetRepoMock;
+    private readonly Mock<IProductCategoryRepository> _categoryRepoMock;
     private readonly Mock<ICacheService> _cacheMock;
     private readonly ProductService _sut;
 
     public ProductServiceTests()
     {
-        _repoMock      = new Mock<IProductRepository>();
-        _fleetRepoMock = new Mock<IFleetRepository>();
-        _cacheMock     = new Mock<ICacheService>();
-        _sut = new ProductService(_repoMock.Object, _fleetRepoMock.Object, _cacheMock.Object, NullLogger<ProductService>.Instance);
+        _repoMock          = new Mock<IProductRepository>();
+        _fleetRepoMock     = new Mock<IFleetRepository>();
+        _categoryRepoMock  = new Mock<IProductCategoryRepository>();
+        _cacheMock         = new Mock<ICacheService>();
+        _sut = new ProductService(_repoMock.Object, _fleetRepoMock.Object, _categoryRepoMock.Object, _cacheMock.Object, NullLogger<ProductService>.Instance);
     }
 
     private static Product CreateFakeProduct(int id = 1) => new()

@@ -34,8 +34,10 @@ class PricingPage extends StatelessWidget {
                     .add(const SyncPricingRequested()),
               ),
               if (state is PricingLoading)
-                const SliverFillRemaining(
-                  child: Center(child: CircularProgressIndicator()),
+                SliverFillRemaining(
+                  child: Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  ),
                 )
               else if (state is PricingError)
                 SliverFillRemaining(

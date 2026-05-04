@@ -22,6 +22,7 @@ using sfa_api.Features.Billings;
 using sfa_api.Features.NotBillings;
 using sfa_api.Features.MobileSync;
 using sfa_api.Features.GRNs;
+using sfa_api.Features.Supervisor;
 using sfa_api.Features.SalesInvoices;
 using sfa_api.Features.Stock;
 using sfa_api.Features.Fleets;
@@ -184,6 +185,7 @@ try
     builder.Services.AddNotBillingsFeature();
     builder.Services.AddStockFeature();
     builder.Services.AddMobileSyncFeature();
+    builder.Services.AddSupervisorFeature();
 
     var app = builder.Build();
 

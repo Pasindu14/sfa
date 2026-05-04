@@ -317,22 +317,6 @@ public class OutletServiceTests
     }
 
     [Fact]
-    public async Task CreateAsync_InvalidBillingPriceType_ThrowsValidationException()
-    {
-        var request = CreateValidCreateRequest();
-        request.BillingPriceType = "DiscountPrice";
-        _repoMock.Setup(r => r.GetRouteWithAncestorsAsync(request.RouteId, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(CreateFakeRoute(request.RouteId));
-        _repoMock.Setup(r => r.ExistsByNicNoAsync(request.NicNo, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(false);
-
-        var act = () => _sut.CreateAsync(request, callerId: 1);
-
-        var ex = await act.Should().ThrowAsync<ValidationException>();
-        ex.Which.Fields.Should().ContainKey("BillingPriceType");
-    }
-
-    [Fact]
     public async Task CreateAsync_DuplicateNicNo_ThrowsDuplicateResourceException()
     {
         var request = CreateValidCreateRequest();
@@ -447,38 +431,6 @@ public class OutletServiceTests
         captured.Longitude.Should().Be(request.Longitude);
         captured.OutletType.Should().Be(OutletType.Medium);
         captured.OutletCategory.Should().Be(OutletCategory.Wholesale);
-    }
-
-    [Fact]
-    public async Task CreateAsync_WithNullBillingPriceType_SetsBillingPriceTypeNull()
-    {
-        var request = CreateValidCreateRequest();
-        request.BillingPriceType = null;
-        SetupSuccessfulCreate(request);
-        Outlet? captured = null;
-        _repoMock.Setup(r => r.CreateAsync(It.IsAny<Outlet>(), It.IsAny<CancellationToken>()))
-                 .Callback<Outlet, CancellationToken>((e, _) => captured = e)
-                 .Returns(Task.CompletedTask);
-
-        await _sut.CreateAsync(request, callerId: 1);
-
-        captured!.BillingPriceType.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task CreateAsync_WithValidBillingPriceType_SetsBillingPriceType()
-    {
-        var request = CreateValidCreateRequest();
-        request.BillingPriceType = "DealerPrice";
-        SetupSuccessfulCreate(request);
-        Outlet? captured = null;
-        _repoMock.Setup(r => r.CreateAsync(It.IsAny<Outlet>(), It.IsAny<CancellationToken>()))
-                 .Callback<Outlet, CancellationToken>((e, _) => captured = e)
-                 .Returns(Task.CompletedTask);
-
-        await _sut.CreateAsync(request, callerId: 1);
-
-        captured!.BillingPriceType.Should().Be(BillingPriceType.DealerPrice);
     }
 
     // ─────────────────────────────────────────────────

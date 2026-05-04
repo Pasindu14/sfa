@@ -38,7 +38,7 @@ class SupervisorRouteMapPage extends StatelessWidget {
             (state is SupervisorRouteMapReady && state.isLoadingMap);
 
         return Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: AppColors.surface,
           body: Column(
             children: [
               _MapHeader(
@@ -67,7 +67,7 @@ class SupervisorRouteMapPage extends StatelessWidget {
   Widget _buildBody(BuildContext context, SupervisorRouteMapState state) {
     if (state is SupervisorRouteMapInitial ||
         state is SupervisorRouteMapLoadingReps) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: CircularProgressIndicator(color: AppColors.primary));
     }
 
     if (state is SupervisorRouteMapRepsError) {

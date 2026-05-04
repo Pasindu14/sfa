@@ -42,7 +42,7 @@ class _AssignmentsView extends StatelessWidget {
     ));
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.surface,
       body: Column(
         children: [
           const _Header(),

@@ -41,7 +41,6 @@ public class UpdateOutletValidatorTests
         request.OwnerDOB = null;
         request.Remarks = null;
         request.Image = null;
-        request.BillingPriceType = null;
 
         var result = _validator.Validate(request);
 
@@ -192,20 +191,6 @@ public class UpdateOutletValidatorTests
 
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.PropertyName == "OutletCategory");
-    }
-
-    // ── BillingPriceType ──────────────────────────────
-
-    [Fact]
-    public void Validate_InvalidBillingPriceType_FailsWithBillingPriceTypeError()
-    {
-        var request = ValidRequest();
-        request.BillingPriceType = "FlatRate";
-
-        var result = _validator.Validate(request);
-
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName == "BillingPriceType");
     }
 
     // ── ProvinceCode / DistrictCode / RouteId ─────────

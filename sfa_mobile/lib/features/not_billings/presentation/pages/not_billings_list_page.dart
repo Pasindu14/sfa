@@ -115,7 +115,7 @@ class NotBillingsListPage extends StatelessWidget {
               builder: (context, state) {
                 if (state is NotBillingsListLoading ||
                     state is NotBillingsListInitial) {
-                  return const Center(child: CircularProgressIndicator());
+                  return Center(child: CircularProgressIndicator(color: AppColors.primary));
                 }
 
                 if (state is NotBillingsListError) {

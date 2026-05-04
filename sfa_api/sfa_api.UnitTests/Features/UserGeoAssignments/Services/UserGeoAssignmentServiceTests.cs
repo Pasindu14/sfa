@@ -4,6 +4,7 @@ using Moq;
 using sfa_api.Common.Errors;
 using sfa_api.Features.Areas.Entities;
 using sfa_api.Features.Divisions.Entities;
+using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.Regions.Entities;
 using sfa_api.Features.Territories.Entities;
 using sfa_api.Features.UserGeoAssignments.Entities;
@@ -18,13 +19,16 @@ namespace sfa_api.UnitTests.Features.UserGeoAssignments.Services;
 public class UserGeoAssignmentServiceTests
 {
     private readonly Mock<IUserGeoAssignmentRepository> _repoMock;
+    private readonly Mock<IDistributorRepository> _distributorRepoMock;
     private readonly UserGeoAssignmentService _sut;
 
     public UserGeoAssignmentServiceTests()
     {
-        _repoMock = new Mock<IUserGeoAssignmentRepository>();
+        _repoMock            = new Mock<IUserGeoAssignmentRepository>();
+        _distributorRepoMock = new Mock<IDistributorRepository>();
         _sut = new UserGeoAssignmentService(
             _repoMock.Object,
+            _distributorRepoMock.Object,
             NullLogger<UserGeoAssignmentService>.Instance);
     }
 

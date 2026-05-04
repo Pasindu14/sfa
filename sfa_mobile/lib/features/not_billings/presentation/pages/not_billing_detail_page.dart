@@ -87,7 +87,7 @@ class NotBillingDetailPage extends StatelessWidget {
               ),
               Expanded(
                 child: record == null
-                    ? const Center(child: CircularProgressIndicator())
+                    ? Center(child: CircularProgressIndicator(color: AppColors.primary))
                     : _DetailBody(record: record),
               ),
             ],
