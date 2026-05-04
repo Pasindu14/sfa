@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/features/auth/presentation/bloc/auth_bloc.dart';
 
+
 class SupervisorHomePage extends StatefulWidget {
   const SupervisorHomePage({super.key});
 
@@ -395,6 +396,13 @@ class _ActionsSection extends StatelessWidget {
             title: 'VIEW REP BILLS',
             subtitle: "Review bills created by your reps",
             onTap: () => context.push('/supervisor/billing'),
+          ),
+          SizedBox(height: 10.h),
+          _SecondaryAction(
+            icon: Icons.block_rounded,
+            title: 'VIEW NON-BILLINGS',
+            subtitle: "Review non-billing visits by your reps",
+            onTap: () => context.push('/supervisor/not-billing'),
           ),
         ],
       ),

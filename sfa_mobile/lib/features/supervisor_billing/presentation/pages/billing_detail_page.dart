@@ -358,6 +358,14 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final double grossAmount = detail.items
+        .where((i) => !i.isFreeIssue && i.billingItemType == BillingItemType.sale)
+        .fold(0.0, (sum, i) => sum + i.quantity * i.unitPrice);
+    final double itemDiscountTotal = (grossAmount - detail.subTotalAmount)
+        .clamp(0.0, double.infinity);
+    final bool hasItemDiscount = itemDiscountTotal > 0.001;
+    final bool hasBillDiscount = detail.billDiscountRate > 0;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -438,16 +446,29 @@ class _InfoCard extends StatelessWidget {
                 SizedBox(height: 4.h),
                 Divider(height: 1, color: const Color(0xFFEEEDE6)),
                 SizedBox(height: 12.h),
+                if (hasItemDiscount) ...[
+                  _InfoRow(
+                    label: 'Gross',
+                    value: formatAmount(grossAmount),
+                  ),
+                  _InfoRow(
+                    label: 'Item Discount',
+                    value: '−${formatAmount(itemDiscountTotal)}',
+                    valueColor: AppColors.error,
+                  ),
+                ],
                 _InfoRow(
                   label: 'Sub-total',
                   value: formatAmount(detail.subTotalAmount),
                 ),
-                if (detail.billDiscountRate > 0)
+                if (hasBillDiscount)
                   _InfoRow(
-                    label: 'Discount (${detail.billDiscountRate.toStringAsFixed(0)}%)',
+                    label: 'Bill Discount (${detail.billDiscountRate.toStringAsFixed(0)}%)',
                     value: '−${formatAmount(detail.billDiscountAmount)}',
                     valueColor: AppColors.error,
                   ),
+                Divider(height: 1, color: const Color(0xFFEEEDE6)),
+                SizedBox(height: 4.h),
                 _InfoRow(
                   label: 'Total',
                   value: formatAmount(detail.totalAmount),

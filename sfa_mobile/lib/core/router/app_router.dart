@@ -72,9 +72,16 @@ import 'package:uswatte/features/outlet_bill_history/presentation/pages/outlet_b
 import 'package:uswatte/features/outlet_bill_history/presentation/pages/outlet_bill_history_page.dart';
 import 'package:uswatte/features/outlet_billings/presentation/pages/outlet_billings_page.dart';
 import 'package:uswatte/features/supervisor_billing/domain/usecases/get_billing_detail_usecase.dart';
+import 'package:uswatte/features/supervisor_not_billing/domain/usecases/get_not_billing_detail_usecase.dart';
+import 'package:uswatte/features/supervisor_not_billing/domain/usecases/get_supervisor_not_billings_usecase.dart';
+import 'package:uswatte/features/supervisor_not_billing/presentation/bloc/supervisor_not_billing_bloc.dart';
+import 'package:uswatte/features/supervisor_not_billing/presentation/bloc/supervisor_not_billing_event.dart' as nb_ev;
+import 'package:uswatte/features/supervisor_not_billing/presentation/cubit/not_billing_detail_cubit.dart';
+import 'package:uswatte/features/supervisor_not_billing/presentation/pages/rep_not_billing_detail_page.dart';
+import 'package:uswatte/features/supervisor_not_billing/presentation/pages/supervisor_not_billing_page.dart';
 import 'package:uswatte/features/supervisor_billing/domain/usecases/get_supervisor_billings_usecase.dart';
 import 'package:uswatte/features/supervisor_billing/presentation/bloc/supervisor_billing_bloc.dart';
-import 'package:uswatte/features/supervisor_billing/presentation/bloc/supervisor_billing_event.dart';
+import 'package:uswatte/features/supervisor_billing/presentation/bloc/supervisor_billing_event.dart' as billing_ev;
 import 'package:uswatte/features/supervisor_billing/presentation/cubit/billing_detail_cubit.dart';
 import 'package:uswatte/features/supervisor_billing/presentation/pages/billing_detail_page.dart';
 import 'package:uswatte/features/supervisor_billing/presentation/pages/supervisor_billing_page.dart';
@@ -438,6 +445,33 @@ class AppRouter {
               builder: (_, __) => const AssignmentsListPage(),
             ),
             GoRoute(
+              path: 'not-billing',
+              name: 'supervisorNotBilling',
+              builder: (_, __) => BlocProvider(
+                create: (_) => SupervisorNotBillingBloc(
+                  getMyReps: getIt<GetMyRepsUseCase>(),
+                  getSupervisorNotBillings:
+                      getIt<GetSupervisorNotBillingsUseCase>(),
+                )..add(const nb_ev.LoadRepsRequested()),
+                child: const SupervisorNotBillingPage(),
+              ),
+              routes: [
+                GoRoute(
+                  path: ':id',
+                  name: 'repNotBillingDetail',
+                  builder: (_, state) => BlocProvider(
+                    create: (_) => NotBillingDetailCubit(
+                        getIt<GetNotBillingDetailUseCase>()),
+                    child: RepNotBillingDetailPage(
+                      notBillingId:
+                          int.parse(state.pathParameters['id']!),
+                      notBillingNumber: state.extra as String?,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            GoRoute(
               path: 'billing',
               name: 'supervisorBilling',
               builder: (_, __) => BlocProvider(
@@ -445,7 +479,7 @@ class AppRouter {
                   getMyReps: getIt<GetMyRepsUseCase>(),
                   getSupervisorBillings:
                       getIt<GetSupervisorBillingsUseCase>(),
-                )..add(const LoadRepsRequested()),
+                )..add(const billing_ev.LoadRepsRequested()),
                 child: const SupervisorBillingPage(),
               ),
               routes: [

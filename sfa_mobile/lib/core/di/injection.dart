@@ -86,6 +86,11 @@ import 'package:uswatte/features/outlet_billings/domain/usecases/get_assigned_ro
 import 'package:uswatte/features/outlet_billings/domain/usecases/get_outlet_summary_usecase.dart';
 import 'package:uswatte/features/outlet_billings/presentation/cubit/outlet_billings_cubit.dart';
 import 'package:uswatte/features/supervisor_billing/data/datasources/supervisor_billing_remote_datasource.dart';
+import 'package:uswatte/features/supervisor_not_billing/data/datasources/supervisor_not_billing_remote_datasource.dart';
+import 'package:uswatte/features/supervisor_not_billing/data/repositories/supervisor_not_billing_repository_impl.dart';
+import 'package:uswatte/features/supervisor_not_billing/domain/repositories/supervisor_not_billing_repository.dart';
+import 'package:uswatte/features/supervisor_not_billing/domain/usecases/get_not_billing_detail_usecase.dart';
+import 'package:uswatte/features/supervisor_not_billing/domain/usecases/get_supervisor_not_billings_usecase.dart';
 import 'package:uswatte/features/supervisor_billing/data/repositories/supervisor_billing_repository_impl.dart';
 import 'package:uswatte/features/supervisor_billing/domain/repositories/supervisor_billing_repository.dart';
 import 'package:uswatte/features/supervisor_billing/domain/usecases/get_billing_detail_usecase.dart';
@@ -324,6 +329,18 @@ Future<void> configureDependencies() async {
         getIt<GetAssignedRoutesUseCase>(),
         getIt<GetOutletSummaryUseCase>(),
       ));
+
+  // ── Supervisor Not Billing ───────────────────────────────────────────────────
+  getIt.registerLazySingleton(
+      () => SupervisorNotBillingRemoteDatasource(getIt<Dio>()));
+  getIt.registerLazySingleton<SupervisorNotBillingRepository>(
+    () => SupervisorNotBillingRepositoryImpl(
+        getIt<SupervisorNotBillingRemoteDatasource>()),
+  );
+  getIt.registerLazySingleton(
+      () => GetSupervisorNotBillingsUseCase(getIt<SupervisorNotBillingRepository>()));
+  getIt.registerLazySingleton(
+      () => GetNotBillingDetailUseCase(getIt<SupervisorNotBillingRepository>()));
 
   // ── Supervisor Billing ────────────────────────────────────────────────────────
   getIt.registerLazySingleton(
