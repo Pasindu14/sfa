@@ -19,6 +19,9 @@ public interface IUserReportingLineRepository
     /// <summary>Returns all active reporting lines where ReportsToUserId = managerId.</summary>
     Task<IEnumerable<UserReportingLine>> GetDirectReportsAsync(int managerId, CancellationToken ct = default);
 
+    /// <summary>Batch fetch: returns userId → managerId mapping for all supplied userIds. Used for in-memory org-chain walks.</summary>
+    Task<Dictionary<int, int>> GetActiveLinesForUsersAsync(IEnumerable<int> userIds, CancellationToken ct = default);
+
     Task<bool> UserExistsAsync(int userId, CancellationToken ct = default);
     Task<bool> IsAdminOrDistributorAsync(int userId, CancellationToken ct = default);
 

@@ -24,6 +24,7 @@ using sfa_api.Features.MobileSync;
 using sfa_api.Features.GRNs;
 using sfa_api.Features.Supervisor;
 using sfa_api.Features.SalesInvoices;
+using sfa_api.Features.SalesTargets;
 using sfa_api.Features.Stock;
 using sfa_api.Features.Fleets;
 using sfa_api.Features.Regions;
@@ -180,6 +181,7 @@ try
     builder.Services.AddPricingStructuresFeature();
     builder.Services.AddPurchaseOrdersFeature();
     builder.Services.AddSalesInvoicesFeature();
+    builder.Services.AddSalesTargetsFeature();
     builder.Services.AddGrnsFeature();
     builder.Services.AddBillingsFeature();
     builder.Services.AddNotBillingsFeature();

@@ -28,6 +28,7 @@ using sfa_api.Features.DailyRouteAssignments.Enums;
 using sfa_api.Features.UserGeoAssignments.Entities;
 using sfa_api.Features.UserReportingLines.Entities;
 using sfa_api.Features.Users.Entities;
+using sfa_api.Features.SalesTargets.Entities;
 using RouteEntity = sfa_api.Features.Routes.Entities.Route;
 
 namespace sfa_api.Infrastructure.Persistence;
@@ -71,6 +72,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Billing> Billings => Set<Billing>();
     public DbSet<BillingItem> BillingItems => Set<BillingItem>();
     public DbSet<NotBilling> NotBillings => Set<NotBilling>();
+    public DbSet<SalesTarget> SalesTargets => Set<SalesTarget>();
+    public DbSet<SalesTargetImportBatch> SalesTargetImportBatches => Set<SalesTargetImportBatch>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -848,6 +851,88 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .WithMany()
              .HasForeignKey(x => x.RouteId)
              .IsRequired(false)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── SalesTargetImportBatch sequence ──────────────────────────────────
+        modelBuilder.HasSequence<long>("sales_target_batch_number_seq").StartsAt(1).IncrementsBy(1);
+
+        // ── SalesTargetImportBatch ────────────────────────────────────────────
+        modelBuilder.Entity<SalesTargetImportBatch>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.Property(x => x.BatchNumber).IsRequired().HasMaxLength(30);
+            e.HasIndex(x => x.BatchNumber).IsUnique();
+            e.Property(x => x.FileName).IsRequired().HasMaxLength(500);
+            e.Property(x => x.Status).HasConversion<int>();
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.ImportedBy);
+            e.HasIndex(x => x.ImportedAt);
+            e.HasIndex(x => new { x.Year, x.Month });
+            e.HasIndex(x => x.IsDeleted);
+            e.HasOne(x => x.Importer)
+             .WithMany()
+             .HasForeignKey(x => x.ImportedBy)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── SalesTarget ───────────────────────────────────────────────────────
+        modelBuilder.Entity<SalesTarget>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.Property(x => x.TargetQuantity).HasColumnType("decimal(18,4)");
+
+            // Upsert key — enforced at DB level
+            e.HasIndex(x => new { x.SalesRepId, x.Year, x.Month, x.ProductId })
+             .IsUnique()
+             .HasFilter("\"IsDeleted\" = false");
+
+            // Report indexes — every org/geo level paired with Year+Month for fast aggregations
+            e.HasIndex(x => new { x.SalesRepId,       x.Year, x.Month });
+            e.HasIndex(x => new { x.SupervisorUserId, x.Year, x.Month });
+            e.HasIndex(x => new { x.AsmUserId,        x.Year, x.Month });
+            e.HasIndex(x => new { x.RsmUserId,        x.Year, x.Month });
+            e.HasIndex(x => new { x.NsmUserId,        x.Year, x.Month });
+            e.HasIndex(x => new { x.DistributorId,    x.Year, x.Month });
+            e.HasIndex(x => new { x.DivisionId,       x.Year, x.Month });
+            e.HasIndex(x => new { x.TerritoryId,      x.Year, x.Month });
+            e.HasIndex(x => new { x.AreaId,           x.Year, x.Month });
+            e.HasIndex(x => new { x.RegionId,         x.Year, x.Month });
+            e.HasIndex(x => new { x.ProductId,        x.Year, x.Month });
+            e.HasIndex(x => x.ImportBatchId);
+            e.HasIndex(x => x.IsDeleted);
+            e.HasQueryFilter(x => !x.IsDeleted);
+
+            // FK relationships
+            e.HasOne(x => x.SalesRep)
+             .WithMany()
+             .HasForeignKey(x => x.SalesRepId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Product)
+             .WithMany()
+             .HasForeignKey(x => x.ProductId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Supervisor)
+             .WithMany()
+             .HasForeignKey(x => x.SupervisorUserId)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Asm)
+             .WithMany()
+             .HasForeignKey(x => x.AsmUserId)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Rsm)
+             .WithMany()
+             .HasForeignKey(x => x.RsmUserId)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Nsm)
+             .WithMany()
+             .HasForeignKey(x => x.NsmUserId)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.ImportBatch)
+             .WithMany()
+             .HasForeignKey(x => x.ImportBatchId)
              .OnDelete(DeleteBehavior.Restrict);
         });
 

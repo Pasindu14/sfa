@@ -111,6 +111,10 @@ const data = {
           url: "/sales-invoices",
         },
         {
+          title: "Sales Targets",
+          url: "/sales-targets",
+        },
+        {
           title: "GRNs",
           url: "/grns",
         },

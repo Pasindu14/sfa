@@ -79,6 +79,12 @@ public class UserReportingLineRepository(AppDbContext context) : IUserReportingL
             u => u.Id == userId && (u.Role == UserRole.Admin || u.Role == UserRole.Distributor),
             ct);
 
+    public async Task<Dictionary<int, int>> GetActiveLinesForUsersAsync(IEnumerable<int> userIds, CancellationToken ct = default)
+        => await _context.UserReportingLines
+            .Where(rl => userIds.Contains(rl.UserId) && rl.IsActive && !rl.IsDeleted)
+            .AsNoTracking()
+            .ToDictionaryAsync(rl => rl.UserId, rl => rl.ReportsToUserId, ct);
+
     public async Task CreateAsync(UserReportingLine line, CancellationToken ct = default)
         => await _context.UserReportingLines.AddAsync(line, ct);
 
