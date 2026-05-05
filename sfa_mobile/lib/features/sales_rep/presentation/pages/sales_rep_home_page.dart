@@ -511,7 +511,10 @@ class _AchievementCard extends StatelessWidget {
                   ? '${pct.toStringAsFixed(0)}%'
                   : '—';
 
-          return Container(
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => context.pushNamed('achievementDetail'),
+            child: Container(
             width: 96.w,
             decoration: BoxDecoration(
               color: Colors.white,
@@ -575,6 +578,7 @@ class _AchievementCard extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
             ),
           );
         },

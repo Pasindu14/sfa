@@ -51,6 +51,22 @@ public class ProductRepository(AppDbContext context) : IProductRepository
         return [.. result];
     }
 
+    public async Task<Dictionary<int, (string Code, string Name, int PacksPerCase)>> GetCodeAndNameByIdsAsync(
+        IEnumerable<int> ids, CancellationToken ct = default)
+    {
+        var idList = ids.Distinct().ToList();
+        if (idList.Count == 0) return [];
+
+        var rows = await _context.Products
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(p => idList.Contains(p.Id))
+            .Select(p => new { p.Id, p.Code, p.ItemDescription, p.PiecesPerPack })
+            .ToListAsync(ct);
+
+        return rows.ToDictionary(r => r.Id, r => (r.Code, r.ItemDescription, r.PiecesPerPack));
+    }
+
     public async Task<bool> ExistsByCodeAsync(string code, CancellationToken ct = default)
         => await _context.Products.IgnoreQueryFilters().AnyAsync(p => p.Code == code, ct);
 

@@ -159,6 +159,27 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
             .SumAsync(b => b.TotalAmount, ct);
     }
 
+    public async Task<List<RepProductSalesRow>> GetRepMonthlySalesByProductAsync(
+        int salesRepId, int year, int month, CancellationToken ct = default)
+    {
+        var from = new DateOnly(year, month, 1);
+        var to   = from.AddMonths(1);
+        return await _db.BillingItems
+            .AsNoTracking()
+            .Where(bi => !bi.IsFreeIssue
+                      && bi.Billing.SalesRepId == salesRepId
+                      && bi.Billing.BillingDate >= from
+                      && bi.Billing.BillingDate <  to
+                      && bi.Billing.IsActive
+                      && !bi.Billing.IsDeleted)
+            .GroupBy(bi => bi.ProductId)
+            .Select(g => new RepProductSalesRow(
+                g.Key,
+                g.Sum(x => x.Quantity),
+                g.Sum(x => x.TotalPrice)))
+            .ToListAsync(ct);
+    }
+
     public Task AddAsync(Billing billing, CancellationToken ct = default)
     {
         _db.Billings.Add(billing);

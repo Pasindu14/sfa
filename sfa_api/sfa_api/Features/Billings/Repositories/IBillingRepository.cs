@@ -39,6 +39,9 @@ public interface IBillingRepository
 
     Task<decimal> GetRepMonthlySalesTotalAsync(int salesRepId, int year, int month, CancellationToken ct = default);
 
+    Task<List<RepProductSalesRow>> GetRepMonthlySalesByProductAsync(
+        int salesRepId, int year, int month, CancellationToken ct = default);
+
     Task AddAsync(Billing billing, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
     Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct = default);

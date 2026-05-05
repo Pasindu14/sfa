@@ -6,6 +6,10 @@ import 'package:uswatte/core/network/dio_client.dart';
 import 'package:uswatte/core/network/session_expired_notifier.dart';
 import 'package:uswatte/core/network/token_cache.dart';
 import 'package:uswatte/features/auth/data/datasources/auth_local_datasource.dart';
+import 'package:uswatte/features/item_wise_achievement/data/datasources/item_wise_achievement_remote_datasource.dart';
+import 'package:uswatte/features/item_wise_achievement/data/repositories/item_wise_achievement_repository_impl.dart';
+import 'package:uswatte/features/item_wise_achievement/domain/repositories/item_wise_achievement_repository.dart';
+import 'package:uswatte/features/item_wise_achievement/domain/usecases/get_item_wise_achievement_usecase.dart';
 import 'package:uswatte/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:uswatte/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:uswatte/features/auth/domain/repositories/auth_repository.dart';
@@ -379,6 +383,16 @@ Future<void> configureDependencies() async {
   );
   getIt.registerLazySingleton(
       () => GetRepMonthlySalesUseCase(getIt<RepMonthlySalesRepository>()));
+
+  // ── Item-wise Achievement ────────────────────────────────────────────────────
+  getIt.registerLazySingleton(
+      () => ItemWiseAchievementRemoteDatasource(getIt<Dio>()));
+  getIt.registerLazySingleton<ItemWiseAchievementRepository>(
+    () => ItemWiseAchievementRepositoryImpl(
+        getIt<ItemWiseAchievementRemoteDatasource>()),
+  );
+  getIt.registerLazySingleton(
+      () => GetItemWiseAchievementUseCase(getIt<ItemWiseAchievementRepository>()));
 
   // ── Sales Rep Target ─────────────────────────────────────────────────────────
   getIt.registerLazySingleton(

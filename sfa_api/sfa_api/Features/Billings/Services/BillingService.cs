@@ -5,6 +5,8 @@ using sfa_api.Features.Billings.Entities;
 using sfa_api.Features.Billings.Enums;
 using sfa_api.Features.Billings.Repositories;
 using sfa_api.Features.Billings.Requests;
+using sfa_api.Features.Products.Repositories;
+using sfa_api.Features.SalesTargets.Repositories;
 using sfa_api.Features.Stock.Enums;
 using sfa_api.Features.Stock.Repositories;
 using sfa_api.Features.UserGeoAssignments.Repositories;
@@ -20,6 +22,8 @@ public class BillingService(
     IStockRepository stockRepository,
     IUserGeoAssignmentRepository geoAssignmentRepository,
     IUserReportingLineRepository reportingLineRepository,
+    ISalesTargetRepository salesTargetRepository,
+    IProductRepository productRepository,
     IDistributedLockService lockService,
     ICacheService cache,
     AppDbContext db) : IBillingService
@@ -28,6 +32,8 @@ public class BillingService(
     private readonly IStockRepository _stockRepository = stockRepository;
     private readonly IUserGeoAssignmentRepository _geoAssignmentRepository = geoAssignmentRepository;
     private readonly IUserReportingLineRepository _reportingLineRepository = reportingLineRepository;
+    private readonly ISalesTargetRepository _salesTargetRepository = salesTargetRepository;
+    private readonly IProductRepository _productRepository = productRepository;
     private readonly IDistributedLockService _lockService = lockService;
     private readonly ICacheService _cache = cache;
     private readonly AppDbContext _db = db;
@@ -329,6 +335,66 @@ public class BillingService(
 
         var total = await _billingRepository.GetRepMonthlySalesTotalAsync(salesRepId, year, month, ct);
         var result = new RepMonthlySalesDto(year, month, total);
+        await _cache.SetAsync(cacheKey, result, SalesCacheTtl, ct);
+        return result;
+    }
+
+    public async Task<RepMonthlySalesItemwiseDto> GetRepMonthlySalesItemwiseAsync(
+        int salesRepId, int year, int month, CancellationToken ct = default)
+    {
+        var cacheKey = $"rep-sales-itemwise:{salesRepId}:{year}:{month}";
+        var cached = await _cache.GetAsync<RepMonthlySalesItemwiseDto>(cacheKey, ct);
+        if (cached is not null) return cached;
+
+        // Two narrow grouped queries — sequential because they share the scoped DbContext.
+        // Each is index-friendly and runs in single-digit ms.
+        var sales   = await _billingRepository.GetRepMonthlySalesByProductAsync(salesRepId, year, month, ct);
+        var targets = await _salesTargetRepository.GetByRepAndMonthAsync(salesRepId, year, month, ct);
+
+        var salesByProduct   = sales.ToDictionary(r => r.ProductId);
+        var targetsByProduct = targets
+            .GroupBy(t => t.ProductId)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.TargetQuantity));
+
+        var productIds = salesByProduct.Keys.Union(targetsByProduct.Keys).ToList();
+        var nameMap    = await _productRepository.GetCodeAndNameByIdsAsync(productIds, ct);
+
+        var items = productIds
+            .Select(pid =>
+            {
+                var soldPacks  = salesByProduct.TryGetValue(pid, out var s)  ? s.Qty    : 0m;
+                var soldAmount = salesByProduct.TryGetValue(pid, out var s2) ? s2.Amount : 0m;
+                var targetQty  = targetsByProduct.TryGetValue(pid, out var t) ? t : 0m;
+
+                var (code, name, packsPerCase) = nameMap.TryGetValue(pid, out var meta)
+                    ? meta
+                    : ($"#{pid}", $"Product {pid}", 1);
+
+                // Billing quantity is stored in packs; targets are recorded in cases.
+                // Send both — mobile renders "2 CS · 120 PKT" so reps see breakdown and total.
+                // Cases are reported to 1 decimal — half-case breaks matter, quarter-cases don't.
+                var divisor = packsPerCase > 0 ? packsPerCase : 1;
+                var soldQtyCases = Math.Round(soldPacks / divisor, 1);
+
+                var pct = targetQty > 0
+                    ? Math.Round(soldQtyCases / targetQty * 100m, 1)
+                    : 0m;
+
+                return new RepMonthlySalesItemDto(
+                    pid, code, name, targetQty, soldQtyCases, soldPacks, soldAmount, pct);
+            })
+            .OrderBy(i => i.AchievementPercent)   // laggards first
+            .ThenBy(i => i.ItemName)
+            .ToList();
+
+        var result = new RepMonthlySalesItemwiseDto(
+            year, month,
+            TotalTargetQuantity:    items.Sum(i => i.TargetQuantity),
+            TotalSoldQuantity:      items.Sum(i => i.SoldQuantity),
+            TotalSoldQuantityPacks: items.Sum(i => i.SoldQuantityPacks),
+            TotalSoldAmount:        items.Sum(i => i.SoldAmount),
+            Items: items);
+
         await _cache.SetAsync(cacheKey, result, SalesCacheTtl, ct);
         return result;
     }

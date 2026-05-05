@@ -31,6 +31,9 @@ import 'package:uswatte/features/sales_rep_target/domain/usecases/get_rep_monthl
 import 'package:uswatte/features/sales_rep_target/presentation/cubit/rep_target_cubit.dart';
 import 'package:uswatte/features/rep_monthly_sales/domain/usecases/get_rep_monthly_sales_usecase.dart';
 import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_monthly_sales_cubit.dart';
+import 'package:uswatte/features/item_wise_achievement/domain/usecases/get_item_wise_achievement_usecase.dart';
+import 'package:uswatte/features/item_wise_achievement/presentation/cubit/item_wise_achievement_cubit.dart';
+import 'package:uswatte/features/item_wise_achievement/presentation/pages/item_wise_achievement_page.dart';
 import 'package:uswatte/features/products/presentation/bloc/products_bloc.dart';
 import 'package:uswatte/features/products/presentation/bloc/products_event.dart';
 import 'package:uswatte/features/products/presentation/pages/products_page.dart';
@@ -195,6 +198,19 @@ class AppRouter {
                 ],
                 child: const SalesRepHomePage(),
               ),
+            ),
+            GoRoute(
+              path: 'achievement-detail',
+              name: 'achievementDetail',
+              builder: (_, __) {
+                final now = DateTime.now();
+                return BlocProvider(
+                  create: (_) => ItemWiseAchievementCubit(
+                    getIt<GetItemWiseAchievementUseCase>(),
+                  )..load(now.year, now.month),
+                  child: const ItemWiseAchievementPage(),
+                );
+              },
             ),
             GoRoute(
               path: 'sync',

@@ -21,4 +21,7 @@ public interface IBillingService
         CancellationToken ct = default);
 
     Task<RepMonthlySalesDto> GetRepMonthlySalesAsync(int salesRepId, int year, int month, CancellationToken ct = default);
+
+    Task<RepMonthlySalesItemwiseDto> GetRepMonthlySalesItemwiseAsync(
+        int salesRepId, int year, int month, CancellationToken ct = default);
 }

@@ -28,4 +28,16 @@ public class RepBillingController(IBillingService billingService) : ControllerBa
         var result = await billingService.GetRepMonthlySalesAsync(GetCallerId(), year, month, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
+
+    /// <summary>GET /api/v1/billings/my-monthly-sales-itemwise — per-product target vs sold for the calling rep.</summary>
+    [HttpGet("my-monthly-sales-itemwise")]
+    public async Task<IActionResult> GetMyMonthlySalesItemwise(
+        [FromQuery] int year,
+        [FromQuery] int month,
+        CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var result = await billingService.GetRepMonthlySalesItemwiseAsync(GetCallerId(), year, month, ct);
+        return Ok(ResponseHelper.Ok(result, correlationId));
+    }
 }
