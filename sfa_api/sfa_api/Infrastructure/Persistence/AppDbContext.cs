@@ -671,6 +671,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .HasFilter("\"IsDeleted\" = false");
             e.HasIndex(x => new { x.RouteId, x.AssignedDate })
              .HasFilter("\"IsDeleted\" = false");
+            e.HasIndex(x => new { x.UserId, x.IsActive })
+             .HasFilter("\"IsDeleted\" = false");
             e.HasIndex(x => x.IsDeleted);
             // Matching query filter prevents EF warning about Route's global IsActive filter
             // being the required end of this relationship. Deleted assignments are excluded
@@ -712,6 +714,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
             // Report indexes — every org/geo level paired with BillingDate for range queries
             e.HasIndex(x => new { x.SalesRepId,       x.BillingDate });
+            e.HasIndex(x => new { x.SalesRepId, x.RouteId, x.BillingDate })
+             .HasFilter("\"IsDeleted\" = false");
             e.HasIndex(x => new { x.DistributorId,    x.BillingDate });
             e.HasIndex(x => new { x.SupervisorUserId, x.BillingDate });
             e.HasIndex(x => new { x.AsmUserId,        x.BillingDate });

@@ -133,8 +133,7 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
             .Where(b => b.SalesRepId == salesRepId
                      && b.RouteId == routeId
                      && b.BillingDate >= dateFrom
-                     && b.BillingDate <= dateTo
-                     && !b.IsDeleted)
+                     && b.BillingDate <= dateTo)
             .Select(b => new OutletBillingSummaryRawRow(
                 b.OutletId,
                 b.Outlet.Name,

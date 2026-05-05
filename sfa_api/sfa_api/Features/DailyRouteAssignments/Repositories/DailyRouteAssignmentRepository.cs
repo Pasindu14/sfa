@@ -30,7 +30,7 @@ public class DailyRouteAssignmentRepository(AppDbContext context) : IDailyRouteA
         var query = _context.DailyRouteAssignments
             .Include(a => a.User)
             .Include(a => a.Route)
-            .Where(a => a.IsActive && !a.IsDeleted)
+            .Where(a => a.IsActive)
             .AsQueryable();
 
         if (userId.HasValue)
