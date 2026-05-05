@@ -19,4 +19,6 @@ public interface IBillingService
         int salesRepId, int routeId,
         DateOnly dateFrom, DateOnly dateTo,
         CancellationToken ct = default);
+
+    Task<RepMonthlySalesDto> GetRepMonthlySalesAsync(int salesRepId, int year, int month, CancellationToken ct = default);
 }

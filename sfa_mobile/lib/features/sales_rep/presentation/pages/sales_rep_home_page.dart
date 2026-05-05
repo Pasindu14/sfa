@@ -14,6 +14,10 @@ import 'package:uswatte/features/outlets/presentation/bloc/outlets_event.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_state.dart';
 import 'package:uswatte/features/rep_assignment/presentation/bloc/rep_assignment_bloc.dart';
 import 'package:uswatte/features/route_assignment/presentation/bloc/assignments_bloc.dart';
+import 'package:uswatte/features/sales_rep_target/presentation/cubit/rep_target_cubit.dart';
+import 'package:uswatte/features/sales_rep_target/presentation/cubit/rep_target_state.dart';
+import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_monthly_sales_cubit.dart';
+import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_monthly_sales_state.dart';
 
 class SalesRepHomePage extends StatefulWidget {
   const SalesRepHomePage({super.key});
@@ -93,7 +97,7 @@ class _SalesRepHomePageState extends State<SalesRepHomePage>
             child: FadeTransition(
               opacity: _fade(0.05, 0.55),
               child: SlideTransition(
-                  position: _slide(0.05, 0.55), child: const _HeroCard()),
+                  position: _slide(0.05, 0.55), child: const _HeroRow()),
             ),
           ),
           SliverToBoxAdapter(
@@ -302,6 +306,28 @@ class _NavIconBtn extends StatelessWidget {
   }
 }
 
+// ── Hero row (greeting + achievement) ────────────────────────────────────────
+class _HeroRow extends StatelessWidget {
+  const _HeroRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 0),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Expanded(child: _HeroCard()),
+            SizedBox(width: 10.w),
+            const _AchievementCard(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ── Hero greeting card ────────────────────────────────────────────────────────
 class _HeroCard extends StatelessWidget {
   const _HeroCard();
@@ -328,9 +354,7 @@ class _HeroCard extends StatelessWidget {
           : null,
     );
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 0),
-      child: Container(
+    return Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -444,9 +468,127 @@ class _HeroCard extends StatelessWidget {
             ),
           ],
         ),
+    );
+  }
+}
+
+// ── Achievement card (MTD %) ──────────────────────────────────────────────────
+class _AchievementCard extends StatelessWidget {
+  const _AchievementCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<RepMonthlySalesCubit, RepMonthlySalesState>(
+      builder: (context, salesState) =>
+          BlocBuilder<RepTargetCubit, RepTargetState>(
+        builder: (context, targetState) {
+          final isLoading = salesState is RepMonthlySalesLoading ||
+              targetState is RepTargetLoading;
+
+          double? pct;
+          if (salesState is RepMonthlySalesLoaded &&
+              targetState is RepTargetLoaded) {
+            final target = targetState.target.totalTarget;
+            pct = target > 0
+                ? (salesState.sales.totalSales / target * 100)
+                    .clamp(0.0, 999.0)
+                : 0.0;
+          }
+
+          final Color accent = pct == null
+              ? AppColors.primary
+              : pct >= 100
+                  ? const Color(0xFF22C55E)
+                  : pct >= 75
+                      ? const Color(0xFFF59E0B)
+                      : AppColors.primary;
+
+          final progressVal =
+              pct != null ? (pct / 100).clamp(0.0, 1.0) : 0.0;
+          final label = isLoading
+              ? '...'
+              : pct != null
+                  ? '${pct.toStringAsFixed(0)}%'
+                  : '—';
+
+          return Container(
+            width: 96.w,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16.r),
+              border: Border.all(color: accent.withValues(alpha: 0.20)),
+              boxShadow: [
+                BoxShadow(
+                  color: accent.withValues(alpha: 0.14),
+                  blurRadius: 18,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      width: 68.r,
+                      height: 68.r,
+                      child: CircularProgressIndicator(
+                        value: progressVal,
+                        strokeWidth: 6.r,
+                        backgroundColor: accent.withValues(alpha: 0.12),
+                        valueColor: AlwaysStoppedAnimation<Color>(accent),
+                        strokeCap: StrokeCap.round,
+                      ),
+                    ),
+                    Text(
+                      label,
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 20.sp,
+                        fontWeight: FontWeight.w900,
+                        height: 1.0,
+                        letterSpacing: -0.5,
+                        color: accent,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 10.h),
+                Text(
+                  'ACHIEVED',
+                  style: GoogleFonts.barlowCondensed(
+                    fontSize: 9.sp,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.5,
+                    color: AppColors.foregroundMuted,
+                  ),
+                ),
+                SizedBox(height: 2.h),
+                Text(
+                  'THIS MONTH',
+                  style: GoogleFonts.barlowCondensed(
+                    fontSize: 8.sp,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.0,
+                    color: AppColors.foregroundMuted.withValues(alpha: 0.55),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
+}
+
+String _formatAmount(double amount) {
+  final rounded = amount.toStringAsFixed(0);
+  return rounded.replaceAllMapped(
+    RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+    (m) => '${m[1]},',
+  );
 }
 
 // ── KPI row ───────────────────────────────────────────────────────────────────
@@ -459,14 +601,31 @@ class _KpiRow extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 0),
       child: Row(
         children: [
-          _KpiCard(label: 'MTD SALES', value: '—', unit: 'LKR',
-              color: AppColors.primary),
+          BlocBuilder<RepMonthlySalesCubit, RepMonthlySalesState>(
+            builder: (context, state) {
+              final value = switch (state) {
+                RepMonthlySalesLoading() => '...',
+                RepMonthlySalesLoaded(:final sales) => _formatAmount(sales.totalSales),
+                _ => '—',
+              };
+              return _KpiCard(
+                  label: 'MTD SALES', value: value, unit: 'LKR',
+                  color: AppColors.primary);
+            },
+          ),
           SizedBox(width: 10.w),
-          _KpiCard(label: 'TARGET', value: '—', unit: 'LKR',
-              color: AppColors.primary),
-          SizedBox(width: 10.w),
-          _KpiCard(label: 'COVERAGE', value: '—', unit: '%',
-              color: AppColors.primary),
+          BlocBuilder<RepTargetCubit, RepTargetState>(
+            builder: (context, state) {
+              final value = switch (state) {
+                RepTargetLoading() => '...',
+                RepTargetLoaded(:final target) => _formatAmount(target.totalTarget),
+                _ => '—',
+              };
+              return _KpiCard(
+                  label: 'TARGET', value: value, unit: 'LKR',
+                  color: AppColors.primary);
+            },
+          ),
         ],
       ),
     );

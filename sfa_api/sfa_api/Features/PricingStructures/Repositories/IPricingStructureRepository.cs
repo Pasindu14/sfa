@@ -9,6 +9,7 @@ public interface IPricingStructureRepository
     Task<(IEnumerable<PricingStructure>, int TotalCount)> GetAllAsync(int skip, int take, string? search = null, CancellationToken ct = default);
     Task<PricingStructure?> GetByNameAsync(string name, CancellationToken ct = default);
     Task<PricingStructure?> GetCurrentDefaultAsync(CancellationToken ct = default);
+    Task<PricingStructure?> GetDefaultWithItemsAsync(CancellationToken ct = default);
     Task<IEnumerable<PricingStructureItem>> GetItemsAsync(int pricingStructureId, CancellationToken ct = default);
     Task<IEnumerable<PricingStructure>> GetAllActiveWithItemsAsync(CancellationToken ct = default);
     Task CreateAsync(PricingStructure entity, CancellationToken ct = default);

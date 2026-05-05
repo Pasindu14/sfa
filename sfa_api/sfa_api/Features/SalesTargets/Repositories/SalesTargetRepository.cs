@@ -85,6 +85,18 @@ public class SalesTargetRepository(AppDbContext context) : ISalesTargetRepositor
         return (items, total);
     }
 
+    public async Task<List<SalesTarget>> GetByRepAndMonthAsync(
+        int salesRepId, int year, int month, CancellationToken ct = default)
+        => await _context.SalesTargets
+            .AsNoTracking()
+            .Where(t => t.SalesRepId == salesRepId
+                     && t.Year       == year
+                     && t.Month      == month
+                     && t.IsActive
+                     && !t.IsDeleted)
+            .Select(t => new SalesTarget { ProductId = t.ProductId, TargetQuantity = t.TargetQuantity })
+            .ToListAsync(ct);
+
     public Task SaveChangesAsync(CancellationToken ct = default)
         => _context.SaveChangesAsync(ct);
 }

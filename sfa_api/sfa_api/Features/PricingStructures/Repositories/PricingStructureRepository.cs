@@ -58,6 +58,13 @@ public class PricingStructureRepository(AppDbContext context) : IPricingStructur
         => await _context.PricingStructures
             .FirstOrDefaultAsync(ps => ps.IsDefault && ps.IsActive, ct);
 
+    public async Task<PricingStructure?> GetDefaultWithItemsAsync(CancellationToken ct = default)
+        => await _context.PricingStructures
+            .AsNoTracking()
+            .Include(ps => ps.Items)
+                .ThenInclude(i => i.Product)
+            .FirstOrDefaultAsync(ps => ps.IsDefault && ps.IsActive, ct);
+
     public async Task<IEnumerable<PricingStructureItem>> GetItemsAsync(int pricingStructureId, CancellationToken ct = default)
         => await _context.PricingStructureItems
             .Include(i => i.Product)

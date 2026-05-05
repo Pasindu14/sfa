@@ -27,6 +27,10 @@ import 'package:uswatte/features/route_assignment/presentation/bloc/assignments_
 import 'package:uswatte/features/route_assignment/presentation/pages/assignments_list_page.dart';
 import 'package:uswatte/features/route_assignment/presentation/pages/route_assignment_page.dart';
 import 'package:uswatte/features/sales_rep/presentation/pages/sales_rep_home_page.dart';
+import 'package:uswatte/features/sales_rep_target/domain/usecases/get_rep_monthly_target_usecase.dart';
+import 'package:uswatte/features/sales_rep_target/presentation/cubit/rep_target_cubit.dart';
+import 'package:uswatte/features/rep_monthly_sales/domain/usecases/get_rep_monthly_sales_usecase.dart';
+import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_monthly_sales_cubit.dart';
 import 'package:uswatte/features/products/presentation/bloc/products_bloc.dart';
 import 'package:uswatte/features/products/presentation/bloc/products_event.dart';
 import 'package:uswatte/features/products/presentation/pages/products_page.dart';
@@ -173,6 +177,20 @@ class AppRouter {
                       deleteBillUseCase: getIt<DeleteBillUseCase>(),
                       syncService: getIt<BillSyncService>(),
                     )..add(const LoadBillsRequested()),
+                  ),
+                  BlocProvider(
+                    create: (_) {
+                      final now = DateTime.now();
+                      return RepTargetCubit(getIt<GetRepMonthlyTargetUseCase>())
+                        ..load(now.year, now.month);
+                    },
+                  ),
+                  BlocProvider(
+                    create: (_) {
+                      final now = DateTime.now();
+                      return RepMonthlySalesCubit(getIt<GetRepMonthlySalesUseCase>())
+                        ..load(now.year, now.month);
+                    },
                   ),
                 ],
                 child: const SalesRepHomePage(),

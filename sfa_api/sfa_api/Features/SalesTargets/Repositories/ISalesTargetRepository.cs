@@ -25,5 +25,7 @@ public interface ISalesTargetRepository
         string? search = null,
         CancellationToken ct = default);
 
+    Task<List<SalesTarget>> GetByRepAndMonthAsync(int salesRepId, int year, int month, CancellationToken ct = default);
+
     Task SaveChangesAsync(CancellationToken ct = default);
 }

@@ -41,10 +41,8 @@ public class PricingStructureService(
         var cached = await _cache.GetAsync<PricingStructureDetailDto>(cacheKey, ct);
         if (cached is not null) return cached;
 
-        var structure = await _repo.GetCurrentDefaultAsync(ct)
+        var withItems = await _repo.GetDefaultWithItemsAsync(ct)
             ?? throw new NotFoundException("PricingStructure", "default");
-        var withItems = await _repo.GetByIdWithItemsAsync(structure.Id, ct)
-            ?? throw new NotFoundException("PricingStructure", structure.Id);
         var result = MapToDetailDto(withItems);
         await _cache.SetAsync(cacheKey, result, CacheTtl, ct);
         return result;

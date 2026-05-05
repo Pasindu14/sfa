@@ -106,6 +106,14 @@ import 'package:uswatte/features/supervisor_route_map/domain/usecases/get_superv
 import 'package:uswatte/features/todays_route_map/data/repositories/todays_route_map_repository_impl.dart';
 import 'package:uswatte/features/todays_route_map/domain/repositories/todays_route_map_repository.dart';
 import 'package:uswatte/features/todays_route_map/domain/usecases/get_todays_route_map_usecase.dart';
+import 'package:uswatte/features/sales_rep_target/data/datasources/rep_target_remote_datasource.dart';
+import 'package:uswatte/features/sales_rep_target/data/repositories/rep_target_repository_impl.dart';
+import 'package:uswatte/features/sales_rep_target/domain/repositories/rep_target_repository.dart';
+import 'package:uswatte/features/sales_rep_target/domain/usecases/get_rep_monthly_target_usecase.dart';
+import 'package:uswatte/features/rep_monthly_sales/data/datasources/rep_monthly_sales_remote_datasource.dart';
+import 'package:uswatte/features/rep_monthly_sales/data/repositories/rep_monthly_sales_repository_impl.dart';
+import 'package:uswatte/features/rep_monthly_sales/domain/repositories/rep_monthly_sales_repository.dart';
+import 'package:uswatte/features/rep_monthly_sales/domain/usecases/get_rep_monthly_sales_usecase.dart';
 
 final getIt = GetIt.instance;
 
@@ -362,6 +370,24 @@ Future<void> configureDependencies() async {
   );
   getIt.registerLazySingleton(
       () => GetSupervisorSummaryUseCase(getIt<SupervisorSummaryRepository>()));
+
+  // ── Rep Monthly Sales ────────────────────────────────────────────────────────
+  getIt.registerLazySingleton(
+      () => RepMonthlySalesRemoteDatasource(getIt<Dio>()));
+  getIt.registerLazySingleton<RepMonthlySalesRepository>(
+    () => RepMonthlySalesRepositoryImpl(getIt<RepMonthlySalesRemoteDatasource>()),
+  );
+  getIt.registerLazySingleton(
+      () => GetRepMonthlySalesUseCase(getIt<RepMonthlySalesRepository>()));
+
+  // ── Sales Rep Target ─────────────────────────────────────────────────────────
+  getIt.registerLazySingleton(
+      () => RepTargetRemoteDatasource(getIt<Dio>()));
+  getIt.registerLazySingleton<RepTargetRepository>(
+    () => RepTargetRepositoryImpl(getIt<RepTargetRemoteDatasource>()),
+  );
+  getIt.registerLazySingleton(
+      () => GetRepMonthlyTargetUseCase(getIt<RepTargetRepository>()));
 
   // ── Supervisor Billing ────────────────────────────────────────────────────────
   getIt.registerLazySingleton(

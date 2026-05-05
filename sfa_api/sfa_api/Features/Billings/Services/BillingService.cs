@@ -9,6 +9,7 @@ using sfa_api.Features.Stock.Enums;
 using sfa_api.Features.Stock.Repositories;
 using sfa_api.Features.UserGeoAssignments.Repositories;
 using sfa_api.Features.UserReportingLines.Repositories;
+using sfa_api.Infrastructure.Caching;
 using sfa_api.Infrastructure.Locking;
 using sfa_api.Infrastructure.Persistence;
 
@@ -20,6 +21,7 @@ public class BillingService(
     IUserGeoAssignmentRepository geoAssignmentRepository,
     IUserReportingLineRepository reportingLineRepository,
     IDistributedLockService lockService,
+    ICacheService cache,
     AppDbContext db) : IBillingService
 {
     private readonly IBillingRepository _billingRepository = billingRepository;
@@ -27,7 +29,10 @@ public class BillingService(
     private readonly IUserGeoAssignmentRepository _geoAssignmentRepository = geoAssignmentRepository;
     private readonly IUserReportingLineRepository _reportingLineRepository = reportingLineRepository;
     private readonly IDistributedLockService _lockService = lockService;
+    private readonly ICacheService _cache = cache;
     private readonly AppDbContext _db = db;
+
+    private static readonly TimeSpan SalesCacheTtl = TimeSpan.FromMinutes(5);
 
     public async Task<BillingDto> CreateAsync(CreateBillingRequest request, int salesRepId, CancellationToken ct = default)
     {
@@ -313,5 +318,18 @@ public class BillingService(
             GrandTotal: outletSummaries.Sum(x => x.TotalAmount),
             TotalBillingCount: outletSummaries.Sum(x => x.BillingCount),
             OutletSummaries: outletSummaries);
+    }
+
+    public async Task<RepMonthlySalesDto> GetRepMonthlySalesAsync(
+        int salesRepId, int year, int month, CancellationToken ct = default)
+    {
+        var cacheKey = $"rep-sales:{salesRepId}:{year}:{month}";
+        var cached = await _cache.GetAsync<RepMonthlySalesDto>(cacheKey, ct);
+        if (cached is not null) return cached;
+
+        var total = await _billingRepository.GetRepMonthlySalesTotalAsync(salesRepId, year, month, ct);
+        var result = new RepMonthlySalesDto(year, month, total);
+        await _cache.SetAsync(cacheKey, result, SalesCacheTtl, ct);
+        return result;
     }
 }

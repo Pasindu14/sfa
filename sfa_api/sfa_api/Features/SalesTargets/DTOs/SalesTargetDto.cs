@@ -1,5 +1,7 @@
 namespace sfa_api.Features.SalesTargets.DTOs;
 
+public record RepMonthlyTargetDto(int Year, int Month, decimal TotalTarget);
+
 public record SalesTargetDto(
     int     Id,
     int     ImportBatchId,

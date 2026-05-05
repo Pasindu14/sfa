@@ -1,13 +1,18 @@
+using sfa_api.Features.PricingStructures.Services;
 using sfa_api.Features.SalesTargets.DTOs;
 using sfa_api.Features.SalesTargets.Repositories;
 using sfa_api.Features.SalesTargets.Entities;
+using sfa_api.Infrastructure.Caching;
 
 namespace sfa_api.Features.SalesTargets.Services;
 
 public class SalesTargetService(
     ISalesTargetRepository targetRepo,
-    ISalesTargetImportBatchRepository batchRepo) : ISalesTargetService
+    ISalesTargetImportBatchRepository batchRepo,
+    IPricingStructureService pricingService,
+    ICacheService cache) : ISalesTargetService
 {
+    private static readonly TimeSpan TargetCacheTtl = TimeSpan.FromMinutes(5);
     public async Task<(IEnumerable<SalesTargetDto> Items, int TotalCount)> GetPagedAsync(
         int page, int pageSize,
         int? year = null,
@@ -108,6 +113,28 @@ public class SalesTargetService(
             AreaId:           target.AreaId,
             RegionId:         target.RegionId,
             UpdatedAt:        target.UpdatedAt);
+    }
+
+    public async Task<RepMonthlyTargetDto> GetRepMonthlyTargetAsync(
+        int salesRepId, int year, int month, CancellationToken ct = default)
+    {
+        var cacheKey = $"rep-target:{salesRepId}:{year}:{month}";
+        var cached = await cache.GetAsync<RepMonthlyTargetDto>(cacheKey, ct);
+        if (cached is not null) return cached;
+
+        var targets = await targetRepo.GetByRepAndMonthAsync(salesRepId, year, month, ct);
+
+        decimal total = 0m;
+        if (targets.Count > 0)
+        {
+            var pricing = await pricingService.GetDefaultAsync(ct);
+            var priceMap = pricing.Items.ToDictionary(i => i.ProductId, i => i.DealerCasePrice ?? 0m);
+            total = targets.Sum(t => t.TargetQuantity * priceMap.GetValueOrDefault(t.ProductId, 0m));
+        }
+
+        var result = new RepMonthlyTargetDto(year, month, total);
+        await cache.SetAsync(cacheKey, result, TargetCacheTtl, ct);
+        return result;
     }
 
     public async Task<SalesTargetImportBatchDto?> GetBatchByIdAsync(int id, CancellationToken ct = default)
