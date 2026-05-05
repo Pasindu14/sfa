@@ -8,9 +8,10 @@ import {
   getSalesTargetsAction,
   importSalesTargetsAction,
   getImportBatchesAction,
+  updateSalesTargetAction,
 } from '../actions/sales-target.actions'
-import { useImportTargetDialog } from '../store/sales-target-dialog.store'
-import type { ImportSalesTargetsPayload, ImportSalesTargetsResult } from '../schema/sales-target.schema'
+import { useImportTargetDialog, useEditTargetDialog } from '../store/sales-target-dialog.store'
+import type { ImportSalesTargetsPayload, ImportSalesTargetsResult, UpdateTargetQuantityInput } from '../schema/sales-target.schema'
 
 // ── Query key factory ──────────────────────────────────────────────────────
 
@@ -91,6 +92,29 @@ export function useImportBatchesDataTable(
 }
 
 ;(useImportBatchesDataTable as unknown as Record<string, unknown>).isQueryHook = true
+
+// ── Update quantity mutation hook ─────────────────────────────────────────
+
+export function useUpdateSalesTarget() {
+  const queryClient = useQueryClient()
+  const { close } = useEditTargetDialog()
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: UpdateTargetQuantityInput }) => {
+      const result = await updateSalesTargetAction(id, data)
+      if (!result.success) throw result
+      return result.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: salesTargetKeys.all })
+      close()
+      toast.success('Target quantity updated')
+    },
+    onError: (error: unknown) => {
+      handleErrorToast(error as any, 'sales target', 'update')
+    },
+  })
+}
 
 // ── Import mutation hook ───────────────────────────────────────────────────
 

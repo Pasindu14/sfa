@@ -1,6 +1,14 @@
 'use client'
 
+import { MoreHorizontal } from 'lucide-react'
 import type { ColumnDef } from '@tanstack/react-table'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import type { SalesTargetDto } from '../../schema/sales-target.schema'
 
 const MONTH_LABELS = [
@@ -8,7 +16,9 @@ const MONTH_LABELS = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ]
 
-export function getTargetsColumns(): ColumnDef<SalesTargetDto>[] {
+export function getTargetsColumns(
+  onEdit?: (target: SalesTargetDto) => void,
+): ColumnDef<SalesTargetDto>[] {
   return [
     {
       id: 'rep',
@@ -66,5 +76,24 @@ export function getTargetsColumns(): ColumnDef<SalesTargetDto>[] {
         </span>
       ),
     },
+    ...(onEdit ? [{
+      id: 'actions',
+      header: 'Actions',
+      cell: ({ row }: { row: { original: SalesTargetDto } }) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <MoreHorizontal className="h-4 w-4" />
+              <span className="sr-only">Open menu</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onEdit(row.original)}>
+              Edit Quantity
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    } satisfies ColumnDef<SalesTargetDto>] : []),
   ]
 }

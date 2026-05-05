@@ -25,6 +25,9 @@ public class SalesTargetRepository(AppDbContext context) : ISalesTargetRepositor
             .ToDictionaryAsync(t => (t.SalesRepId, t.ProductId), ct);
     }
 
+    public async Task<SalesTarget?> GetByIdAsync(int id, CancellationToken ct = default)
+        => await _context.SalesTargets.FirstOrDefaultAsync(t => t.Id == id, ct);
+
     public void AddRange(IEnumerable<SalesTarget> targets)
         => _context.SalesTargets.AddRange(targets);
 

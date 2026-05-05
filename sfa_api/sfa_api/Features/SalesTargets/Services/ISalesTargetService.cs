@@ -17,4 +17,6 @@ public interface ISalesTargetService
         int page, int pageSize, CancellationToken ct = default);
 
     Task<SalesTargetImportBatchDto?> GetBatchByIdAsync(int id, CancellationToken ct = default);
+
+    Task<SalesTargetDto?> UpdateQuantityAsync(int id, decimal targetQuantity, int callerId, CancellationToken ct = default);
 }

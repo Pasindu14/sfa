@@ -44,6 +44,16 @@ public class DistributorRepository(AppDbContext context) : IDistributorRepositor
             .Include(d => d.Fleet)
             .FirstOrDefaultAsync(d => d.TerritoryId == territoryId && d.IsActive && !d.IsDeleted, ct);
 
+    public async Task<Dictionary<int, int>> GetDistributorIdsByTerritoryIdsAsync(
+        IEnumerable<int> territoryIds, CancellationToken ct = default)
+    {
+        var ids = territoryIds.ToList();
+        return await _context.Distributors
+            .AsNoTracking()
+            .Where(d => d.TerritoryId.HasValue && ids.Contains(d.TerritoryId.Value) && d.IsActive && !d.IsDeleted)
+            .ToDictionaryAsync(d => d.TerritoryId!.Value, d => d.Id, ct);
+    }
+
     public async Task<(IEnumerable<Distributor> Distributors, int TotalCount)> GetAllAsync(int skip, int take, string? search = null, bool? isActive = null, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, 200);

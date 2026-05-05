@@ -1,5 +1,13 @@
 import { z } from 'zod'
 
+// ── Update quantity payload ───────────────────────────────────────────────
+
+export const updateTargetQuantitySchema = z.object({
+  targetQuantity: z.number().min(0, 'Quantity cannot be negative'),
+})
+
+export type UpdateTargetQuantityInput = z.infer<typeof updateTargetQuantitySchema>
+
 // ── Import payload (sent to API) ──────────────────────────────────────────
 
 export const targetRowRequestSchema = z.object({

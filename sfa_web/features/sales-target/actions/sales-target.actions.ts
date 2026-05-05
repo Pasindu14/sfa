@@ -8,6 +8,7 @@ import type {
   ImportSalesTargetsResult,
   SalesTargetDto,
   SalesTargetImportBatchDto,
+  UpdateTargetQuantityInput,
 } from '../schema/sales-target.schema'
 
 export const getSalesTargetsAction = createAction(
@@ -37,6 +38,15 @@ export const getSalesTargetsAction = createAction(
       page: body.pagination?.page ?? page,
       pageSize: body.pagination?.pageSize ?? pageSize,
     }
+  }
+)
+
+export const updateSalesTargetAction = createAction(
+  { name: 'updateSalesTargetAction', requireAuth: true, requiredRole: 'Admin' },
+  async (id: number, data: UpdateTargetQuantityInput) => {
+    const res = await client.put(`/api/v1/sales-targets/${id}`, data)
+    revalidatePath('/sales-targets')
+    return res.data.data as SalesTargetDto
   }
 )
 

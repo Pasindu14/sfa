@@ -5,6 +5,7 @@ using sfa_api.Features.SalesTargets.Entities;
 using sfa_api.Features.SalesTargets.Enums;
 using sfa_api.Features.SalesTargets.Repositories;
 using sfa_api.Features.SalesTargets.Requests;
+using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.UserGeoAssignments.Repositories;
 using sfa_api.Features.UserReportingLines.Repositories;
 using sfa_api.Features.Users.Entities;
@@ -17,6 +18,7 @@ public class SalesTargetImportService(
     ISalesTargetImportBatchRepository batchRepo,
     IUserReportingLineRepository reportingLineRepo,
     IUserGeoAssignmentRepository geoRepo,
+    IDistributorRepository distributorRepo,
     AppDbContext context) : ISalesTargetImportService
 {
     public async Task<ImportSalesTargetsResultDto> ImportAsync(
@@ -83,6 +85,16 @@ public class SalesTargetImportService(
             .Where(g => repIds.Contains(g.UserId) && g.IsActive && !g.IsDeleted)
             .ToDictionaryAsync(g => g.UserId, ct);
 
+        // Batch-resolve DistributorId via territory: one IN query, never per-row
+        var territoryIds = geoByUserId.Values
+            .Where(g => g.TerritoryId.HasValue)
+            .Select(g => g.TerritoryId!.Value)
+            .Distinct()
+            .ToList();
+        var distributorIdByTerritoryId = territoryIds.Count > 0
+            ? await distributorRepo.GetDistributorIdsByTerritoryIdsAsync(territoryIds, ct)
+            : new Dictionary<int, int>();
+
         // Resolve product IDs for the existing-target query
         var resolvedProductIds = request.Rows
             .Where(r => productsByCode.ContainsKey(r.ItemCode.Trim()))
@@ -134,6 +146,9 @@ public class SalesTargetImportService(
 
             // Geo chain from UserGeoAssignment
             geoByUserId.TryGetValue(row.RepsCode, out var geo);
+            int? distributorId = geo?.TerritoryId.HasValue == true
+                && distributorIdByTerritoryId.TryGetValue(geo.TerritoryId!.Value, out var distId)
+                ? distId : null;
 
             var key = (row.RepsCode, product.Id);
 
@@ -145,7 +160,7 @@ public class SalesTargetImportService(
                 existing.AsmUserId        = asmId;
                 existing.RsmUserId        = rsmId;
                 existing.NsmUserId        = nsmId;
-                existing.DistributorId    = user.DistributorId;
+                existing.DistributorId    = distributorId;
                 existing.DivisionId       = geo?.DivisionId;
                 existing.TerritoryId      = geo?.TerritoryId;
                 existing.AreaId           = geo?.AreaId;
@@ -169,7 +184,7 @@ public class SalesTargetImportService(
                     AsmUserId        = asmId,
                     RsmUserId        = rsmId,
                     NsmUserId        = nsmId,
-                    DistributorId    = user.DistributorId,
+                    DistributorId    = distributorId,
                     DivisionId       = geo?.DivisionId,
                     TerritoryId      = geo?.TerritoryId,
                     AreaId           = geo?.AreaId,

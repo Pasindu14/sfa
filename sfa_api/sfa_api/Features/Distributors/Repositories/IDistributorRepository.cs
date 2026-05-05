@@ -14,6 +14,7 @@ public interface IDistributorRepository
     Task<bool> ExistsByTerritoryIdAsync(int territoryId, CancellationToken ct = default);
     Task<bool> ExistsByTerritoryIdAsync(int territoryId, int excludeId, CancellationToken ct = default);
     Task<Distributor?> GetByTerritoryIdAsync(int territoryId, CancellationToken ct = default);
+    Task<Dictionary<int, int>> GetDistributorIdsByTerritoryIdsAsync(IEnumerable<int> territoryIds, CancellationToken ct = default);
     Task<(IEnumerable<Distributor> Distributors, int TotalCount)> GetAllAsync(int skip, int take, string? search = null, bool? isActive = null, CancellationToken ct = default);
     Task CreateAsync(Distributor distributor, CancellationToken ct = default);
     Task UpdateAsync(Distributor distributor, CancellationToken ct = default);

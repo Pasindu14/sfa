@@ -15,6 +15,7 @@ public static class SalesTargetsServiceExtensions
         services.AddScoped<ISalesTargetService, SalesTargetService>();
         services.AddScoped<ISalesTargetImportService, SalesTargetImportService>();
         services.AddScoped<IValidator<ImportSalesTargetsRequest>, ImportSalesTargetsRequestValidator>();
+        services.AddScoped<IValidator<UpdateSalesTargetRequest>, UpdateSalesTargetRequestValidator>();
         return services;
     }
 }

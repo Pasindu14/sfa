@@ -1,5 +1,6 @@
 using sfa_api.Features.SalesTargets.DTOs;
 using sfa_api.Features.SalesTargets.Repositories;
+using sfa_api.Features.SalesTargets.Entities;
 
 namespace sfa_api.Features.SalesTargets.Services;
 
@@ -72,6 +73,41 @@ public class SalesTargetService(
             ImportedAt:     b.ImportedAt));
 
         return (dtos, total);
+    }
+
+    public async Task<SalesTargetDto?> UpdateQuantityAsync(int id, decimal targetQuantity, int callerId, CancellationToken ct = default)
+    {
+        var target = await targetRepo.GetByIdAsync(id, ct);
+        if (target is null) return null;
+
+        target.TargetQuantity = targetQuantity;
+        target.UpdatedAt = DateTime.UtcNow;
+        target.UpdatedBy = callerId;
+
+        await targetRepo.SaveChangesAsync(ct);
+
+        return new SalesTargetDto(
+            Id:               target.Id,
+            ImportBatchId:    target.ImportBatchId,
+            Year:             target.Year,
+            Month:            target.Month,
+            SalesRepId:       target.SalesRepId,
+            SalesRepName:     target.SalesRep?.Name ?? string.Empty,
+            ProductId:        target.ProductId,
+            ProductCode:      target.Product?.Code ?? string.Empty,
+            ProductName:      target.Product?.ItemDescription ?? string.Empty,
+            TargetQuantity:   target.TargetQuantity,
+            SupervisorUserId: target.SupervisorUserId,
+            SupervisorName:   target.Supervisor?.Name,
+            AsmUserId:        target.AsmUserId,
+            RsmUserId:        target.RsmUserId,
+            NsmUserId:        target.NsmUserId,
+            DistributorId:    target.DistributorId,
+            DivisionId:       target.DivisionId,
+            TerritoryId:      target.TerritoryId,
+            AreaId:           target.AreaId,
+            RegionId:         target.RegionId,
+            UpdatedAt:        target.UpdatedAt);
     }
 
     public async Task<SalesTargetImportBatchDto?> GetBatchByIdAsync(int id, CancellationToken ct = default)

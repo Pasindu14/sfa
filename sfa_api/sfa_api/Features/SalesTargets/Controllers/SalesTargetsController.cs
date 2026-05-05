@@ -15,7 +15,8 @@ namespace sfa_api.Features.SalesTargets.Controllers;
 public class SalesTargetsController(
     ISalesTargetService targetService,
     ISalesTargetImportService importService,
-    IValidator<ImportSalesTargetsRequest> importValidator) : ControllerBase
+    IValidator<ImportSalesTargetsRequest> importValidator,
+    IValidator<UpdateSalesTargetRequest> updateValidator) : ControllerBase
 {
     private int GetCallerId()
     {
@@ -39,6 +40,18 @@ public class SalesTargetsController(
         var (items, total) = await targetService.GetPagedAsync(
             page, pageSize, year, month, salesRepId, productId, search, ct);
         return Ok(ResponseHelper.Paged(items, page, pageSize, total, correlationId));
+    }
+
+    /// <summary>PUT /api/v1/sales-targets/{id} — update target quantity only.</summary>
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> UpdateQuantity(int id, [FromBody] UpdateSalesTargetRequest request, CancellationToken ct)
+    {
+        await updateValidator.ValidateOrThrowAsync(request, ct);
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var updated = await targetService.UpdateQuantityAsync(id, request.TargetQuantity, GetCallerId(), ct);
+        if (updated is null)
+            throw new NotFoundException("SalesTarget", id);
+        return Ok(ResponseHelper.Ok(updated, correlationId));
     }
 
     /// <summary>POST /api/v1/sales-targets/import — bulk upsert from parsed Excel JSON.</summary>
