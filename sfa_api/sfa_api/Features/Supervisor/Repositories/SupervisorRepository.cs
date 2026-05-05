@@ -42,13 +42,19 @@ public class SupervisorRepository(AppDbContext context) : ISupervisorRepository
             .CountAsync(ct);
     }
 
-    public async Task<int> CountBillsTodayBySupervisorAsync(int supervisorId, DateOnly date, CancellationToken ct = default)
-        => await _context.Billings
+    public async Task<(int Count, decimal TotalAmount)> CountAndSumBillsTodayAsync(int supervisorId, DateOnly date, CancellationToken ct = default)
+    {
+        var result = await _context.Billings
             .Where(b => b.SupervisorUserId == supervisorId
                      && b.BillingDate == date
                      && b.IsActive
                      && !b.IsDeleted)
-            .CountAsync(ct);
+            .GroupBy(_ => 1)
+            .Select(g => new { Count = g.Count(), Total = g.Sum(b => b.TotalAmount) })
+            .FirstOrDefaultAsync(ct);
+
+        return result is null ? (0, 0m) : (result.Count, result.Total);
+    }
 
     public async Task<int> CountNonBillingsTodayBySupervisorAsync(int supervisorId, DateOnly date, CancellationToken ct = default)
         => await _context.NotBillings

@@ -325,6 +325,19 @@ class _HeroCard extends StatelessWidget {
 class _MetricsSection extends StatelessWidget {
   const _MetricsSection();
 
+  String _formatSales(double amount) {
+    final whole = amount.truncate();
+    final cents = ((amount - whole) * 100).round();
+    final s = whole.toString();
+    final buf = StringBuffer();
+    final offset = s.length % 3;
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (i - offset) % 3 == 0) buf.write(',');
+      buf.write(s[i]);
+    }
+    return 'Rs. $buf.${cents.toString().padLeft(2, '0')}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -365,52 +378,136 @@ class _MetricsSection extends StatelessWidget {
             );
           }
 
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          return Column(
             children: [
-              Expanded(
-                child: _MetricTile(
-                  icon: Icons.people_rounded,
-                  label: 'Reps\nAssigned',
-                  value: loading
-                      ? '…'
-                      : summary != null
-                          ? '${summary.assignedReps}/${summary.totalReps}'
-                          : '—',
-                  large: true,
-                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _MetricTile(
+                      icon: Icons.people_rounded,
+                      label: 'Reps\nAssigned',
+                      value: loading
+                          ? '…'
+                          : summary != null
+                              ? '${summary.assignedReps}/${summary.totalReps}'
+                              : '—',
+                      large: true,
+                    ),
+                  ),
+                  SizedBox(width: 10.w),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        _MetricTile(
+                          icon: Icons.receipt_long_rounded,
+                          label: 'Bills Today',
+                          value: loading
+                              ? '…'
+                              : summary != null
+                                  ? '${summary.billsToday}'
+                                  : '—',
+                          large: false,
+                        ),
+                        SizedBox(height: 10.h),
+                        _MetricTile(
+                          icon: Icons.block_rounded,
+                          label: 'Non-Billings',
+                          value: loading
+                              ? '…'
+                              : summary != null
+                                  ? '${summary.nonBillingsToday}'
+                                  : '—',
+                          large: false,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              SizedBox(width: 10.w),
-              Expanded(
-                child: Column(
-                  children: [
-                    _MetricTile(
-                      icon: Icons.receipt_long_rounded,
-                      label: 'Bills Today',
-                      value: loading
-                          ? '…'
-                          : summary != null
-                              ? '${summary.billsToday}'
-                              : '—',
-                      large: false,
-                    ),
-                    SizedBox(height: 10.h),
-                    _MetricTile(
-                      icon: Icons.block_rounded,
-                      label: 'Non-Billings',
-                      value: loading
-                          ? '…'
-                          : summary != null
-                              ? '${summary.nonBillingsToday}'
-                              : '—',
-                      large: false,
-                    ),
-                  ],
-                ),
+              SizedBox(height: 10.h),
+              _SalesTile(
+                value: loading
+                    ? '…'
+                    : summary != null
+                        ? _formatSales(summary.totalSalesToday)
+                        : '—',
+                loading: loading,
               ),
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+// ── Total sales wide tile ─────────────────────────────────────────────────────
+class _SalesTile extends StatelessWidget {
+  const _SalesTile({required this.value, required this.loading});
+
+  final String value;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    const color = AppColors.success;
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.07),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34.r,
+            height: 34.r,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8.r),
+            ),
+            child: Icon(Icons.trending_up_rounded, color: color, size: 17.r),
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Text(
+              'Total Sales Today',
+              style: GoogleFonts.barlowCondensed(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w600,
+                color: AppColors.foregroundMuted,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ),
+          loading
+              ? SizedBox(
+                  width: 16.r,
+                  height: 16.r,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 1.5, color: color),
+                )
+              : Text(
+                  value,
+                  style: GoogleFonts.barlowCondensed(
+                    fontSize: 22.sp,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
+                    height: 1.0,
+                    color: color,
+                  ),
+                ),
+        ],
       ),
     );
   }

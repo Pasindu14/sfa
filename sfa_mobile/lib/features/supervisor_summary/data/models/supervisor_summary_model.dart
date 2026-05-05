@@ -6,6 +6,7 @@ class SupervisorSummaryModel extends SupervisorSummary {
     required super.assignedReps,
     required super.billsToday,
     required super.nonBillingsToday,
+    required super.totalSalesToday,
   });
 
   factory SupervisorSummaryModel.fromJson(Map<String, dynamic> json) {
@@ -14,6 +15,7 @@ class SupervisorSummaryModel extends SupervisorSummary {
       assignedReps: json['assignedReps'] as int? ?? 0,
       billsToday: json['billsToday'] as int? ?? 0,
       nonBillingsToday: json['nonBillingsToday'] as int? ?? 0,
+      totalSalesToday: (json['totalSalesToday'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }

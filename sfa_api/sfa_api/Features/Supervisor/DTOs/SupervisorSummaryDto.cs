@@ -4,4 +4,5 @@ public record SupervisorSummaryDto(
     int TotalReps,
     int AssignedReps,
     int BillsToday,
-    int NonBillingsToday);
+    int NonBillingsToday,
+    decimal TotalSalesToday);
