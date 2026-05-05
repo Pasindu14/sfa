@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using sfa_api.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using sfa_api.Infrastructure.Persistence;
 namespace sfa_api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260505061938_AddSalesTargetDistributorFk")]
+    partial class AddSalesTargetDistributorFk
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2799,11 +2802,6 @@ namespace sfa_api.Migrations
 
             modelBuilder.Entity("sfa_api.Features.SalesTargets.Entities.SalesTarget", b =>
                 {
-                    b.HasOne("sfa_api.Features.Areas.Entities.Area", "Area")
-                        .WithMany()
-                        .HasForeignKey("AreaId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("sfa_api.Features.Users.Entities.User", "Asm")
                         .WithMany()
                         .HasForeignKey("AsmUserId")
@@ -2812,11 +2810,6 @@ namespace sfa_api.Migrations
                     b.HasOne("sfa_api.Features.Distributors.Entities.Distributor", "Distributor")
                         .WithMany()
                         .HasForeignKey("DistributorId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("sfa_api.Features.Divisions.Entities.Division", "Division")
-                        .WithMany()
-                        .HasForeignKey("DivisionId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("sfa_api.Features.SalesTargets.Entities.SalesTargetImportBatch", "ImportBatch")
@@ -2836,11 +2829,6 @@ namespace sfa_api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("sfa_api.Features.Regions.Entities.Region", "Region")
-                        .WithMany()
-                        .HasForeignKey("RegionId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("sfa_api.Features.Users.Entities.User", "Rsm")
                         .WithMany()
                         .HasForeignKey("RsmUserId")
@@ -2857,18 +2845,9 @@ namespace sfa_api.Migrations
                         .HasForeignKey("SupervisorUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("sfa_api.Features.Territories.Entities.Territory", "Territory")
-                        .WithMany()
-                        .HasForeignKey("TerritoryId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Area");
-
                     b.Navigation("Asm");
 
                     b.Navigation("Distributor");
-
-                    b.Navigation("Division");
 
                     b.Navigation("ImportBatch");
 
@@ -2876,15 +2855,11 @@ namespace sfa_api.Migrations
 
                     b.Navigation("Product");
 
-                    b.Navigation("Region");
-
                     b.Navigation("Rsm");
 
                     b.Navigation("SalesRep");
 
                     b.Navigation("Supervisor");
-
-                    b.Navigation("Territory");
                 });
 
             modelBuilder.Entity("sfa_api.Features.SalesTargets.Entities.SalesTargetImportBatch", b =>

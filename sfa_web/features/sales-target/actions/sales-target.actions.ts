@@ -10,6 +10,7 @@ import type {
   SalesTargetImportBatchDto,
   UpdateTargetQuantityInput,
 } from '../schema/sales-target.schema'
+import type { UserDto } from '@/features/user/schema/user.schema'
 
 export const getSalesTargetsAction = createAction(
   { name: 'getSalesTargetsAction', requireAuth: true, requiredRole: 'Admin' },
@@ -56,6 +57,16 @@ export const importSalesTargetsAction = createAction(
     const res = await client.post('/api/v1/sales-targets/import', payload)
     revalidatePath('/sales-targets')
     return res.data.data as ImportSalesTargetsResult
+  }
+)
+
+export const searchSalesRepsAction = createAction(
+  { name: 'searchSalesRepsAction', requireAuth: true, requiredRole: 'Admin' },
+  async (search: string) => {
+    const res = await client.get('/api/v1/users', {
+      params: { page: 1, pageSize: 100, search, role: 'SalesRep' },
+    })
+    return (res.data.data as { users: UserDto[] }).users
   }
 )
 

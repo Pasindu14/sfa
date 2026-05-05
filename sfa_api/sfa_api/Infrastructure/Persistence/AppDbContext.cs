@@ -342,6 +342,22 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.RegionId);
             e.HasIndex(x => x.UpdatedAt).HasFilter("\"IsActive\" = true");
             e.HasOne(x => x.Route).WithMany().HasForeignKey(x => x.RouteId).IsRequired();
+            e.HasOne(x => x.Division)
+             .WithMany()
+             .HasForeignKey(x => x.DivisionId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Territory)
+             .WithMany()
+             .HasForeignKey(x => x.TerritoryId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Area)
+             .WithMany()
+             .HasForeignKey(x => x.AreaId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Region)
+             .WithMany()
+             .HasForeignKey(x => x.RegionId)
+             .OnDelete(DeleteBehavior.Restrict);
         });
 
         // ProductCategory
@@ -764,6 +780,26 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .WithMany()
              .HasForeignKey(x => x.NsmUserId)
              .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Division)
+             .WithMany()
+             .HasForeignKey(x => x.DivisionId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Territory)
+             .WithMany()
+             .HasForeignKey(x => x.TerritoryId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Area)
+             .WithMany()
+             .HasForeignKey(x => x.AreaId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Region)
+             .WithMany()
+             .HasForeignKey(x => x.RegionId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.SetNull);
             e.HasOne<sfa_api.Features.Routes.Entities.Route>()
              .WithMany()
              .HasForeignKey(x => x.RouteId)
@@ -847,6 +883,26 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .WithMany()
              .HasForeignKey(x => x.NsmUserId)
              .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Division)
+             .WithMany()
+             .HasForeignKey(x => x.DivisionId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Territory)
+             .WithMany()
+             .HasForeignKey(x => x.TerritoryId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Area)
+             .WithMany()
+             .HasForeignKey(x => x.AreaId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Region)
+             .WithMany()
+             .HasForeignKey(x => x.RegionId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.SetNull);
             e.HasOne<sfa_api.Features.Routes.Entities.Route>()
              .WithMany()
              .HasForeignKey(x => x.RouteId)
@@ -929,6 +985,31 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(x => x.Nsm)
              .WithMany()
              .HasForeignKey(x => x.NsmUserId)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Distributor)
+             .WithMany()
+             .HasForeignKey(x => x.DistributorId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Division)
+             .WithMany()
+             .HasForeignKey(x => x.DivisionId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Territory)
+             .WithMany()
+             .HasForeignKey(x => x.TerritoryId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Area)
+             .WithMany()
+             .HasForeignKey(x => x.AreaId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Region)
+             .WithMany()
+             .HasForeignKey(x => x.RegionId)
+             .IsRequired(false)
              .OnDelete(DeleteBehavior.SetNull);
             e.HasOne(x => x.ImportBatch)
              .WithMany()

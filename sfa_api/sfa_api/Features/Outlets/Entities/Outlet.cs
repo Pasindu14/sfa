@@ -1,3 +1,7 @@
+using sfa_api.Features.Areas.Entities;
+using sfa_api.Features.Divisions.Entities;
+using sfa_api.Features.Regions.Entities;
+using sfa_api.Features.Territories.Entities;
 using RouteEntity = sfa_api.Features.Routes.Entities.Route;
 
 namespace sfa_api.Features.Outlets.Entities;
@@ -43,5 +47,9 @@ public class Outlet
     public int? UpdatedBy { get; set; }
 
     // Navigation
-    public RouteEntity? Route { get; set; }
+    public RouteEntity? Route    { get; set; }
+    public Division     Division   { get; set; } = null!;
+    public Territory    Territory  { get; set; } = null!;
+    public Area         Area       { get; set; } = null!;
+    public Region       Region     { get; set; } = null!;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle2, MapPin } from "lucide-react";
@@ -37,6 +37,7 @@ import {
   useTerritoriesForSelect,
   useDivisionsForSelect,
 } from "../../hooks/user-geo-assignment.hooks";
+import { getUsersAction } from "@/features/user/actions/user.actions";
 import type { UserDto } from "@/features/user/schema/user.schema";
 import type { RegionDto } from "@/features/region/schema/region.schema";
 import type { AreaDto } from "@/features/area/schema/area.schema";
@@ -158,20 +159,19 @@ function GeoStepper({ activeStep }: { activeStep: GeoStep }) {
   );
 }
 
-// ── Fetcher hooks (backed by TanStack Query cache) ────────────────────────────
+// ── Sales rep fetcher — live API, only fires when query is provided ───────────
 
-function useSubordinateFetcher(users: UserDto[]) {
+function useSalesRepFetcher(cacheRef: ReturnType<typeof useRef<Map<number, UserDto>>>) {
   return useCallback(
     async (query?: string): Promise<UserDto[]> => {
-      if (!query) return [];
-      const pool = users.filter(
-        (u) => ASSIGNABLE_ROLES.includes(u.role) && u.isActive,
-      );
-      return pool.filter((u) =>
-        u.name.toLowerCase().includes(query.toLowerCase()),
-      );
+      if (!query || query.trim().length === 0) return [];
+      const result = await getUsersAction(1, 50, query.trim(), "SalesRep");
+      if (!result.success) return [];
+      const users = result.data.users;
+      users.forEach((u) => cacheRef.current!.set(u.id, u));
+      return users;
     },
-    [users],
+    [cacheRef],
   );
 }
 
@@ -463,8 +463,9 @@ function CreateForm({
   const [selectedAreaId, setSelectedAreaId] = useState(0);
   const [selectedTerritoryId, setSelectedTerritoryId] = useState(0);
 
-  const selectedUser = users.find((u) => u.id === userId);
-  const subordinateFetcher = useSubordinateFetcher(users);
+  const userCacheRef = useRef<Map<number, UserDto>>(new Map());
+  const salesRepFetcher = useSalesRepFetcher(userCacheRef);
+  const selectedUser = userId > 0 ? (userCacheRef.current.get(userId) ?? null) : null;
 
   function handleRegionChange(id: number) {
     setSelectedRegionId(id);
@@ -516,20 +517,23 @@ function CreateForm({
             render={({ field, fieldState }) => (
               <div className="space-y-1">
                 <AsyncSelect<UserDto>
-                  fetcher={subordinateFetcher}
+                  fetcher={salesRepFetcher}
                   preload={false}
-                  label="user"
-                  placeholder="Type to search user…"
+                  label="Sales Rep"
+                  placeholder="Type to search rep…"
                   value={field.value > 0 ? String(field.value) : ""}
                   onChange={(v) => field.onChange(v ? Number(v) : 0)}
                   getOptionValue={(u) => String(u.id)}
                   getDisplayValue={(u) => (
-                    <span>
-                      {u.name} — {u.role}
-                    </span>
+                    <span>{u.name}</span>
                   )}
                   renderOption={(u) => <UserOption user={u} />}
-                  noResultsMessage="Type to search…"
+                  noResultsMessage="No reps found"
+                  notFound={
+                    <p className="py-3 text-center text-sm text-muted-foreground">
+                      No sales reps found
+                    </p>
+                  }
                   disabled={isLoadingUsers}
                   width="100%"
                   triggerClassName="w-full"

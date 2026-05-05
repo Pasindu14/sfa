@@ -1,6 +1,10 @@
+using sfa_api.Features.Areas.Entities;
 using sfa_api.Features.Billings.Enums;
 using sfa_api.Features.Distributors.Entities;
+using sfa_api.Features.Divisions.Entities;
 using sfa_api.Features.Outlets.Entities;
+using sfa_api.Features.Regions.Entities;
+using sfa_api.Features.Territories.Entities;
 using sfa_api.Features.Users.Entities;
 
 namespace sfa_api.Features.Billings.Entities;
@@ -52,12 +56,16 @@ public class Billing
     public bool IsDeleted { get; set; } = false;
 
     // Navigation
-    public Outlet Outlet { get; set; } = null!;
-    public User SalesRep { get; set; } = null!;
+    public Outlet      Outlet      { get; set; } = null!;
+    public User        SalesRep    { get; set; } = null!;
     public Distributor Distributor { get; set; } = null!;
-    public User? Supervisor { get; set; }
-    public User? Asm { get; set; }
-    public User? Rsm { get; set; }
-    public User? Nsm { get; set; }
+    public Division?   Division    { get; set; }
+    public Territory?  Territory   { get; set; }
+    public Area?       Area        { get; set; }
+    public Region?     Region      { get; set; }
+    public User?       Supervisor  { get; set; }
+    public User?       Asm         { get; set; }
+    public User?       Rsm         { get; set; }
+    public User?       Nsm         { get; set; }
     public ICollection<BillingItem> Items { get; set; } = [];
 }
