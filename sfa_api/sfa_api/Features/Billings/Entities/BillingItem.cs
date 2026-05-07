@@ -13,7 +13,6 @@ public class BillingItem
     public decimal DiscountRate { get; set; }
     public decimal DiscountAmount { get; set; }
     public decimal TotalPrice { get; set; }
-    public bool IsFreeIssue { get; set; } = false;
     public BillingItemType BillingItemType { get; set; } = BillingItemType.Sale;
     public ReturnType? ReturnType { get; set; }
     public DateOnly? ExpireDate { get; set; }

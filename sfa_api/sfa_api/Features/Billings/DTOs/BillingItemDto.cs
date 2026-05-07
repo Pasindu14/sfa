@@ -12,7 +12,6 @@ public record BillingItemDto(
     decimal DiscountRate,
     decimal DiscountAmount,
     decimal TotalPrice,
-    bool IsFreeIssue,
     BillingItemType BillingItemType,
     ReturnType? ReturnType,
     DateOnly? ExpireDate,

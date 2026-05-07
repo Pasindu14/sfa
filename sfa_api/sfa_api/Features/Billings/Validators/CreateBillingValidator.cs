@@ -39,19 +39,25 @@ public class CreateBillingValidator : AbstractValidator<CreateBillingRequest>
             item.RuleFor(i => i.DiscountRate)
                 .InclusiveBetween(0, 100).WithMessage("DiscountRate must be between 0 and 100.");
 
+            // Free-issue items must carry the real selling price (it's stored for FOC valuation)
             item.RuleFor(i => i.UnitPrice)
-                .Equal(0).WithMessage("UnitPrice must be 0 for free-issue items.")
-                .When(i => i.IsFreeIssue);
+                .GreaterThan(0).WithMessage("UnitPrice must be greater than zero for free-issue items.")
+                .When(i => i.BillingItemType == BillingItemType.FreeIssue);
+
+            // Free-issue items cannot also carry a discount — they're already free
+            item.RuleFor(i => i.DiscountRate)
+                .Equal(0).WithMessage("DiscountRate must be 0 for free-issue items.")
+                .When(i => i.BillingItemType == BillingItemType.FreeIssue);
 
             // Return items must specify a return reason
             item.RuleFor(i => i.ReturnType)
                 .NotNull().WithMessage("ReturnType is required for return items.")
                 .When(i => i.BillingItemType == BillingItemType.Return);
 
-            // Sale items must not have a return reason
+            // Non-return items must not have a return reason
             item.RuleFor(i => i.ReturnType)
-                .Null().WithMessage("ReturnType must be null for sale items.")
-                .When(i => i.BillingItemType == BillingItemType.Sale);
+                .Null().WithMessage("ReturnType must be null for non-return items.")
+                .When(i => i.BillingItemType != BillingItemType.Return);
 
             // Expire items must include an expire date (must not be in the future — it's already expired)
             item.RuleFor(i => i.ExpireDate)

@@ -8,9 +8,8 @@ class BillItem extends Equatable {
   final double quantity;
   final double unitPrice;
   final double discountRate;
-  final bool isFreeIssue;
-  final String billingItemType; // 'Sale' | 'Return'
-  final String? returnType;     // 'Damage' | 'Expire' | 'MarketResell' — null for Sale
+  final String billingItemType; // 'Sale' | 'FreeIssue' | 'Return'
+  final String? returnType;     // 'Damage' | 'Expire' | 'MarketResell' — null for Sale and FreeIssue
   final DateTime? expireDate;   // Only when returnType == 'Expire'
   final int lineNumber;
 
@@ -22,12 +21,15 @@ class BillItem extends Equatable {
     required this.quantity,
     required this.unitPrice,
     this.discountRate = 0,
-    this.isFreeIssue = false,
     this.billingItemType = 'Sale',
     this.returnType,
     this.expireDate,
     required this.lineNumber,
   });
+
+  bool get isFreeIssue => billingItemType == 'FreeIssue';
+  bool get isReturn    => billingItemType == 'Return';
+  bool get isSale      => billingItemType == 'Sale';
 
   @override
   List<Object?> get props => [
@@ -38,7 +40,6 @@ class BillItem extends Equatable {
         quantity,
         unitPrice,
         discountRate,
-        isFreeIssue,
         billingItemType,
         returnType,
         expireDate,

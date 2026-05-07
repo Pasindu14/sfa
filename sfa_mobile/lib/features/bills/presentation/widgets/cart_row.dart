@@ -36,7 +36,11 @@ class CartRow extends StatelessWidget {
 
   double get _gross => line.quantity * line.unitPrice;
   double get _discountAmount => _gross * line.discountRate / 100;
-  Color get _accentColor => line.isReturn ? AppColors.error : AppColors.success;
+  Color get _accentColor {
+    if (line.isReturn)    return AppColors.error;
+    if (line.isFreeIssue) return AppColors.success;
+    return AppColors.success;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -113,11 +117,17 @@ class CartRow extends StatelessWidget {
                 Text(
                   line.isReturn
                       ? '−Rs. ${line.lineTotal.toStringAsFixed(0)}'
-                      : 'Rs. ${line.lineTotal.toStringAsFixed(0)}',
+                      : line.isFreeIssue
+                          ? 'FOC · Rs. ${line.lineTotal.toStringAsFixed(0)}'
+                          : 'Rs. ${line.lineTotal.toStringAsFixed(0)}',
                   style: GoogleFonts.barlowCondensed(
                     fontSize: 14.sp,
                     fontWeight: FontWeight.w800,
-                    color: line.isReturn ? AppColors.error : AppColors.amber,
+                    color: line.isReturn
+                        ? AppColors.error
+                        : line.isFreeIssue
+                            ? AppColors.success
+                            : AppColors.amber,
                   ),
                 ),
                 SizedBox(width: 6.w),
@@ -193,7 +203,7 @@ class CartRow extends StatelessWidget {
                   onIncrement: () => onChanged(line.quantity + 1),
                   valueColor: Colors.white,
                 ),
-                if (!line.isReturn) ...[
+                if (line.isSale) ...[
                   SizedBox(width: 8.w),
                   _inlineLabel('Disc'),
                   SizedBox(width: 4.w),
@@ -231,9 +241,8 @@ class CartRow extends StatelessWidget {
             Row(
               children: [
                 _TypeToggle(
-                  isSale: !line.isReturn,
-                  onSale: () => onTypeChanged('Sale'),
-                  onReturn: () => onTypeChanged('Return'),
+                  current: line.billingItemType,
+                  onChanged: onTypeChanged,
                 ),
                 if (line.isReturn) ...[
                   SizedBox(width: 8.w),
@@ -386,14 +395,12 @@ class CartRow extends StatelessWidget {
 // ── Sale / Return toggle ──────────────────────────────────────────────────────
 
 class _TypeToggle extends StatelessWidget {
-  final bool isSale;
-  final VoidCallback onSale;
-  final VoidCallback onReturn;
+  final String current; // 'Sale' | 'FreeIssue' | 'Return'
+  final void Function(String billingItemType) onChanged;
 
   const _TypeToggle({
-    required this.isSale,
-    required this.onSale,
-    required this.onReturn,
+    required this.current,
+    required this.onChanged,
   });
 
   @override
@@ -407,16 +414,18 @@ class _TypeToggle extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _tab('Sale', isSale, AppColors.success, onSale),
-          _tab('Return', !isSale, AppColors.error, onReturn),
+          _tab('Sale',   'Sale',      AppColors.success),
+          _tab('FOC',    'FreeIssue', AppColors.success),
+          _tab('Return', 'Return',    AppColors.error),
         ],
       ),
     );
   }
 
-  Widget _tab(String label, bool active, Color activeColor, VoidCallback onTap) {
+  Widget _tab(String label, String value, Color activeColor) {
+    final active = current == value;
     return GestureDetector(
-      onTap: active ? null : onTap,
+      onTap: active ? null : () => onChanged(value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 3.h),

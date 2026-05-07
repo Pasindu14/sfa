@@ -35,10 +35,11 @@ public class Billing
     public int? RegionId { get; set; }
 
     // Amounts
-    public decimal SubTotalAmount { get; set; }      // Σ item.TotalPrice (non-free)
+    public decimal SubTotalAmount { get; set; }      // Σ item.TotalPrice for Sale lines only
     public decimal BillDiscountRate { get; set; }    // Bill-level discount % (0–100), default 0
     public decimal BillDiscountAmount { get; set; }  // SubTotalAmount × BillDiscountRate / 100
     public decimal TotalAmount { get; set; }         // SubTotalAmount − BillDiscountAmount
+    public decimal FreeIssueValue { get; set; }      // Σ item.TotalPrice for FreeIssue lines (informational, not in TotalAmount)
 
     public BillingStatus Status { get; set; } = BillingStatus.Submitted;
     public string? Notes { get; set; }

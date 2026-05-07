@@ -6,7 +6,7 @@ import 'package:sqflite/sqflite.dart';
 /// [onUpgrade] when schema changes.
 class DatabaseHelper {
   static const _dbName = 'sfa_local.db';
-  static const _dbVersion = 11;
+  static const _dbVersion = 12;
 
   DatabaseHelper._private();
   static final DatabaseHelper instance = DatabaseHelper._private();
@@ -77,6 +77,19 @@ class DatabaseHelper {
     if (oldVersion < 9) await _migrateBillsV9(db);
     if (oldVersion < 10) await _migrateProductCategoriesV10(db);
     if (oldVersion < 11) await _migrateBillsV11(db);
+    if (oldVersion < 12) await _migrateBillItemsV12(db);
+  }
+
+  /// Promote legacy (is_free_issue = 1) rows to billing_item_type = 'FreeIssue'.
+  /// The is_free_issue column is left in place (SQLite < 3.35 cannot DROP COLUMN);
+  /// the model no longer writes it on new rows.
+  Future<void> _migrateBillItemsV12(Database db) async {
+    await db.execute('''
+      UPDATE bill_items
+         SET billing_item_type = 'FreeIssue'
+       WHERE is_free_issue = 1
+         AND billing_item_type = 'Sale'
+    ''');
   }
 
   Future<void> _createPricingStructuresTable(Database db) async {
@@ -140,6 +153,9 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_bills_sync_status ON bills(sync_status)');
     await db.execute('CREATE INDEX idx_bills_outlet      ON bills(outlet_id)');
 
+    // NOTE: is_free_issue is intentionally omitted on fresh installs.
+    // Existing devices keep the column (migration cannot drop it on older SQLite),
+    // but the app no longer reads/writes it. billing_item_type = 'FreeIssue' is the truth.
     await db.execute('''
       CREATE TABLE bill_items (
         id                INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -148,7 +164,6 @@ class DatabaseHelper {
         quantity          REAL    NOT NULL,
         unit_price        REAL    NOT NULL,
         discount_rate     REAL    NOT NULL DEFAULT 0,
-        is_free_issue     INTEGER NOT NULL DEFAULT 0,
         billing_item_type TEXT    NOT NULL DEFAULT 'Sale',
         return_type       TEXT,
         expire_date       TEXT,

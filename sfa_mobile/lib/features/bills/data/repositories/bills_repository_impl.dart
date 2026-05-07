@@ -36,7 +36,6 @@ class BillsRepositoryImpl implements BillsRepository {
                 quantity: i.quantity,
                 unitPrice: i.unitPrice,
                 discountRate: i.discountRate,
-                isFreeIssue: i.isFreeIssue,
                 billingItemType: i.billingItemType,
                 returnType: i.returnType,
                 expireDate: i.expireDate,

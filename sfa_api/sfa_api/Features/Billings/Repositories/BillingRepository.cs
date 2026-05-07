@@ -166,7 +166,7 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
         var to   = from.AddMonths(1);
         return await _db.BillingItems
             .AsNoTracking()
-            .Where(bi => !bi.IsFreeIssue
+            .Where(bi => bi.BillingItemType == BillingItemType.Sale
                       && bi.Billing.SalesRepId == salesRepId
                       && bi.Billing.BillingDate >= from
                       && bi.Billing.BillingDate <  to

@@ -4,14 +4,18 @@ import 'package:uswatte/features/outlets/domain/entities/outlet.dart';
 import 'package:uswatte/features/pricing/domain/entities/pricing_structure.dart';
 
 /// In-memory cart line during Create Bill editing.
+///
+/// `billingItemType` is the single source of truth for line kind:
+///   - 'Sale'      → contributes to subtotal; charged to outlet
+///   - 'FreeIssue' → contributes to freeIssueValue (informational); not charged
+///   - 'Return'    → contributes to returnTotal; credit back to distributor
 class CartLine extends Equatable {
   final int lineNumber;
   final ProductWithPrice product;
   final double quantity;
   final double unitPrice;
   final double discountRate;
-  final bool isFreeIssue;
-  final String billingItemType; // 'Sale' | 'Return'
+  final String billingItemType; // 'Sale' | 'FreeIssue' | 'Return'
   final String? returnType;     // 'Damage' | 'Expire' | 'MarketResell'
   final DateTime? expireDate;   // Only when returnType == 'Expire'
 
@@ -21,20 +25,26 @@ class CartLine extends Equatable {
     required this.quantity,
     required this.unitPrice,
     this.discountRate = 0,
-    this.isFreeIssue = false,
     this.billingItemType = 'Sale',
     this.returnType,
     this.expireDate,
   });
 
+  bool get isFreeIssue => billingItemType == 'FreeIssue';
+  bool get isReturn    => billingItemType == 'Return';
+  bool get isSale      => billingItemType == 'Sale';
+
+  /// Line total used for *display* and aggregation:
+  /// - Sale:      qty × price × (1 − discount/100)
+  /// - FreeIssue: qty × price  (informational FOC value; excluded from subtotal)
+  /// - Return:    qty × price  (no discount applied to returns)
   double get lineTotal {
-    if (isFreeIssue) return 0;
+    if (isFreeIssue) return quantity * unitPrice;
+    if (isReturn)    return quantity * unitPrice;
     final gross = quantity * unitPrice;
-    final disc = gross * discountRate / 100.0;
+    final disc  = gross * discountRate / 100.0;
     return gross - disc;
   }
-
-  bool get isReturn => billingItemType == 'Return';
 
   CartLine copyWith({
     double? quantity,
@@ -52,7 +62,6 @@ class CartLine extends Equatable {
         quantity: quantity ?? this.quantity,
         unitPrice: unitPrice ?? this.unitPrice,
         discountRate: discountRate ?? this.discountRate,
-        isFreeIssue: isFreeIssue,
         billingItemType: billingItemType ?? this.billingItemType,
         returnType: clearReturnType ? null : (returnType ?? this.returnType),
         expireDate: clearExpireDate ? null : (expireDate ?? this.expireDate),
@@ -65,7 +74,6 @@ class CartLine extends Equatable {
         quantity,
         unitPrice,
         discountRate,
-        isFreeIssue,
         billingItemType,
         returnType,
         expireDate,
@@ -97,11 +105,16 @@ class CreateBillState extends Equatable {
     this.longitude,
   });
 
-  double get saleSubTotal => cart.where((l) => !l.isReturn).fold<double>(0, (s, l) => s + l.lineTotal);
-  double get returnTotal  => cart.where((l) =>  l.isReturn).fold<double>(0, (s, l) => s + l.lineTotal);
+  // Aggregates — each line type contributes to its own bucket only.
+  double get saleSubTotal    => cart.where((l) => l.isSale     ).fold<double>(0, (s, l) => s + l.lineTotal);
+  double get freeIssueValue  => cart.where((l) => l.isFreeIssue).fold<double>(0, (s, l) => s + l.lineTotal);
+  double get returnTotal     => cart.where((l) => l.isReturn   ).fold<double>(0, (s, l) => s + l.lineTotal);
+
   double get billDiscountAmount => saleSubTotal * billDiscountRate / 100.0;
-  double get total => saleSubTotal - billDiscountAmount - returnTotal;
-  bool   get hasReturns => cart.any((l) => l.isReturn);
+  double get total              => saleSubTotal - billDiscountAmount - returnTotal;
+
+  bool get hasReturns    => cart.any((l) => l.isReturn);
+  bool get hasFreeIssues => cart.any((l) => l.isFreeIssue);
 
   bool get canSubmit =>
       outlet != null &&

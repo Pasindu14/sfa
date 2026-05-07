@@ -110,33 +110,48 @@ public class BillingService(
         }
 
         // ⑦ Compute amounts
+        // Sale       → discountAmount = qty × price × rate/100; totalPrice = qty×price − discountAmount; counts toward SubTotal
+        // FreeIssue  → discountAmount = 0; totalPrice = qty × price (informational FOC value); excluded from SubTotal
+        // Return     → totalPrice = qty × price; tracked separately, no SubTotal contribution
         var billDiscountRate = request.BillDiscountRate;
-        decimal subTotal = 0m;
+        decimal subTotal       = 0m;
+        decimal freeIssueValue = 0m;
         var lineItems = request.Items.Select((item, idx) =>
         {
-            var discountAmount = item.IsFreeIssue
-                ? 0m
-                : Math.Round(item.Quantity * item.UnitPrice * item.DiscountRate / 100m, 2);
-            var totalPrice = item.IsFreeIssue
-                ? 0m
-                : Math.Round(item.Quantity * item.UnitPrice - discountAmount, 2);
+            decimal discountAmount;
+            decimal totalPrice;
 
-            if (!item.IsFreeIssue) subTotal += totalPrice;
+            switch (item.BillingItemType)
+            {
+                case BillingItemType.FreeIssue:
+                    discountAmount = 0m;
+                    totalPrice     = Math.Round(item.Quantity * item.UnitPrice, 2);
+                    freeIssueValue += totalPrice;
+                    break;
+                case BillingItemType.Sale:
+                    discountAmount = Math.Round(item.Quantity * item.UnitPrice * item.DiscountRate / 100m, 2);
+                    totalPrice     = Math.Round(item.Quantity * item.UnitPrice - discountAmount, 2);
+                    subTotal      += totalPrice;
+                    break;
+                default: // Return
+                    discountAmount = Math.Round(item.Quantity * item.UnitPrice * item.DiscountRate / 100m, 2);
+                    totalPrice     = Math.Round(item.Quantity * item.UnitPrice - discountAmount, 2);
+                    break;
+            }
 
             return new BillingItem
             {
-                ProductId      = item.ProductId,
-                Quantity       = item.Quantity,
-                UnitPrice      = item.IsFreeIssue ? 0m : item.UnitPrice,
-                DiscountRate   = item.IsFreeIssue ? 0m : item.DiscountRate,
-                DiscountAmount = discountAmount,
-                TotalPrice     = totalPrice,
-                IsFreeIssue    = item.IsFreeIssue,
+                ProductId       = item.ProductId,
+                Quantity        = item.Quantity,
+                UnitPrice       = item.UnitPrice,
+                DiscountRate    = item.BillingItemType == BillingItemType.FreeIssue ? 0m : item.DiscountRate,
+                DiscountAmount  = discountAmount,
+                TotalPrice      = totalPrice,
                 BillingItemType = item.BillingItemType,
-                ReturnType     = item.ReturnType,
-                ExpireDate     = item.ExpireDate,
-                LineNumber     = idx + 1,
-                CreatedAt      = DateTime.UtcNow
+                ReturnType      = item.ReturnType,
+                ExpireDate      = item.ExpireDate,
+                LineNumber      = idx + 1,
+                CreatedAt       = DateTime.UtcNow
             };
         }).ToList();
 
@@ -173,6 +188,7 @@ public class BillingService(
             BillDiscountRate  = billDiscountRate,
             BillDiscountAmount = billDiscountAmount,
             TotalAmount       = totalAmount,
+            FreeIssueValue    = freeIssueValue,
             Status            = BillingStatus.Submitted,
             Notes             = request.Notes,
             Latitude          = request.Latitude,
@@ -195,26 +211,37 @@ public class BillingService(
 
                 foreach (var item in billing.Items)
                 {
-                    if (item.BillingItemType == BillingItemType.Sale)
+                    switch (item.BillingItemType)
                     {
-                        var stockType = item.IsFreeIssue ? StockType.FreeIssue : StockType.Normal;
-                        await _stockRepository.GetStockForUpdateAsync(distributor.Id, item.ProductId, stockType, ct);
-                        await _stockRepository.DeductStockAsync(
-                            distributor.Id, item.ProductId, item.Quantity,
-                            stockType,
-                            item.IsFreeIssue ? StockTransactionType.FreeIssue : StockTransactionType.Sale,
-                            "Billing", billing.Id, salesRepId, ct: ct);
+                        case BillingItemType.Sale:
+                            await _stockRepository.GetStockForUpdateAsync(distributor.Id, item.ProductId, StockType.Normal, ct);
+                            await _stockRepository.DeductStockAsync(
+                                distributor.Id, item.ProductId, item.Quantity,
+                                StockType.Normal,
+                                StockTransactionType.Sale,
+                                "Billing", billing.Id, salesRepId, ct: ct);
+                            break;
+
+                        case BillingItemType.FreeIssue:
+                            await _stockRepository.GetStockForUpdateAsync(distributor.Id, item.ProductId, StockType.FreeIssue, ct);
+                            await _stockRepository.DeductStockAsync(
+                                distributor.Id, item.ProductId, item.Quantity,
+                                StockType.FreeIssue,
+                                StockTransactionType.FreeIssue,
+                                "Billing", billing.Id, salesRepId, ct: ct);
+                            break;
+
+                        case BillingItemType.Return when item.ReturnType == Enums.ReturnType.MarketResell:
+                            await _stockRepository.GetStockForUpdateAsync(distributor.Id, item.ProductId, StockType.Normal, ct);
+                            await _stockRepository.CreditStockAsync(
+                                distributor.Id, item.ProductId, item.Quantity,
+                                StockType.Normal,
+                                StockTransactionType.Return,
+                                "Billing", billing.Id, salesRepId, ct: ct);
+                            break;
+
+                        // Return + Damage / Expire: billing record only — no stock movement
                     }
-                    else if (item.ReturnType == Enums.ReturnType.MarketResell)
-                    {
-                        await _stockRepository.GetStockForUpdateAsync(distributor.Id, item.ProductId, StockType.Normal, ct);
-                        await _stockRepository.CreditStockAsync(
-                            distributor.Id, item.ProductId, item.Quantity,
-                            StockType.Normal,
-                            StockTransactionType.Return,
-                            "Billing", billing.Id, salesRepId, ct: ct);
-                    }
-                    // Damage / Expire: billing record only — no stock movement
                 }
 
                 await _billingRepository.SaveChangesAsync(ct);
@@ -280,6 +307,7 @@ public class BillingService(
         b.BillDiscountRate,
         b.BillDiscountAmount,
         b.TotalAmount,
+        b.FreeIssueValue,
         b.Status,
         b.Notes,
         b.Latitude,
@@ -295,7 +323,6 @@ public class BillingService(
             i.DiscountRate,
             i.DiscountAmount,
             i.TotalPrice,
-            i.IsFreeIssue,
             i.BillingItemType,
             i.ReturnType,
             i.ExpireDate,

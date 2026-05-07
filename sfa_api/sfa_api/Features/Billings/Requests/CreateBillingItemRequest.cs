@@ -7,7 +7,6 @@ public record CreateBillingItemRequest(
     decimal Quantity,
     decimal UnitPrice,
     decimal DiscountRate = 0m,
-    bool IsFreeIssue = false,
     BillingItemType BillingItemType = BillingItemType.Sale,
     ReturnType? ReturnType = null,
     DateOnly? ExpireDate = null

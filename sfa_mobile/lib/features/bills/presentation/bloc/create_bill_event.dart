@@ -79,7 +79,7 @@ final class CartItemPriceChanged extends CreateBillEvent {
 
 final class CartItemTypeChanged extends CreateBillEvent {
   final int lineNumber;
-  final String billingItemType; // 'Sale' | 'Return'
+  final String billingItemType; // 'Sale' | 'FreeIssue' | 'Return'
   const CartItemTypeChanged(this.lineNumber, this.billingItemType);
   @override
   List<Object?> get props => [lineNumber, billingItemType];

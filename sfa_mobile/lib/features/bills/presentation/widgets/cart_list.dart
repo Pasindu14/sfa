@@ -324,8 +324,8 @@ class _CartListState extends State<CartList> {
           Divider(color: Colors.white.withValues(alpha: 0.10), height: 1),
           SizedBox(height: 10.h),
 
-          // Total breakdown
-          if (state.hasReturns) ...[
+          // Total breakdown — show whenever there's anything beyond plain sales
+          if (state.hasReturns || state.hasFreeIssues) ...[
             _TotalRow(
               label: 'SALES',
               value: 'Rs. ${state.saleSubTotal.toStringAsFixed(2)}',
@@ -337,11 +337,18 @@ class _CartListState extends State<CartList> {
                 value: '−Rs. ${state.billDiscountAmount.toStringAsFixed(2)}',
                 valueColor: AppColors.success,
               ),
-            _TotalRow(
-              label: 'RETURNS',
-              value: '−Rs. ${state.returnTotal.toStringAsFixed(2)}',
-              valueColor: AppColors.error,
-            ),
+            if (state.hasReturns)
+              _TotalRow(
+                label: 'RETURNS',
+                value: '−Rs. ${state.returnTotal.toStringAsFixed(2)}',
+                valueColor: AppColors.error,
+              ),
+            if (state.hasFreeIssues)
+              _TotalRow(
+                label: 'FREE ISSUES (info)',
+                value: 'Rs. ${state.freeIssueValue.toStringAsFixed(2)}',
+                valueColor: AppColors.success,
+              ),
             SizedBox(height: 6.h),
             Divider(color: Colors.white.withValues(alpha: 0.10), height: 1),
             SizedBox(height: 6.h),

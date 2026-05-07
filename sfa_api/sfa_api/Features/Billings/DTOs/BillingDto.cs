@@ -37,6 +37,7 @@ public record BillingDto(
     decimal BillDiscountRate,
     decimal BillDiscountAmount,
     decimal TotalAmount,
+    decimal FreeIssueValue,
 
     BillingStatus Status,
     string? Notes,

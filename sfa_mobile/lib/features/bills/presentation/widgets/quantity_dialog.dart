@@ -25,6 +25,16 @@ class QuantityDialogResult {
 
 enum _UnitType { cases, packets }
 
+enum _Mode { sale, freeIssue, returnItem }
+
+String _modeToBillingItemType(_Mode m) {
+  switch (m) {
+    case _Mode.sale:       return 'Sale';
+    case _Mode.freeIssue:  return 'FreeIssue';
+    case _Mode.returnItem: return 'Return';
+  }
+}
+
 Future<QuantityDialogResult?> showQuantityDialog(
   BuildContext context, {
   required ProductWithPrice product,
@@ -47,7 +57,7 @@ class _QuantitySheet extends StatefulWidget {
 
 class _QuantitySheetState extends State<_QuantitySheet> {
   _UnitType _unitType = _UnitType.packets;
-  String _billingItemType = 'Sale';
+  _Mode _mode = _Mode.sale;
   String? _returnType;
   DateTime? _expireDate;
 
@@ -79,8 +89,15 @@ class _QuantitySheetState extends State<_QuantitySheet> {
   }
 
   bool get _hasCasesOption => widget.product.packsPerCase > 1;
-  bool get _isReturn => _billingItemType == 'Return';
-  Color get _accentColor => _isReturn ? AppColors.error : AppColors.primary;
+  bool get _isReturn    => _mode == _Mode.returnItem;
+  bool get _isFreeIssue => _mode == _Mode.freeIssue;
+  Color get _accentColor {
+    switch (_mode) {
+      case _Mode.returnItem: return AppColors.error;
+      case _Mode.freeIssue:  return AppColors.success;
+      case _Mode.sale:       return AppColors.primary;
+    }
+  }
 
   double get _packPrice => widget.product.dealerPackPrice ?? 0.0;
   double get _returnPrice =>
@@ -96,22 +113,27 @@ class _QuantitySheetState extends State<_QuantitySheet> {
       _unitType == _UnitType.cases ? _enteredQty * _packsPerCase : _enteredQty;
 
   double get _lineTotal {
-    if (_isReturn) return _qtyInPacks * _returnPrice;
+    if (_isReturn)    return _qtyInPacks * _returnPrice;
+    if (_isFreeIssue) return _qtyInPacks * _packPrice;
     final gross = _qtyInPacks * _packPrice;
     return gross * (1 - _enteredDisc / 100);
   }
 
-  void _setItemType(String type) {
+  void _setMode(_Mode mode) {
     setState(() {
-      _billingItemType = type;
-      if (type == 'Sale') {
-        _returnType = null;
-        _expireDate = null;
-        _returnTypeError = null;
-        _expireDateError = null;
-      } else {
-        _returnType = 'Damage';
-        _returnTypeError = null;
+      _mode = mode;
+      switch (mode) {
+        case _Mode.sale:
+        case _Mode.freeIssue:
+          _returnType = null;
+          _expireDate = null;
+          _returnTypeError = null;
+          _expireDateError = null;
+          break;
+        case _Mode.returnItem:
+          _returnType = 'Damage';
+          _returnTypeError = null;
+          break;
       }
     });
   }
@@ -153,7 +175,8 @@ class _QuantitySheetState extends State<_QuantitySheet> {
       setState(() => _qtyError = null);
     }
 
-    if (!_isReturn) {
+    // Discount only applies to Sale lines (Return uses return price; FreeIssue is free)
+    if (_mode == _Mode.sale) {
       final disc = double.tryParse(_discController.text.trim());
       if (disc == null || disc < 0 || disc > 100) {
         setState(() => _discError = 'Enter a value between 0 and 100.');
@@ -193,11 +216,30 @@ class _QuantitySheetState extends State<_QuantitySheet> {
         _unitType == _UnitType.cases ? qty! * _packsPerCase : qty!;
     final disc = double.tryParse(_discController.text.trim()) ?? 0;
 
+    final double resolvedUnitPrice;
+    final double resolvedDiscount;
+    switch (_mode) {
+      case _Mode.returnItem:
+        resolvedUnitPrice = _returnPrice;
+        resolvedDiscount  = 0;
+        break;
+      case _Mode.freeIssue:
+        // FI lines carry the real selling price — the line-type marks them free,
+        // not a zero. The API uses this to compute FreeIssueValue for reports.
+        resolvedUnitPrice = _packPrice;
+        resolvedDiscount  = 0;
+        break;
+      case _Mode.sale:
+        resolvedUnitPrice = _packPrice;
+        resolvedDiscount  = disc;
+        break;
+    }
+
     Navigator.of(context).pop(QuantityDialogResult(
       quantity: finalQty,
-      unitPrice: _isReturn ? _returnPrice : _packPrice,
-      discountRate: _isReturn ? 0 : disc,
-      billingItemType: _billingItemType,
+      unitPrice: resolvedUnitPrice,
+      discountRate: resolvedDiscount,
+      billingItemType: _modeToBillingItemType(_mode),
       returnType: _returnType,
       expireDate: _expireDate,
     ));
@@ -303,12 +345,23 @@ class _QuantitySheetState extends State<_QuantitySheet> {
                   SizedBox(height: 8.h),
                   _SegmentedTrack(
                     segments: const [
-                      _Segment('Sale', Icons.sell_rounded),
-                      _Segment('Return', Icons.undo_rounded),
+                      _Segment('Sale',       Icons.sell_rounded),
+                      _Segment('Free Issue', Icons.card_giftcard_rounded),
+                      _Segment('Return',     Icons.undo_rounded),
                     ],
-                    selectedIndex: _isReturn ? 1 : 0,
+                    selectedIndex: _mode == _Mode.sale
+                        ? 0
+                        : _mode == _Mode.freeIssue
+                            ? 1
+                            : 2,
                     activeColor: _accentColor,
-                    onChanged: (i) => _setItemType(i == 0 ? 'Sale' : 'Return'),
+                    onChanged: (i) => _setMode(
+                      i == 0
+                          ? _Mode.sale
+                          : i == 1
+                              ? _Mode.freeIssue
+                              : _Mode.returnItem,
+                    ),
                   ),
 
                   // ── Return type (animated) ────────────────────────────────
@@ -608,7 +661,9 @@ class _QuantitySheetState extends State<_QuantitySheet> {
                           onSubmitted: (_) => _submit(),
                         ),
                       ),
-                      if (!_isReturn) ...[
+                      // Discount only applies to Sale lines.
+                      // Return uses an editable return price (above), Free Issue is fully free.
+                      if (_mode == _Mode.sale) ...[
                         SizedBox(width: 12.w),
                         Expanded(
                           flex: 2,
@@ -675,7 +730,11 @@ class _QuantitySheetState extends State<_QuantitySheet> {
                             ),
                             SizedBox(height: 2.h),
                             Text(
-                              _isReturn ? 'Credit to distributor' : 'Charged to outlet',
+                              _isReturn
+                                  ? 'Credit to distributor'
+                                  : _isFreeIssue
+                                      ? 'FOC — value shown for record'
+                                      : 'Charged to outlet',
                               style: GoogleFonts.barlow(
                                 fontSize: 11.sp,
                                 color: Colors.white.withValues(alpha: 0.30),
@@ -686,16 +745,20 @@ class _QuantitySheetState extends State<_QuantitySheet> {
                         Text(
                           _isReturn
                               ? '−Rs. ${_lineTotal.toStringAsFixed(2)}'
-                              : 'Rs. ${_lineTotal.toStringAsFixed(2)}',
+                              : _isFreeIssue
+                                  ? 'FOC · Rs. ${_lineTotal.toStringAsFixed(2)}'
+                                  : 'Rs. ${_lineTotal.toStringAsFixed(2)}',
                           style: GoogleFonts.barlowCondensed(
                             fontSize: 24.sp,
                             fontWeight: FontWeight.w900,
                             letterSpacing: -0.5,
                             color: _isReturn
                                 ? AppColors.error
-                                : (_enteredDisc > 0
+                                : _isFreeIssue
                                     ? AppColors.success
-                                    : AppColors.amber),
+                                    : (_enteredDisc > 0
+                                        ? AppColors.success
+                                        : AppColors.amber),
                           ),
                         ),
                       ],
@@ -747,13 +810,19 @@ class _QuantitySheetState extends State<_QuantitySheet> {
                                 Icon(
                                   _isReturn
                                       ? Icons.undo_rounded
-                                      : Icons.add_shopping_cart_rounded,
+                                      : _isFreeIssue
+                                          ? Icons.card_giftcard_rounded
+                                          : Icons.add_shopping_cart_rounded,
                                   size: 16.r,
                                   color: Colors.white,
                                 ),
                                 SizedBox(width: 8.w),
                                 Text(
-                                  _isReturn ? 'Add Return' : 'Add to Cart',
+                                  _isReturn
+                                      ? 'Add Return'
+                                      : _isFreeIssue
+                                          ? 'Add Free Issue'
+                                          : 'Add to Cart',
                                   style: GoogleFonts.barlowCondensed(
                                     fontSize: 16.sp,
                                     fontWeight: FontWeight.w700,
