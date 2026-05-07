@@ -285,7 +285,8 @@ function FilePicker({
   }
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="mx-auto w-full max-w-[600px] flex flex-col gap-4">
+
       {/* ── Drop zone ── */}
       <div
         onClick={() => inputRef.current?.click()}
@@ -293,12 +294,12 @@ function FilePicker({
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
         className={[
-          "relative cursor-pointer overflow-hidden rounded-xl border-2 border-dashed px-8 py-8 text-center transition-all duration-200",
+          "relative cursor-pointer overflow-hidden rounded-xl border-2 border-dashed transition-all duration-200",
           isDragging
-            ? "border-primary bg-primary/5 scale-[1.01]"
+            ? "border-primary bg-primary/5 scale-[1.005]"
             : fileName
-              ? "border-green-400/60 bg-green-50/40 dark:bg-green-950/20"
-              : "border-muted-foreground/20 bg-muted/20 hover:border-muted-foreground/40 hover:bg-muted/30",
+              ? "border-green-400/70 bg-green-50/50 dark:bg-green-950/20"
+              : "border-border/60 bg-muted/30 hover:border-muted-foreground/30 hover:bg-muted/50",
         ].join(" ")}
       >
         <input
@@ -312,91 +313,102 @@ function FilePicker({
           }}
         />
 
-        {/* Background grid pattern */}
-        <div className="pointer-events-none absolute inset-0 opacity-[0.03]"
-          style={{ backgroundImage: "radial-gradient(circle, currentColor 1px, transparent 1px)", backgroundSize: "20px 20px" }}
+        {/* Dot grid texture */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.035]"
+          style={{ backgroundImage: "radial-gradient(circle, currentColor 1px, transparent 1px)", backgroundSize: "18px 18px" }}
         />
 
-        <div className="relative flex flex-col items-center gap-3">
+        <div className="relative flex flex-col items-center justify-center gap-3 px-8 py-10 text-center">
+          {/* Icon cluster */}
           <div className={[
-            "flex h-14 w-14 items-center justify-center rounded-2xl transition-all duration-200",
-            fileName ? "bg-green-100 text-green-600 dark:bg-green-900/40" : "bg-muted text-muted-foreground/60",
-            isDragging && "scale-110 bg-primary/10 text-primary",
+            "flex h-16 w-16 items-center justify-center rounded-2xl border transition-all duration-300",
+            fileName
+              ? "border-green-300 bg-green-100 text-green-600 shadow-sm shadow-green-100 dark:bg-green-900/40 dark:border-green-700"
+              : isDragging
+                ? "border-primary/30 bg-primary/10 text-primary scale-110 shadow-md"
+                : "border-border bg-background text-muted-foreground/50 shadow-sm",
           ].join(" ")}>
             {fileName
-              ? <FileSpreadsheet className="h-7 w-7" />
-              : <Upload className="h-7 w-7" />
+              ? <FileSpreadsheet className="h-8 w-8" />
+              : <Upload className="h-8 w-8" />
             }
           </div>
 
           {fileName ? (
-            <div>
-              <p className="font-semibold text-green-700 dark:text-green-400">{fileName}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">File ready · click to replace</p>
+            <div className="space-y-0.5">
+              <p className="text-sm font-semibold text-green-700 dark:text-green-400 truncate max-w-xs">{fileName}</p>
+              <p className="text-xs text-muted-foreground">Ready to preview · click to swap</p>
             </div>
           ) : (
-            <div>
-              <p className="font-semibold">
-                {isDragging ? "Drop it here" : "Drop file or click to browse"}
+            <div className="space-y-0.5">
+              <p className="text-sm font-semibold">
+                {isDragging ? "Release to upload" : "Drop file or click to browse"}
               </p>
-              <p className="mt-0.5 text-xs text-muted-foreground">BUSY ERP sales voucher export · .xlsx only</p>
+              <p className="text-xs text-muted-foreground">BUSY ERP sales voucher export · .xlsx only</p>
             </div>
           )}
         </div>
       </div>
 
       {parseError && (
-        <p className="flex items-center gap-2 rounded-lg bg-destructive/8 px-3 py-2.5 text-sm text-destructive">
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
           <XCircle className="h-4 w-4 shrink-0" />
           {parseError}
-        </p>
+        </div>
       )}
 
-      {/* ── How it works ── */}
-      <div className="rounded-xl border bg-muted/30 p-4">
-        <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-          How it works
-        </p>
-        <div className="flex items-start gap-2">
-          {STEPS.map((step, i) => (
-            <div key={step.label} className="flex flex-1 items-start gap-3">
-              <div className="flex flex-col items-center">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-background border text-muted-foreground shadow-sm">
-                  <step.icon className="h-4 w-4" />
-                </div>
-                {i < STEPS.length - 1 && (
-                  <div className="mt-1 h-full w-px bg-border" />
-                )}
-              </div>
-              <div className="pt-1 pb-3">
-                <p className="text-sm font-semibold leading-none">{step.label}</p>
-                <p className="mt-1 text-xs text-muted-foreground leading-snug">{step.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* ── Steps + Columns in a two-column layout ── */}
+      <div className="grid grid-cols-2 gap-3">
 
-      {/* ── Expected columns ── */}
-      <div className="rounded-xl border bg-muted/30 p-4">
-        <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-          Expected columns
-        </p>
-        <div className="grid grid-cols-3 gap-2">
-          {COLUMNS.map((col) => (
-            <div key={col.label} className="flex items-center gap-2.5 rounded-lg border bg-background px-3 py-2 shadow-sm">
-              <col.icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
-              <div className="min-w-0">
-                <p className="truncate text-xs font-medium leading-none">{col.label}</p>
-                <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground/70">{col.example}</p>
+        {/* How it works */}
+        <div className="rounded-xl border bg-muted/20 p-4">
+          <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/50">
+            How it works
+          </p>
+          <div className="space-y-3">
+            {STEPS.map((step, i) => (
+              <div key={step.label} className="flex items-start gap-3">
+                <div className="flex flex-col items-center gap-0.5">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-background border text-[10px] font-bold tabular-nums text-muted-foreground/60 shadow-sm">
+                    {i + 1}
+                  </div>
+                  {i < STEPS.length - 1 && <div className="w-px h-3 bg-border/60" />}
+                </div>
+                <div className="pt-0.5 min-w-0">
+                  <p className="text-xs font-semibold leading-none">{step.label}</p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground leading-snug">{step.desc}</p>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
+
+        {/* Expected columns */}
+        <div className="rounded-xl border bg-muted/20 p-4">
+          <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/50">
+            Expected columns
+          </p>
+          <div className="space-y-1.5">
+            {COLUMNS.map((col) => (
+              <div key={col.label} className="flex items-center gap-2 rounded-lg border bg-background/80 px-2.5 py-1.5">
+                <col.icon className="h-3 w-3 shrink-0 text-muted-foreground/40" />
+                <span className="text-[11px] font-medium leading-none truncate flex-1">{col.label}</span>
+                <span className="font-mono text-[10px] text-muted-foreground/50 shrink-0">{col.example}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
       </div>
 
       <DialogFooter>
-        <Button onClick={handlePreview} disabled={!fileName || isParsing} className="min-w-32">
+        <Button
+          onClick={handlePreview}
+          disabled={!fileName || isParsing}
+          className="w-full"
+          size="default"
+        >
           {isParsing ? (
             <><Spinner className="mr-2" />Parsing…</>
           ) : (
@@ -452,7 +464,7 @@ export function SalesInvoiceImportDialog() {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="w-[80vw]! max-w-[96vw]! h-[75vh]! max-h-[92vh]! flex flex-col">
+      <DialogContent className="w-[90vw]! max-w-[1000px]! min-h-[60vh]! max-h-[90vh]! flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {view === "preview" && (

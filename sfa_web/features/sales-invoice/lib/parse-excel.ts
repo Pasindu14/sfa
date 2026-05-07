@@ -95,10 +95,13 @@ export function parseExcelFile(buffer: ArrayBuffer, fileName: string): ImportSal
   let lineNumber = 1
 
   function finalise(inv: ImportInvoicePayload) {
-    // Compute total from actual line items (no dedicated gross column in this format)
     inv.totalAmount = inv.items.reduce((s, i) => s + i.totalPrice, 0)
-    // If ALL items are free issue, mark invoice as FreeIssue
-    if (inv.items.every(i => i.isFreeIssue)) inv.invoiceType = 'FreeIssue'
+    // BUSY ERP only marks Col 5 = Y on the header row — continuation rows leave it blank.
+    // If ANY item has isFreeIssue, the whole voucher is a free issue voucher → propagate to all items.
+    if (inv.items.some(i => i.isFreeIssue)) {
+      inv.invoiceType = 'FreeIssue'
+      inv.items.forEach(i => { i.isFreeIssue = true })
+    }
     invoices.push(inv)
   }
 

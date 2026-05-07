@@ -70,7 +70,7 @@ export function getSalesInvoiceColumns(
       accessorKey: 'invoiceType',
       header: 'Type',
       cell: ({ row }) => {
-        const isFree = row.original.invoiceType === 'FreeIssue'
+        const isFree = row.original.hasFreeIssueItems || row.original.invoiceType === 'FreeIssue'
         return isFree ? (
           <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-xs">Free Issue</Badge>
         ) : (

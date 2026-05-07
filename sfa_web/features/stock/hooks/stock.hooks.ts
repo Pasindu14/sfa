@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useIsFetching } from '@tanstack/react-query'
 import { getDistributorStockAction, getStockTransactionsAction } from '../actions/stock.actions'
 import { useStockFilterStore } from '../store'
 
@@ -34,14 +33,17 @@ export function useStockDataTable(
   const query = useQuery({
     queryKey: stockKeys.distributorList(
       appliedFilters?.distributorId ?? 0,
-      { page, pageSize, search }
+      { page, pageSize, search, stockType: appliedFilters?.stockType, loadCount: appliedFilters?.loadCount }
     ),
     queryFn: async () => {
       const result = await getDistributorStockAction(appliedFilters!.distributorId)
       if (!result.success) throw new Error(result.error)
 
-      // Client-side search + pagination (stock items per distributor are bounded)
+      // Client-side search + type filter + pagination (stock items per distributor are bounded)
       let items = result.data
+      if (appliedFilters?.stockType) {
+        items = items.filter((item) => item.stockType === appliedFilters.stockType)
+      }
       if (search.trim()) {
         const q = search.toLowerCase()
         items = items.filter(
@@ -68,16 +70,21 @@ export function useStockDataTable(
     enabled: !!appliedFilters?.distributorId,
   })
 
-  useEffect(() => {
-    if (query.isSuccess || query.isError) {
-      useStockFilterStore.getState().setFetching(false)
-    }
-  }, [query.isSuccess, query.isError])
-
   return query
 }
 
 ;(useStockDataTable as unknown as Record<string, unknown>).isQueryHook = true
+
+// ── Real-time loading state via TanStack (no Zustand sync needed) ─────────
+
+export function useStockIsFetching() {
+  const appliedFilters = useStockFilterStore((s) => s.appliedFilters)
+  return useIsFetching({
+    queryKey: appliedFilters
+      ? [...stockKeys.all, 'distributor', appliedFilters.distributorId, 'list']
+      : undefined,
+  }) > 0
+}
 
 // ── Single distributor stock (for detail views) ───────────────────────────
 

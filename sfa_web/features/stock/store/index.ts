@@ -9,9 +9,10 @@ export const useStockFilters = () =>
   useStockFilterStore(
     useShallow((s) => ({
       distributorId: s.distributorId,
+      stockType: s.stockType,
       appliedFilters: s.appliedFilters,
-      isFetching: s.isFetching,
       setDistributorId: s.setDistributorId,
+      setStockType: s.setStockType,
       applyFilters: s.applyFilters,
       reset: s.reset,
     }))

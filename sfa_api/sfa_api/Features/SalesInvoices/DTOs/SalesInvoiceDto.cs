@@ -9,6 +9,7 @@ public record SalesInvoiceListDto(
     string  DistributorName,
     string  InvoiceDate,   // "YYYY-MM-DD"
     string  InvoiceType,
+    bool    HasFreeIssueItems,
     decimal TotalAmount,
     string  Status,
     string  BatchNumber,
@@ -25,6 +26,7 @@ public record SalesInvoiceDetailDto(
     string  DistributorName,
     string  InvoiceDate,
     string  InvoiceType,
+    bool    HasFreeIssueItems,
     decimal TotalAmount,
     string  Status,
     int     ImportBatchId,

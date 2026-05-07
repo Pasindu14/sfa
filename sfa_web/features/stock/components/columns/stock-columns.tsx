@@ -12,6 +12,12 @@ function StockLevelBadge({ qty }: { qty: number }) {
   return <Badge className="bg-green-600 hover:bg-green-700 text-white text-xs">In Stock</Badge>
 }
 
+function StockTypeBadge({ type }: { type: string }) {
+  if (type === 'FreeIssue')
+    return <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-xs">Free Issue</Badge>
+  return <Badge variant="secondary" className="text-xs">Normal</Badge>
+}
+
 export function getStockColumns(): ColumnDef<DistributorStockItem>[] {
   return [
     {
@@ -27,6 +33,11 @@ export function getStockColumns(): ColumnDef<DistributorStockItem>[] {
       cell: ({ row }) => (
         <span className="text-sm">{row.original.productDescription}</span>
       ),
+    },
+    {
+      id: 'stockType',
+      header: 'Type',
+      cell: ({ row }) => <StockTypeBadge type={row.original.stockType} />,
     },
     {
       id: 'quantityOnHand',

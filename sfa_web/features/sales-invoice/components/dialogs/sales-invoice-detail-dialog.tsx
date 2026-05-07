@@ -123,7 +123,7 @@ export function SalesInvoiceDetailDialog() {
             <DialogDescription asChild>
               <div className="flex flex-wrap items-center gap-2 pt-0.5">
                 <StatusBadge status={invoice.status} />
-                <InvoiceTypeBadge type={invoice.invoiceType} />
+                <InvoiceTypeBadge type={invoice.hasFreeIssueItems ? 'FreeIssue' : invoice.invoiceType} />
                 <span className="text-xs text-muted-foreground">{invoice.distributorName}</span>
               </div>
             </DialogDescription>
@@ -217,10 +217,12 @@ export function SalesInvoiceDetailDialog() {
 
                 {/* Data rows */}
                 <div className="divide-y">
-                  {invoice.items.map((item) => (
+                  {invoice.items.map((item) => {
+                    const isFreeRow = invoice.hasFreeIssueItems || item.isFreeIssue
+                    return (
                     <div
                       key={item.id}
-                      className={`grid grid-cols-[2.5rem_1fr_8rem_4.5rem_4rem_7rem_7rem] items-start gap-x-3 px-3 py-2.5 transition-colors hover:bg-muted/30 ${item.isFreeIssue ? 'bg-amber-50/50' : ''}`}
+                      className={`grid grid-cols-[2.5rem_1fr_8rem_4.5rem_4rem_7rem_7rem] items-start gap-x-3 px-3 py-2.5 transition-colors hover:bg-muted/30 ${isFreeRow ? 'bg-amber-50/50' : ''}`}
                     >
                       <span className="pt-0.5 text-xs tabular-nums text-muted-foreground/60">
                         {item.lineNumber}
@@ -229,7 +231,7 @@ export function SalesInvoiceDetailDialog() {
                         <p className="truncate text-sm font-medium" title={item.itemDescription}>
                           {item.itemDescription}
                         </p>
-                        {item.isFreeIssue && (
+                        {isFreeRow && (
                           <span className="mt-0.5 inline-block rounded bg-amber-100 px-1 text-[10px] font-medium text-amber-700">
                             FREE
                           </span>
@@ -247,7 +249,7 @@ export function SalesInvoiceDetailDialog() {
                         {formatCurrency(item.totalPrice)}
                       </span>
                     </div>
-                  ))}
+                  )})}
                 </div>
 
                 {/* Total footer */}

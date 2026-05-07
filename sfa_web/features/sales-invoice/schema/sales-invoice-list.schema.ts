@@ -11,6 +11,7 @@ export const salesInvoiceListItemSchema = z.object({
   distributorName: z.string(),
   invoiceDate: z.string(),
   invoiceType: z.enum(['Regular', 'FreeIssue']),
+  hasFreeIssueItems: z.boolean(),
   totalAmount: z.number(),
   status: z.enum(['Pending', 'GrnReceived', 'Disputed']),
   batchNumber: z.string(),

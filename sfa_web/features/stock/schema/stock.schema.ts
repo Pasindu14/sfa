@@ -9,6 +9,7 @@ export const distributorStockItemSchema = z.object({
   productId: z.number(),
   productCode: z.string(),
   productDescription: z.string(),
+  stockType: z.enum(['Normal', 'FreeIssue']),
   quantityOnHand: z.number(),
   lastUpdatedAt: z.string(),
 })

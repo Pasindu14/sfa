@@ -94,6 +94,9 @@ public class SalesInvoiceService(
             }
 
             // d. Resolve items — skip invoice if any product is unresolvable
+            // If ANY item in the voucher is free issue, ALL items are free issue
+            // (BUSY ERP only marks the header row with Y; continuation rows are blank)
+            var voucherIsFreeIssue = inv.Items.Any(i => i.IsFreeIssue);
             var itemEntities = new List<SalesInvoiceItem>();
             var itemError = false;
             foreach (var item in inv.Items)
@@ -113,14 +116,15 @@ public class SalesInvoiceService(
                     Unit            = item.Unit,
                     UnitPrice       = item.UnitPrice,
                     TotalPrice      = item.TotalPrice,
-                    IsFreeIssue     = item.IsFreeIssue,
+                    IsFreeIssue     = voucherIsFreeIssue,
                     LineNumber      = item.LineNumber
                 });
             }
             if (itemError) continue;
 
-            // e. Build invoice entity
+            // e. Build invoice entity — if any item is free issue the whole voucher is FreeIssue
             Enum.TryParse<SalesInvoiceType>(inv.InvoiceType, out var invoiceType);
+            if (voucherIsFreeIssue) invoiceType = SalesInvoiceType.FreeIssue;
             var invoice = new SalesInvoice
             {
                 VchBillNo           = inv.VchBillNo,
@@ -213,6 +217,7 @@ public class SalesInvoiceService(
             inv.Distributor?.Name ?? string.Empty,
             inv.InvoiceDate.ToString("yyyy-MM-dd"),
             inv.InvoiceType.ToString(),
+            inv.Items.Any(i => i.IsFreeIssue),
             inv.TotalAmount,
             inv.Status.ToString(),
             inv.ImportBatch?.BatchNumber ?? string.Empty,
@@ -236,6 +241,7 @@ public class SalesInvoiceService(
             inv.Distributor?.Name ?? string.Empty,
             inv.InvoiceDate.ToString("yyyy-MM-dd"),
             inv.InvoiceType.ToString(),
+            inv.Items.Any(i => i.IsFreeIssue),
             inv.TotalAmount,
             inv.Status.ToString(),
             inv.ImportBatchId,

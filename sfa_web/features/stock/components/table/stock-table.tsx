@@ -1,15 +1,23 @@
 'use client'
 
-import { useCallback } from 'react'
-import { Search, RotateCcw, Package, Loader2 } from 'lucide-react'
+import { useCallback, useEffect } from 'react'
+import { Search, RotateCcw, Package, Loader2, Layers } from 'lucide-react'
 import { DataTable } from '@/components/data-table/data-table'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { AsyncSelect } from '@/components/async-select'
 import { useStockFilters } from '../../store'
-import { useStockDataTable } from '../../hooks/stock.hooks'
+import { useStockDataTable, useStockIsFetching } from '../../hooks/stock.hooks'
 import { getStockColumns } from '../columns/stock-columns'
 import { getDistributorsAction } from '@/features/distributor/actions/distributor.actions'
 import type { DistributorDto } from '@/features/distributor/schema/distributor.schema'
+import type { StockTypeFilter } from '../../store/stock.filter-store'
 
 // ── Distributor fetcher ───────────────────────────────────────────────────
 
@@ -24,16 +32,20 @@ async function fetchDistributors(search?: string): Promise<DistributorDto[]> {
 
 function StockFilterForm({
   distributorId,
+  stockType,
   hasLoaded,
   isLoading,
   onDistributorChange,
+  onStockTypeChange,
   onLoad,
   onReset,
 }: {
   distributorId: number | null
+  stockType: StockTypeFilter
   hasLoaded: boolean
   isLoading: boolean
   onDistributorChange: (id: number | null) => void
+  onStockTypeChange: (type: StockTypeFilter) => void
   onLoad: () => void
   onReset: () => void
 }) {
@@ -72,6 +84,26 @@ function StockFilterForm({
         />
       </div>
 
+      <div className="flex flex-col gap-1.5">
+        <label className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+          <Layers className="h-3 w-3" />
+          Stock Type
+        </label>
+        <Select
+          value={stockType ?? 'all'}
+          onValueChange={(v) => onStockTypeChange(v === 'all' ? null : (v as StockTypeFilter))}
+        >
+          <SelectTrigger className="h-8 w-36 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="Normal">Normal</SelectItem>
+            <SelectItem value="FreeIssue">Free Issue</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="flex items-center gap-2">
         <Button
           onClick={onLoad}
@@ -104,12 +136,19 @@ function StockFilterForm({
 export function StockTable() {
   const {
     distributorId,
+    stockType,
     appliedFilters,
-    isFetching,
     setDistributorId,
+    setStockType,
     applyFilters,
     reset,
   } = useStockFilters()
+  const isFetching = useStockIsFetching()
+
+  useEffect(() => {
+    reset()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const getColumns = useCallback(() => getStockColumns(), [])
 
@@ -117,16 +156,18 @@ export function StockTable() {
     <div className="flex flex-col gap-4">
       <StockFilterForm
         distributorId={distributorId}
+        stockType={stockType}
         hasLoaded={!!appliedFilters}
         isLoading={isFetching}
         onDistributorChange={setDistributorId}
+        onStockTypeChange={setStockType}
         onLoad={applyFilters}
         onReset={reset}
       />
 
       {appliedFilters ? (
         <DataTable
-          key={`${appliedFilters.distributorId}`}
+          key={`${appliedFilters.distributorId}-${appliedFilters.stockType ?? 'all'}-${appliedFilters.loadCount}`}
           config={{
             enableRowSelection: false,
             enableSearch: true,
