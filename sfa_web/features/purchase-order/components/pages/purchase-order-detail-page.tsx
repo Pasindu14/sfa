@@ -63,6 +63,7 @@ import {
   updatePurchaseOrderSchema,
   type PurchaseOrderDto,
   type PurchaseOrderHistoryDto,
+  type PurchaseOrderStatusValue,
   type RejectPurchaseOrderInput,
   type UpdatePurchaseOrderInput,
   type SnapshotItem,
@@ -381,8 +382,17 @@ type ProgressStep = {
 function getApprovalSteps(order: PurchaseOrderDto): ProgressStep[] {
   const status = order.status
 
-  const isDone = (s: number) => status > s && status !== PurchaseOrderStatus.Cancelled
-  const isActive = (s: number) => status === s
+  const statusOrder = [
+    PurchaseOrderStatus.Draft,
+    PurchaseOrderStatus.PendingRepApproval,
+    PurchaseOrderStatus.PendingManagerApproval,
+    PurchaseOrderStatus.PendingDistributorFinalization,
+    PurchaseOrderStatus.Finalized,
+  ]
+  const statusIdx = statusOrder.indexOf(status as typeof statusOrder[number])
+  const isDone = (s: PurchaseOrderStatusValue) =>
+    statusIdx > statusOrder.indexOf(s as typeof statusOrder[number]) && status !== PurchaseOrderStatus.Cancelled
+  const isActive = (s: PurchaseOrderStatusValue) => status === s
 
   const createdDone = true
   const repDone = isDone(PurchaseOrderStatus.PendingRepApproval)
@@ -479,14 +489,24 @@ function ApprovalProgress({ order }: { order: PurchaseOrderDto }) {
 
 // ── Pending Action Banner ──────────────────────────────────────────────────
 
-function getPendingBannerMessage(status: number): string | null {
+function getPendingBannerMessage(status: PurchaseOrderStatusValue, isAdmin: boolean): string | null {
   switch (status) {
+    case PurchaseOrderStatus.Draft:
+      return isAdmin
+        ? "This order is a draft. As Admin, you can submit it to start the approval workflow."
+        : null;
     case PurchaseOrderStatus.PendingRepApproval:
-      return "This order is awaiting your approval as Sales Rep. Review the items below before approving or rejecting.";
+      return isAdmin
+        ? "This order is awaiting Rep approval. As Admin, you can approve or reject on behalf of the Sales Rep."
+        : "This order is awaiting your approval as Sales Rep. Review the items below before approving or rejecting.";
     case PurchaseOrderStatus.PendingManagerApproval:
-      return "This order is awaiting manager approval. Review the items below before approving or rejecting.";
+      return isAdmin
+        ? "This order is awaiting Manager approval. As Admin, you can approve or reject on behalf of the Manager."
+        : "This order is awaiting manager approval. Review the items below before approving or rejecting.";
     case PurchaseOrderStatus.PendingDistributorFinalization:
-      return "This order has been approved and is awaiting distributor finalization.";
+      return isAdmin
+        ? "This order is approved and awaiting finalization. As Admin, you can finalize on behalf of the Distributor."
+        : "This order has been approved and is awaiting distributor finalization.";
     case PurchaseOrderStatus.PendingDistributorAcknowledgement:
       return "This order was rejected. The distributor must acknowledge the rejection before it can be cancelled.";
     default:
@@ -494,8 +514,10 @@ function getPendingBannerMessage(status: number): string | null {
   }
 }
 
-function getStepLabel(status: number): string {
+function getStepLabel(status: PurchaseOrderStatusValue): string {
   switch (status) {
+    case PurchaseOrderStatus.Draft:
+      return 'Step 1 of 4'
     case PurchaseOrderStatus.PendingRepApproval:
       return 'Step 2 of 4'
     case PurchaseOrderStatus.PendingManagerApproval:
@@ -721,10 +743,12 @@ function AdminItemsEditor({ order, onClose }: AdminItemsEditorProps) {
 
 function OrderActionsPanel({
   order,
+  isAdmin,
   isAdminEditing,
   onToggleAdminEdit,
 }: {
   order: PurchaseOrderDto;
+  isAdmin: boolean;
   isAdminEditing: boolean;
   onToggleAdminEdit: () => void;
 }) {
@@ -750,9 +774,6 @@ function OrderActionsPanel({
   const { mutate: cancel, isPending: isCancelling } = useCancelPurchaseOrder(
     order.id,
   );
-
-  const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "Admin";
 
   const status = order.status;
   const isActiveOrder =
@@ -785,6 +806,9 @@ function OrderActionsPanel({
             {isSubmitting && <Spinner className="mr-2" />}
             Submit for Approval
           </Button>
+          {isAdmin && (
+            <p className="text-center text-[11px] text-muted-foreground">Acting as Distributor</p>
+          )}
           {!showCancelForm ? (
             <Button
               variant="ghost"
@@ -818,8 +842,11 @@ function OrderActionsPanel({
           >
             {isRepApproving && <Spinner className="mr-2" />}
             <CheckCircle className="h-4 w-4 mr-2" />
-            Approve (Rep)
+            {isAdmin ? "Rep Approve" : "Approve (Rep)"}
           </Button>
+          {isAdmin && (
+            <p className="text-center text-[11px] text-muted-foreground">Acting as Sales Rep</p>
+          )}
           {!showRejectForm ? (
             <Button
               variant="destructive"
@@ -853,8 +880,11 @@ function OrderActionsPanel({
           >
             {isApproving && <Spinner className="mr-2" />}
             <CheckCircle className="h-4 w-4 mr-2" />
-            Approve
+            {isAdmin ? "Manager Approve" : "Approve"}
           </Button>
+          {isAdmin && (
+            <p className="text-center text-[11px] text-muted-foreground">Acting as Manager</p>
+          )}
           {!showRejectForm ? (
             <Button
               variant="destructive"
@@ -918,14 +948,19 @@ function OrderActionsPanel({
 
       {/* Pending Distributor Finalization */}
       {status === PurchaseOrderStatus.PendingDistributorFinalization && (
-        <Button
-          className="w-full bg-orange-600 hover:bg-orange-700 text-white"
-          onClick={() => finalizeDialog.open(order.id)}
-          disabled={isFinalizing}
-        >
-          {isFinalizing && <Spinner className="mr-2" />}
-          Finalize Order
-        </Button>
+        <>
+          <Button
+            className="w-full bg-orange-600 hover:bg-orange-700 text-white"
+            onClick={() => finalizeDialog.open(order.id)}
+            disabled={isFinalizing}
+          >
+            {isFinalizing && <Spinner className="mr-2" />}
+            Finalize Order
+          </Button>
+          {isAdmin && (
+            <p className="text-center text-[11px] text-muted-foreground">Acting as Distributor</p>
+          )}
+        </>
       )}
 
       {/* Terminal states */}
@@ -951,6 +986,8 @@ export function PurchaseOrderDetailPage({ orderId }: PurchaseOrderDetailPageProp
   const router = useRouter()
   const { data: order, isLoading, isError } = usePurchaseOrder(orderId)
   const { data: allProducts } = useAllActiveProducts()
+  const { data: session } = useSession()
+  const isAdmin = session?.user?.role === "Admin"
   const [isAdminEditing, setIsAdminEditing] = useState(false);
 
   if (isLoading) {
@@ -1074,7 +1111,7 @@ export function PurchaseOrderDetailPage({ orderId }: PurchaseOrderDetailPageProp
   const subtotal = order.items.reduce((s, i) => s + i.lineTotal, 0)
   const tax = order.totalAmount - subtotal
   const rejectedEntry = order.history.findLast((h) => h.action === 'Rejected')
-  const pendingMessage = getPendingBannerMessage(order.status);
+  const pendingMessage = getPendingBannerMessage(order.status, isAdmin);
   const stepLabel = getStepLabel(order.status)
   const lastEditEntry = order.history.findLast(
     (h) => h.action === "ItemsEdited",
@@ -1373,6 +1410,7 @@ export function PurchaseOrderDetailPage({ orderId }: PurchaseOrderDetailPageProp
           <div className="space-y-2">
             <OrderActionsPanel
               order={order}
+              isAdmin={isAdmin}
               isAdminEditing={isAdminEditing}
               onToggleAdminEdit={() => setIsAdminEditing((v) => !v)}
             />

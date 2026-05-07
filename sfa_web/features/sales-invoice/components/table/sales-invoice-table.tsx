@@ -303,7 +303,7 @@ export function SalesInvoiceTable() {
           idField="id"
           renderCustomFilters={(filters, setFilters) => (
             <Select
-              value={filters?.status ?? "all"}
+              value={(filters?.status as string) ?? "all"}
               onValueChange={(value) =>
                 setFilters({ ...filters, status: value === "all" ? "" : value })
               }

@@ -76,7 +76,7 @@ export function UserTable() {
       idField="id"
       renderCustomFilters={(filters, setFilters) => (
         <Select
-          value={filters?.role ?? ""}
+          value={(filters?.role as string) ?? ""}
           onValueChange={(value) =>
             setFilters({ ...filters, role: value === "all" ? "" : value })
           }

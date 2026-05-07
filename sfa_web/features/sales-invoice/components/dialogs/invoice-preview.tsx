@@ -49,8 +49,8 @@ function fmtDate(iso: string) {
 function SummaryCards({ payload }: { payload: ImportSalesInvoicesPayload }) {
   const totalItems = payload.invoices.reduce((s, i) => s + i.items.length, 0);
   const totalAmount = payload.invoices.reduce((s, i) => s + i.totalAmount, 0);
-  const freeIssueCount = payload.invoices.filter(
-    (i) => i.invoiceType === "FreeIssue",
+  const freeIssueCount = payload.invoices.filter((i) =>
+    i.items.some((item) => item.isFreeIssue),
   ).length;
 
   return (
@@ -106,7 +106,7 @@ function InvoiceRow({
   index: number;
 }) {
   const [open, setOpen] = useState(false);
-  const isFree = invoice.invoiceType === "FreeIssue";
+  const isFree = invoice.items.some((item) => item.isFreeIssue);
 
   return (
     <div className="border-b last:border-0">
@@ -169,6 +169,16 @@ function InvoiceRow({
           {invoice.items.length} item{invoice.items.length !== 1 ? "s" : ""}
         </span>
 
+        {/* Free Issue badge */}
+        <span className="w-24 shrink-0 flex justify-end">
+          {isFree && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+              <Tag className="h-2.5 w-2.5" />
+              Free Issue
+            </span>
+          )}
+        </span>
+
         {/* Amount */}
         <span className="w-28 shrink-0 text-right text-sm font-semibold tabular-nums">
           {fmtAmount(invoice.totalAmount)}
@@ -198,7 +208,7 @@ function InvoiceRow({
                   key={item.lineNumber}
                   className={cn(
                     "border-t border-border/50",
-                    item.isFreeIssue && "bg-amber-50/60",
+                    isFree && "bg-amber-50/60",
                   )}
                 >
                   <td className="py-1 pr-3 text-muted-foreground">
@@ -212,7 +222,7 @@ function InvoiceRow({
                     title={item.itemDescription}
                   >
                     {item.itemDescription}
-                    {item.isFreeIssue && (
+                    {isFree && (
                       <span className="ml-1.5 rounded bg-amber-100 px-1 text-[10px] text-amber-700">
                         FREE
                       </span>
@@ -261,6 +271,7 @@ export function InvoicePreview({
           <span className="w-24 shrink-0">Type</span>
           <span className="flex-1">SFA PO</span>
           <span className="w-16 shrink-0 text-right">Items</span>
+          <span className="w-24 shrink-0" />
           <span className="w-28 shrink-0 text-right">Amount</span>
         </div>
 

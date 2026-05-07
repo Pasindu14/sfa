@@ -11,6 +11,15 @@ import {
   Package,
   Banknote,
   SkipForward,
+  FileSpreadsheet,
+  Eye,
+  Database,
+  Hash,
+  Building2,
+  Calendar,
+  Tag,
+  DollarSign,
+  ShoppingCart,
 } from "lucide-react";
 import {
   Dialog,
@@ -202,6 +211,33 @@ function BatchResultView({
 
 // ── File picker view ──────────────────────────────────────────────────────
 
+const STEPS = [
+  {
+    icon: FileSpreadsheet,
+    label: "Upload",
+    desc: "Select your BUSY ERP .xlsx export",
+  },
+  {
+    icon: Eye,
+    label: "Preview",
+    desc: "Review parsed invoices before committing",
+  },
+  {
+    icon: Database,
+    label: "Import",
+    desc: "All valid vouchers are saved to the system",
+  },
+];
+
+const COLUMNS = [
+  { icon: Hash,         label: "Voucher No",       example: "BIS/25/4764" },
+  { icon: Building2,    label: "Distributor Alias", example: "350201" },
+  { icon: Calendar,     label: "Invoice Date",      example: "19 Mar 2026" },
+  { icon: ShoppingCart, label: "Item ERP Code",     example: "CR04" },
+  { icon: Tag,          label: "Free Issue",        example: "Y / N" },
+  { icon: DollarSign,   label: "Unit Price",        example: "1,250.00" },
+];
+
 function FilePicker({
   onParsed,
 }: {
@@ -211,6 +247,7 @@ function FilePicker({
   const [fileName, setFileName] = useState<string | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [isParsing, setIsParsing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   async function handlePreview() {
     const file = inputRef.current?.files?.[0];
@@ -221,28 +258,49 @@ function FilePicker({
       const buffer = await file.arrayBuffer();
       const payload = parseExcelFile(buffer, file.name);
       if (payload.invoices.length === 0) {
-        setParseError(
-          "No invoices found — check the file format or sheet layout.",
-        );
+        setParseError("No invoices found — check the file format or sheet layout.");
         return;
       }
       onParsed(payload);
-    } catch (err) {
-      setParseError(
-        "Failed to parse file. Make sure this is a valid BUSY ERP Excel export.",
-      );
+    } catch {
+      setParseError("Failed to parse file. Make sure this is a valid BUSY ERP Excel export.");
     } finally {
       setIsParsing(false);
     }
   }
 
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file || !file.name.endsWith(".xlsx")) {
+      setParseError("Only .xlsx files are supported.");
+      return;
+    }
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    if (inputRef.current) inputRef.current.files = dt.files;
+    setFileName(file.name);
+    setParseError(null);
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-5">
+      {/* ── Drop zone ── */}
       <div
-        className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-muted-foreground/25 p-12 text-center transition-colors hover:border-muted-foreground/50 hover:bg-muted/30"
         onClick={() => inputRef.current?.click()}
+        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={handleDrop}
+        className={[
+          "relative cursor-pointer overflow-hidden rounded-xl border-2 border-dashed px-8 py-8 text-center transition-all duration-200",
+          isDragging
+            ? "border-primary bg-primary/5 scale-[1.01]"
+            : fileName
+              ? "border-green-400/60 bg-green-50/40 dark:bg-green-950/20"
+              : "border-muted-foreground/20 bg-muted/20 hover:border-muted-foreground/40 hover:bg-muted/30",
+        ].join(" ")}
       >
-        <Upload className="h-8 w-8 text-muted-foreground/50" />
         <input
           ref={inputRef}
           type="file"
@@ -253,38 +311,96 @@ function FilePicker({
             setParseError(null);
           }}
         />
-        {fileName ? (
-          <>
-            <p className="font-medium">{fileName}</p>
-            <p className="text-sm text-muted-foreground">
-              Click to change file
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="font-medium">Click to select file</p>
-            <p className="text-sm text-muted-foreground">
-              BUSY ERP sales voucher export (.xlsx)
-            </p>
-          </>
-        )}
+
+        {/* Background grid pattern */}
+        <div className="pointer-events-none absolute inset-0 opacity-[0.03]"
+          style={{ backgroundImage: "radial-gradient(circle, currentColor 1px, transparent 1px)", backgroundSize: "20px 20px" }}
+        />
+
+        <div className="relative flex flex-col items-center gap-3">
+          <div className={[
+            "flex h-14 w-14 items-center justify-center rounded-2xl transition-all duration-200",
+            fileName ? "bg-green-100 text-green-600 dark:bg-green-900/40" : "bg-muted text-muted-foreground/60",
+            isDragging && "scale-110 bg-primary/10 text-primary",
+          ].join(" ")}>
+            {fileName
+              ? <FileSpreadsheet className="h-7 w-7" />
+              : <Upload className="h-7 w-7" />
+            }
+          </div>
+
+          {fileName ? (
+            <div>
+              <p className="font-semibold text-green-700 dark:text-green-400">{fileName}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">File ready · click to replace</p>
+            </div>
+          ) : (
+            <div>
+              <p className="font-semibold">
+                {isDragging ? "Drop it here" : "Drop file or click to browse"}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">BUSY ERP sales voucher export · .xlsx only</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {parseError && (
-        <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p className="flex items-center gap-2 rounded-lg bg-destructive/8 px-3 py-2.5 text-sm text-destructive">
+          <XCircle className="h-4 w-4 shrink-0" />
           {parseError}
         </p>
       )}
 
+      {/* ── How it works ── */}
+      <div className="rounded-xl border bg-muted/30 p-4">
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+          How it works
+        </p>
+        <div className="flex items-start gap-2">
+          {STEPS.map((step, i) => (
+            <div key={step.label} className="flex flex-1 items-start gap-3">
+              <div className="flex flex-col items-center">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-background border text-muted-foreground shadow-sm">
+                  <step.icon className="h-4 w-4" />
+                </div>
+                {i < STEPS.length - 1 && (
+                  <div className="mt-1 h-full w-px bg-border" />
+                )}
+              </div>
+              <div className="pt-1 pb-3">
+                <p className="text-sm font-semibold leading-none">{step.label}</p>
+                <p className="mt-1 text-xs text-muted-foreground leading-snug">{step.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Expected columns ── */}
+      <div className="rounded-xl border bg-muted/30 p-4">
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+          Expected columns
+        </p>
+        <div className="grid grid-cols-3 gap-2">
+          {COLUMNS.map((col) => (
+            <div key={col.label} className="flex items-center gap-2.5 rounded-lg border bg-background px-3 py-2 shadow-sm">
+              <col.icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+              <div className="min-w-0">
+                <p className="truncate text-xs font-medium leading-none">{col.label}</p>
+                <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground/70">{col.example}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <DialogFooter>
-        <Button onClick={handlePreview} disabled={!fileName || isParsing}>
+        <Button onClick={handlePreview} disabled={!fileName || isParsing} className="min-w-32">
           {isParsing ? (
-            <>
-              <Spinner className="mr-2" />
-              Parsing…
-            </>
+            <><Spinner className="mr-2" />Parsing…</>
           ) : (
-            "Preview Data"
+            <><Eye className="mr-2 h-4 w-4" />Preview Data</>
           )}
         </Button>
       </DialogFooter>

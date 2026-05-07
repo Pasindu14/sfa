@@ -13,8 +13,8 @@ public interface IPurchaseOrderRepository
         string? search = null,
         PurchaseOrderStatus? status = null,
         int? distributorId = null,
-        DateTime? fromDate = null,
-        DateTime? toDate = null,
+        DateOnly? fromDate = null,
+        DateOnly? toDate = null,
         CancellationToken ct = default);
     Task<long> GetNextOrderNumberAsync(CancellationToken ct = default);
     Task CreateAsync(PurchaseOrder order, CancellationToken ct = default);
@@ -25,8 +25,8 @@ public interface IPurchaseOrderRepository
     Task<IEnumerable<PurchaseOrderHistory>> GetHistoryAsync(int purchaseOrderId, CancellationToken ct = default);
     Task<Dictionary<PurchaseOrderStatus, int>> GetCountsByStatusAsync(
         int? distributorId = null,
-        DateTime? fromDate = null,
-        DateTime? toDate = null,
+        DateOnly? fromDate = null,
+        DateOnly? toDate = null,
         CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

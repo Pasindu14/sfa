@@ -27,8 +27,8 @@ public class PurchaseOrderRepository(AppDbContext context) : IPurchaseOrderRepos
         string? search = null,
         PurchaseOrderStatus? status = null,
         int? distributorId = null,
-        DateTime? fromDate = null,
-        DateTime? toDate = null,
+        DateOnly? fromDate = null,
+        DateOnly? toDate = null,
         CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, 200);
@@ -54,12 +54,12 @@ public class PurchaseOrderRepository(AppDbContext context) : IPurchaseOrderRepos
 
         if (fromDate.HasValue)
         {
-            var from = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+            var from = DateTime.SpecifyKind(fromDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
             query = query.Where(o => o.CreatedAt >= from);
         }
         if (toDate.HasValue)
         {
-            var to = DateTime.SpecifyKind(toDate.Value.Date.AddDays(1), DateTimeKind.Utc);
+            var to = DateTime.SpecifyKind(toDate.Value.ToDateTime(TimeOnly.MinValue).AddDays(1), DateTimeKind.Utc);
             query = query.Where(o => o.CreatedAt < to);
         }
 
@@ -84,8 +84,8 @@ public class PurchaseOrderRepository(AppDbContext context) : IPurchaseOrderRepos
 
     public async Task<Dictionary<PurchaseOrderStatus, int>> GetCountsByStatusAsync(
         int? distributorId = null,
-        DateTime? fromDate = null,
-        DateTime? toDate = null,
+        DateOnly? fromDate = null,
+        DateOnly? toDate = null,
         CancellationToken ct = default)
     {
         var query = _context.PurchaseOrders.AsQueryable();
@@ -95,12 +95,12 @@ public class PurchaseOrderRepository(AppDbContext context) : IPurchaseOrderRepos
 
         if (fromDate.HasValue)
         {
-            var from = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+            var from = DateTime.SpecifyKind(fromDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
             query = query.Where(o => o.CreatedAt >= from);
         }
         if (toDate.HasValue)
         {
-            var to = DateTime.SpecifyKind(toDate.Value.Date.AddDays(1), DateTimeKind.Utc);
+            var to = DateTime.SpecifyKind(toDate.Value.ToDateTime(TimeOnly.MinValue).AddDays(1), DateTimeKind.Utc);
             query = query.Where(o => o.CreatedAt < to);
         }
 

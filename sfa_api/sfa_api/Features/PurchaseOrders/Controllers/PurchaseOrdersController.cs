@@ -41,8 +41,8 @@ public class PurchaseOrdersController(
     /// </summary>
     [HttpGet("stats")]
     public async Task<IActionResult> GetStats(
-        [FromQuery] DateTime? fromDate = null,
-        [FromQuery] DateTime? toDate = null,
+        [FromQuery] DateOnly? fromDate = null,
+        [FromQuery] DateOnly? toDate = null,
         CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
@@ -61,8 +61,8 @@ public class PurchaseOrdersController(
         [FromQuery] int pageSize = 10,
         [FromQuery] string? search = null,
         [FromQuery] string? status = null,
-        [FromQuery] DateTime? fromDate = null,
-        [FromQuery] DateTime? toDate = null,
+        [FromQuery] DateOnly? fromDate = null,
+        [FromQuery] DateOnly? toDate = null,
         CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;

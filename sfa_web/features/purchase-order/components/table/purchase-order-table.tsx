@@ -65,7 +65,7 @@ export function PurchaseOrderTable() {
       )}
       renderCustomFilters={(filters, setFilters) => (
         <Select
-          value={filters?.status ?? ''}
+          value={(filters?.status as string) ?? ''}
           onValueChange={(value) =>
             setFilters({ ...filters, status: value === 'all' ? '' : value })
           }

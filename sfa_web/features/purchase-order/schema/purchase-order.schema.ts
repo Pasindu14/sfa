@@ -3,25 +3,25 @@ import { z } from 'zod'
 // ── Enums ──────────────────────────────────────────────────────────────────
 
 export const PurchaseOrderStatus = {
-  Draft: 0,
-  PendingRepApproval: 1,
-  PendingManagerApproval: 2,
-  PendingDistributorFinalization: 3,
-  Finalized: 4,
-  Cancelled: 5,
-  PendingDistributorAcknowledgement: 6,
+  Draft: "Draft",
+  PendingRepApproval: "PendingRepApproval",
+  PendingManagerApproval: "PendingManagerApproval",
+  PendingDistributorFinalization: "PendingDistributorFinalization",
+  Finalized: "Finalized",
+  Cancelled: "Cancelled",
+  PendingDistributorAcknowledgement: "PendingDistributorAcknowledgement",
 } as const
 
 export type PurchaseOrderStatusValue = (typeof PurchaseOrderStatus)[keyof typeof PurchaseOrderStatus]
 
 export const purchaseOrderStatusLabels: Record<PurchaseOrderStatusValue, string> = {
-  0: 'Draft',
-  1: 'Pending Rep Approval',
-  2: 'Pending Manager Approval',
-  3: 'Pending Distributor Finalization',
-  4: 'Finalized',
-  5: 'Cancelled',
-  6: 'Pending Dist. Acknowledgement',
+  Draft: 'Draft',
+  PendingRepApproval: 'Pending Rep Approval',
+  PendingManagerApproval: 'Pending Manager Approval',
+  PendingDistributorFinalization: 'Pending Distributor Finalization',
+  Finalized: 'Finalized',
+  Cancelled: 'Cancelled',
+  PendingDistributorAcknowledgement: 'Pending Dist. Acknowledgement',
 }
 
 // ── Line item schemas ──────────────────────────────────────────────────────

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using sfa_api.Common.Errors;
 using sfa_api.Features.PurchaseOrders.DTOs;
 using sfa_api.Features.PurchaseOrders.Entities;
@@ -52,8 +53,8 @@ public class PurchaseOrderService(
         int pageSize,
         string? search,
         PurchaseOrderStatus? status,
-        DateTime? fromDate,
-        DateTime? toDate,
+        DateOnly? fromDate,
+        DateOnly? toDate,
         int callerId,
         UserRole callerRole,
         CancellationToken ct = default)
@@ -102,59 +103,70 @@ public class PurchaseOrderService(
             distributorId = caller.DistributorId.Value;
         }
 
-        await using var tx = await _context.Database.BeginTransactionAsync(ct);
+        PurchaseOrder? order = null;
 
-        var seq = await _repo.GetNextOrderNumberAsync(ct);
-        var orderNumber = $"PO-{DateTime.UtcNow.Year}-{seq:D5}";
-
-        var order = new PurchaseOrder
+        var strategy = _context.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
         {
-            OrderNumber = orderNumber,
-            DistributorId = distributorId,
-            Status = PurchaseOrderStatus.Draft,
-            Notes = request.Notes,
-            IsActive = true,
-            CreatedBy = callerId,
-            UpdatedBy = callerId,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+            await using var tx = await _context.Database.BeginTransactionAsync(ct);
+            try
+            {
+                var seq = await _repo.GetNextOrderNumberAsync(ct);
+                var orderNumber = $"PO-{DateTime.UtcNow.Year}-{seq:D5}";
 
-        await _repo.CreateAsync(order, ct);
-        await _repo.SaveChangesAsync(ct);
+                order = new PurchaseOrder
+                {
+                    OrderNumber = orderNumber,
+                    DistributorId = distributorId,
+                    Status = PurchaseOrderStatus.Draft,
+                    Notes = request.Notes,
+                    IsActive = true,
+                    CreatedBy = callerId,
+                    UpdatedBy = callerId,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
 
-        // Add items
-        var items = request.Items.Select(i => new PurchaseOrderItem
-        {
-            PurchaseOrderId = order.Id,
-            ProductId = i.ProductId,
-            Quantity = i.Quantity,
-            UnitPrice = i.UnitPrice,
-            Discount = i.Discount
-        }).ToList();
+                await _repo.CreateAsync(order, ct);
+                await _repo.SaveChangesAsync(ct);
 
-        await _repo.AddItemsAsync(items, ct);
+                var items = request.Items.Select(i => new PurchaseOrderItem
+                {
+                    PurchaseOrderId = order.Id,
+                    ProductId = i.ProductId,
+                    Quantity = i.Quantity,
+                    UnitPrice = i.UnitPrice,
+                    Discount = i.Discount
+                }).ToList();
 
-        // Record history
-        var snapshot = JsonSerializer.Serialize(request.Items);
-        await _repo.AddHistoryAsync(new PurchaseOrderHistory
-        {
-            PurchaseOrderId = order.Id,
-            Action = "Created",
-            FromStatus = null,
-            ToStatus = PurchaseOrderStatus.Draft,
-            PerformedBy = callerId,
-            PerformedAt = DateTime.UtcNow,
-            Notes = request.Notes,
-            ItemsSnapshot = snapshot
-        }, ct);
+                await _repo.AddItemsAsync(items, ct);
 
-        await _repo.SaveChangesAsync(ct);
-        await tx.CommitAsync(ct);
+                var snapshot = JsonSerializer.Serialize(request.Items);
+                await _repo.AddHistoryAsync(new PurchaseOrderHistory
+                {
+                    PurchaseOrderId = order.Id,
+                    Action = "Created",
+                    FromStatus = null,
+                    ToStatus = PurchaseOrderStatus.Draft,
+                    PerformedBy = callerId,
+                    PerformedAt = DateTime.UtcNow,
+                    Notes = request.Notes,
+                    ItemsSnapshot = snapshot
+                }, ct);
 
-        _logger.LogInformation("PurchaseOrder {OrderNumber} created by user {CallerId}", orderNumber, callerId);
+                await _repo.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+            }
+            catch
+            {
+                await tx.RollbackAsync(ct);
+                throw;
+            }
+        });
 
-        var created = await _repo.GetByIdWithItemsAsync(order.Id, ct);
+        _logger.LogInformation("PurchaseOrder {OrderNumber} created by user {CallerId}", order!.OrderNumber, callerId);
+
+        var created = await _repo.GetByIdWithItemsAsync(order!.Id, ct);
         return MapToDto(created!);
     }
 
@@ -187,51 +199,55 @@ public class PurchaseOrderService(
                 throw new AuthorizationException("this purchase order");
         }
 
-        await using var tx = await _context.Database.BeginTransactionAsync(ct);
-
-        // Snapshot before replacing items
-        var beforeSnapshot = JsonSerializer.Serialize(order.Items.Select(i => new
+        var updateStrategy = _context.Database.CreateExecutionStrategy();
+        await updateStrategy.ExecuteAsync(async () =>
         {
-            i.ProductId,
-            i.Quantity,
-            i.UnitPrice,
-            i.Discount
-        }));
+            await using var tx = await _context.Database.BeginTransactionAsync(ct);
+            try
+            {
+                var beforeSnapshot = JsonSerializer.Serialize(order.Items.Select(i => new
+                {
+                    i.ProductId,
+                    i.Quantity,
+                    i.UnitPrice,
+                    i.Discount
+                }));
 
-        order.Notes = request.Notes;
-        order.UpdatedBy = callerId;
-        order.UpdatedAt = DateTime.UtcNow;
+                order.Notes = request.Notes;
+                order.UpdatedBy = callerId;
+                order.UpdatedAt = DateTime.UtcNow;
 
-        await _repo.UpdateAsync(order, ct);
+                await _repo.UpdateAsync(order, ct);
 
-        // Replace all items
-        await _repo.RemoveItemsAsync(id, ct);
-        var newItems = request.Items.Select(i => new PurchaseOrderItem
-        {
-            PurchaseOrderId = id,
-            ProductId = i.ProductId,
-            Quantity = i.Quantity,
-            UnitPrice = i.UnitPrice,
-            Discount = i.Discount
-        }).ToList();
-        await _repo.AddItemsAsync(newItems, ct);
+                await _repo.RemoveItemsAsync(id, ct);
+                var newItems = request.Items.Select(i => new PurchaseOrderItem
+                {
+                    PurchaseOrderId = id,
+                    ProductId = i.ProductId,
+                    Quantity = i.Quantity,
+                    UnitPrice = i.UnitPrice,
+                    Discount = i.Discount
+                }).ToList();
+                await _repo.AddItemsAsync(newItems, ct);
 
-        // Record history
-        var afterSnapshot = JsonSerializer.Serialize(request.Items);
-        await _repo.AddHistoryAsync(new PurchaseOrderHistory
-        {
-            PurchaseOrderId = id,
-            Action = "ItemsEdited",
-            FromStatus = order.Status,
-            ToStatus = order.Status,
-            PerformedBy = callerId,
-            PerformedAt = DateTime.UtcNow,
-            Notes = beforeSnapshot,
-            ItemsSnapshot = afterSnapshot
-        }, ct);
+                var afterSnapshot = JsonSerializer.Serialize(request.Items);
+                await _repo.AddHistoryAsync(new PurchaseOrderHistory
+                {
+                    PurchaseOrderId = id,
+                    Action = "ItemsEdited",
+                    FromStatus = order.Status,
+                    ToStatus = order.Status,
+                    PerformedBy = callerId,
+                    PerformedAt = DateTime.UtcNow,
+                    Notes = beforeSnapshot,
+                    ItemsSnapshot = afterSnapshot
+                }, ct);
 
-        await _repo.SaveChangesAsync(ct);
-        await tx.CommitAsync(ct);
+                await _repo.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+            }
+            catch { await tx.RollbackAsync(ct); throw; }
+        });
 
         _logger.LogInformation("PurchaseOrder {OrderId} updated by user {CallerId}", id, callerId);
 
@@ -261,28 +277,35 @@ public class PurchaseOrderService(
                 throw new AuthorizationException("this purchase order");
         }
 
-        await using var submitTx = await _context.Database.BeginTransactionAsync(ct);
-
-        var fromStatus = order.Status;
-        order.Status = PurchaseOrderStatus.PendingRepApproval;
-        order.SubmittedBy = callerId;
-        order.SubmittedAt = DateTime.UtcNow;
-        order.UpdatedBy = callerId;
-        order.UpdatedAt = DateTime.UtcNow;
-
-        await _repo.UpdateAsync(order, ct);
-        await _repo.AddHistoryAsync(new PurchaseOrderHistory
+        var submitStrategy = _context.Database.CreateExecutionStrategy();
+        await submitStrategy.ExecuteAsync(async () =>
         {
-            PurchaseOrderId = id,
-            Action = "Submitted",
-            FromStatus = fromStatus,
-            ToStatus = PurchaseOrderStatus.PendingRepApproval,
-            PerformedBy = callerId,
-            PerformedAt = DateTime.UtcNow
-        }, ct);
+            await using var tx = await _context.Database.BeginTransactionAsync(ct);
+            try
+            {
+                var fromStatus = order.Status;
+                order.Status = PurchaseOrderStatus.PendingRepApproval;
+                order.SubmittedBy = callerId;
+                order.SubmittedAt = DateTime.UtcNow;
+                order.UpdatedBy = callerId;
+                order.UpdatedAt = DateTime.UtcNow;
 
-        await _repo.SaveChangesAsync(ct);
-        await submitTx.CommitAsync(ct);
+                await _repo.UpdateAsync(order, ct);
+                await _repo.AddHistoryAsync(new PurchaseOrderHistory
+                {
+                    PurchaseOrderId = id,
+                    Action = "Submitted",
+                    FromStatus = fromStatus,
+                    ToStatus = PurchaseOrderStatus.PendingRepApproval,
+                    PerformedBy = callerId,
+                    PerformedAt = DateTime.UtcNow
+                }, ct);
+
+                await _repo.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+            }
+            catch { await tx.RollbackAsync(ct); throw; }
+        });
 
         _logger.LogInformation("PurchaseOrder {OrderId} submitted by user {CallerId}", id, callerId);
 
@@ -304,28 +327,35 @@ public class PurchaseOrderService(
         if (order.Status != PurchaseOrderStatus.PendingRepApproval)
             throw new BusinessRuleException("ORDER_NOT_PENDING_REP_APPROVAL", "Order is not in PendingRepApproval status.");
 
-        await using var repApproveTx = await _context.Database.BeginTransactionAsync(ct);
-
-        var fromStatus = order.Status;
-        order.Status = PurchaseOrderStatus.PendingManagerApproval;
-        order.RepApprovedBy = callerId;
-        order.RepApprovedAt = DateTime.UtcNow;
-        order.UpdatedBy = callerId;
-        order.UpdatedAt = DateTime.UtcNow;
-
-        await _repo.UpdateAsync(order, ct);
-        await _repo.AddHistoryAsync(new PurchaseOrderHistory
+        var repApproveStrategy = _context.Database.CreateExecutionStrategy();
+        await repApproveStrategy.ExecuteAsync(async () =>
         {
-            PurchaseOrderId = id,
-            Action = "RepApproved",
-            FromStatus = fromStatus,
-            ToStatus = PurchaseOrderStatus.PendingManagerApproval,
-            PerformedBy = callerId,
-            PerformedAt = DateTime.UtcNow
-        }, ct);
+            await using var tx = await _context.Database.BeginTransactionAsync(ct);
+            try
+            {
+                var fromStatus = order.Status;
+                order.Status = PurchaseOrderStatus.PendingManagerApproval;
+                order.RepApprovedBy = callerId;
+                order.RepApprovedAt = DateTime.UtcNow;
+                order.UpdatedBy = callerId;
+                order.UpdatedAt = DateTime.UtcNow;
 
-        await _repo.SaveChangesAsync(ct);
-        await repApproveTx.CommitAsync(ct);
+                await _repo.UpdateAsync(order, ct);
+                await _repo.AddHistoryAsync(new PurchaseOrderHistory
+                {
+                    PurchaseOrderId = id,
+                    Action = "RepApproved",
+                    FromStatus = fromStatus,
+                    ToStatus = PurchaseOrderStatus.PendingManagerApproval,
+                    PerformedBy = callerId,
+                    PerformedAt = DateTime.UtcNow
+                }, ct);
+
+                await _repo.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+            }
+            catch { await tx.RollbackAsync(ct); throw; }
+        });
 
         _logger.LogInformation("PurchaseOrder {OrderId} rep-approved by user {CallerId}", id, callerId);
 
@@ -347,28 +377,35 @@ public class PurchaseOrderService(
         if (order.Status != PurchaseOrderStatus.PendingManagerApproval)
             throw new BusinessRuleException("ORDER_NOT_PENDING_MANAGER_APPROVAL", "Order is not in PendingManagerApproval status.");
 
-        await using var approveTx = await _context.Database.BeginTransactionAsync(ct);
-
-        var fromStatus = order.Status;
-        order.Status = PurchaseOrderStatus.PendingDistributorFinalization;
-        order.ManagerApprovedBy = callerId;
-        order.ManagerApprovedAt = DateTime.UtcNow;
-        order.UpdatedBy = callerId;
-        order.UpdatedAt = DateTime.UtcNow;
-
-        await _repo.UpdateAsync(order, ct);
-        await _repo.AddHistoryAsync(new PurchaseOrderHistory
+        var approveStrategy = _context.Database.CreateExecutionStrategy();
+        await approveStrategy.ExecuteAsync(async () =>
         {
-            PurchaseOrderId = id,
-            Action = "ManagerApproved",
-            FromStatus = fromStatus,
-            ToStatus = PurchaseOrderStatus.PendingDistributorFinalization,
-            PerformedBy = callerId,
-            PerformedAt = DateTime.UtcNow
-        }, ct);
+            await using var tx = await _context.Database.BeginTransactionAsync(ct);
+            try
+            {
+                var fromStatus = order.Status;
+                order.Status = PurchaseOrderStatus.PendingDistributorFinalization;
+                order.ManagerApprovedBy = callerId;
+                order.ManagerApprovedAt = DateTime.UtcNow;
+                order.UpdatedBy = callerId;
+                order.UpdatedAt = DateTime.UtcNow;
 
-        await _repo.SaveChangesAsync(ct);
-        await approveTx.CommitAsync(ct);
+                await _repo.UpdateAsync(order, ct);
+                await _repo.AddHistoryAsync(new PurchaseOrderHistory
+                {
+                    PurchaseOrderId = id,
+                    Action = "ManagerApproved",
+                    FromStatus = fromStatus,
+                    ToStatus = PurchaseOrderStatus.PendingDistributorFinalization,
+                    PerformedBy = callerId,
+                    PerformedAt = DateTime.UtcNow
+                }, ct);
+
+                await _repo.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+            }
+            catch { await tx.RollbackAsync(ct); throw; }
+        });
 
         _logger.LogInformation("PurchaseOrder {OrderId} manager-approved by user {CallerId}", id, callerId);
 
@@ -397,28 +434,35 @@ public class PurchaseOrderService(
             && order.Status != PurchaseOrderStatus.PendingManagerApproval)
             throw new BusinessRuleException("ORDER_NOT_REJECTABLE", "Order cannot be rejected at this stage.");
 
-        await using var rejectTx = await _context.Database.BeginTransactionAsync(ct);
-
-        var fromStatus = order.Status;
-        order.Status = PurchaseOrderStatus.PendingDistributorAcknowledgement;
-        order.CancelReason = request.Reason;
-        order.UpdatedBy = callerId;
-        order.UpdatedAt = DateTime.UtcNow;
-
-        await _repo.UpdateAsync(order, ct);
-        await _repo.AddHistoryAsync(new PurchaseOrderHistory
+        var rejectStrategy = _context.Database.CreateExecutionStrategy();
+        await rejectStrategy.ExecuteAsync(async () =>
         {
-            PurchaseOrderId = id,
-            Action = "Rejected",
-            FromStatus = fromStatus,
-            ToStatus = PurchaseOrderStatus.PendingDistributorAcknowledgement,
-            PerformedBy = callerId,
-            PerformedAt = DateTime.UtcNow,
-            Notes = request.Reason
-        }, ct);
+            await using var tx = await _context.Database.BeginTransactionAsync(ct);
+            try
+            {
+                var fromStatus = order.Status;
+                order.Status = PurchaseOrderStatus.PendingDistributorAcknowledgement;
+                order.CancelReason = request.Reason;
+                order.UpdatedBy = callerId;
+                order.UpdatedAt = DateTime.UtcNow;
 
-        await _repo.SaveChangesAsync(ct);
-        await rejectTx.CommitAsync(ct);
+                await _repo.UpdateAsync(order, ct);
+                await _repo.AddHistoryAsync(new PurchaseOrderHistory
+                {
+                    PurchaseOrderId = id,
+                    Action = "Rejected",
+                    FromStatus = fromStatus,
+                    ToStatus = PurchaseOrderStatus.PendingDistributorAcknowledgement,
+                    PerformedBy = callerId,
+                    PerformedAt = DateTime.UtcNow,
+                    Notes = request.Reason
+                }, ct);
+
+                await _repo.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+            }
+            catch { await tx.RollbackAsync(ct); throw; }
+        });
 
         _logger.LogInformation("PurchaseOrder {OrderId} rejected by user {CallerId}", id, callerId);
 
@@ -449,30 +493,37 @@ public class PurchaseOrderService(
                 throw new AuthorizationException("this purchase order");
         }
 
-        await using var ackTx = await _context.Database.BeginTransactionAsync(ct);
-
-        var fromStatus = order.Status;
-        order.Status = PurchaseOrderStatus.Cancelled;
-        order.AcknowledgedBy = callerId;
-        order.AcknowledgedAt = DateTime.UtcNow;
-        order.CancelledBy = callerId;
-        order.CancelledAt = DateTime.UtcNow;
-        order.UpdatedBy = callerId;
-        order.UpdatedAt = DateTime.UtcNow;
-
-        await _repo.UpdateAsync(order, ct);
-        await _repo.AddHistoryAsync(new PurchaseOrderHistory
+        var ackStrategy = _context.Database.CreateExecutionStrategy();
+        await ackStrategy.ExecuteAsync(async () =>
         {
-            PurchaseOrderId = id,
-            Action = "RejectionAcknowledged",
-            FromStatus = fromStatus,
-            ToStatus = PurchaseOrderStatus.Cancelled,
-            PerformedBy = callerId,
-            PerformedAt = DateTime.UtcNow
-        }, ct);
+            await using var tx = await _context.Database.BeginTransactionAsync(ct);
+            try
+            {
+                var fromStatus = order.Status;
+                order.Status = PurchaseOrderStatus.Cancelled;
+                order.AcknowledgedBy = callerId;
+                order.AcknowledgedAt = DateTime.UtcNow;
+                order.CancelledBy = callerId;
+                order.CancelledAt = DateTime.UtcNow;
+                order.UpdatedBy = callerId;
+                order.UpdatedAt = DateTime.UtcNow;
 
-        await _repo.SaveChangesAsync(ct);
-        await ackTx.CommitAsync(ct);
+                await _repo.UpdateAsync(order, ct);
+                await _repo.AddHistoryAsync(new PurchaseOrderHistory
+                {
+                    PurchaseOrderId = id,
+                    Action = "RejectionAcknowledged",
+                    FromStatus = fromStatus,
+                    ToStatus = PurchaseOrderStatus.Cancelled,
+                    PerformedBy = callerId,
+                    PerformedAt = DateTime.UtcNow
+                }, ct);
+
+                await _repo.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+            }
+            catch { await tx.RollbackAsync(ct); throw; }
+        });
 
         _logger.LogInformation("PurchaseOrder {OrderId} rejection acknowledged by user {CallerId}", id, callerId);
 
@@ -502,28 +553,35 @@ public class PurchaseOrderService(
                 throw new AuthorizationException("this purchase order");
         }
 
-        await using var finalizeTx = await _context.Database.BeginTransactionAsync(ct);
-
-        var fromStatus = order.Status;
-        order.Status = PurchaseOrderStatus.Finalized;
-        order.FinalizedBy = callerId;
-        order.FinalizedAt = DateTime.UtcNow;
-        order.UpdatedBy = callerId;
-        order.UpdatedAt = DateTime.UtcNow;
-
-        await _repo.UpdateAsync(order, ct);
-        await _repo.AddHistoryAsync(new PurchaseOrderHistory
+        var finalizeStrategy = _context.Database.CreateExecutionStrategy();
+        await finalizeStrategy.ExecuteAsync(async () =>
         {
-            PurchaseOrderId = id,
-            Action = "Finalized",
-            FromStatus = fromStatus,
-            ToStatus = PurchaseOrderStatus.Finalized,
-            PerformedBy = callerId,
-            PerformedAt = DateTime.UtcNow
-        }, ct);
+            await using var tx = await _context.Database.BeginTransactionAsync(ct);
+            try
+            {
+                var fromStatus = order.Status;
+                order.Status = PurchaseOrderStatus.Finalized;
+                order.FinalizedBy = callerId;
+                order.FinalizedAt = DateTime.UtcNow;
+                order.UpdatedBy = callerId;
+                order.UpdatedAt = DateTime.UtcNow;
 
-        await _repo.SaveChangesAsync(ct);
-        await finalizeTx.CommitAsync(ct);
+                await _repo.UpdateAsync(order, ct);
+                await _repo.AddHistoryAsync(new PurchaseOrderHistory
+                {
+                    PurchaseOrderId = id,
+                    Action = "Finalized",
+                    FromStatus = fromStatus,
+                    ToStatus = PurchaseOrderStatus.Finalized,
+                    PerformedBy = callerId,
+                    PerformedAt = DateTime.UtcNow
+                }, ct);
+
+                await _repo.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+            }
+            catch { await tx.RollbackAsync(ct); throw; }
+        });
 
         _logger.LogInformation("PurchaseOrder {OrderId} finalized by user {CallerId}", id, callerId);
 
@@ -557,30 +615,37 @@ public class PurchaseOrderService(
                 throw new AuthorizationException("this purchase order");
         }
 
-        await using var cancelTx = await _context.Database.BeginTransactionAsync(ct);
-
-        var fromStatus = order.Status;
-        order.Status = PurchaseOrderStatus.Cancelled;
-        order.CancelledBy = callerId;
-        order.CancelledAt = DateTime.UtcNow;
-        order.CancelReason = request.Reason;
-        order.UpdatedBy = callerId;
-        order.UpdatedAt = DateTime.UtcNow;
-
-        await _repo.UpdateAsync(order, ct);
-        await _repo.AddHistoryAsync(new PurchaseOrderHistory
+        var cancelStrategy = _context.Database.CreateExecutionStrategy();
+        await cancelStrategy.ExecuteAsync(async () =>
         {
-            PurchaseOrderId = id,
-            Action = "Cancelled",
-            FromStatus = fromStatus,
-            ToStatus = PurchaseOrderStatus.Cancelled,
-            PerformedBy = callerId,
-            PerformedAt = DateTime.UtcNow,
-            Notes = request.Reason
-        }, ct);
+            await using var tx = await _context.Database.BeginTransactionAsync(ct);
+            try
+            {
+                var fromStatus = order.Status;
+                order.Status = PurchaseOrderStatus.Cancelled;
+                order.CancelledBy = callerId;
+                order.CancelledAt = DateTime.UtcNow;
+                order.CancelReason = request.Reason;
+                order.UpdatedBy = callerId;
+                order.UpdatedAt = DateTime.UtcNow;
 
-        await _repo.SaveChangesAsync(ct);
-        await cancelTx.CommitAsync(ct);
+                await _repo.UpdateAsync(order, ct);
+                await _repo.AddHistoryAsync(new PurchaseOrderHistory
+                {
+                    PurchaseOrderId = id,
+                    Action = "Cancelled",
+                    FromStatus = fromStatus,
+                    ToStatus = PurchaseOrderStatus.Cancelled,
+                    PerformedBy = callerId,
+                    PerformedAt = DateTime.UtcNow,
+                    Notes = request.Reason
+                }, ct);
+
+                await _repo.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+            }
+            catch { await tx.RollbackAsync(ct); throw; }
+        });
 
         _logger.LogInformation("PurchaseOrder {OrderId} cancelled by user {CallerId}", id, callerId);
 
@@ -590,7 +655,7 @@ public class PurchaseOrderService(
 
     public async Task<PurchaseOrderStatsDto> GetStatsAsync(
         int callerId, UserRole callerRole,
-        DateTime? fromDate, DateTime? toDate,
+        DateOnly? fromDate, DateOnly? toDate,
         CancellationToken ct = default)
     {
         int? distributorFilter = null;

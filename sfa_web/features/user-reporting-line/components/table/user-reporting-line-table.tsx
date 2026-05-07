@@ -77,7 +77,7 @@ export function UserReportingLineTable() {
         <div className="flex items-center gap-2">
           {/* Subordinate role filter */}
           <Select
-            value={filters?.role ?? ''}
+            value={(filters?.role as string) ?? ''}
             onValueChange={(v) =>
               setFilters({ ...filters, role: v === 'all' ? '' : v })
             }
@@ -101,7 +101,7 @@ export function UserReportingLineTable() {
             preload={false}
             label="manager"
             placeholder="All Managers"
-            value={filters?.reportsToUserId ? String(filters.reportsToUserId) : ''}
+            value={filters?.reportsToUserId ? String(filters.reportsToUserId as string) : ''}
             onChange={(v) =>
               setFilters({
                 ...filters,
