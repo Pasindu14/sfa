@@ -4,6 +4,7 @@ using sfa_api.Features.GRNs.Entities;
 using sfa_api.Features.GRNs.Enums;
 using sfa_api.Features.SalesInvoices.Entities;
 using sfa_api.Features.Stock.Entities;
+using sfa_api.Features.Stock.Enums;
 using sfa_api.Infrastructure.Persistence;
 
 namespace sfa_api.Features.GRNs.Repositories;
@@ -109,13 +110,13 @@ public class GrnRepository(AppDbContext db) : IGrnRepository
     /// Must be called within a transaction.
     /// </summary>
     public async Task<DistributorStock?> GetStockForUpdateAsync(
-        int distributorId, int productId, CancellationToken ct = default)
+        int distributorId, int productId, StockType stockType, CancellationToken ct = default)
     {
         // Raw SQL to get the row ID with a FOR UPDATE lock
         var ids = await _db.Database
             .SqlQueryRaw<int>(
-                "SELECT \"Id\" FROM \"DistributorStocks\" WHERE \"DistributorId\" = {0} AND \"ProductId\" = {1} FOR UPDATE",
-                distributorId, productId)
+                "SELECT \"Id\" FROM \"DistributorStocks\" WHERE \"DistributorId\" = {0} AND \"ProductId\" = {1} AND \"StockType\" = {2} FOR UPDATE",
+                distributorId, productId, stockType.ToString())
             .ToListAsync(ct);
 
         if (ids.Count == 0) return null;

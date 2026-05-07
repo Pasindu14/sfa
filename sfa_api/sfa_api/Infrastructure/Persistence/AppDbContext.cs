@@ -630,8 +630,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.QuantityOnHand).HasColumnType("decimal(18,4)");
-            // Composite unique — one row per distributor+product
-            e.HasIndex(x => new { x.DistributorId, x.ProductId }).IsUnique();
+            e.Property(x => x.StockType)
+             .HasConversion<string>()
+             .HasMaxLength(10)
+             .HasDefaultValue(StockType.Normal);
+            // Composite unique — one row per distributor+product+stockType
+            e.HasIndex(x => new { x.DistributorId, x.ProductId, x.StockType }).IsUnique();
             e.HasOne(x => x.Distributor)
              .WithMany()
              .HasForeignKey(x => x.DistributorId)
@@ -652,6 +656,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Direction)
              .HasConversion<string>()
              .HasMaxLength(5);
+            e.Property(x => x.StockType)
+             .HasConversion<string>()
+             .HasMaxLength(10)
+             .HasDefaultValue(StockType.Normal);
             e.Property(x => x.Quantity).HasColumnType("decimal(18,4)");
             e.Property(x => x.QuantityBefore).HasColumnType("decimal(18,4)");
             e.Property(x => x.QuantityAfter).HasColumnType("decimal(18,4)");

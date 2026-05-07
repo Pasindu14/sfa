@@ -1,6 +1,7 @@
 using sfa_api.Features.GRNs.Entities;
 using sfa_api.Features.SalesInvoices.Entities;
 using sfa_api.Features.Stock.Entities;
+using sfa_api.Features.Stock.Enums;
 
 namespace sfa_api.Features.GRNs.Repositories;
 
@@ -29,7 +30,7 @@ public interface IGrnRepository
     /// Must be called inside an explicit transaction.
     /// Returns null if no row exists yet (caller should create one).
     /// </summary>
-    Task<DistributorStock?> GetStockForUpdateAsync(int distributorId, int productId, CancellationToken ct = default);
+    Task<DistributorStock?> GetStockForUpdateAsync(int distributorId, int productId, StockType stockType, CancellationToken ct = default);
     Task AddStockAsync(DistributorStock stock, CancellationToken ct = default);
     Task AddStockTransactionAsync(sfa_api.Features.Stock.Entities.StockTransaction tx, CancellationToken ct = default);
 

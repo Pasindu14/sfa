@@ -317,7 +317,8 @@ class _MapViewState extends State<_MapView> {
       final match = widget.state.outlets
           .where((ro) => ro.outlet.id == lastBilledId)
           .firstOrNull;
-      if (match != null) {
+      if (match != null &&
+          _hasValidCoords(match.outlet.latitude, match.outlet.longitude)) {
         controller.animateCamera(
           CameraUpdate.newLatLngZoom(
             LatLng(match.outlet.latitude, match.outlet.longitude),
@@ -326,6 +327,17 @@ class _MapViewState extends State<_MapView> {
         );
         return;
       }
+    }
+
+    final userPos = widget.state.userPosition;
+    if (userPos != null) {
+      controller.animateCamera(
+        CameraUpdate.newLatLngZoom(
+          LatLng(userPos.latitude, userPos.longitude),
+          13,
+        ),
+      );
+      return;
     }
 
     _fitBounds(controller);
@@ -343,10 +355,15 @@ class _MapViewState extends State<_MapView> {
 
   @override
   Widget build(BuildContext context) {
-    final outlets     = widget.state.outlets;
+    final outlets        = widget.state.outlets;
     final billedCount    = outlets.where((o) => o.status == RouteOutletStatus.billed).length;
     final notBilledCount = outlets.where((o) => o.status == RouteOutletStatus.notBilled).length;
     final pendingCount   = outlets.where((o) => o.status == RouteOutletStatus.pending).length;
+    final unmappedCount  = outlets.where((o) {
+      final hasBill = o.status == RouteOutletStatus.billed ||
+          o.status == RouteOutletStatus.notBilled;
+      return hasBill && !_hasValidCoords(o.outlet.latitude, o.outlet.longitude);
+    }).length;
 
     return Column(
       children: [
@@ -364,6 +381,7 @@ class _MapViewState extends State<_MapView> {
           billedCount: billedCount,
           notBilledCount: notBilledCount,
           pendingCount: pendingCount,
+          unmappedCount: unmappedCount,
         ),
       ],
     );
@@ -376,11 +394,13 @@ class _LegendBar extends StatelessWidget {
   final int billedCount;
   final int notBilledCount;
   final int pendingCount;
+  final int unmappedCount;
 
   const _LegendBar({
     required this.billedCount,
     required this.notBilledCount,
     required this.pendingCount,
+    required this.unmappedCount,
   });
 
   @override
@@ -388,26 +408,35 @@ class _LegendBar extends StatelessWidget {
     return Container(
       color: Colors.white,
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          _LegendItem(
-            color: const Color(0xFF4CAF50),
-            label: 'Billed',
-            count: billedCount,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _LegendItem(
+                color: const Color(0xFF4CAF50),
+                label: 'Billed',
+                count: billedCount,
+              ),
+              Container(width: 1, height: 24.h, color: AppColors.surfaceVariant),
+              _LegendItem(
+                color: const Color(0xFFFF9800),
+                label: 'Not Billed',
+                count: notBilledCount,
+              ),
+              Container(width: 1, height: 24.h, color: AppColors.surfaceVariant),
+              _LegendItem(
+                color: const Color(0xFFF44336),
+                label: 'Pending',
+                count: pendingCount,
+              ),
+            ],
           ),
-          Container(width: 1, height: 24.h, color: AppColors.surfaceVariant),
-          _LegendItem(
-            color: const Color(0xFFFF9800),
-            label: 'Not Billed',
-            count: notBilledCount,
-          ),
-          Container(width: 1, height: 24.h, color: AppColors.surfaceVariant),
-          _LegendItem(
-            color: const Color(0xFFF44336),
-            label: 'Pending',
-            count: pendingCount,
-          ),
+          if (unmappedCount > 0) ...[
+            SizedBox(height: 8.h),
+            _UnmappedBanner(count: unmappedCount),
+          ],
         ],
       ),
     );
@@ -461,6 +490,59 @@ class _LegendItem extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+class _UnmappedBanner extends StatelessWidget {
+  final int count;
+
+  const _UnmappedBanner({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF3E0),
+        borderRadius: BorderRadius.circular(8.r),
+        border: Border.all(color: const Color(0xFFFFCC80)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.location_off_rounded,
+            size: 13.r,
+            color: const Color(0xFFE65100),
+          ),
+          SizedBox(width: 6.w),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: '$count outlet${count > 1 ? 's' : ''} ',
+                    style: GoogleFonts.barlowCondensed(
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFFE65100),
+                    ),
+                  ),
+                  TextSpan(
+                    text: 'billed but not mapped correctly (GPS 0,0)',
+                    style: GoogleFonts.barlow(
+                      fontSize: 10.sp,
+                      color: const Color(0xFFBF360C),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

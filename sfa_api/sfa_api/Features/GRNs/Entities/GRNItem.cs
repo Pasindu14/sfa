@@ -11,6 +11,7 @@ public class GRNItem
 
     public decimal Quantity { get; set; }
     public string Unit { get; set; } = string.Empty;
+    public bool IsFreeIssue { get; set; }
     public string? Notes { get; set; }
 
     // ── Navigation ────────────────────────────────────────────────────────

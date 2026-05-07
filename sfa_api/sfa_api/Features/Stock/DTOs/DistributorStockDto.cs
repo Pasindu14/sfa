@@ -1,13 +1,14 @@
 namespace sfa_api.Features.Stock.DTOs;
 
 public record DistributorStockDto(
-    int     Id,
-    int     DistributorId,
-    string  DistributorName,
-    int     ProductId,
-    string  ProductCode,
-    string  ProductDescription,
-    decimal QuantityOnHand,
+    int      Id,
+    int      DistributorId,
+    string   DistributorName,
+    int      ProductId,
+    string   ProductCode,
+    string   ProductDescription,
+    string   StockType,
+    decimal  QuantityOnHand,
     DateTime LastUpdatedAt
 );
 

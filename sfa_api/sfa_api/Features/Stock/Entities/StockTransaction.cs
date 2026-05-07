@@ -18,6 +18,7 @@ public class StockTransaction
 
     public StockTransactionType TransactionType { get; set; }
     public StockTransactionDirection Direction { get; set; }
+    public StockType StockType { get; set; } = StockType.Normal;
 
     /// <summary>Always stored as a positive value</summary>
     public decimal Quantity { get; set; }

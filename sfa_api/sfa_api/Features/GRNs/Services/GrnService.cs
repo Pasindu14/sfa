@@ -100,9 +100,10 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
         {
             grn.Items.Add(new GRNItem
             {
-                ProductId = item.ProductId,
-                Quantity  = item.Quantity,
-                Unit      = item.Unit,
+                ProductId   = item.ProductId,
+                Quantity    = item.Quantity,
+                Unit        = item.Unit,
+                IsFreeIssue = item.IsFreeIssue,
             });
         }
 
@@ -160,27 +161,30 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
                 // 6. Process each item — pessimistic locking on DistributorStock rows
                 foreach (var item in grn.Items)
                 {
+                    var stockType = item.IsFreeIssue ? StockType.FreeIssue : StockType.Normal;
+
                     // SELECT ... FOR UPDATE locks the row, preventing concurrent reads of stale QuantityOnHand
-                    var stock = await _repository.GetStockForUpdateAsync(grn.DistributorId, item.ProductId, ct);
+                    var stock = await _repository.GetStockForUpdateAsync(grn.DistributorId, item.ProductId, stockType, ct);
 
                     decimal quantityBefore;
                     if (stock is null)
                     {
-                        // First stock entry for this distributor+product — create and re-lock
+                        // First stock entry for this distributor+product+stockType — create and re-lock
                         quantityBefore = 0m;
                         stock = new DistributorStock
                         {
                             DistributorId  = grn.DistributorId,
                             ProductId      = item.ProductId,
+                            StockType      = stockType,
                             QuantityOnHand = 0m,
                             LastUpdatedAt  = DateTime.UtcNow,
                         };
                         await _repository.AddStockAsync(stock, ct);
-                        // Flush so the FOR UPDATE on subsequent iterations (same product) finds the row
+                        // Flush so the FOR UPDATE on subsequent iterations (same product+type) finds the row
                         await _repository.SaveChangesAsync(ct);
 
                         // Re-lock the newly created row so we hold it through the transaction
-                        stock = await _repository.GetStockForUpdateAsync(grn.DistributorId, item.ProductId, ct) ?? stock;
+                        stock = await _repository.GetStockForUpdateAsync(grn.DistributorId, item.ProductId, stockType, ct) ?? stock;
                     }
                     else
                     {
@@ -198,6 +202,7 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
                     {
                         DistributorId   = grn.DistributorId,
                         ProductId       = item.ProductId,
+                        StockType       = stockType,
                         TransactionType = StockTransactionType.GRNReceipt,
                         Direction       = StockTransactionDirection.In,
                         Quantity        = item.Quantity,

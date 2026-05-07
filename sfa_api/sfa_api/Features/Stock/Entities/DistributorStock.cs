@@ -1,5 +1,6 @@
 using sfa_api.Features.Distributors.Entities;
 using sfa_api.Features.Products.Entities;
+using sfa_api.Features.Stock.Enums;
 
 namespace sfa_api.Features.Stock.Entities;
 
@@ -9,6 +10,7 @@ public class DistributorStock
 
     public int DistributorId { get; set; }
     public int ProductId { get; set; }
+    public StockType StockType { get; set; } = StockType.Normal;
 
     public decimal QuantityOnHand { get; set; }
     public DateTime LastUpdatedAt { get; set; }

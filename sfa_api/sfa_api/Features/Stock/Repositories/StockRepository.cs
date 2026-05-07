@@ -50,6 +50,7 @@ public class StockRepository(AppDbContext db) : IStockRepository
         int distributorId,
         int productId,
         decimal quantity,
+        StockType stockType,
         StockTransactionType transactionType,
         string referenceType,
         int referenceId,
@@ -60,8 +61,8 @@ public class StockRepository(AppDbContext db) : IStockRepository
         // Acquire a tracked, row-locked copy of the stock balance.
         // This must be called inside a transaction that holds SELECT … FOR UPDATE.
         var stock = await _db.DistributorStocks
-            .FirstOrDefaultAsync(x => x.DistributorId == distributorId && x.ProductId == productId, ct)
-            ?? throw new NotFoundException("DistributorStock", $"distributor={distributorId}/product={productId}");
+            .FirstOrDefaultAsync(x => x.DistributorId == distributorId && x.ProductId == productId && x.StockType == stockType, ct)
+            ?? throw new NotFoundException("DistributorStock", $"distributor={distributorId}/product={productId}/stockType={stockType}");
 
         var quantityBefore = stock.QuantityOnHand;
         var quantityAfter  = quantityBefore - quantity;
@@ -70,8 +71,8 @@ public class StockRepository(AppDbContext db) : IStockRepository
         if (quantityAfter < 0)
             throw new BusinessRuleException(
                 "INSUFFICIENT_STOCK",
-                $"Insufficient stock for product {productId}: requested {quantity}, available {quantityBefore}.",
-                new { productId, requested = quantity, available = quantityBefore });
+                $"Insufficient {stockType} stock for product {productId}: requested {quantity}, available {quantityBefore}.",
+                new { productId, stockType, requested = quantity, available = quantityBefore });
 
         // Update running balance
         stock.QuantityOnHand = quantityAfter;
@@ -82,6 +83,7 @@ public class StockRepository(AppDbContext db) : IStockRepository
         {
             DistributorId   = distributorId,
             ProductId       = productId,
+            StockType       = stockType,
             TransactionType = transactionType,
             Direction       = StockTransactionDirection.Out,
             Quantity        = quantity,
@@ -97,12 +99,12 @@ public class StockRepository(AppDbContext db) : IStockRepository
 
     /// <inheritdoc/>
     public async Task<DistributorStock?> GetStockForUpdateAsync(
-        int distributorId, int productId, CancellationToken ct = default)
+        int distributorId, int productId, StockType stockType, CancellationToken ct = default)
     {
         var ids = await _db.Database
             .SqlQueryRaw<int>(
-                "SELECT \"Id\" FROM \"DistributorStocks\" WHERE \"DistributorId\" = {0} AND \"ProductId\" = {1} FOR UPDATE",
-                distributorId, productId)
+                "SELECT \"Id\" FROM \"DistributorStocks\" WHERE \"DistributorId\" = {0} AND \"ProductId\" = {1} AND \"StockType\" = {2} FOR UPDATE",
+                distributorId, productId, stockType.ToString())
             .ToListAsync(ct);
 
         if (ids.Count == 0) return null;
@@ -116,6 +118,7 @@ public class StockRepository(AppDbContext db) : IStockRepository
         int distributorId,
         int productId,
         decimal quantity,
+        StockType stockType,
         StockTransactionType transactionType,
         string referenceType,
         int referenceId,
@@ -124,8 +127,8 @@ public class StockRepository(AppDbContext db) : IStockRepository
         CancellationToken ct = default)
     {
         var stock = await _db.DistributorStocks
-            .FirstOrDefaultAsync(x => x.DistributorId == distributorId && x.ProductId == productId, ct)
-            ?? throw new NotFoundException("DistributorStock", $"distributor={distributorId}/product={productId}");
+            .FirstOrDefaultAsync(x => x.DistributorId == distributorId && x.ProductId == productId && x.StockType == stockType, ct)
+            ?? throw new NotFoundException("DistributorStock", $"distributor={distributorId}/product={productId}/stockType={stockType}");
 
         var quantityBefore = stock.QuantityOnHand;
         var quantityAfter  = quantityBefore + quantity;
@@ -137,6 +140,7 @@ public class StockRepository(AppDbContext db) : IStockRepository
         {
             DistributorId   = distributorId,
             ProductId       = productId,
+            StockType       = stockType,
             TransactionType = transactionType,
             Direction       = StockTransactionDirection.In,
             Quantity        = quantity,

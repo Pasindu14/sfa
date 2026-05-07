@@ -22,6 +22,7 @@ public interface IStockRepository
         int distributorId,
         int productId,
         decimal quantity,
+        StockType stockType,
         StockTransactionType transactionType,
         string referenceType,
         int referenceId,
@@ -37,6 +38,7 @@ public interface IStockRepository
     Task<DistributorStock?> GetStockForUpdateAsync(
         int distributorId,
         int productId,
+        StockType stockType,
         CancellationToken ct = default);
 
     /// <summary>
@@ -50,6 +52,7 @@ public interface IStockRepository
         int distributorId,
         int productId,
         decimal quantity,
+        StockType stockType,
         StockTransactionType transactionType,
         string referenceType,
         int referenceId,

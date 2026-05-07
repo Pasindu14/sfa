@@ -197,17 +197,20 @@ public class BillingService(
                 {
                     if (item.BillingItemType == BillingItemType.Sale)
                     {
-                        await _stockRepository.GetStockForUpdateAsync(distributor.Id, item.ProductId, ct);
+                        var stockType = item.IsFreeIssue ? StockType.FreeIssue : StockType.Normal;
+                        await _stockRepository.GetStockForUpdateAsync(distributor.Id, item.ProductId, stockType, ct);
                         await _stockRepository.DeductStockAsync(
                             distributor.Id, item.ProductId, item.Quantity,
+                            stockType,
                             item.IsFreeIssue ? StockTransactionType.FreeIssue : StockTransactionType.Sale,
                             "Billing", billing.Id, salesRepId, ct: ct);
                     }
                     else if (item.ReturnType == Enums.ReturnType.MarketResell)
                     {
-                        await _stockRepository.GetStockForUpdateAsync(distributor.Id, item.ProductId, ct);
+                        await _stockRepository.GetStockForUpdateAsync(distributor.Id, item.ProductId, StockType.Normal, ct);
                         await _stockRepository.CreditStockAsync(
                             distributor.Id, item.ProductId, item.Quantity,
+                            StockType.Normal,
                             StockTransactionType.Return,
                             "Billing", billing.Id, salesRepId, ct: ct);
                     }

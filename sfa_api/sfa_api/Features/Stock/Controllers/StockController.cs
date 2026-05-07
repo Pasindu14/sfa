@@ -34,6 +34,7 @@ public class StockController(IStockRepository stockRepository) : ControllerBase
             s.ProductId,
             s.Product?.Code ?? string.Empty,
             s.Product?.ItemDescription ?? string.Empty,
+            s.StockType.ToString(),
             s.QuantityOnHand,
             s.LastUpdatedAt
         )).ToList();
