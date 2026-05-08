@@ -38,7 +38,7 @@ class CartRow extends StatelessWidget {
   double get _discountAmount => _gross * line.discountRate / 100;
   Color get _accentColor {
     if (line.isReturn)    return AppColors.error;
-    if (line.isFreeIssue) return AppColors.success;
+    if (line.isFreeIssue) return AppColors.primary;
     return AppColors.success;
   }
 
@@ -126,7 +126,7 @@ class CartRow extends StatelessWidget {
                     color: line.isReturn
                         ? AppColors.error
                         : line.isFreeIssue
-                            ? AppColors.success
+                            ? AppColors.primary
                             : AppColors.amber,
                   ),
                 ),
@@ -415,7 +415,7 @@ class _TypeToggle extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           _tab('Sale',   'Sale',      AppColors.success),
-          _tab('FOC',    'FreeIssue', AppColors.success),
+          _tab('FOC',    'FreeIssue', AppColors.primary),
           _tab('Return', 'Return',    AppColors.error),
         ],
       ),

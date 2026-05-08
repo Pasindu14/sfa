@@ -86,18 +86,22 @@ public class BillingService(
             ? await _reportingLineRepository.GetActiveByUserIdAsync(rsmId.Value, ct) : null;
         int? nsmId = l4?.ReportsToUserId;
 
-        // ⑥ Pre-check stock availability for Sale items only (fast fail before acquiring lock).
-        // Collect ALL shortages across sale line items so the rep sees every missing product in one
-        // response — avoids retry-discover-retry-discover loops from mobile.
+        // ⑥ Pre-check stock availability before acquiring lock (fast fail).
+        // Collects ALL shortages in one pass so the rep sees every missing product at once.
         var saleItems      = request.Items.Where(i => i.BillingItemType == BillingItemType.Sale).ToList();
-        var saleProductIds = saleItems.Select(i => i.ProductId).Distinct().ToList();
-        if (saleProductIds.Count > 0)
+        var fiItems        = request.Items.Where(i => i.BillingItemType == BillingItemType.FreeIssue).ToList();
+        var preCheckIds    = saleItems.Select(i => i.ProductId)
+                                      .Concat(fiItems.Select(i => i.ProductId))
+                                      .Distinct().ToList();
+
+        if (preCheckIds.Count > 0)
         {
-            var snapshot = await _billingRepository.GetStockSnapshotAsync(distributor.Id, saleProductIds, ct);
+            var snapshot  = await _billingRepository.GetStockSnapshotAsync(distributor.Id, preCheckIds, ct);
             var shortages = new List<StockShortage>();
+
             foreach (var item in saleItems)
             {
-                var stock     = snapshot.FirstOrDefault(s => s.ProductId == item.ProductId);
+                var stock     = snapshot.FirstOrDefault(s => s.ProductId == item.ProductId && s.StockType == StockType.Normal);
                 var available = stock?.QuantityOnHand ?? 0m;
                 if (available < item.Quantity)
                 {
@@ -105,6 +109,18 @@ public class BillingService(
                     shortages.Add(new StockShortage(item.ProductId, name, item.Quantity, available));
                 }
             }
+
+            foreach (var item in fiItems)
+            {
+                var stock     = snapshot.FirstOrDefault(s => s.ProductId == item.ProductId && s.StockType == StockType.FreeIssue);
+                var available = stock?.QuantityOnHand ?? 0m;
+                if (available < item.Quantity)
+                {
+                    var name = productNames.TryGetValue(item.ProductId, out var n) ? n : $"Product #{item.ProductId}";
+                    shortages.Add(new StockShortage(item.ProductId, $"{name} (FOC stock)", item.Quantity, available));
+                }
+            }
+
             if (shortages.Count > 0)
                 throw new InsufficientStockException(shortages);
         }

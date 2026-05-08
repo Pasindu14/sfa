@@ -347,7 +347,7 @@ class _CartListState extends State<CartList> {
               _TotalRow(
                 label: 'FREE ISSUES (info)',
                 value: 'Rs. ${state.freeIssueValue.toStringAsFixed(2)}',
-                valueColor: AppColors.success,
+                valueColor: AppColors.primary,
               ),
             SizedBox(height: 6.h),
             Divider(color: Colors.white.withValues(alpha: 0.10), height: 1),
