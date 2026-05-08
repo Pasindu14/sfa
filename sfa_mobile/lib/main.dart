@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
@@ -88,11 +89,20 @@ class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
           providers: [
             BlocProvider<AuthBloc>.value(value: widget.authBloc),
           ],
-          child: MaterialApp.router(
-            title: 'SFA Uswatte',
-            debugShowCheckedModeBanner: false,
-            theme: AppTheme.light,
-            routerConfig: _router,
+          child: AnnotatedRegion<SystemUiOverlayStyle>(
+            value: const SystemUiOverlayStyle(
+              statusBarColor: Colors.transparent,
+              statusBarIconBrightness: Brightness.dark,
+              statusBarBrightness: Brightness.light,
+              systemNavigationBarColor: Colors.transparent,
+              systemNavigationBarIconBrightness: Brightness.dark,
+            ),
+            child: MaterialApp.router(
+              title: 'SFA Uswatte',
+              debugShowCheckedModeBanner: false,
+              theme: AppTheme.light,
+              routerConfig: _router,
+            ),
           ),
         );
       },

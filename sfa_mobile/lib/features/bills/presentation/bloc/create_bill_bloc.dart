@@ -34,6 +34,7 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     on<CartItemPriceChanged>(_onPriceChanged);
     on<CartItemTypeChanged>(_onTypeChanged);
     on<CartItemReturnTypeChanged>(_onReturnTypeChanged);
+    on<CartItemFreeIssueSourceChanged>(_onFreeIssueSourceChanged);
     on<CartItemExpireDateChanged>(_onExpireDateChanged);
     on<BillDiscountChanged>(_onDiscountChanged);
     on<SubmitPressed>(_onSubmit);
@@ -132,6 +133,10 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     }
 
     final nextLine = state.cart.length + 1;
+    // Default new FOC additions to Company-funded; Sale/Return lines must carry no source.
+    final source = e.billingItemType == 'FreeIssue'
+        ? (e.freeIssueSource ?? 'Company')
+        : null;
     emit(state.copyWith(cart: [
       ...state.cart,
       CartLine(
@@ -142,6 +147,7 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
         discountRate: e.discountRate,
         billingItemType: e.billingItemType,
         returnType: e.returnType,
+        freeIssueSource: source,
         expireDate: e.expireDate,
       ),
     ]));
@@ -167,6 +173,7 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
               discountRate: t.$2.discountRate,
               billingItemType: t.$2.billingItemType,
               returnType: t.$2.returnType,
+              freeIssueSource: t.$2.freeIssueSource,
               expireDate: t.$2.expireDate,
             ))
         .toList();
@@ -194,15 +201,40 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
   void _onTypeChanged(CartItemTypeChanged e, Emitter<CreateBillState> emit) {
     final updated = state.cart.map((l) {
       if (l.lineNumber != e.lineNumber) return l;
-      // Switching to Sale clears return-specific fields.
+      // Switching to Sale clears return- AND free-issue-specific fields.
       if (e.billingItemType == 'Sale') {
         return l.copyWith(
           billingItemType: 'Sale',
           clearReturnType: true,
           clearExpireDate: true,
+          clearFreeIssueSource: true,
         );
       }
-      return l.copyWith(billingItemType: e.billingItemType);
+      // Switching to FreeIssue: default the source to Company; clear return-specific fields.
+      if (e.billingItemType == 'FreeIssue') {
+        return l.copyWith(
+          billingItemType: 'FreeIssue',
+          freeIssueSource: l.freeIssueSource ?? 'Company',
+          clearReturnType: true,
+          clearExpireDate: true,
+        );
+      }
+      // Switching to Return: clear free-issue source.
+      return l.copyWith(
+        billingItemType: e.billingItemType,
+        clearFreeIssueSource: true,
+      );
+    }).toList();
+    emit(state.copyWith(cart: updated));
+  }
+
+  void _onFreeIssueSourceChanged(
+      CartItemFreeIssueSourceChanged e, Emitter<CreateBillState> emit) {
+    final updated = state.cart.map((l) {
+      if (l.lineNumber != e.lineNumber) return l;
+      // Defensive: only honour the change for FOC lines.
+      if (!l.isFreeIssue) return l;
+      return l.copyWith(freeIssueSource: e.source);
     }).toList();
     emit(state.copyWith(cart: updated));
   }
@@ -256,6 +288,7 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
               discountRate: l.discountRate,
               billingItemType: l.billingItemType,
               returnType: l.returnType,
+              freeIssueSource: l.freeIssueSource,
               expireDate: l.expireDate,
               lineNumber: l.lineNumber,
             ))

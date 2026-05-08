@@ -9,7 +9,7 @@ import 'package:uswatte/features/bills/presentation/bloc/create_bill_state.dart'
 
 import 'cart_row.dart';
 
-/// Sticky dark cart panel — collapses to a slim summary bar so product search
+/// Sticky light cart panel — collapses to a slim summary bar so product search
 /// stays fully visible. Tap the chevron (or the bar itself) to expand.
 class CartList extends StatefulWidget {
   final CreateBillState state;
@@ -22,14 +22,12 @@ class CartList extends StatefulWidget {
 class _CartListState extends State<CartList> {
   bool _expanded = false;
 
-  // Auto-expand when the first item is added so the rep gets feedback.
   @override
   void didUpdateWidget(CartList oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.state.cart.isEmpty && widget.state.cart.isNotEmpty) {
       setState(() => _expanded = true);
     }
-    // Auto-collapse when cart is cleared.
     if (widget.state.cart.isEmpty) {
       setState(() => _expanded = false);
     }
@@ -39,10 +37,6 @@ class _CartListState extends State<CartList> {
   Widget build(BuildContext context) {
     final state = widget.state;
     final hasItems = state.cart.isNotEmpty;
-
-    // Hide the cart panel while the keyboard is open so the product search
-    // results have the full screen. The rep is in "search mode" and doesn't
-    // need the cart visible — it will reappear when they dismiss the keyboard.
     final keyboardUp = MediaQuery.viewInsetsOf(context).bottom > 100;
 
     return AnimatedSize(
@@ -52,24 +46,30 @@ class _CartListState extends State<CartList> {
       child: keyboardUp
           ? const SizedBox.shrink()
           : Container(
-        decoration: BoxDecoration(
-          color: AppColors.darkSurface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.foreground.withValues(alpha: 0.25),
-              blurRadius: 20,
-              offset: const Offset(0, -4),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+                border: Border(
+                  top: BorderSide(
+                    color: AppColors.primary.withValues(alpha: 0.25),
+                    width: 2,
+                  ),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.foreground.withValues(alpha: 0.10),
+                    blurRadius: 20,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                top: false,
+                child: _expanded
+                    ? _buildExpanded(context, state)
+                    : _buildCollapsed(context, state, hasItems),
+              ),
             ),
-          ],
-        ),
-        child: SafeArea(
-          top: false,
-          child: _expanded
-              ? _buildExpanded(context, state)
-              : _buildCollapsed(context, state, hasItems),
-        ),
-      ),
     );
   }
 
@@ -81,7 +81,7 @@ class _CartListState extends State<CartList> {
       behavior: HitTestBehavior.opaque,
       onTap: hasItems ? () => setState(() => _expanded = true) : null,
       child: Padding(
-        padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 14.h),
+        padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 14.h),
         child: Row(
           children: [
             // Cart icon + badge
@@ -89,14 +89,19 @@ class _CartListState extends State<CartList> {
               clipBehavior: Clip.none,
               children: [
                 Container(
-                  width: 36.r,
-                  height: 36.r,
+                  width: 38.r,
+                  height: 38.r,
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.20),
-                    borderRadius: BorderRadius.circular(9.r),
+                    color: AppColors.primary.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(10.r),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.25),
+                    ),
                   ),
                   child: Icon(Icons.shopping_cart_rounded,
-                      size: 16.r, color: AppColors.primary),
+                    size: 17.r,
+                    color: AppColors.primary,
+                  ),
                 ),
                 if (hasItems)
                   Positioned(
@@ -108,8 +113,7 @@ class _CartListState extends State<CartList> {
                       decoration: BoxDecoration(
                         color: AppColors.primary,
                         shape: BoxShape.circle,
-                        border: Border.all(
-                            color: AppColors.darkSurface, width: 1.5),
+                        border: Border.all(color: Colors.white, width: 1.5),
                       ),
                       alignment: Alignment.center,
                       child: Text(
@@ -137,16 +141,16 @@ class _CartListState extends State<CartList> {
                           '${state.cart.length} item${state.cart.length == 1 ? '' : 's'}  ·  tap to review',
                           style: GoogleFonts.barlow(
                             fontSize: 11.sp,
-                            color: Colors.white.withValues(alpha: 0.50),
+                            color: AppColors.foregroundMuted,
                           ),
                         ),
                         Text(
                           'Rs. ${state.total.toStringAsFixed(2)}',
                           style: GoogleFonts.barlowCondensed(
-                            fontSize: 18.sp,
+                            fontSize: 19.sp,
                             fontWeight: FontWeight.w900,
                             letterSpacing: -0.3,
-                            color: AppColors.amber,
+                            color: AppColors.primaryDark,
                           ),
                         ),
                       ],
@@ -155,7 +159,7 @@ class _CartListState extends State<CartList> {
                       'Add products above to start an order',
                       style: GoogleFonts.barlow(
                         fontSize: 12.sp,
-                        color: Colors.white.withValues(alpha: 0.35),
+                        color: AppColors.foregroundMuted,
                       ),
                     ),
             ),
@@ -163,20 +167,20 @@ class _CartListState extends State<CartList> {
             // CTA or expand chevron
             if (hasItems) ...[
               SizedBox(width: 8.w),
-              // Expand chevron
               Container(
                 width: 30.r,
                 height: 30.r,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(7.r),
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(8.r),
+                  border: Border.all(color: AppColors.surfaceVariant),
                 ),
                 child: Icon(Icons.keyboard_arrow_up_rounded,
-                    size: 18.r,
-                    color: Colors.white.withValues(alpha: 0.60)),
+                  size: 18.r,
+                  color: AppColors.foregroundMuted,
+                ),
               ),
               SizedBox(width: 8.w),
-              // Create Order button
               _CtaButton(state: state, compact: true),
             ],
           ],
@@ -201,11 +205,14 @@ class _CartListState extends State<CartList> {
             child: Row(
               children: [
                 Container(
-                  width: 28.r,
-                  height: 28.r,
+                  width: 30.r,
+                  height: 30.r,
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.20),
-                    borderRadius: BorderRadius.circular(7.r),
+                    color: AppColors.primary.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(8.r),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.25),
+                    ),
                   ),
                   child: Icon(Icons.shopping_cart_rounded,
                       size: 14.r, color: AppColors.primary),
@@ -217,13 +224,12 @@ class _CartListState extends State<CartList> {
                     fontSize: 13.sp,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 2.0,
-                    color: Colors.white,
+                    color: AppColors.foreground,
                   ),
                 ),
                 SizedBox(width: 6.w),
                 Container(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.h),
+                  padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.h),
                   decoration: BoxDecoration(
                     color: AppColors.primary,
                     borderRadius: BorderRadius.circular(10.r),
@@ -248,18 +254,18 @@ class _CartListState extends State<CartList> {
                         style: GoogleFonts.barlowCondensed(
                           fontSize: 11.sp,
                           fontWeight: FontWeight.w600,
-                          color: Colors.white.withValues(alpha: 0.40),
+                          color: AppColors.foregroundMuted,
                           decoration: TextDecoration.lineThrough,
-                          decorationColor: Colors.white.withValues(alpha: 0.25),
+                          decorationColor: AppColors.foregroundMuted,
                         ),
                       ),
                     Text(
                       'Rs. ${state.total.toStringAsFixed(2)}',
                       style: GoogleFonts.barlowCondensed(
-                        fontSize: 18.sp,
+                        fontSize: 19.sp,
                         fontWeight: FontWeight.w900,
                         letterSpacing: -0.3,
-                        color: AppColors.amber,
+                        color: AppColors.primaryDark,
                       ),
                     ),
                   ],
@@ -269,27 +275,31 @@ class _CartListState extends State<CartList> {
                   width: 28.r,
                   height: 28.r,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.08),
+                    color: AppColors.surface,
                     borderRadius: BorderRadius.circular(7.r),
+                    border: Border.all(color: AppColors.surfaceVariant),
                   ),
                   child: Icon(Icons.keyboard_arrow_down_rounded,
-                      size: 16.r,
-                      color: Colors.white.withValues(alpha: 0.60)),
+                    size: 16.r,
+                    color: AppColors.foregroundMuted,
+                  ),
                 ),
               ],
             ),
           ),
 
-          SizedBox(height: 10.h),
+          SizedBox(height: 12.h),
+          Divider(color: AppColors.surfaceVariant, height: 1),
+          SizedBox(height: 8.h),
 
-          // Line items
+          // Line items — taller max height
           ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: 200.h),
+            constraints: BoxConstraints(maxHeight: 280.h),
             child: ListView.separated(
               shrinkWrap: true,
-              padding: EdgeInsets.zero,
+              padding: EdgeInsets.symmetric(vertical: 2.h),
               itemCount: state.cart.length,
-              separatorBuilder: (_, __) => SizedBox(height: 2.h),
+              separatorBuilder: (_, __) => SizedBox(height: 4.h),
               itemBuilder: (ctx, i) {
                 final line = state.cart[i];
                 return CartRow(
@@ -309,6 +319,9 @@ class _CartListState extends State<CartList> {
                   onReturnTypeChanged: (rt) => ctx
                       .read<CreateBillBloc>()
                       .add(CartItemReturnTypeChanged(line.lineNumber, rt)),
+                  onFreeIssueSourceChanged: (s) => ctx
+                      .read<CreateBillBloc>()
+                      .add(CartItemFreeIssueSourceChanged(line.lineNumber, s)),
                   onExpireDateChanged: (d) => ctx
                       .read<CreateBillBloc>()
                       .add(CartItemExpireDateChanged(line.lineNumber, d)),
@@ -321,15 +334,15 @@ class _CartListState extends State<CartList> {
           ),
 
           SizedBox(height: 10.h),
-          Divider(color: Colors.white.withValues(alpha: 0.10), height: 1),
+          Divider(color: AppColors.surfaceVariant, height: 1),
           SizedBox(height: 10.h),
 
-          // Total breakdown — show whenever there's anything beyond plain sales
+          // Total breakdown
           if (state.hasReturns || state.hasFreeIssues) ...[
             _TotalRow(
               label: 'SALES',
               value: 'Rs. ${state.saleSubTotal.toStringAsFixed(2)}',
-              valueColor: Colors.white.withValues(alpha: 0.70),
+              valueColor: AppColors.foreground,
             ),
             if (state.billDiscountRate > 0)
               _TotalRow(
@@ -343,20 +356,36 @@ class _CartListState extends State<CartList> {
                 value: '−Rs. ${state.returnTotal.toStringAsFixed(2)}',
                 valueColor: AppColors.error,
               ),
-            if (state.hasFreeIssues)
+            if (state.hasFreeIssues) ...[
               _TotalRow(
                 label: 'FREE ISSUES (info)',
                 value: 'Rs. ${state.freeIssueValue.toStringAsFixed(2)}',
                 valueColor: AppColors.primary,
               ),
+              if (state.freeIssueValueCompany > 0 &&
+                  state.freeIssueValueDistributor > 0) ...[
+                _TotalRow(
+                  label: '  · BY COMPANY',
+                  value:
+                      'Rs. ${state.freeIssueValueCompany.toStringAsFixed(2)}',
+                  valueColor: AppColors.primary,
+                ),
+                _TotalRow(
+                  label: '  · BY DISTRIBUTOR',
+                  value:
+                      'Rs. ${state.freeIssueValueDistributor.toStringAsFixed(2)}',
+                  valueColor: AppColors.primary,
+                ),
+              ],
+            ],
             SizedBox(height: 6.h),
-            Divider(color: Colors.white.withValues(alpha: 0.10), height: 1),
+            Divider(color: AppColors.surfaceVariant, height: 1),
             SizedBox(height: 6.h),
           ],
           _TotalRow(
             label: 'NET TOTAL',
             value: 'Rs. ${state.total.toStringAsFixed(2)}',
-            valueColor: Colors.white,
+            valueColor: AppColors.primaryDark,
             large: true,
           ),
 
@@ -395,13 +424,15 @@ class _TotalRow extends StatelessWidget {
             fontSize: large ? 12.sp : 10.sp,
             fontWeight: FontWeight.w600,
             letterSpacing: 1.2,
-            color: Colors.white.withValues(alpha: large ? 0.55 : 0.40),
+            color: large
+                ? AppColors.foregroundMuted
+                : AppColors.foregroundMuted,
           ),
         ),
         Text(
           value,
           style: GoogleFonts.barlowCondensed(
-            fontSize: large ? 18.sp : 13.sp,
+            fontSize: large ? 19.sp : 13.sp,
             fontWeight: large ? FontWeight.w800 : FontWeight.w600,
             color: valueColor,
           ),
@@ -429,21 +460,21 @@ class _CtaButton extends StatelessWidget {
             : null,
         borderRadius: BorderRadius.circular(12.r),
         child: Ink(
-          height: compact ? 44.h : 52.h,
+          height: compact ? 44.h : 54.h,
           padding: compact
               ? EdgeInsets.symmetric(horizontal: 16.w)
               : EdgeInsets.zero,
           decoration: BoxDecoration(
             color: state.canSubmit
                 ? AppColors.primary
-                : AppColors.primary.withValues(alpha: 0.35),
+                : AppColors.primary.withValues(alpha: 0.30),
             borderRadius: BorderRadius.circular(12.r),
             boxShadow: state.canSubmit
                 ? [
                     BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.35),
-                      blurRadius: 14,
-                      offset: const Offset(0, 5),
+                      color: AppColors.primary.withValues(alpha: 0.30),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
                     ),
                   ]
                 : null,
@@ -455,7 +486,7 @@ class _CtaButton extends StatelessWidget {
                 SizedBox(
                   width: 16.r,
                   height: 16.r,
-                  child: CircularProgressIndicator(
+                  child: const CircularProgressIndicator(
                       strokeWidth: 1.8, color: Colors.white),
                 )
               else

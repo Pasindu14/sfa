@@ -11,6 +11,7 @@ class QuantityDialogResult {
   final double discountRate;
   final String billingItemType;
   final String? returnType;
+  final String? freeIssueSource; // 'Company' | 'Distributor' — only set when FOC
   final DateTime? expireDate;
 
   const QuantityDialogResult({
@@ -19,6 +20,7 @@ class QuantityDialogResult {
     this.discountRate = 0,
     this.billingItemType = 'Sale',
     this.returnType,
+    this.freeIssueSource,
     this.expireDate,
   });
 }
@@ -59,6 +61,7 @@ class _QuantitySheetState extends State<_QuantitySheet> {
   _UnitType _unitType = _UnitType.packets;
   _Mode _mode = _Mode.sale;
   String? _returnType;
+  String _freeIssueSource = 'Company'; // default to Company-funded FOC
   DateTime? _expireDate;
 
   final TextEditingController _qtyController =
@@ -241,6 +244,7 @@ class _QuantitySheetState extends State<_QuantitySheet> {
       discountRate: resolvedDiscount,
       billingItemType: _modeToBillingItemType(_mode),
       returnType: _returnType,
+      freeIssueSource: _isFreeIssue ? _freeIssueSource : null,
       expireDate: _expireDate,
     ));
   }
@@ -362,6 +366,43 @@ class _QuantitySheetState extends State<_QuantitySheet> {
                               ? _Mode.freeIssue
                               : _Mode.returnItem,
                     ),
+                  ),
+
+                  // ── Free issue source (animated) ──────────────────────────
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeInOut,
+                    child: _isFreeIssue
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(height: 16.h),
+                              _Divider(),
+                              SizedBox(height: 14.h),
+                              _sectionLabel('FUNDED BY'),
+                              SizedBox(height: 10.h),
+                              Row(
+                                children: [
+                                  _SourceChip(
+                                    label: 'Company',
+                                    icon: Icons.business_rounded,
+                                    selected: _freeIssueSource == 'Company',
+                                    onTap: () => setState(
+                                        () => _freeIssueSource = 'Company'),
+                                  ),
+                                  SizedBox(width: 10.w),
+                                  _SourceChip(
+                                    label: 'Distributor',
+                                    icon: Icons.local_shipping_rounded,
+                                    selected: _freeIssueSource == 'Distributor',
+                                    onTap: () => setState(
+                                        () => _freeIssueSource = 'Distributor'),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          )
+                        : const SizedBox.shrink(),
                   ),
 
                   // ── Return type (animated) ────────────────────────────────
@@ -1000,6 +1041,69 @@ class _ReturnChip extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.3,
                   color: selected ? AppColors.error : AppColors.foreground,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Free issue funding source chip ────────────────────────────────────────────
+
+class _SourceChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _SourceChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: selected ? null : onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          padding: EdgeInsets.symmetric(vertical: 12.h),
+          decoration: BoxDecoration(
+            color: selected
+                ? AppColors.success.withValues(alpha: 0.10)
+                : AppColors.surface,
+            borderRadius: BorderRadius.circular(10.r),
+            border: Border.all(
+              color: selected
+                  ? AppColors.success.withValues(alpha: 0.55)
+                  : AppColors.surfaceVariant,
+              width: 1.5,
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                icon,
+                size: 18.r,
+                color:
+                    selected ? AppColors.success : AppColors.foregroundMuted,
+              ),
+              SizedBox(height: 4.h),
+              Text(
+                label,
+                style: GoogleFonts.barlowCondensed(
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.3,
+                  color:
+                      selected ? AppColors.success : AppColors.foreground,
                 ),
               ),
             ],

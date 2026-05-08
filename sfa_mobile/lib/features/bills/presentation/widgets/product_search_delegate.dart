@@ -20,6 +20,7 @@ void showProductSearch(
     double discountRate,
     String billingItemType,
     String? returnType,
+    String? freeIssueSource,
     DateTime? expireDate,
   ) onProductAdded,
   int? pricingStructureId,
@@ -47,12 +48,14 @@ sealed class _ListItem {}
 final class _Header extends _ListItem {
   final String label;
   final bool isExpanded;
-  _Header(this.label, {required this.isExpanded});
+  final int productCount;
+  _Header(this.label, {required this.isExpanded, required this.productCount});
 }
 
 final class _Product extends _ListItem {
   final ProductWithPrice product;
-  _Product(this.product);
+  final bool isLast;
+  _Product(this.product, {this.isLast = false});
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -67,6 +70,7 @@ class _ProductSearchPage extends StatefulWidget {
     double discountRate,
     String billingItemType,
     String? returnType,
+    String? freeIssueSource,
     DateTime? expireDate,
   ) onProductAdded;
 
@@ -82,6 +86,7 @@ class _ProductSearchPage extends StatefulWidget {
 
 class _ProductSearchPageState extends State<_ProductSearchPage> {
   final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
   String _query = '';
   Future<List<ProductWithPrice>>? _searchFuture;
   final Set<String> _expandedCategories = {};
@@ -95,8 +100,6 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
       ));
-      // Sync categories in the background so grouping is always fresh.
-      // After sync, re-run the current query to pick up new category names.
       getIt<SyncProductCategoriesUseCase>()().then((_) {
         if (mounted) setState(() => _searchFuture = _search(_query));
       }).ignore();
@@ -106,6 +109,7 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
   @override
   void dispose() {
     _controller.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -120,6 +124,11 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
     setState(() {
       _query = trimmed;
       _searchFuture = _search(trimmed);
+      // Auto-expand all categories when searching so results are visible.
+      if (trimmed.isNotEmpty) {
+        _expandedCategories.clear();
+        _expandedCategories.add('__auto_expand__');
+      }
     });
   }
 
@@ -133,12 +142,14 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
         result.discountRate,
         result.billingItemType,
         result.returnType,
+        result.freeIssueSource,
         result.expireDate,
       );
       _controller.clear();
       setState(() {
         _query = '';
         _searchFuture = _search('');
+        _expandedCategories.remove('__auto_expand__');
       });
     }
   }
@@ -153,24 +164,36 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
     });
   }
 
-  /// Converts a flat sorted list into grouped [_ListItem]s with [_Header]s.
-  /// SQL already orders by category name (nulls last) then product code,
-  /// so we just scan for boundary changes.
-  /// Products under collapsed headers are omitted from the list.
+  /// Converts a flat sorted list into grouped [_ListItem]s with category counts.
   List<_ListItem> _buildGrouped(List<ProductWithPrice> products) {
     final items = <_ListItem>[];
-    String? lastLabel;
+    final isSearching = _query.isNotEmpty;
+
+    // Count products per category first
+    final Map<String, List<ProductWithPrice>> grouped = {};
     for (final p in products) {
       final label = p.categoryName ?? 'Uncategorized';
-      if (label != lastLabel) {
-        items.add(_Header(
-          label,
-          isExpanded: _expandedCategories.contains(label),
-        ));
-        lastLabel = label;
-      }
-      if (_expandedCategories.contains(label)) {
-        items.add(_Product(p));
+      grouped.putIfAbsent(label, () => []).add(p);
+    }
+
+    for (final entry in grouped.entries) {
+      final label = entry.key;
+      final categoryProducts = entry.value;
+      final isExpanded = isSearching || _expandedCategories.contains(label);
+
+      items.add(_Header(
+        label,
+        isExpanded: isExpanded,
+        productCount: categoryProducts.length,
+      ));
+
+      if (isExpanded) {
+        for (var i = 0; i < categoryProducts.length; i++) {
+          items.add(_Product(
+            categoryProducts[i],
+            isLast: i == categoryProducts.length - 1,
+          ));
+        }
       }
     }
     return items;
@@ -182,104 +205,173 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          // ── Gradient header ─────────────────────────────────────────────────
+          // ── Dark gradient header ──────────────────────────────────────────────
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [AppColors.primaryDark, AppColors.primary],
+                colors: [AppColors.primaryDark, AppColors.primaryMedium, AppColors.primary],
+                stops: [0.0, 0.5, 1.0],
               ),
             ),
             child: SafeArea(
               bottom: false,
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(8.w, 4.h, 8.w, 16.h),
-                child: Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
-                      child: Container(
-                        width: 40.r,
-                        height: 40.r,
-                        margin: EdgeInsets.all(4.r),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10.r),
-                          border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.25)),
+              child: Column(
+                children: [
+                  // Title row
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(8.w, 4.h, 16.w, 12.h),
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => Navigator.of(context).pop(),
+                          child: Container(
+                            width: 40.r,
+                            height: 40.r,
+                            margin: EdgeInsets.all(4.r),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10.r),
+                              border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.25)),
+                            ),
+                            child: Icon(Icons.arrow_back_ios_new_rounded,
+                                size: 15.r, color: Colors.white),
+                          ),
                         ),
-                        child: Icon(Icons.arrow_back_ios_new_rounded,
-                            size: 15.r, color: Colors.white),
+                        SizedBox(width: 6.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'ADD PRODUCTS',
+                                style: GoogleFonts.barlowCondensed(
+                                  fontSize: 20.sp,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 2.0,
+                                  height: 1.0,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              Text(
+                                'Tap a category to browse',
+                                style: GoogleFonts.barlow(
+                                  fontSize: 11.sp,
+                                  color: Colors.white.withValues(alpha: 0.65),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Product icon accent
+                        Container(
+                          width: 38.r,
+                          height: 38.r,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10.r),
+                          ),
+                          child: Icon(Icons.inventory_2_rounded,
+                              size: 18.r,
+                              color: Colors.white.withValues(alpha: 0.85)),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Search bar inset into the header for visual continuity
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 14.h),
+                    child: AnimatedBuilder(
+                      animation: _focusNode,
+                      builder: (_, child) => Container(
+                        height: 42.h,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12.r),
+                          border: Border.all(
+                            color: _focusNode.hasFocus
+                                ? AppColors.amber
+                                : Colors.transparent,
+                            width: 2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 12,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: child,
+                      ),
+                      child: TextField(
+                        controller: _controller,
+                        focusNode: _focusNode,
+                        autofocus: false,
+                        onChanged: _onQueryChanged,
+                        style: GoogleFonts.barlow(
+                            fontSize: 13.sp, color: AppColors.foreground),
+                        decoration: InputDecoration(
+                          hintText: 'Search by code or name…',
+                          hintStyle: GoogleFonts.barlow(
+                              fontSize: 13.sp,
+                              color: AppColors.foregroundMuted),
+                          prefixIcon: Icon(Icons.search_rounded,
+                              size: 18.r, color: AppColors.primary),
+                          suffixIcon: _controller.text.isNotEmpty
+                              ? IconButton(
+                                  icon: Icon(Icons.clear_rounded,
+                                      size: 16.r,
+                                      color: AppColors.foregroundMuted),
+                                  onPressed: () {
+                                    _controller.clear();
+                                    _onQueryChanged('');
+                                  },
+                                )
+                              : null,
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(
+                              vertical: 10.h, horizontal: 4.w),
+                        ),
                       ),
                     ),
-                    SizedBox(width: 4.w),
-                    Text(
-                      'ADD PRODUCTS',
-                      style: GoogleFonts.barlowCondensed(
-                        fontSize: 18.sp,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.5,
-                        height: 1.0,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
 
-          // ── Search bar ──────────────────────────────────────────────────────
-          Padding(
-            padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 4.h),
-            child: Container(
-              height: 40.h,
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(10.r),
-                border: Border.all(color: AppColors.surfaceVariant),
-              ),
-              child: TextField(
-                controller: _controller,
-                autofocus: false,
-                onChanged: _onQueryChanged,
-                style: GoogleFonts.barlow(
-                    fontSize: 13.sp, color: AppColors.foreground),
-                decoration: InputDecoration(
-                  hintText: 'Search by code or name…',
-                  hintStyle: GoogleFonts.barlow(
-                      fontSize: 13.sp, color: AppColors.foregroundMuted),
-                  prefixIcon: Icon(Icons.search_rounded,
-                      size: 16.r, color: AppColors.foregroundMuted),
-                  suffixIcon: _controller.text.isNotEmpty
-                      ? IconButton(
-                          icon: Icon(Icons.clear_rounded,
-                              size: 16.r, color: AppColors.foregroundMuted),
-                          onPressed: () {
-                            _controller.clear();
-                            _onQueryChanged('');
-                          },
-                        )
-                      : null,
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(
-                      vertical: 10.h, horizontal: 4.w),
-                ),
-              ),
-            ),
-          ),
-
-          // ── Grouped product list ────────────────────────────────────────────
+          // ── Grouped product list ──────────────────────────────────────────────
           Expanded(
             child: FutureBuilder<List<ProductWithPrice>>(
               future: _searchFuture,
               builder: (ctx, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.primary,
+                  return Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 28.r,
+                          height: 28.r,
+                          child: const CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        SizedBox(height: 12.h),
+                        Text(
+                          'Loading products…',
+                          style: GoogleFonts.barlow(
+                            fontSize: 12.sp,
+                            color: AppColors.foregroundMuted,
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 }
@@ -295,7 +387,7 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
 
                 final items = _buildGrouped(results);
                 return ListView.builder(
-                  padding: EdgeInsets.only(bottom: 16.h),
+                  padding: EdgeInsets.only(top: 8.h, bottom: 20.h),
                   itemCount: items.length,
                   itemBuilder: (_, i) {
                     final item = items[i];
@@ -303,10 +395,12 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
                       _Header h => _CategoryHeader(
                           label: h.label,
                           isExpanded: h.isExpanded,
+                          productCount: h.productCount,
                           onTap: () => _toggleCategory(h.label),
                         ),
                       _Product p => _ProductTile(
                           product: p.product,
+                          isLast: p.isLast,
                           onTap: () => _pickProduct(p.product),
                         ),
                     };
@@ -327,74 +421,123 @@ class _CategoryHeader extends StatelessWidget {
   const _CategoryHeader({
     required this.label,
     required this.isExpanded,
+    required this.productCount,
     required this.onTap,
   });
 
   final String label;
   final bool isExpanded;
+  final int productCount;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final isUncategorized = label == 'Uncategorized';
-    final accentColor =
-        isExpanded ? AppColors.primary : AppColors.foregroundMuted;
 
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        margin: EdgeInsets.only(top: 6.h),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          border: Border(
-            left: BorderSide(
-              color: accentColor.withValues(alpha: isExpanded ? 1.0 : 0.35),
-              width: 3.w,
+    // Collapsed: light primary tint card with orange left border.
+    // Expanded:  solid primary orange fill with white text.
+    final radius = BorderRadius.only(
+      topLeft: Radius.circular(12.r),
+      topRight: Radius.circular(12.r),
+      bottomLeft: Radius.circular(isExpanded ? 0 : 12.r),
+      bottomRight: Radius.circular(isExpanded ? 0 : 12.r),
+    );
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 0),
+      child: Material(
+        color: isExpanded ? AppColors.primary : AppColors.primary.withValues(alpha: 0.10),
+        borderRadius: radius,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: radius,
+          splashColor: Colors.white.withValues(alpha: 0.15),
+          highlightColor: Colors.white.withValues(alpha: 0.08),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: radius,
+              border: isExpanded
+                  ? null
+                  : Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.35),
+                      width: 1.5,
+                    ),
+            ),
+            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+            child: Row(
+              children: [
+                // Category icon box
+                Container(
+                  width: 36.r,
+                  height: 36.r,
+                  decoration: BoxDecoration(
+                    color: isExpanded
+                        ? Colors.white.withValues(alpha: 0.20)
+                        : AppColors.primary.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(9.r),
+                  ),
+                  child: Icon(
+                    isUncategorized
+                        ? Icons.label_off_rounded
+                        : Icons.category_rounded,
+                    size: 17.r,
+                    color: isExpanded
+                        ? Colors.white
+                        : AppColors.primaryDark,
+                  ),
+                ),
+                SizedBox(width: 12.w),
+
+                // Label
+                Expanded(
+                  child: Text(
+                    label,
+                    style: GoogleFonts.barlowCondensed(
+                      fontSize: 15.sp,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.4,
+                      color: isExpanded
+                          ? Colors.white
+                          : AppColors.primaryDark,
+                    ),
+                  ),
+                ),
+
+                // Product count badge
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                  decoration: BoxDecoration(
+                    color: isExpanded
+                        ? Colors.white.withValues(alpha: 0.25)
+                        : AppColors.primary,
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  child: Text(
+                    '$productCount',
+                    style: GoogleFonts.barlowCondensed(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 8.w),
+
+                // Expand/collapse chevron
+                AnimatedRotation(
+                  turns: isExpanded ? 0.0 : -0.25,
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(
+                    Icons.expand_more_rounded,
+                    size: 20.r,
+                    color: isExpanded
+                        ? Colors.white
+                        : AppColors.primaryDark,
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 13.h),
-        child: Row(
-          children: [
-            Container(
-              width: 34.r,
-              height: 34.r,
-              decoration: BoxDecoration(
-                color: accentColor.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(9.r),
-              ),
-              child: Icon(
-                isUncategorized
-                    ? Icons.label_off_rounded
-                    : Icons.label_rounded,
-                size: 17.r,
-                color: accentColor,
-              ),
-            ),
-            SizedBox(width: 12.w),
-            Expanded(
-              child: Text(
-                label.toUpperCase(),
-                style: GoogleFonts.barlowCondensed(
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.4,
-                  color: isExpanded
-                      ? AppColors.foreground
-                      : AppColors.foregroundMuted,
-                ),
-              ),
-            ),
-            AnimatedRotation(
-              turns: isExpanded ? 0.0 : -0.25,
-              duration: const Duration(milliseconds: 200),
-              child: Icon(
-                Icons.expand_more_rounded,
-                size: 20.r,
-                color: accentColor,
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -404,98 +547,135 @@ class _CategoryHeader extends StatelessWidget {
 // ── Product result tile ───────────────────────────────────────────────────────
 
 class _ProductTile extends StatelessWidget {
-  const _ProductTile({required this.product, required this.onTap});
+  const _ProductTile({
+    required this.product,
+    required this.onTap,
+    this.isLast = false,
+  });
 
   final ProductWithPrice product;
   final VoidCallback onTap;
+  final bool isLast;
 
   bool get _hasPrice =>
       product.dealerPackPrice != null && product.dealerPackPrice! > 0;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        InkWell(
-          onTap: _hasPrice ? onTap : null,
-          child: Opacity(
-            opacity: _hasPrice ? 1.0 : 0.45,
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36.r,
-                    height: 36.r,
-                    decoration: BoxDecoration(
-                      color: _hasPrice
-                          ? AppColors.primary.withValues(alpha: 0.08)
-                          : AppColors.surfaceVariant,
-                      borderRadius: BorderRadius.circular(9.r),
-                    ),
-                    child: Icon(Icons.inventory_2_rounded,
-                        size: 16.r,
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 12.w),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.only(
+            bottomLeft: Radius.circular(isLast ? 12.r : 0),
+            bottomRight: Radius.circular(isLast ? 12.r : 0),
+          ),
+          border: Border(
+            left: BorderSide(color: AppColors.surfaceVariant, width: 1),
+            right: BorderSide(color: AppColors.surfaceVariant, width: 1),
+            bottom: BorderSide(
+              color: isLast
+                  ? AppColors.surfaceVariant
+                  : AppColors.surfaceVariant.withValues(alpha: 0.5),
+              width: 1,
+            ),
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: _hasPrice ? onTap : null,
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(isLast ? 12.r : 0),
+              bottomRight: Radius.circular(isLast ? 12.r : 0),
+            ),
+            child: Opacity(
+              opacity: _hasPrice ? 1.0 : 0.45,
+              child: Padding(
+                padding:
+                    EdgeInsets.symmetric(horizontal: 14.w, vertical: 11.h),
+                child: Row(
+                  children: [
+                    // Product icon
+                    Container(
+                      width: 38.r,
+                      height: 38.r,
+                      decoration: BoxDecoration(
                         color: _hasPrice
-                            ? AppColors.primary
-                            : AppColors.foregroundMuted),
-                  ),
-                  SizedBox(width: 12.w),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          product.itemDescription,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.barlowCondensed(
-                            fontSize: 15.sp,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.2,
-                            color: AppColors.foreground,
-                          ),
-                        ),
-                        Text(
-                          product.code,
-                          style: GoogleFonts.barlow(
-                            fontSize: 11.sp,
-                            color: AppColors.foregroundMuted,
-                          ),
-                        ),
-                      ],
+                            ? AppColors.primary.withValues(alpha: 0.08)
+                            : AppColors.surfaceVariant,
+                        borderRadius: BorderRadius.circular(9.r),
+                      ),
+                      child: Icon(Icons.inventory_2_rounded,
+                          size: 17.r,
+                          color: _hasPrice
+                              ? AppColors.primary
+                              : AppColors.foregroundMuted),
                     ),
-                  ),
-                  SizedBox(width: 8.w),
-                  Container(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-                    decoration: BoxDecoration(
-                      color: _hasPrice
-                          ? AppColors.primary.withValues(alpha: 0.08)
-                          : AppColors.surfaceVariant,
-                      borderRadius: BorderRadius.circular(8.r),
-                    ),
-                    child: Text(
-                      _hasPrice
-                          ? 'Rs. ${product.dealerPackPrice!.toStringAsFixed(0)}'
-                          : 'No price',
-                      style: GoogleFonts.barlowCondensed(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w800,
-                        color: _hasPrice
-                            ? AppColors.primary
-                            : AppColors.foregroundMuted,
+                    SizedBox(width: 12.w),
+
+                    // Name + code
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            product.itemDescription,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.barlowCondensed(
+                              fontSize: 15.sp,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.2,
+                              color: AppColors.foreground,
+                            ),
+                          ),
+                          SizedBox(height: 1.h),
+                          Text(
+                            product.code,
+                            style: GoogleFonts.barlow(
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.foregroundMuted,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                ],
+                    SizedBox(width: 10.w),
+
+                    // Price badge
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 10.w, vertical: 5.h),
+                      decoration: BoxDecoration(
+                        color: _hasPrice
+                            ? AppColors.primaryDark
+                            : AppColors.surfaceVariant,
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                      child: Text(
+                        _hasPrice
+                            ? 'Rs. ${product.dealerPackPrice!.toStringAsFixed(0)}'
+                            : 'No price',
+                        style: GoogleFonts.barlowCondensed(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.3,
+                          color: _hasPrice
+                              ? Colors.white
+                              : AppColors.foregroundMuted,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
-        Divider(height: 1, color: AppColors.surfaceVariant),
-      ],
+      ),
     );
   }
 }
@@ -513,12 +693,21 @@ class _Prompt extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 40.r, color: AppColors.surfaceVariant),
-          SizedBox(height: 12.h),
+          Container(
+            width: 64.r,
+            height: 64.r,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 30.r, color: AppColors.primary.withValues(alpha: 0.50)),
+          ),
+          SizedBox(height: 16.h),
           Text(
             message,
-            style: GoogleFonts.barlow(
-              fontSize: 13.sp,
+            style: GoogleFonts.barlowCondensed(
+              fontSize: 15.sp,
+              fontWeight: FontWeight.w600,
               color: AppColors.foregroundMuted,
             ),
             textAlign: TextAlign.center,

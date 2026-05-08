@@ -15,6 +15,7 @@ public class BillingItem
     public decimal TotalPrice { get; set; }
     public BillingItemType BillingItemType { get; set; } = BillingItemType.Sale;
     public ReturnType? ReturnType { get; set; }
+    public FreeIssueSource? FreeIssueSource { get; set; }
     public DateOnly? ExpireDate { get; set; }
     public int LineNumber { get; set; }
 

@@ -14,6 +14,7 @@ public record BillingItemDto(
     decimal TotalPrice,
     BillingItemType BillingItemType,
     ReturnType? ReturnType,
+    FreeIssueSource? FreeIssueSource,
     DateOnly? ExpireDate,
     int LineNumber
 );

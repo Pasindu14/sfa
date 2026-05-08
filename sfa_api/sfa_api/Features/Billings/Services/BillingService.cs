@@ -88,29 +88,41 @@ public class BillingService(
 
         // ⑥ Pre-check stock availability before acquiring lock (fast fail).
         // Collects ALL shortages in one pass so the rep sees every missing product at once.
-        var saleItems      = request.Items.Where(i => i.BillingItemType == BillingItemType.Sale).ToList();
-        var fiItems        = request.Items.Where(i => i.BillingItemType == BillingItemType.FreeIssue).ToList();
-        var preCheckIds    = saleItems.Select(i => i.ProductId)
-                                      .Concat(fiItems.Select(i => i.ProductId))
-                                      .Distinct().ToList();
+        // FOC lines split by funding source:
+        //   - Company-funded FOC   → drawn from StockType.FreeIssue pool
+        //   - Distributor-funded FOC → drawn from StockType.Normal pool, so it competes with Sale demand for the same balance
+        var saleItems       = request.Items.Where(i => i.BillingItemType == BillingItemType.Sale).ToList();
+        var companyFiItems  = request.Items.Where(i => i.BillingItemType == BillingItemType.FreeIssue
+                                                    && i.FreeIssueSource == FreeIssueSource.Company).ToList();
+        var distributorFiItems = request.Items.Where(i => i.BillingItemType == BillingItemType.FreeIssue
+                                                       && i.FreeIssueSource == FreeIssueSource.Distributor).ToList();
+        var preCheckIds = saleItems.Select(i => i.ProductId)
+                                   .Concat(companyFiItems.Select(i => i.ProductId))
+                                   .Concat(distributorFiItems.Select(i => i.ProductId))
+                                   .Distinct().ToList();
 
         if (preCheckIds.Count > 0)
         {
             var snapshot  = await _billingRepository.GetStockSnapshotAsync(distributor.Id, preCheckIds, ct);
             var shortages = new List<StockShortage>();
 
-            foreach (var item in saleItems)
+            // Combine Sale + Distributor-funded FOC demand per product against the Normal pool
+            var normalDemand = saleItems.Concat(distributorFiItems)
+                                        .GroupBy(i => i.ProductId)
+                                        .Select(g => new { ProductId = g.Key, Quantity = g.Sum(i => i.Quantity) });
+
+            foreach (var demand in normalDemand)
             {
-                var stock     = snapshot.FirstOrDefault(s => s.ProductId == item.ProductId && s.StockType == StockType.Normal);
+                var stock     = snapshot.FirstOrDefault(s => s.ProductId == demand.ProductId && s.StockType == StockType.Normal);
                 var available = stock?.QuantityOnHand ?? 0m;
-                if (available < item.Quantity)
+                if (available < demand.Quantity)
                 {
-                    var name = productNames.TryGetValue(item.ProductId, out var n) ? n : $"Product #{item.ProductId}";
-                    shortages.Add(new StockShortage(item.ProductId, name, item.Quantity, available));
+                    var name = productNames.TryGetValue(demand.ProductId, out var n) ? n : $"Product #{demand.ProductId}";
+                    shortages.Add(new StockShortage(demand.ProductId, name, demand.Quantity, available));
                 }
             }
 
-            foreach (var item in fiItems)
+            foreach (var item in companyFiItems)
             {
                 var stock     = snapshot.FirstOrDefault(s => s.ProductId == item.ProductId && s.StockType == StockType.FreeIssue);
                 var available = stock?.QuantityOnHand ?? 0m;
@@ -130,8 +142,9 @@ public class BillingService(
         // FreeIssue  → discountAmount = 0; totalPrice = qty × price (informational FOC value); excluded from SubTotal
         // Return     → totalPrice = qty × price; tracked separately, no SubTotal contribution
         var billDiscountRate = request.BillDiscountRate;
-        decimal subTotal       = 0m;
-        decimal freeIssueValue = 0m;
+        decimal subTotal                  = 0m;
+        decimal freeIssueValueCompany     = 0m;
+        decimal freeIssueValueDistributor = 0m;
         var lineItems = request.Items.Select((item, idx) =>
         {
             decimal discountAmount;
@@ -142,7 +155,10 @@ public class BillingService(
                 case BillingItemType.FreeIssue:
                     discountAmount = 0m;
                     totalPrice     = Math.Round(item.Quantity * item.UnitPrice, 2);
-                    freeIssueValue += totalPrice;
+                    if (item.FreeIssueSource == FreeIssueSource.Distributor)
+                        freeIssueValueDistributor += totalPrice;
+                    else
+                        freeIssueValueCompany += totalPrice;
                     break;
                 case BillingItemType.Sale:
                     discountAmount = Math.Round(item.Quantity * item.UnitPrice * item.DiscountRate / 100m, 2);
@@ -157,19 +173,21 @@ public class BillingService(
 
             return new BillingItem
             {
-                ProductId       = item.ProductId,
-                Quantity        = item.Quantity,
-                UnitPrice       = item.UnitPrice,
-                DiscountRate    = item.BillingItemType == BillingItemType.FreeIssue ? 0m : item.DiscountRate,
-                DiscountAmount  = discountAmount,
-                TotalPrice      = totalPrice,
-                BillingItemType = item.BillingItemType,
-                ReturnType      = item.ReturnType,
-                ExpireDate      = item.ExpireDate,
-                LineNumber      = idx + 1,
-                CreatedAt       = DateTime.UtcNow
+                ProductId        = item.ProductId,
+                Quantity         = item.Quantity,
+                UnitPrice        = item.UnitPrice,
+                DiscountRate     = item.BillingItemType == BillingItemType.FreeIssue ? 0m : item.DiscountRate,
+                DiscountAmount   = discountAmount,
+                TotalPrice       = totalPrice,
+                BillingItemType  = item.BillingItemType,
+                ReturnType       = item.ReturnType,
+                FreeIssueSource  = item.BillingItemType == BillingItemType.FreeIssue ? item.FreeIssueSource : null,
+                ExpireDate       = item.ExpireDate,
+                LineNumber       = idx + 1,
+                CreatedAt        = DateTime.UtcNow
             };
         }).ToList();
+        var freeIssueValue = freeIssueValueCompany + freeIssueValueDistributor;
 
         var billDiscountAmount = Math.Round(subTotal * billDiscountRate / 100m, 2);
         var totalAmount        = subTotal - billDiscountAmount;
@@ -204,7 +222,9 @@ public class BillingService(
             BillDiscountRate  = billDiscountRate,
             BillDiscountAmount = billDiscountAmount,
             TotalAmount       = totalAmount,
-            FreeIssueValue    = freeIssueValue,
+            FreeIssueValue            = freeIssueValue,
+            FreeIssueValueCompany     = freeIssueValueCompany,
+            FreeIssueValueDistributor = freeIssueValueDistributor,
             Status            = BillingStatus.Submitted,
             Notes             = request.Notes,
             Latitude          = request.Latitude,
@@ -238,7 +258,20 @@ public class BillingService(
                                 "Billing", billing.Id, salesRepId, ct: ct);
                             break;
 
+                        case BillingItemType.FreeIssue when item.FreeIssueSource == FreeIssueSource.Distributor:
+                            // Distributor-funded FOC: distributor gives away their own saleable stock as a promotion.
+                            // Deduct from Normal pool — same physical inventory the Sale lines compete for.
+                            await _stockRepository.GetStockForUpdateAsync(distributor.Id, item.ProductId, StockType.Normal, ct);
+                            await _stockRepository.DeductStockAsync(
+                                distributor.Id, item.ProductId, item.Quantity,
+                                StockType.Normal,
+                                StockTransactionType.FreeIssue,
+                                "Billing", billing.Id, salesRepId,
+                                notes: "Distributor-funded FOC", ct: ct);
+                            break;
+
                         case BillingItemType.FreeIssue:
+                            // Company-funded FOC (default): drawn from the FOC pool the manufacturer ships to the distributor.
                             await _stockRepository.GetStockForUpdateAsync(distributor.Id, item.ProductId, StockType.FreeIssue, ct);
                             await _stockRepository.DeductStockAsync(
                                 distributor.Id, item.ProductId, item.Quantity,
@@ -324,6 +357,8 @@ public class BillingService(
         b.BillDiscountAmount,
         b.TotalAmount,
         b.FreeIssueValue,
+        b.FreeIssueValueCompany,
+        b.FreeIssueValueDistributor,
         b.Status,
         b.Notes,
         b.Latitude,
@@ -341,6 +376,7 @@ public class BillingService(
             i.TotalPrice,
             i.BillingItemType,
             i.ReturnType,
+            i.FreeIssueSource,
             i.ExpireDate,
             i.LineNumber)).ToList()
     );

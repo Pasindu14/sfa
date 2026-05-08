@@ -10,6 +10,7 @@ class BillItemModel {
   final double discountRate;
   final String billingItemType; // 'Sale' | 'FreeIssue' | 'Return'
   final String? returnType;
+  final String? freeIssueSource; // 'Company' | 'Distributor' — null unless FOC
   final DateTime? expireDate;
   final int lineNumber;
 
@@ -23,6 +24,7 @@ class BillItemModel {
     this.discountRate = 0,
     this.billingItemType = 'Sale',
     this.returnType,
+    this.freeIssueSource,
     this.expireDate,
     required this.lineNumber,
   });
@@ -44,6 +46,7 @@ class BillItemModel {
       discountRate: (map['discount_rate'] as num?)?.toDouble() ?? 0,
       billingItemType: type,
       returnType: map['return_type'] as String?,
+      freeIssueSource: map['free_issue_source'] as String?,
       expireDate: map['expire_date'] != null
           ? DateTime.tryParse(map['expire_date'] as String)
           : null,
@@ -60,6 +63,7 @@ class BillItemModel {
         'discount_rate': discountRate,
         'billing_item_type': billingItemType,
         'return_type': returnType,
+        'free_issue_source': freeIssueSource,
         'expire_date': expireDate != null ? _dateOnly(expireDate!) : null,
         'line_number': lineNumber,
       };
@@ -71,6 +75,7 @@ class BillItemModel {
         'discountRate': discountRate,
         'billingItemType': billingItemType,
         'returnType': returnType,
+        'freeIssueSource': freeIssueSource,
         'expireDate': expireDate != null ? _dateOnly(expireDate!) : null,
       };
 
@@ -84,6 +89,7 @@ class BillItemModel {
         discountRate: discountRate,
         billingItemType: billingItemType,
         returnType: returnType,
+        freeIssueSource: freeIssueSource,
         expireDate: expireDate,
         lineNumber: lineNumber,
       );

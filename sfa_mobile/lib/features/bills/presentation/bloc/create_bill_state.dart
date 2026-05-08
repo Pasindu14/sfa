@@ -17,6 +17,7 @@ class CartLine extends Equatable {
   final double discountRate;
   final String billingItemType; // 'Sale' | 'FreeIssue' | 'Return'
   final String? returnType;     // 'Damage' | 'Expire' | 'MarketResell'
+  final String? freeIssueSource; // 'Company' | 'Distributor' — only set when isFreeIssue
   final DateTime? expireDate;   // Only when returnType == 'Expire'
 
   const CartLine({
@@ -27,6 +28,7 @@ class CartLine extends Equatable {
     this.discountRate = 0,
     this.billingItemType = 'Sale',
     this.returnType,
+    this.freeIssueSource,
     this.expireDate,
   });
 
@@ -53,6 +55,8 @@ class CartLine extends Equatable {
     String? billingItemType,
     String? returnType,
     bool clearReturnType = false,
+    String? freeIssueSource,
+    bool clearFreeIssueSource = false,
     DateTime? expireDate,
     bool clearExpireDate = false,
   }) =>
@@ -64,6 +68,9 @@ class CartLine extends Equatable {
         discountRate: discountRate ?? this.discountRate,
         billingItemType: billingItemType ?? this.billingItemType,
         returnType: clearReturnType ? null : (returnType ?? this.returnType),
+        freeIssueSource: clearFreeIssueSource
+            ? null
+            : (freeIssueSource ?? this.freeIssueSource),
         expireDate: clearExpireDate ? null : (expireDate ?? this.expireDate),
       );
 
@@ -76,6 +83,7 @@ class CartLine extends Equatable {
         discountRate,
         billingItemType,
         returnType,
+        freeIssueSource,
         expireDate,
       ];
 }
@@ -108,6 +116,12 @@ class CreateBillState extends Equatable {
   // Aggregates — each line type contributes to its own bucket only.
   double get saleSubTotal    => cart.where((l) => l.isSale     ).fold<double>(0, (s, l) => s + l.lineTotal);
   double get freeIssueValue  => cart.where((l) => l.isFreeIssue).fold<double>(0, (s, l) => s + l.lineTotal);
+  double get freeIssueValueCompany =>
+      cart.where((l) => l.isFreeIssue && l.freeIssueSource == 'Company')
+          .fold<double>(0, (s, l) => s + l.lineTotal);
+  double get freeIssueValueDistributor =>
+      cart.where((l) => l.isFreeIssue && l.freeIssueSource == 'Distributor')
+          .fold<double>(0, (s, l) => s + l.lineTotal);
   double get returnTotal     => cart.where((l) => l.isReturn   ).fold<double>(0, (s, l) => s + l.lineTotal);
 
   double get billDiscountAmount => saleSubTotal * billDiscountRate / 100.0;
@@ -121,6 +135,7 @@ class CreateBillState extends Equatable {
       selectedPricingStructure != null &&
       cart.isNotEmpty &&
       cart.every((l) => !l.isReturn || l.returnType != null) &&
+      cart.every((l) => !l.isFreeIssue || l.freeIssueSource != null) &&
       !submitting;
 
   CreateBillState copyWith({

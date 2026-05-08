@@ -148,12 +148,13 @@ class _BillDetailPageState extends State<BillDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-    ));
-
-    return Scaffold(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
       backgroundColor: AppColors.background,
       body: Column(
         children: [
@@ -254,6 +255,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -619,7 +621,7 @@ class _ItemRow extends StatelessWidget {
               ],
               if (item.isFreeIssue) ...[
                 SizedBox(width: 8.w),
-                _freeIssueChip(),
+                _freeIssueChip(item.freeIssueSource),
               ],
             ],
           ),
@@ -695,7 +697,9 @@ class _ItemRow extends StatelessWidget {
     );
   }
 
-  Widget _freeIssueChip() {
+  Widget _freeIssueChip(String? source) {
+    // Source label uppercased for chip; older bills without a source show plain FREE.
+    final suffix = source != null ? ' · ${source.toUpperCase()}' : '';
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
       decoration: BoxDecoration(
@@ -704,7 +708,7 @@ class _ItemRow extends StatelessWidget {
         border: Border.all(color: AppColors.success.withValues(alpha: 0.30)),
       ),
       child: Text(
-        'FREE',
+        'FREE$suffix',
         style: GoogleFonts.barlowCondensed(
           fontSize: 10.sp,
           fontWeight: FontWeight.w800,
@@ -722,8 +726,18 @@ class _TotalsCard extends StatelessWidget {
   final Bill bill;
   const _TotalsCard({required this.bill});
 
+  // FOC values derived from items — server doesn't ship the per-source split into
+  // the local Bill entity, but we already have the lines so we recompute here.
+  double _focValue(String? source) => bill.items
+      .where((i) => i.isFreeIssue && i.freeIssueSource == source)
+      .fold<double>(0, (s, i) => s + i.quantity * i.unitPrice);
+
   @override
   Widget build(BuildContext context) {
+    final focCompany = _focValue('Company');
+    final focDistributor = _focValue('Distributor');
+    final hasFoc = focCompany > 0 || focDistributor > 0;
+
     return Container(
       padding: EdgeInsets.all(14.r),
       decoration: BoxDecoration(
@@ -736,6 +750,16 @@ class _TotalsCard extends StatelessWidget {
           if (bill.billDiscountAmount > 0) ...[
             SizedBox(height: 6.h),
             _discountLine(bill.billDiscountRate, bill.billDiscountAmount),
+          ],
+          if (hasFoc) ...[
+            SizedBox(height: 6.h),
+            _line('Free issues (info)', focCompany + focDistributor),
+            if (focCompany > 0 && focDistributor > 0) ...[
+              SizedBox(height: 4.h),
+              _subLine('  · By Company', focCompany),
+              SizedBox(height: 2.h),
+              _subLine('  · By Distributor', focDistributor),
+            ],
           ],
           SizedBox(height: 8.h),
           Divider(color: Colors.white.withValues(alpha: 0.10), height: 1),
@@ -765,6 +789,27 @@ class _TotalsCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _subLine(String label, double amount) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.barlow(
+              fontSize: 11.sp, color: Colors.white.withValues(alpha: 0.40)),
+        ),
+        Text(
+          'Rs. ${amount.toStringAsFixed(2)}',
+          style: GoogleFonts.barlowCondensed(
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w600,
+            color: Colors.white.withValues(alpha: 0.65),
+          ),
+        ),
+      ],
     );
   }
 

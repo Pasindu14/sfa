@@ -9,5 +9,6 @@ public record CreateBillingItemRequest(
     decimal DiscountRate = 0m,
     BillingItemType BillingItemType = BillingItemType.Sale,
     ReturnType? ReturnType = null,
+    FreeIssueSource? FreeIssueSource = null,
     DateOnly? ExpireDate = null
 );

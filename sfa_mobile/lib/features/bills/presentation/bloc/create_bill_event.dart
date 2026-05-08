@@ -24,6 +24,7 @@ final class ProductAdded extends CreateBillEvent {
   final double discountRate;
   final String billingItemType;
   final String? returnType;
+  final String? freeIssueSource;
   final DateTime? expireDate;
   const ProductAdded(
     this.product,
@@ -32,6 +33,7 @@ final class ProductAdded extends CreateBillEvent {
     this.discountRate = 0,
     this.billingItemType = 'Sale',
     this.returnType,
+    this.freeIssueSource,
     this.expireDate,
   });
   @override
@@ -42,6 +44,7 @@ final class ProductAdded extends CreateBillEvent {
         discountRate,
         billingItemType,
         returnType,
+        freeIssueSource,
         expireDate,
       ];
 }
@@ -91,6 +94,14 @@ final class CartItemReturnTypeChanged extends CreateBillEvent {
   const CartItemReturnTypeChanged(this.lineNumber, this.returnType);
   @override
   List<Object?> get props => [lineNumber, returnType];
+}
+
+final class CartItemFreeIssueSourceChanged extends CreateBillEvent {
+  final int lineNumber;
+  final String source; // 'Company' | 'Distributor'
+  const CartItemFreeIssueSourceChanged(this.lineNumber, this.source);
+  @override
+  List<Object?> get props => [lineNumber, source];
 }
 
 final class CartItemExpireDateChanged extends CreateBillEvent {

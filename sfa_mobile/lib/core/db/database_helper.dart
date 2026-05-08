@@ -6,7 +6,7 @@ import 'package:sqflite/sqflite.dart';
 /// [onUpgrade] when schema changes.
 class DatabaseHelper {
   static const _dbName = 'sfa_local.db';
-  static const _dbVersion = 12;
+  static const _dbVersion = 13;
 
   DatabaseHelper._private();
   static final DatabaseHelper instance = DatabaseHelper._private();
@@ -78,6 +78,23 @@ class DatabaseHelper {
     if (oldVersion < 10) await _migrateProductCategoriesV10(db);
     if (oldVersion < 11) await _migrateBillsV11(db);
     if (oldVersion < 12) await _migrateBillItemsV12(db);
+    if (oldVersion < 13) await _migrateBillItemsV13(db);
+  }
+
+  /// Adds free_issue_source to bill_items so the rep can flag whether each
+  /// FOC line is funded By Company (default — drawn from the FOC stock pool)
+  /// or By Distributor (drawn from the distributor's normal saleable stock).
+  /// Backfills every existing FOC row as 'Company' since that was the only
+  /// behaviour the system supported before this column existed.
+  Future<void> _migrateBillItemsV13(Database db) async {
+    await db.execute(
+        'ALTER TABLE bill_items ADD COLUMN free_issue_source TEXT');
+    await db.execute('''
+      UPDATE bill_items
+         SET free_issue_source = 'Company'
+       WHERE billing_item_type = 'FreeIssue'
+         AND free_issue_source IS NULL
+    ''');
   }
 
   /// Promote legacy (is_free_issue = 1) rows to billing_item_type = 'FreeIssue'.
@@ -166,6 +183,7 @@ class DatabaseHelper {
         discount_rate     REAL    NOT NULL DEFAULT 0,
         billing_item_type TEXT    NOT NULL DEFAULT 'Sale',
         return_type       TEXT,
+        free_issue_source TEXT,
         expire_date       TEXT,
         line_number       INTEGER NOT NULL,
         FOREIGN KEY(client_bill_id) REFERENCES bills(client_bill_id) ON DELETE CASCADE

@@ -39,7 +39,9 @@ public class Billing
     public decimal BillDiscountRate { get; set; }    // Bill-level discount % (0–100), default 0
     public decimal BillDiscountAmount { get; set; }  // SubTotalAmount × BillDiscountRate / 100
     public decimal TotalAmount { get; set; }         // SubTotalAmount − BillDiscountAmount
-    public decimal FreeIssueValue { get; set; }      // Σ item.TotalPrice for FreeIssue lines (informational, not in TotalAmount)
+    public decimal FreeIssueValue { get; set; }            // Σ item.TotalPrice for ALL FreeIssue lines (informational, not in TotalAmount)
+    public decimal FreeIssueValueCompany { get; set; }     // Σ item.TotalPrice for FreeIssue lines funded by the company (drawn from FOC stock pool)
+    public decimal FreeIssueValueDistributor { get; set; } // Σ item.TotalPrice for FreeIssue lines funded by the distributor (drawn from Normal stock pool)
 
     public BillingStatus Status { get; set; } = BillingStatus.Submitted;
     public string? Notes { get; set; }

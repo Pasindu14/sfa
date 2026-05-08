@@ -738,6 +738,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.BillDiscountRate).HasColumnType("decimal(5,2)");
             e.Property(x => x.BillDiscountAmount).HasColumnType("decimal(18,2)");
             e.Property(x => x.TotalAmount).HasColumnType("decimal(18,2)");
+            e.Property(x => x.FreeIssueValueCompany).HasColumnType("decimal(18,2)").HasDefaultValue(0m);
+            e.Property(x => x.FreeIssueValueDistributor).HasColumnType("decimal(18,2)").HasDefaultValue(0m);
 
             // Report indexes — every org/geo level paired with BillingDate for range queries
             e.HasIndex(x => new { x.SalesRepId,       x.BillingDate });
@@ -830,6 +832,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.TotalPrice).HasColumnType("decimal(18,2)");
             e.Property(x => x.BillingItemType).HasConversion<string>().HasMaxLength(10).IsRequired().HasDefaultValue(BillingItemType.Sale);
             e.Property(x => x.ReturnType).HasConversion<string>().HasMaxLength(15);
+            e.Property(x => x.FreeIssueSource).HasConversion<string>().HasMaxLength(15);
             // Matching filter for Billing's HasQueryFilter
             e.HasQueryFilter(x => !x.IsDeleted);
             e.HasIndex(x => x.BillingId);

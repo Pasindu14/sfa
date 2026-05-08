@@ -70,6 +70,17 @@ public class CreateBillingValidator : AbstractValidator<CreateBillingRequest>
             item.RuleFor(i => i.ExpireDate)
                 .Null().WithMessage("ExpireDate must be null when ReturnType is not Expire.")
                 .When(i => i.ReturnType != ReturnType.Expire);
+
+            // Free-issue items must specify a funding source (Company = FOC stock pool, Distributor = Normal stock pool)
+            item.RuleFor(i => i.FreeIssueSource)
+                .NotNull().WithMessage("FreeIssueSource is required for free-issue items.")
+                .IsInEnum().WithMessage("FreeIssueSource must be Company or Distributor.")
+                .When(i => i.BillingItemType == BillingItemType.FreeIssue);
+
+            // Non-free-issue items must not carry a funding source
+            item.RuleFor(i => i.FreeIssueSource)
+                .Null().WithMessage("FreeIssueSource must be null for non-free-issue items.")
+                .When(i => i.BillingItemType != BillingItemType.FreeIssue);
         });
     }
 }
