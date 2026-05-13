@@ -60,6 +60,16 @@ class OutletsLocalDatasource {
     );
   }
 
+  Future<void> stampLastBillDate(int outletId, DateTime date) async {
+    final db = await _dbHelper.database;
+    await db.update(
+      'daily_outlets',
+      {'last_bill_date': date.toIso8601String()},
+      where: 'id = ?',
+      whereArgs: [outletId],
+    );
+  }
+
   Future<int?> getCurrentRouteId() async {
     final db = await _dbHelper.database;
     final rows = await db.query(

@@ -57,6 +57,15 @@ class _SalesRepHomePageState extends State<SalesRepHomePage>
     }
   }
 
+  Future<void> _onRefresh() async {
+    final now = DateTime.now();
+    context.read<AssignmentsBloc>().add(LoadAssignmentsRequested(date: now));
+    await Future.wait([
+      context.read<RepMonthlySalesCubit>().load(now.year, now.month),
+      context.read<RepTargetCubit>().load(now.year, now.month),
+    ]);
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -85,7 +94,10 @@ class _SalesRepHomePageState extends State<SalesRepHomePage>
       },
       child: Scaffold(
       backgroundColor: AppColors.background,
-      body: CustomScrollView(
+      body: RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: _onRefresh,
+        child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
             child: FadeTransition(
@@ -149,6 +161,7 @@ class _SalesRepHomePageState extends State<SalesRepHomePage>
           ),
           SliverToBoxAdapter(child: SizedBox(height: 40.h)),
         ],
+      ),
       ),
       ),
     );

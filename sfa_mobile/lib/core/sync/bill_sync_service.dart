@@ -6,6 +6,7 @@ import 'package:uswatte/features/bills/data/datasources/bills_local_datasource.d
 import 'package:uswatte/features/bills/data/datasources/bills_remote_datasource.dart';
 import 'package:uswatte/features/bills/data/models/bill_model.dart';
 import 'package:uswatte/features/bills/domain/entities/sync_status.dart';
+import 'package:uswatte/features/outlets/data/datasources/outlets_local_datasource.dart';
 import 'package:uswatte/features/stock/domain/usecases/sync_distributor_stock_usecase.dart';
 
 /// Emitted by [BillSyncService] whenever its view of the outbox changes.
@@ -48,6 +49,7 @@ class BillSyncService {
   final BillsRemoteDatasource _remote;
   final ConnectivityService _connectivity;
   final SyncDistributorStockUseCase _syncStock;
+  final OutletsLocalDatasource _outletsLocal;
 
   final StreamController<BillOutboxStatus> _statusCtrl =
       StreamController<BillOutboxStatus>.broadcast();
@@ -57,7 +59,7 @@ class BillSyncService {
   /// re-sending a row that's still being posted.
   final Set<String> _inFlight = {};
 
-  BillSyncService(this._local, this._remote, this._connectivity, this._syncStock) {
+  BillSyncService(this._local, this._remote, this._connectivity, this._syncStock, this._outletsLocal) {
     _connectivitySub = _connectivity.onConnectionRestored.listen((_) {
       // Fire-and-forget: swallow errors so the listener stays alive.
       flushAll();
@@ -139,6 +141,11 @@ class BillSyncService {
         serverBillId: result.serverBillId,
         serverBillNumber: result.serverBillNumber,
       );
+
+      // Stamp local outlet so the "NEW" badge clears immediately — best-effort.
+      try {
+        await _outletsLocal.stampLastBillDate(row.outletId, row.billingDate);
+      } catch (_) {}
 
       // Refresh local stock after a successful bill — best-effort, never blocks.
       try {
