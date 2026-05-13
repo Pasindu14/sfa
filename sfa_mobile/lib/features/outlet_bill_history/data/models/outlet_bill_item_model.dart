@@ -44,7 +44,7 @@ class OutletBillItemModel {
         discountRate: (json['discountRate'] as num).toDouble(),
         discountAmount: (json['discountAmount'] as num).toDouble(),
         totalPrice: (json['totalPrice'] as num).toDouble(),
-        isFreeIssue: json['isFreeIssue'] as bool,
+        isFreeIssue: (json['billingItemType'] as String) == 'FreeIssue',
         billingItemType: json['billingItemType'] as String,
         returnType: json['returnType'] as String?,
         expireDate: json['expireDate'] as String?,

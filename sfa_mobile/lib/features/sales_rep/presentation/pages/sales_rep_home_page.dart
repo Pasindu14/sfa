@@ -114,6 +114,14 @@ class _SalesRepHomePageState extends State<SalesRepHomePage>
           ),
           SliverToBoxAdapter(
             child: FadeTransition(
+              opacity: _fade(0.10, 0.60),
+              child: SlideTransition(
+                  position: _slide(0.10, 0.60),
+                  child: const _NewOrderButton()),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: FadeTransition(
               opacity: _fade(0.15, 0.65),
               child: SlideTransition(
                   position: _slide(0.15, 0.65), child: const _KpiRow()),
@@ -166,6 +174,165 @@ class _SalesRepHomePageState extends State<SalesRepHomePage>
       ),
     );
   }
+}
+
+// ── New Order CTA ─────────────────────────────────────────────────────────────
+class _NewOrderButton extends StatefulWidget {
+  const _NewOrderButton();
+
+  @override
+  State<_NewOrderButton> createState() => _NewOrderButtonState();
+}
+
+class _NewOrderButtonState extends State<_NewOrderButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse;
+  late final Animation<double> _glow;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat(reverse: true);
+    _glow = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 0),
+      child: AnimatedBuilder(
+        animation: _glow,
+        builder: (context, child) => Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16.r),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary
+                    .withValues(alpha: 0.28 + _glow.value * 0.18),
+                blurRadius: 18 + _glow.value * 14,
+                offset: const Offset(0, 6),
+                spreadRadius: _glow.value * 1.5,
+              ),
+            ],
+          ),
+          child: child,
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => context.push('/sales-rep/bills/create'),
+            borderRadius: BorderRadius.circular(16.r),
+            splashColor: Colors.white.withValues(alpha: 0.14),
+            highlightColor: Colors.white.withValues(alpha: 0.07),
+            child: Ink(
+              height: 74.h,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    AppColors.primaryDark,
+                    AppColors.primary,
+                    AppColors.primaryLight,
+                  ],
+                  stops: const [0.0, 0.5, 1.0],
+                ),
+                borderRadius: BorderRadius.circular(16.r),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16.r),
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: CustomPaint(painter: _DiagonalStripePainter()),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20.w),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('+ PLACE',
+                                    style: GoogleFonts.barlowCondensed(
+                                      fontSize: 9.sp,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 3.0,
+                                      color:
+                                          Colors.white.withValues(alpha: 0.62),
+                                    )),
+                                Text('NEW ORDER',
+                                    style: GoogleFonts.barlowCondensed(
+                                      fontSize: 30.sp,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 0.8,
+                                      height: 1.0,
+                                      color: Colors.white,
+                                    )),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            width: 46.r,
+                            height: 46.r,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.17),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.28),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Icon(Icons.add_shopping_cart_rounded,
+                                color: Colors.white, size: 20.r),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DiagonalStripePainter extends CustomPainter {
+  const _DiagonalStripePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.055)
+      ..strokeWidth = 10;
+    const spacing = 22.0;
+    for (double x = -size.height; x < size.width + size.height; x += spacing) {
+      canvas.drawLine(
+        Offset(x, 0),
+        Offset(x + size.height, size.height),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
 }
 
 // ── Top bar ───────────────────────────────────────────────────────────────────
@@ -1099,13 +1266,6 @@ class _ActionsGrid extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Column(
         children: [
-          _HeroActionCard(
-            icon: Icons.add_shopping_cart_rounded,
-            title: 'NEW ORDER',
-            subtitle: 'Place a customer order',
-            onTap: () => context.push('/sales-rep/bills/create'),
-          ),
-          SizedBox(height: 12.h),
           Row(
             children: [
               Expanded(
