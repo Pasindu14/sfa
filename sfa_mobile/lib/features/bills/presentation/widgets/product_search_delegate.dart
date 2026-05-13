@@ -615,7 +615,7 @@ class _ProductTile extends StatelessWidget {
                     ),
                     SizedBox(width: 12.w),
 
-                    // Name + code
+                    // Name + code + stock badge
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -632,13 +632,21 @@ class _ProductTile extends StatelessWidget {
                             ),
                           ),
                           SizedBox(height: 1.h),
-                          Text(
-                            product.code,
-                            style: GoogleFonts.barlow(
-                              fontSize: 10.sp,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.foregroundMuted,
-                            ),
+                          Row(
+                            children: [
+                              Text(
+                                product.code,
+                                style: GoogleFonts.barlow(
+                                  fontSize: 10.sp,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.foregroundMuted,
+                                ),
+                              ),
+                              if (product.normalStock != null) ...[
+                                SizedBox(width: 6.w),
+                                _StockBadge(qty: product.normalStock!),
+                              ],
+                            ],
                           ),
                         ],
                       ),
@@ -674,6 +682,36 @@ class _ProductTile extends StatelessWidget {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Stock availability badge ──────────────────────────────────────────────────
+
+class _StockBadge extends StatelessWidget {
+  const _StockBadge({required this.qty});
+  final double qty;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasStock = qty > 0;
+    final color = hasStock ? AppColors.success : AppColors.warning;
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.5.h),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(4.r),
+        border: Border.all(color: color.withValues(alpha: 0.30)),
+      ),
+      child: Text(
+        'Stk: ${qty.toStringAsFixed(0)}',
+        style: GoogleFonts.barlow(
+          fontSize: 9.sp,
+          fontWeight: FontWeight.w700,
+          color: color,
+          letterSpacing: 0.2,
         ),
       ),
     );

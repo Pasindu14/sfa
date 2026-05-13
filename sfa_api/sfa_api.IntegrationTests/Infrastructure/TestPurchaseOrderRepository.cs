@@ -25,7 +25,7 @@ public sealed class TestPurchaseOrderRepository(IPurchaseOrderRepository inner) 
     public Task<(IEnumerable<PurchaseOrder> PurchaseOrders, int TotalCount)> GetAllAsync(
         int skip, int take, string? search = null,
         PurchaseOrderStatus? status = null, int? distributorId = null,
-        DateTime? fromDate = null, DateTime? toDate = null,
+        DateOnly? fromDate = null, DateOnly? toDate = null,
         CancellationToken ct = default)
         => inner.GetAllAsync(skip, take, search, status, distributorId, fromDate, toDate, ct);
 
@@ -49,8 +49,8 @@ public sealed class TestPurchaseOrderRepository(IPurchaseOrderRepository inner) 
 
     public Task<Dictionary<PurchaseOrderStatus, int>> GetCountsByStatusAsync(
         int? distributorId = null,
-        DateTime? fromDate = null,
-        DateTime? toDate = null,
+        DateOnly? fromDate = null,
+        DateOnly? toDate = null,
         CancellationToken ct = default)
         => inner.GetCountsByStatusAsync(distributorId, fromDate, toDate, ct);
 

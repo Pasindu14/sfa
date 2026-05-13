@@ -138,6 +138,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt);
             e.HasIndex(x => x.TerritoryId).IsUnique();  // 1 distributor per territory (business rule)
+            // Filtered covering index — faster for rep-scoped stock sync lookup (WHERE TerritoryId = ? AND IsActive)
+            e.HasIndex(x => new { x.TerritoryId, x.IsActive })
+             .HasFilter("\"IsDeleted\" = false")
+             .HasDatabaseName("IX_Distributors_TerritoryId_IsActive_Active");
             e.HasIndex(x => x.RegionId);
             e.HasIndex(x => x.FleetId);
             e.HasOne(x => x.Territory).WithMany().HasForeignKey(x => x.TerritoryId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
@@ -274,6 +278,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.TerritoryId);
             e.HasIndex(x => x.DivisionId);
             e.HasIndex(x => new { x.UserId, x.IsActive });
+            // Filtered variant — faster for the active-assignment lookup (IsDeleted rows excluded)
+            e.HasIndex(x => new { x.UserId, x.IsActive })
+             .HasFilter("\"IsDeleted\" = false")
+             .HasDatabaseName("IX_UserGeoAssignments_UserId_IsActive_Active");
             e.HasIndex(x => x.IsActive);
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.EffectiveFrom);
@@ -336,6 +344,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.Name).HasFilter("\"IsActive\" = true");
             e.HasQueryFilter(x => x.IsActive && !x.IsDeleted);
             e.HasIndex(x => x.RouteId);
+            // Filtered variant — covers the mobile sync query WHERE RouteId = ? AND IsActive AND NOT IsDeleted
+            e.HasIndex(x => x.RouteId)
+             .HasFilter("\"IsActive\" = true AND \"IsDeleted\" = false")
+             .HasDatabaseName("IX_Outlets_RouteId_Active");
             e.HasIndex(x => x.DivisionId);
             e.HasIndex(x => x.TerritoryId);
             e.HasIndex(x => x.AreaId);
@@ -411,6 +423,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.IsActive);
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.IsDefault);
+            // Composite for the common "get default active structure" lookup
+            e.HasIndex(x => new { x.IsDefault, x.IsActive })
+             .HasFilter("\"IsActive\" = true AND \"IsDefault\" = true");
             // NOTE: No HasQueryFilter (IsActive or IsDeleted) — repositories use IgnoreQueryFilters() throughout and
             // filter IsActive and IsDeleted explicitly. A global filter here causes EF warnings because
             // PricingStructureItem has a required FK to PricingStructure.
@@ -636,6 +651,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .HasDefaultValue(StockType.Normal);
             // Composite unique — one row per distributor+product+stockType
             e.HasIndex(x => new { x.DistributorId, x.ProductId, x.StockType }).IsUnique();
+            // Simple index for full-catalog fetch (GET /stock/my-distributor)
+            e.HasIndex(x => x.DistributorId);
             e.HasOne(x => x.Distributor)
              .WithMany()
              .HasForeignKey(x => x.DistributorId)

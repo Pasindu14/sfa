@@ -340,6 +340,11 @@ class _QuantitySheetState extends State<_QuantitySheet> {
                     ],
                   ),
 
+                  if (widget.product.normalStock != null) ...[
+                    SizedBox(height: 8.h),
+                    _StockInfoRow(qty: widget.product.normalStock!),
+                  ],
+
                   SizedBox(height: 20.h),
                   _Divider(),
                   SizedBox(height: 16.h),
@@ -1123,4 +1128,44 @@ class _Divider extends StatelessWidget {
         thickness: 1,
         color: AppColors.surfaceVariant,
       );
+}
+
+// ── Distributor stock info row ────────────────────────────────────────────────
+
+class _StockInfoRow extends StatelessWidget {
+  const _StockInfoRow({required this.qty});
+  final double qty;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasStock = qty > 0;
+    final color = hasStock ? AppColors.success : AppColors.warning;
+    final icon = hasStock ? Icons.check_circle_outline_rounded : Icons.warning_amber_rounded;
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(8.r),
+        border: Border.all(color: color.withValues(alpha: 0.20)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13.r, color: color),
+          SizedBox(width: 6.w),
+          Text(
+            hasStock
+                ? 'Available stock: ${qty.toStringAsFixed(0)} units'
+                : 'No stock available',
+            style: GoogleFonts.barlow(
+              fontSize: 11.sp,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

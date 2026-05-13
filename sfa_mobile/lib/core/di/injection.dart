@@ -118,6 +118,9 @@ import 'package:uswatte/features/rep_monthly_sales/data/datasources/rep_monthly_
 import 'package:uswatte/features/rep_monthly_sales/data/repositories/rep_monthly_sales_repository_impl.dart';
 import 'package:uswatte/features/rep_monthly_sales/domain/repositories/rep_monthly_sales_repository.dart';
 import 'package:uswatte/features/rep_monthly_sales/domain/usecases/get_rep_monthly_sales_usecase.dart';
+import 'package:uswatte/features/stock/data/datasources/distributor_stock_local_datasource.dart';
+import 'package:uswatte/features/stock/data/datasources/distributor_stock_remote_datasource.dart';
+import 'package:uswatte/features/stock/domain/usecases/sync_distributor_stock_usecase.dart';
 
 final getIt = GetIt.instance;
 
@@ -424,6 +427,16 @@ Future<void> configureDependencies() async {
   );
   getIt.registerLazySingleton(
       () => GetSupervisorRouteMapUseCase(getIt<SupervisorRouteMapRepository>()));
+
+  // ── Distributor Stock ─────────────────────────────────────────────────────
+  getIt.registerLazySingleton(
+      () => DistributorStockRemoteDatasource(getIt<Dio>()));
+  getIt.registerLazySingleton(
+      () => DistributorStockLocalDatasource(getIt<DatabaseHelper>()));
+  getIt.registerLazySingleton(() => SyncDistributorStockUseCase(
+        getIt<DistributorStockRemoteDatasource>(),
+        getIt<DistributorStockLocalDatasource>(),
+      ));
 
   // ── Today's Route Map ─────────────────────────────────────────────────────
   getIt.registerLazySingleton<TodaysRouteMapRepository>(

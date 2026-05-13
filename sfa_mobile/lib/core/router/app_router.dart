@@ -43,6 +43,7 @@ import 'package:uswatte/features/products/domain/usecases/get_products_usecase.d
 import 'package:uswatte/features/products/domain/usecases/sync_products_usecase.dart';
 import 'package:uswatte/features/rep_assignment/domain/usecases/get_rep_assignment_usecase.dart';
 import 'package:uswatte/features/rep_assignment/presentation/bloc/rep_assignment_bloc.dart';
+import 'package:uswatte/features/stock/presentation/pages/stock_catalog_page.dart';
 import 'package:uswatte/features/sync/presentation/pages/sync_page.dart';
 import 'package:uswatte/features/sales_rep/presentation/pages/unsupported_role_page.dart';
 import 'package:uswatte/features/splash/presentation/pages/splash_page.dart';
@@ -466,6 +467,11 @@ class AppRouter {
               path: 'debug',
               name: 'salesRepDebug',
               builder: (_, __) => const DebugPage(),
+            ),
+            GoRoute(
+              path: 'stock',
+              name: 'stockCatalog',
+              builder: (_, __) => const StockCatalogPage(),
             ),
             GoRoute(
               path: 'todays-route-map',

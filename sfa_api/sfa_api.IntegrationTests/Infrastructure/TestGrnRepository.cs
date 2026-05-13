@@ -3,6 +3,7 @@ using sfa_api.Features.GRNs.Entities;
 using sfa_api.Features.GRNs.Repositories;
 using sfa_api.Features.SalesInvoices.Entities;
 using sfa_api.Features.Stock.Entities;
+using sfa_api.Features.Stock.Enums;
 
 namespace sfa_api.IntegrationTests.Infrastructure;
 
@@ -37,8 +38,8 @@ public sealed class TestGrnRepository(IGrnRepository inner) : IGrnRepository
     public Task AddGrnAsync(GRN grn, CancellationToken ct = default)
         => inner.AddGrnAsync(grn, ct);
 
-    public Task<DistributorStock?> GetStockForUpdateAsync(int distributorId, int productId, CancellationToken ct = default)
-        => inner.GetStockForUpdateAsync(distributorId, productId, ct);
+    public Task<DistributorStock?> GetStockForUpdateAsync(int distributorId, int productId, StockType stockType, CancellationToken ct = default)
+        => inner.GetStockForUpdateAsync(distributorId, productId, stockType, ct);
 
     public Task AddStockAsync(DistributorStock stock, CancellationToken ct = default)
         => inner.AddStockAsync(stock, ct);

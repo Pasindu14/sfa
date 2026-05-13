@@ -11,6 +11,7 @@ using sfa_api.Features.GRNs.Services;
 using sfa_api.Features.SalesInvoices.Entities;
 using sfa_api.Features.SalesInvoices.Enums;
 using sfa_api.Features.Stock.Entities;
+using sfa_api.Features.Stock.Enums;
 using sfa_api.Infrastructure.Locking;
 using sfa_api.Infrastructure.Persistence;
 
@@ -302,7 +303,7 @@ public class GrnServiceTests
 
         // Stock lock
         _repoMock
-            .Setup(r => r.GetStockForUpdateAsync(DistributorId, ProductId, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetStockForUpdateAsync(DistributorId, ProductId, It.IsAny<StockType>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingStock);
 
         _repoMock
@@ -473,7 +474,7 @@ public class GrnServiceTests
         // Re-lock after create returns the same stock object (simulates the re-fetch after flush)
         int stockLockCallCount = 0;
         _repoMock
-            .Setup(r => r.GetStockForUpdateAsync(DistributorId, ProductId, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetStockForUpdateAsync(DistributorId, ProductId, It.IsAny<StockType>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(() =>
             {
                 stockLockCallCount++;
@@ -571,7 +572,7 @@ public class GrnServiceTests
 
         // Simulate a failure inside the stock update loop
         _repoMock
-            .Setup(r => r.GetStockForUpdateAsync(DistributorId, ProductId, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetStockForUpdateAsync(DistributorId, ProductId, It.IsAny<StockType>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("Simulated DB failure"));
 
         var act = () => _sut.ConfirmAsync(grn.Id, new ConfirmGrnRequest(DateTime.UtcNow), CallerId);

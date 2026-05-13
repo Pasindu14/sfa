@@ -6,7 +6,7 @@ import 'package:sqflite/sqflite.dart';
 /// [onUpgrade] when schema changes.
 class DatabaseHelper {
   static const _dbName = 'sfa_local.db';
-  static const _dbVersion = 13;
+  static const _dbVersion = 14;
 
   DatabaseHelper._private();
   static final DatabaseHelper instance = DatabaseHelper._private();
@@ -64,6 +64,7 @@ class DatabaseHelper {
     await _createPricingItemsTable(db);
     await _createBillsTables(db);
     await _createNotBillingsTable(db);
+    await _createDistributorStocksTable(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -79,6 +80,7 @@ class DatabaseHelper {
     if (oldVersion < 11) await _migrateBillsV11(db);
     if (oldVersion < 12) await _migrateBillItemsV12(db);
     if (oldVersion < 13) await _migrateBillItemsV13(db);
+    if (oldVersion < 14) await _createDistributorStocksTable(db);
   }
 
   /// Adds free_issue_source to bill_items so the rep can flag whether each
@@ -248,6 +250,20 @@ class DatabaseHelper {
   Future<void> _migrateNotBillingsV8(Database db) async {
     await db.execute('ALTER TABLE not_billings ADD COLUMN outlet_name TEXT');
     await db.execute('ALTER TABLE not_billings ADD COLUMN route_name TEXT');
+  }
+
+  /// Stock levels for the rep's assigned distributor — full replace on every sync.
+  /// Composite primary key on (product_id, stock_type) mirrors the server uniqueness constraint.
+  Future<void> _createDistributorStocksTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE distributor_stocks (
+        product_id       INTEGER NOT NULL,
+        stock_type       TEXT    NOT NULL,
+        quantity_on_hand REAL    NOT NULL DEFAULT 0,
+        last_updated_at  TEXT    NOT NULL,
+        PRIMARY KEY (product_id, stock_type)
+      )
+    ''');
   }
 
   Future<void> _createDailyOutletsTable(Database db) async {

@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:uswatte/core/di/injection.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_bloc.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_event.dart';
@@ -15,9 +16,57 @@ import 'package:uswatte/features/products/presentation/bloc/products_bloc.dart';
 import 'package:uswatte/features/products/presentation/bloc/products_event.dart';
 import 'package:uswatte/features/products/presentation/bloc/products_state.dart';
 import 'package:uswatte/features/route_assignment/presentation/bloc/assignments_bloc.dart';
+import 'package:uswatte/features/stock/data/datasources/distributor_stock_local_datasource.dart';
+import 'package:uswatte/features/stock/domain/usecases/sync_distributor_stock_usecase.dart';
 
-class SyncPage extends StatelessWidget {
+class SyncPage extends StatefulWidget {
   const SyncPage({super.key});
+
+  @override
+  State<SyncPage> createState() => _SyncPageState();
+}
+
+class _SyncPageState extends State<SyncPage> {
+  bool _stockSyncing = false;
+  DateTime? _stockLastSyncedAt;
+  int? _stockItemCount;
+  String? _stockErrorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStockMeta();
+  }
+
+  Future<void> _loadStockMeta() async {
+    final local = getIt<DistributorStockLocalDatasource>();
+    final lastSynced = await local.getLastSyncedAt();
+    final count = await local.getStockItemCount();
+    if (mounted) {
+      setState(() {
+        _stockLastSyncedAt = lastSynced;
+        _stockItemCount = count;
+      });
+    }
+  }
+
+  Future<void> _syncStock() async {
+    if (_stockSyncing) return;
+    setState(() {
+      _stockSyncing = true;
+      _stockErrorMessage = null;
+    });
+    try {
+      await getIt<SyncDistributorStockUseCase>()();
+      await _loadStockMeta();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _stockErrorMessage = e.toString());
+      }
+    } finally {
+      if (mounted) setState(() => _stockSyncing = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,8 +110,10 @@ class SyncPage extends StatelessWidget {
     OutletsState outletsState,
     PricingState pricingState,
   ) {
-    final isAnySyncing = _isAnySyncing(productsState, outletsState, pricingState);
-    final allSynced = _isAllSynced(productsState, outletsState, pricingState);
+    final isAnySyncing = _isAnySyncing(productsState, outletsState, pricingState) || _stockSyncing;
+    final allSynced = _isAllSynced(productsState, outletsState, pricingState) &&
+        _stockLastSyncedAt != null &&
+        !_stockSyncing;
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -135,6 +186,21 @@ class SyncPage extends StatelessWidget {
                           .add(const SyncPricingRequested()),
                       onView: () => context.push('/sales-rep/pricing'),
                     ),
+                    _CategoryCard(
+                      icon: Icons.warehouse_rounded,
+                      label: 'DISTRIBUTOR STOCK',
+                      subtitle: "Your distributor's current stock levels",
+                      accentColor: const Color(0xFF7C3AED),
+                      itemCount: _stockItemCount,
+                      itemUnit: 'stock rows',
+                      lastSyncedAt: _stockLastSyncedAt,
+                      isSyncing: _stockSyncing,
+                      hasError: _stockErrorMessage != null,
+                      errorMessage: _stockErrorMessage,
+                      onSync: _syncStock,
+                      onView: () => context.push('/sales-rep/stock'),
+                      viewLabel: 'View stock',
+                    ),
                   ],
                 ),
               ),
@@ -158,6 +224,7 @@ class SyncPage extends StatelessWidget {
                               context
                                   .read<PricingBloc>()
                                   .add(const SyncPricingRequested());
+                              _syncStock();
                             },
                     ),
                   ),
@@ -174,14 +241,13 @@ class SyncPage extends StatelessWidget {
   // that updates metadata.current_route_id and the daily_outlets table.
   // Do NOT read AssignmentsBloc.state here: that state was captured when the
   // page mounted and can be stale if the DB changed in the meantime.
-  static void _syncOutlets(BuildContext context) {
+  void _syncOutlets(BuildContext context) {
     context
         .read<AssignmentsBloc>()
         .add(LoadAssignmentsRequested(date: DateTime.now()));
   }
 
-  static bool _isAnySyncing(
-      ProductsState ps, OutletsState os, PricingState prs) {
+  bool _isAnySyncing(ProductsState ps, OutletsState os, PricingState prs) {
     final productsSyncing =
         ps is ProductsLoading || (ps is ProductsLoaded && ps.isSyncing);
     final outletsSyncing =
@@ -191,8 +257,7 @@ class SyncPage extends StatelessWidget {
     return productsSyncing || outletsSyncing || pricingSyncing;
   }
 
-  static bool _isAllSynced(
-          ProductsState ps, OutletsState os, PricingState prs) =>
+  bool _isAllSynced(ProductsState ps, OutletsState os, PricingState prs) =>
       ps is ProductsLoaded &&
       ps.lastSyncedAt != null &&
       !ps.isSyncing &&
@@ -477,7 +542,8 @@ class _CategoryCard extends StatelessWidget {
     required this.hasError,
     required this.errorMessage,
     required this.onSync,
-    required this.onView,
+    this.onView,
+    this.viewLabel = 'View catalog',
   });
 
   final IconData icon;
@@ -491,7 +557,8 @@ class _CategoryCard extends StatelessWidget {
   final bool hasError;
   final String? errorMessage;
   final VoidCallback onSync;
-  final VoidCallback onView;
+  final VoidCallback? onView;
+  final String viewLabel;
 
   String _syncLabel() {
     if (isSyncing) return 'Syncing…';
@@ -689,28 +756,30 @@ class _CategoryCard extends StatelessWidget {
             ],
           ),
 
-          SizedBox(height: 12.h),
+          if (onView != null) ...[
+            SizedBox(height: 12.h),
 
-          // ── View list link ────────────────────────────────────────────
-          GestureDetector(
-            onTap: onView,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'View catalog',
-                  style: GoogleFonts.barlow(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w600,
-                    color: accentColor,
+            // ── View list link ────────────────────────────────────────────
+            GestureDetector(
+              onTap: onView,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    viewLabel,
+                    style: GoogleFonts.barlow(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                      color: accentColor,
+                    ),
                   ),
-                ),
-                SizedBox(width: 4.w),
-                Icon(Icons.arrow_forward_ios_rounded,
-                    size: 10.r, color: accentColor),
-              ],
+                  SizedBox(width: 4.w),
+                  Icon(Icons.arrow_forward_ios_rounded,
+                      size: 10.r, color: accentColor),
+                ],
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );

@@ -9,7 +9,9 @@ import 'package:uswatte/core/device/device_id_service.dart';
 import 'package:uswatte/core/di/injection.dart';
 import 'package:uswatte/core/network/session_expired_notifier.dart';
 import 'package:uswatte/core/router/app_router.dart';
+import 'package:uswatte/core/connectivity/connectivity_service.dart';
 import 'package:uswatte/core/sync/bill_sync_service.dart';
+import 'package:uswatte/features/stock/domain/usecases/sync_distributor_stock_usecase.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/features/auth/domain/usecases/get_current_auth_usecase.dart';
 import 'package:uswatte/features/auth/domain/usecases/login_usecase.dart';
@@ -42,6 +44,7 @@ class SfaApp extends StatefulWidget {
 
 class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
   StreamSubscription<void>? _sessionExpiredSub;
+  StreamSubscription<void>? _connectivityStockSub;
   // Built once. Recreating GoRouter on every build (e.g. inside MaterialApp.router)
   // tears down its listenables mid-frame and produces "markNeedsBuild during build"
   // errors during route transitions.
@@ -55,11 +58,18 @@ class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
     _sessionExpiredSub = getIt<SessionExpiredNotifier>().stream.listen((_) {
       widget.authBloc.add(LogoutRequested());
     });
+    // Sync distributor stock whenever connectivity is restored (fire-and-forget).
+    _connectivityStockSub = getIt<ConnectivityService>()
+        .onConnectionRestored
+        .listen((_) => unawaited(
+              getIt<SyncDistributorStockUseCase>()().catchError((_) {}),
+            ));
   }
 
   @override
   void dispose() {
     _sessionExpiredSub?.cancel();
+    _connectivityStockSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -74,6 +84,7 @@ class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       // Fire-and-forget; errors are contained inside the service.
       getIt<BillSyncService>().flushAll();
+      unawaited(getIt<SyncDistributorStockUseCase>()().catchError((_) {}));
     }
   }
 

@@ -30,6 +30,15 @@ public class StockRepository(AppDbContext db) : IStockRepository
         return (items, totalCount);
     }
 
+    public Task<List<DistributorStock>> GetAllStockByDistributorAsync(int distributorId, CancellationToken ct = default)
+        => _db.DistributorStocks
+              .AsNoTracking()
+              .Include(x => x.Product)
+              .Include(x => x.Distributor)
+              .Where(x => x.DistributorId == distributorId)
+              .OrderBy(x => x.Product.Code)
+              .ToListAsync(ct);
+
     public Task<List<StockTransaction>> GetTransactionsByDistributorAndProductAsync(
         int distributorId, int productId, int page, int pageSize, CancellationToken ct = default)
         => _db.StockTransactions
