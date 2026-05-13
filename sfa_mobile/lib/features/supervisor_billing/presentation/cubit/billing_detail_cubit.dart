@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uswatte/features/supervisor_billing/domain/usecases/get_billing_detail_usecase.dart';
 import 'package:uswatte/features/supervisor_billing/presentation/cubit/billing_detail_state.dart';
@@ -12,7 +13,8 @@ class BillingDetailCubit extends Cubit<BillingDetailState> {
     try {
       final detail = await _getDetail(billingId);
       emit(BillingDetailLoaded(detail));
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('BillingDetailCubit error: $e\n$st');
       emit(const BillingDetailError('Failed to load billing details.'));
     }
   }

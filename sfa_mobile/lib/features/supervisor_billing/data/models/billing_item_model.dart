@@ -18,6 +18,7 @@ class BillingItemModel extends BillingItem {
   });
 
   factory BillingItemModel.fromJson(Map<String, dynamic> json) {
+    final itemType = _parseItemType(json['billingItemType'] as String);
     return BillingItemModel(
       id: json['id'] as int,
       productId: json['productId'] as int,
@@ -28,8 +29,8 @@ class BillingItemModel extends BillingItem {
       discountRate: (json['discountRate'] as num).toDouble(),
       discountAmount: (json['discountAmount'] as num).toDouble(),
       totalPrice: (json['totalPrice'] as num).toDouble(),
-      isFreeIssue: json['isFreeIssue'] as bool,
-      billingItemType: _parseItemType(json['billingItemType'] as String),
+      isFreeIssue: itemType == BillingItemType.freeIssue,
+      billingItemType: itemType,
       returnType: json['returnType'] != null
           ? _parseReturnType(json['returnType'] as String)
           : null,
@@ -38,9 +39,14 @@ class BillingItemModel extends BillingItem {
   }
 
   static BillingItemType _parseItemType(String s) {
-    return s.toLowerCase() == 'return'
-        ? BillingItemType.returnItem
-        : BillingItemType.sale;
+    switch (s.toLowerCase()) {
+      case 'return':
+        return BillingItemType.returnItem;
+      case 'freeissue':
+        return BillingItemType.freeIssue;
+      default:
+        return BillingItemType.sale;
+    }
   }
 
   static ReturnType _parseReturnType(String s) {

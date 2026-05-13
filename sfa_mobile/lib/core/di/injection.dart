@@ -273,6 +273,7 @@ Future<void> configureDependencies() async {
       getIt<BillsLocalDatasource>(),
       getIt<BillsRemoteDatasource>(),
       getIt<ConnectivityService>(),
+      getIt<SyncDistributorStockUseCase>(),
     ),
   );
   getIt.registerLazySingleton<BillsRepository>(

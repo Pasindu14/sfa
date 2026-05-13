@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-enum BillingItemType { sale, returnItem }
+enum BillingItemType { sale, returnItem, freeIssue }
 
 enum ReturnType { marketResell, damage, expire }
 

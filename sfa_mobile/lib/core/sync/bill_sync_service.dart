@@ -6,6 +6,7 @@ import 'package:uswatte/features/bills/data/datasources/bills_local_datasource.d
 import 'package:uswatte/features/bills/data/datasources/bills_remote_datasource.dart';
 import 'package:uswatte/features/bills/data/models/bill_model.dart';
 import 'package:uswatte/features/bills/domain/entities/sync_status.dart';
+import 'package:uswatte/features/stock/domain/usecases/sync_distributor_stock_usecase.dart';
 
 /// Emitted by [BillSyncService] whenever its view of the outbox changes.
 /// The Bills list + home-tab badge listen to this so their UI refreshes
@@ -46,6 +47,7 @@ class BillSyncService {
   final BillsLocalDatasource _local;
   final BillsRemoteDatasource _remote;
   final ConnectivityService _connectivity;
+  final SyncDistributorStockUseCase _syncStock;
 
   final StreamController<BillOutboxStatus> _statusCtrl =
       StreamController<BillOutboxStatus>.broadcast();
@@ -55,7 +57,7 @@ class BillSyncService {
   /// re-sending a row that's still being posted.
   final Set<String> _inFlight = {};
 
-  BillSyncService(this._local, this._remote, this._connectivity) {
+  BillSyncService(this._local, this._remote, this._connectivity, this._syncStock) {
     _connectivitySub = _connectivity.onConnectionRestored.listen((_) {
       // Fire-and-forget: swallow errors so the listener stays alive.
       flushAll();
@@ -113,6 +115,11 @@ class BillSyncService {
         serverBillId: result.serverBillId,
         serverBillNumber: result.serverBillNumber,
       );
+
+      // Refresh local stock after a successful bill — best-effort, never blocks.
+      try {
+        await _syncStock();
+      } catch (_) {}
     } on NetworkException {
       // Reversible: stay pending, try again on next trigger.
       await _local.markPendingAfterNetworkError(row.clientBillId);
