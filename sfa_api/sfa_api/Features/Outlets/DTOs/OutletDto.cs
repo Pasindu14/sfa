@@ -31,7 +31,8 @@ public record OutletDto(
     string RegionName,
     bool IsActive,
     DateTime CreatedAt,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    DateTime? LastBillDate
 );
 
 public record OutletListDto(

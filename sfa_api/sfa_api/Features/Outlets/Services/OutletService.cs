@@ -247,6 +247,7 @@ public class OutletService(
         RegionName: o.Route?.Region?.Name ?? string.Empty,
         IsActive: o.IsActive,
         CreatedAt: o.CreatedAt,
-        UpdatedAt: o.UpdatedAt
+        UpdatedAt: o.UpdatedAt,
+        LastBillDate: o.LastBillDate
     );
 }

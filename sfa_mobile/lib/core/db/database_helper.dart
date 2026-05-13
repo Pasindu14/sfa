@@ -6,7 +6,7 @@ import 'package:sqflite/sqflite.dart';
 /// [onUpgrade] when schema changes.
 class DatabaseHelper {
   static const _dbName = 'sfa_local.db';
-  static const _dbVersion = 14;
+  static const _dbVersion = 15;
 
   DatabaseHelper._private();
   static final DatabaseHelper instance = DatabaseHelper._private();
@@ -81,6 +81,7 @@ class DatabaseHelper {
     if (oldVersion < 12) await _migrateBillItemsV12(db);
     if (oldVersion < 13) await _migrateBillItemsV13(db);
     if (oldVersion < 14) await _createDistributorStocksTable(db);
+    if (oldVersion < 15) await _migrateOutletsV15(db);
   }
 
   /// Adds free_issue_source to bill_items so the rep can flag whether each
@@ -266,6 +267,11 @@ class DatabaseHelper {
     ''');
   }
 
+  Future<void> _migrateOutletsV15(Database db) async {
+    await db.execute(
+        'ALTER TABLE daily_outlets ADD COLUMN last_bill_date TEXT');
+  }
+
   Future<void> _createDailyOutletsTable(Database db) async {
     await db.execute('''
       CREATE TABLE daily_outlets (
@@ -281,7 +287,8 @@ class DatabaseHelper {
         outlet_category  TEXT    NOT NULL,
         route_id         INTEGER NOT NULL,
         route_name       TEXT    NOT NULL,
-        is_active        INTEGER NOT NULL DEFAULT 1
+        is_active        INTEGER NOT NULL DEFAULT 1,
+        last_bill_date   TEXT
       )
     ''');
   }

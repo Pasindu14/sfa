@@ -307,6 +307,13 @@ public class BillingService(
             }
         });
 
+        // Stamp outlet's last bill date and bust the route cache
+        var lastBillDate = billing.BillingDate.ToDateTime(TimeOnly.MinValue);
+        await _db.Outlets
+            .Where(o => o.Id == billing.OutletId)
+            .ExecuteUpdateAsync(s => s.SetProperty(o => o.LastBillDate, lastBillDate), ct);
+        await _cache.RemoveByPrefixAsync("outlets:route:", ct);
+
         // ⑫ Re-fetch read-only for DTO projection
         var created = await _billingRepository.GetByIdAsync(billing.Id, ct)
             ?? throw new DatabaseUnavailableException();

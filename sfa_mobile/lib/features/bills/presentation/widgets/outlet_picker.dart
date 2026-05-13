@@ -317,14 +317,39 @@ class _OutletSheetState extends State<_OutletSheet> {
                           child: Icon(Icons.storefront_rounded,
                               size: 16.r, color: AppColors.primary),
                         ),
-                        title: Text(
-                          o.name,
-                          style: GoogleFonts.barlowCondensed(
-                            fontSize: 15.sp,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.3,
-                            color: AppColors.foreground,
-                          ),
+                        title: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                o.name,
+                                style: GoogleFonts.barlowCondensed(
+                                  fontSize: 15.sp,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.3,
+                                  color: AppColors.foreground,
+                                ),
+                              ),
+                            ),
+                            if (o.lastBillDate == null)
+                              Container(
+                                margin: EdgeInsets.only(left: 6.w),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 6.w, vertical: 2.h),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.shade700,
+                                  borderRadius: BorderRadius.circular(4.r),
+                                ),
+                                child: Text(
+                                  'NEW',
+                                  style: GoogleFonts.barlowCondensed(
+                                    fontSize: 8.sp,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 1.2,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                         subtitle: Text(
                           o.address,

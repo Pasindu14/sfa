@@ -14,6 +14,7 @@ class OutletModel {
   final int routeId;
   final String routeName;
   final bool isActive;
+  final DateTime? lastBillDate;
 
   const OutletModel({
     required this.id,
@@ -29,6 +30,7 @@ class OutletModel {
     required this.routeId,
     required this.routeName,
     required this.isActive,
+    this.lastBillDate,
   });
 
   factory OutletModel.fromJson(Map<String, dynamic> json) => OutletModel(
@@ -45,6 +47,9 @@ class OutletModel {
         routeId: json['routeId'] as int,
         routeName: json['routeName'] as String,
         isActive: json['isActive'] as bool,
+        lastBillDate: json['lastBillDate'] != null
+            ? DateTime.parse(json['lastBillDate'] as String)
+            : null,
       );
 
   factory OutletModel.fromMap(Map<String, dynamic> map) => OutletModel(
@@ -61,6 +66,9 @@ class OutletModel {
         routeId: map['route_id'] as int,
         routeName: map['route_name'] as String,
         isActive: (map['is_active'] as int) == 1,
+        lastBillDate: map['last_bill_date'] != null
+            ? DateTime.parse(map['last_bill_date'] as String)
+            : null,
       );
 
   Map<String, dynamic> toMap() => {
@@ -77,6 +85,7 @@ class OutletModel {
         'route_id': routeId,
         'route_name': routeName,
         'is_active': isActive ? 1 : 0,
+        'last_bill_date': lastBillDate?.toIso8601String(),
       };
 
   Outlet toEntity() => Outlet(
@@ -93,5 +102,6 @@ class OutletModel {
         routeId: routeId,
         routeName: routeName,
         isActive: isActive,
+        lastBillDate: lastBillDate,
       );
 }

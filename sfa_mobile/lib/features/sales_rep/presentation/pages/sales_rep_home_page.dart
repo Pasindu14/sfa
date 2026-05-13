@@ -109,6 +109,14 @@ class _SalesRepHomePageState extends State<SalesRepHomePage>
           ),
           SliverToBoxAdapter(
             child: FadeTransition(
+              opacity: _fade(0.20, 0.70),
+              child: SlideTransition(
+                  position: _slide(0.20, 0.70),
+                  child: const _DailyPaceRow()),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: FadeTransition(
               opacity: _fade(0.25, 0.75),
               child: SlideTransition(
                   position: _slide(0.25, 0.75),
@@ -684,6 +692,180 @@ class _KpiCard extends StatelessWidget {
                 )),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Daily pace row ────────────────────────────────────────────────────────────
+class _DailyPaceRow extends StatelessWidget {
+  const _DailyPaceRow();
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    final daysElapsed = now.day.clamp(1, daysInMonth);
+
+    return BlocBuilder<RepMonthlySalesCubit, RepMonthlySalesState>(
+      builder: (context, salesState) =>
+          BlocBuilder<RepTargetCubit, RepTargetState>(
+        builder: (context, targetState) {
+          final isLoading = salesState is RepMonthlySalesLoading ||
+              targetState is RepTargetLoading;
+
+          double? dailyTarget;
+          double? dailySales;
+          double? dailyPct;
+
+          if (!isLoading) {
+            final totalTarget = targetState is RepTargetLoaded
+                ? targetState.target.totalTarget
+                : null;
+            final totalSales = salesState is RepMonthlySalesLoaded
+                ? salesState.sales.totalSales
+                : null;
+            if (totalTarget != null && totalSales != null) {
+              dailyTarget =
+                  totalTarget > 0 ? totalTarget / daysInMonth : 0.0;
+              dailySales =
+                  daysElapsed > 0 ? totalSales / daysElapsed : 0.0;
+              dailyPct = dailyTarget > 0
+                  ? (dailySales / dailyTarget * 100).clamp(0.0, 999.0)
+                  : 0.0;
+            }
+          }
+
+          final accent = dailyPct == null
+              ? AppColors.primary
+              : dailyPct >= 100
+                  ? const Color(0xFF22C55E)
+                  : dailyPct >= 75
+                      ? const Color(0xFFF59E0B)
+                      : AppColors.primary;
+
+          String fmtVal(double? v) => v == null
+              ? (isLoading ? '...' : '—')
+              : _formatAmount(v);
+
+          return Padding(
+            padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 0),
+            child: Container(
+              padding: EdgeInsets.fromLTRB(14.w, 10.h, 14.w, 12.h),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: accent.withValues(alpha: 0.18)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.trending_up_rounded,
+                          size: 11.r, color: accent),
+                      SizedBox(width: 5.w),
+                      Text(
+                        'DAILY PACE  ·  DAY $daysElapsed OF $daysInMonth',
+                        style: GoogleFonts.barlowCondensed(
+                          fontSize: 9.sp,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.8,
+                          color: accent,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 10.h),
+                  Row(
+                    children: [
+                      _DailyStat(
+                        label: 'DAILY TARGET',
+                        value: fmtVal(dailyTarget),
+                        unit: 'LKR / DAY',
+                        color: AppColors.foregroundMuted,
+                      ),
+                      Container(
+                          width: 1,
+                          height: 36.h,
+                          color: AppColors.surfaceVariant),
+                      _DailyStat(
+                        label: 'DAILY SALES',
+                        value: fmtVal(dailySales),
+                        unit: 'LKR / DAY',
+                        color: AppColors.foreground,
+                      ),
+                      Container(
+                          width: 1,
+                          height: 36.h,
+                          color: AppColors.surfaceVariant),
+                      _DailyStat(
+                        label: 'DAILY %',
+                        value: dailyPct != null
+                            ? '${dailyPct.toStringAsFixed(0)}%'
+                            : (isLoading ? '...' : '—'),
+                        unit: 'ACHIEVED',
+                        color: accent,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _DailyStat extends StatelessWidget {
+  final String label;
+  final String value;
+  final String unit;
+  final Color color;
+  const _DailyStat({
+    required this.label,
+    required this.value,
+    required this.unit,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.barlowCondensed(
+              fontSize: 8.sp,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+              color: AppColors.foregroundMuted,
+            ),
+          ),
+          SizedBox(height: 3.h),
+          Text(
+            value,
+            style: GoogleFonts.barlowCondensed(
+              fontSize: 18.sp,
+              fontWeight: FontWeight.w900,
+              height: 1.0,
+              letterSpacing: -0.3,
+              color: color,
+            ),
+          ),
+          Text(
+            unit,
+            style: GoogleFonts.barlowCondensed(
+              fontSize: 8.sp,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.8,
+              color: AppColors.foregroundMuted.withValues(alpha: 0.60),
+            ),
+          ),
+        ],
       ),
     );
   }

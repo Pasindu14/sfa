@@ -37,6 +37,9 @@ public class Outlet
     public int AreaId { get; set; }       // denormalized ancestor
     public int RegionId { get; set; }     // denormalized ancestor
 
+    // Denormalized billing stats
+    public DateTime? LastBillDate { get; set; }
+
     public bool IsActive { get; set; } = true;
     public bool IsDeleted { get; set; } = false;
 

@@ -14,6 +14,7 @@ class Outlet extends Equatable {
   final int routeId;
   final String routeName;
   final bool isActive;
+  final DateTime? lastBillDate;
 
   const Outlet({
     required this.id,
@@ -29,6 +30,7 @@ class Outlet extends Equatable {
     required this.routeId,
     required this.routeName,
     required this.isActive,
+    this.lastBillDate,
   });
 
   @override

@@ -326,7 +326,8 @@ class _ReadyBody extends StatelessWidget {
                   totalSales: state.totalSales ?? 0,
                   totalTarget: state.totalTarget ?? 0,
                   repName: state.selectedRep!.userName,
-                  monthLabel: '${_monthNames[state.month - 1]} ${state.year}',
+                  month: state.month,
+                  year: state.year,
                 ),
               ),
             ),
@@ -1196,13 +1197,15 @@ class _ValueAchievementSection extends StatelessWidget {
   final double totalSales;
   final double totalTarget;
   final String repName;
-  final String monthLabel;
+  final int month;
+  final int year;
 
   const _ValueAchievementSection({
     required this.totalSales,
     required this.totalTarget,
     required this.repName,
-    required this.monthLabel,
+    required this.month,
+    required this.year,
   });
 
   @override
@@ -1221,6 +1224,20 @@ class _ValueAchievementSection extends StatelessWidget {
             ? const Color(0xFFB45309)
             : AppColors.primaryDark;
     final ringValue = (pct / 100).clamp(0.0, 1.0);
+
+    // Daily pace calculations
+    final daysInMonth = DateTime(year, month + 1, 0).day;
+    final now = DateTime.now();
+    final isCurrentMonth = year == now.year && month == now.month;
+    final daysElapsed = isCurrentMonth
+        ? now.day.clamp(1, daysInMonth)
+        : daysInMonth;
+    final dailyTarget = totalTarget > 0 ? totalTarget / daysInMonth : 0.0;
+    final dailySales = daysElapsed > 0 ? totalSales / daysElapsed : 0.0;
+    final dailyPct = dailyTarget > 0
+        ? (dailySales / dailyTarget * 100).clamp(0.0, 999.0)
+        : 0.0;
+    final monthLabel = '${_monthNames[month - 1]} $year';
 
     return Container(
       width: double.infinity,
@@ -1437,6 +1454,160 @@ class _ValueAchievementSection extends StatelessWidget {
                                 fontWeight: FontWeight.w600,
                                 letterSpacing: 1.0,
                                 color: Colors.white.withValues(alpha: 0.55),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: 14.h),
+                  Container(
+                      height: 1,
+                      color: Colors.white.withValues(alpha: 0.15)),
+                  SizedBox(height: 10.h),
+
+                  // Daily pace label
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                          width: 20.w,
+                          height: 1,
+                          color: Colors.white.withValues(alpha: 0.25)),
+                      SizedBox(width: 8.w),
+                      Text(
+                        isCurrentMonth
+                            ? 'DAILY PACE  ·  DAY $daysElapsed OF $daysInMonth'
+                            : 'DAILY AVERAGE  ·  $daysInMonth DAYS',
+                        style: GoogleFonts.barlowCondensed(
+                          fontSize: 9.sp,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.8,
+                          color: Colors.white.withValues(alpha: 0.50),
+                        ),
+                      ),
+                      SizedBox(width: 8.w),
+                      Container(
+                          width: 20.w,
+                          height: 1,
+                          color: Colors.white.withValues(alpha: 0.25)),
+                    ],
+                  ),
+                  SizedBox(height: 10.h),
+
+                  // Daily target | daily sales | daily % row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text(
+                              'DAILY TARGET',
+                              style: GoogleFonts.barlowCondensed(
+                                fontSize: 8.sp,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.2,
+                                color: Colors.white.withValues(alpha: 0.55),
+                              ),
+                            ),
+                            SizedBox(height: 2.h),
+                            Text(
+                              _fmtCurrency(dailyTarget),
+                              style: GoogleFonts.barlowCondensed(
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w900,
+                                height: 1.0,
+                                letterSpacing: -0.3,
+                                color: Colors.white.withValues(alpha: 0.85),
+                              ),
+                            ),
+                            Text(
+                              'LKR / DAY',
+                              style: GoogleFonts.barlowCondensed(
+                                fontSize: 8.sp,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.8,
+                                color: Colors.white.withValues(alpha: 0.40),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                          width: 1,
+                          height: 36.h,
+                          color: Colors.white.withValues(alpha: 0.18)),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text(
+                              'DAILY SALES',
+                              style: GoogleFonts.barlowCondensed(
+                                fontSize: 8.sp,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.2,
+                                color: Colors.white.withValues(alpha: 0.55),
+                              ),
+                            ),
+                            SizedBox(height: 2.h),
+                            Text(
+                              _fmtCurrency(dailySales),
+                              style: GoogleFonts.barlowCondensed(
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w900,
+                                height: 1.0,
+                                letterSpacing: -0.3,
+                                color: Colors.white.withValues(alpha: 0.85),
+                              ),
+                            ),
+                            Text(
+                              'LKR / DAY',
+                              style: GoogleFonts.barlowCondensed(
+                                fontSize: 8.sp,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.8,
+                                color: Colors.white.withValues(alpha: 0.40),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                          width: 1,
+                          height: 36.h,
+                          color: Colors.white.withValues(alpha: 0.18)),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text(
+                              'DAILY %',
+                              style: GoogleFonts.barlowCondensed(
+                                fontSize: 8.sp,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.2,
+                                color: Colors.white.withValues(alpha: 0.55),
+                              ),
+                            ),
+                            SizedBox(height: 2.h),
+                            Text(
+                              '${dailyPct.toStringAsFixed(0)}%',
+                              style: GoogleFonts.barlowCondensed(
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w900,
+                                height: 1.0,
+                                letterSpacing: -0.3,
+                                color: Colors.white.withValues(alpha: 0.85),
+                              ),
+                            ),
+                            Text(
+                              'ACHIEVED',
+                              style: GoogleFonts.barlowCondensed(
+                                fontSize: 8.sp,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.8,
+                                color: Colors.white.withValues(alpha: 0.40),
                               ),
                             ),
                           ],
