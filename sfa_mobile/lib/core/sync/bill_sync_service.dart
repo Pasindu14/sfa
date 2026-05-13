@@ -72,6 +72,7 @@ class BillSyncService {
   Future<void> flushAll() async {
     final rows = await _local.getPendingForSync();
     for (final row in rows) {
+      if (_terminalErrorCodes.contains(row.lastSyncErrorCode)) continue;
       await _sync(row);
     }
     await _purgeOld();
@@ -87,16 +88,39 @@ class BillSyncService {
     }
   }
 
+  static const _terminalErrorCodes = {'INSUFFICIENT_STOCK', 'VALIDATION_FAILED'};
+
   /// Attempt to sync one row by its client ID. No-ops if the row doesn't exist,
-  /// is already synced, or is currently in-flight.
+  /// is already synced, in-flight, or failed with a terminal error code that
+  /// the rep must resolve manually (e.g. out of stock, validation failure).
   Future<void> flushOne(String clientBillId) async {
     if (_inFlight.contains(clientBillId)) return;
     final row = await _local.getById(clientBillId);
     if (row == null) return;
     if (row.syncStatus.dbValue == 'synced') return;
     if (row.syncStatus.dbValue == 'syncing') return;
+    if (_terminalErrorCodes.contains(row.lastSyncErrorCode)) return;
 
     await _sync(row);
+    await _emitStatus();
+  }
+
+  /// Cancels a bill locally and, if it was already synced to the server,
+  /// also calls the cancel endpoint. Best-effort — network failures are
+  /// swallowed so the local row is always marked cancelled.
+  Future<void> cancelOne(String clientBillId) async {
+    final row = await _local.getById(clientBillId);
+    if (row == null || row.syncStatus == SyncStatus.cancelled) return;
+
+    if (row.serverBillId != null) {
+      try {
+        await _remote.cancelBilling(row.serverBillId!);
+      } catch (_) {
+        // Network or server error — still cancel locally.
+      }
+    }
+
+    await _local.markCancelled(clientBillId);
     await _emitStatus();
   }
 

@@ -210,12 +210,13 @@ class BillsLocalDatasource {
     );
   }
 
-  Future<void> delete(String clientBillId) async {
+  Future<void> markCancelled(String clientBillId) async {
     final db = await _dbHelper.database;
-    await db.delete(
+    await db.update(
       'bills',
-      where: 'client_bill_id = ? AND sync_status != ?',
-      whereArgs: [clientBillId, SyncStatus.synced.dbValue],
+      {'sync_status': SyncStatus.cancelled.dbValue},
+      where: 'client_bill_id = ?',
+      whereArgs: [clientBillId],
     );
   }
 

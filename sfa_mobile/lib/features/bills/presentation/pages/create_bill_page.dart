@@ -30,20 +30,42 @@ class CreateBillPage extends StatelessWidget {
 
     return BlocListener<CreateBillBloc, CreateBillState>(
       listenWhen: (prev, curr) =>
-          prev.submittedClientBillId != curr.submittedClientBillId &&
-          curr.submittedClientBillId != null,
+          (prev.submittedClientBillId != curr.submittedClientBillId &&
+              curr.submittedClientBillId != null) ||
+          (prev.errorMessage != curr.errorMessage &&
+              curr.errorMessage != null),
       listener: (ctx, state) {
-        ScaffoldMessenger.of(ctx).showSnackBar(
-          SnackBar(
+        if (state.submittedClientBillId != null &&
+            state.errorMessage == null) {
+          ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
             content: Text(
               'Order saved — will sync when online',
-              style: GoogleFonts.barlow(fontWeight: FontWeight.w500),
+              style: GoogleFonts.barlow(
+                  color: Colors.white, fontWeight: FontWeight.w500),
             ),
-            backgroundColor: AppColors.darkSurface,
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(16.w),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8.r)),
             duration: const Duration(seconds: 2),
-          ),
-        );
-        ctx.goNamed('bills');
+          ));
+          ctx.goNamed('bills');
+        } else if (state.errorMessage != null) {
+          ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+            content: Text(
+              state.errorMessage!,
+              style: GoogleFonts.barlow(
+                  color: Colors.white, fontWeight: FontWeight.w500),
+            ),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(16.w),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8.r)),
+            duration: const Duration(seconds: 4),
+          ));
+        }
       },
       child: Scaffold(
         backgroundColor: AppColors.surface,

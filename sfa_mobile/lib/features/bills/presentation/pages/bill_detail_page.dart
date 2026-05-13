@@ -274,11 +274,11 @@ class _InfoCard extends StatelessWidget {
         : 'Draft #${bill.clientBillId.substring(0, 6).toUpperCase()}';
 
     final (statusColor, statusLabel, statusIcon) = switch (bill.syncStatus) {
-      SyncStatus.synced => (AppColors.success, 'Synced', Icons.cloud_done),
-      SyncStatus.syncing =>
-        (AppColors.primary, 'Syncing', Icons.cloud_upload_rounded),
-      SyncStatus.pending => (AppColors.warning, 'Pending', Icons.schedule),
-      SyncStatus.failed => (AppColors.error, 'Failed', Icons.error_outline),
+      SyncStatus.synced    => (AppColors.success, 'Synced', Icons.cloud_done),
+      SyncStatus.syncing   => (AppColors.primary, 'Syncing', Icons.cloud_upload_rounded),
+      SyncStatus.pending   => (AppColors.warning, 'Pending', Icons.schedule),
+      SyncStatus.failed    => (AppColors.error, 'Failed', Icons.error_outline),
+      SyncStatus.cancelled => (AppColors.error, 'Cancelled', Icons.cancel_outlined),
     };
 
     return Container(
@@ -863,8 +863,34 @@ class _ActionRow extends StatelessWidget {
   final VoidCallback onReload;
   const _ActionRow({required this.bill, required this.onReload});
 
+  static const _terminalCodes = {'INSUFFICIENT_STOCK', 'VALIDATION_FAILED'};
+
+  bool get _isTerminalFailure =>
+      _terminalCodes.contains(bill.lastSyncErrorCode);
+
   @override
   Widget build(BuildContext context) {
+    final deleteButton = Expanded(
+      child: _ActionButton(
+        icon: Icons.delete_outline_rounded,
+        label: 'Delete',
+        color: AppColors.error,
+        onTap: () async {
+          final confirmed = await _confirmDelete(context);
+          if (!confirmed) return;
+          if (!context.mounted) return;
+          context
+              .read<BillsListBloc>()
+              .add(DeleteBillRequested(bill.clientBillId));
+          context.goNamed('bills');
+        },
+      ),
+    );
+
+    if (_isTerminalFailure) {
+      return Row(children: [deleteButton]);
+    }
+
     return Row(
       children: [
         Expanded(
@@ -881,22 +907,7 @@ class _ActionRow extends StatelessWidget {
           ),
         ),
         SizedBox(width: 12.w),
-        Expanded(
-          child: _ActionButton(
-            icon: Icons.delete_outline_rounded,
-            label: 'Delete',
-            color: AppColors.error,
-            onTap: () async {
-              final confirmed = await _confirmDelete(context);
-              if (!confirmed) return;
-              if (!context.mounted) return;
-              context
-                  .read<BillsListBloc>()
-                  .add(DeleteBillRequested(bill.clientBillId));
-              context.goNamed('bills');
-            },
-          ),
-        ),
+        deleteButton,
       ],
     );
   }

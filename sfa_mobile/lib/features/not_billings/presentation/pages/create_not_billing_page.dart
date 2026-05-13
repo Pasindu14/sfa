@@ -42,16 +42,21 @@ class _CreateNotBillingPageState extends State<CreateNotBillingPage> {
       listenWhen: (prev, curr) =>
           curr.submittedClientId != null && prev.submittedClientId == null,
       listener: (context, state) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Recorded — will sync when online',
-              style: GoogleFonts.barlow(fontSize: 13.sp),
-            ),
-            backgroundColor: AppColors.primary,
-            behavior: SnackBarBehavior.floating,
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(
+            'Recorded — will sync when online',
+            style: GoogleFonts.barlow(
+                color: Colors.white,
+                fontWeight: FontWeight.w500,
+                fontSize: 13.sp),
           ),
-        );
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(16.w),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8.r)),
+          duration: const Duration(seconds: 2),
+        ));
         context.canPop() ? context.pop() : context.goNamed('notBillingsList');
       },
       child: Scaffold(

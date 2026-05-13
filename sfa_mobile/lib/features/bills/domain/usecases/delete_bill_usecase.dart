@@ -4,5 +4,5 @@ class DeleteBillUseCase {
   final BillsRepository _repo;
   const DeleteBillUseCase(this._repo);
 
-  Future<void> call(String clientBillId) => _repo.deleteLocalBill(clientBillId);
+  Future<void> call(String clientBillId) => _repo.cancelBill(clientBillId);
 }

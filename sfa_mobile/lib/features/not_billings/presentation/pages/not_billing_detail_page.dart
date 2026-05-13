@@ -106,10 +106,11 @@ class _DetailBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (chipColor, chipLabel) = switch (record.syncStatus) {
-      SyncStatus.synced  => (const Color(0xFF22C55E), 'Synced'),
-      SyncStatus.syncing => (const Color(0xFF3B82F6), 'Syncing'),
-      SyncStatus.pending => (const Color(0xFFF59E0B), 'Pending sync'),
-      SyncStatus.failed  => (const Color(0xFFEF4444), 'Sync failed'),
+      SyncStatus.synced    => (const Color(0xFF22C55E), 'Synced'),
+      SyncStatus.syncing   => (const Color(0xFF3B82F6), 'Syncing'),
+      SyncStatus.pending   => (const Color(0xFFF59E0B), 'Pending sync'),
+      SyncStatus.failed    => (const Color(0xFFEF4444), 'Sync failed'),
+      SyncStatus.cancelled => (const Color(0xFF6B7280), 'Cancelled'),
     };
 
     return SingleChildScrollView(

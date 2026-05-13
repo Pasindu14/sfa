@@ -45,4 +45,7 @@ public interface IBillingRepository
     Task AddAsync(Billing billing, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
     Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct = default);
+
+    /// <summary>Returns a tracked entity for mutation (cancel, update).</summary>
+    Task<Billing?> GetTrackedByIdAsync(int id, CancellationToken ct = default);
 }

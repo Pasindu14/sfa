@@ -1,3 +1,4 @@
+import 'package:uswatte/core/errors/app_exception.dart';
 import 'package:uswatte/core/sync/bill_sync_service.dart';
 import 'package:uswatte/features/bills/data/datasources/bills_local_datasource.dart';
 import 'package:uswatte/features/bills/data/models/bill_item_model.dart';
@@ -14,6 +15,19 @@ class BillsRepositoryImpl implements BillsRepository {
 
   @override
   Future<Bill> createBill(Bill bill) async {
+    // Client-side guard: resell return value must not exceed sale value.
+    final saleTotal = bill.items
+        .where((i) => i.billingItemType == 'Sale')
+        .fold(0.0, (sum, i) => sum + i.quantity * i.unitPrice * (1 - i.discountRate / 100));
+    final resellTotal = bill.items
+        .where((i) => i.billingItemType == 'Return' && i.returnType == 'MarketResell')
+        .fold(0.0, (sum, i) => sum + i.quantity * i.unitPrice);
+    if (resellTotal > saleTotal) {
+      throw const ValidationException(
+        message: 'Total return value cannot exceed total sale value.',
+      );
+    }
+
     final model = BillModel(
       clientBillId: bill.clientBillId,
       outletId: bill.outletId,
@@ -70,8 +84,8 @@ class BillsRepositoryImpl implements BillsRepository {
   Future<int> countPendingOrFailed() => _local.countPendingOrFailed();
 
   @override
-  Future<void> deleteLocalBill(String clientBillId) =>
-      _local.delete(clientBillId);
+  Future<void> cancelBill(String clientBillId) =>
+      _syncService.cancelOne(clientBillId);
 
   @override
   Future<void> retrySync(String clientBillId) => _syncService.flushOne(clientBillId);

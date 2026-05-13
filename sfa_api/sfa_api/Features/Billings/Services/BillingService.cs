@@ -426,6 +426,30 @@ public class BillingService(
         return result;
     }
 
+    public async Task<BillingDto> CancelAsync(int billingId, int salesRepId, CancellationToken ct = default)
+    {
+        var billing = await _billingRepository.GetTrackedByIdAsync(billingId, ct)
+            ?? throw new NotFoundException("Billing", billingId);
+
+        if (billing.SalesRepId != salesRepId)
+            throw new AuthorizationException("Billing");
+
+        if (billing.Status != BillingStatus.Submitted)
+            throw new BusinessRuleException(
+                "BILLING_NOT_CANCELLABLE",
+                $"Billing {billing.BillingNumber} cannot be cancelled — current status is {billing.Status}.");
+
+        billing.Status    = BillingStatus.Cancelled;
+        billing.UpdatedAt = DateTime.UtcNow;
+        billing.UpdatedBy = salesRepId;
+
+        await _billingRepository.SaveChangesAsync(ct);
+
+        var updated = await _billingRepository.GetByIdAsync(billingId, ct)
+            ?? throw new DatabaseUnavailableException();
+        return ProjectToDto(updated);
+    }
+
     public async Task<RepMonthlySalesItemwiseDto> GetRepMonthlySalesItemwiseAsync(
         int salesRepId, int year, int month, CancellationToken ct = default)
     {

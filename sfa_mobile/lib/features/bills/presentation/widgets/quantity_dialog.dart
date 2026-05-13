@@ -203,14 +203,19 @@ class _QuantitySheetState extends State<_QuantitySheet> {
     if (hasError) {
       final msg = _qtyError ?? _returnTypeError ?? _expireDateError ?? _discError;
       if (msg != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(msg, style: GoogleFonts.barlow(fontWeight: FontWeight.w600)),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 3),
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(
+            msg,
+            style: GoogleFonts.barlow(
+                color: Colors.white, fontWeight: FontWeight.w500),
           ),
-        );
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(16.w),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8.r)),
+          duration: const Duration(seconds: 3),
+        ));
       }
       return;
     }

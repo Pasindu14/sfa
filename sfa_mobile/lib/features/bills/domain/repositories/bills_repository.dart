@@ -17,9 +17,10 @@ abstract class BillsRepository {
 
   Future<int> countPendingOrFailed();
 
-  /// Deletes a local bill. Synced bills cannot be deleted from the device —
-  /// they live on the server and must be voided/returned through proper flow.
-  Future<void> deleteLocalBill(String clientBillId);
+  /// Cancels a bill. Pending/failed bills are cancelled locally only.
+  /// Synced bills also trigger PATCH /api/v1/billings/{id}/cancel on the server.
+  /// Cancelled bills remain visible in the list but cannot be retried or synced.
+  Future<void> cancelBill(String clientBillId);
 
   /// Re-triggers a sync attempt for one failed bill.
   Future<void> retrySync(String clientBillId);

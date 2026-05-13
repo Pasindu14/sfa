@@ -52,12 +52,19 @@ class _AssignmentsView extends StatelessWidget {
                   s is AssignmentsLoaded && s.deleteError != null,
               listener: (context, state) {
                 if (state is AssignmentsLoaded && state.deleteError != null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(state.deleteError!),
-                      backgroundColor: Colors.red.shade700,
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(
+                      state.deleteError!,
+                      style: GoogleFonts.barlow(
+                          color: Colors.white, fontWeight: FontWeight.w500),
                     ),
-                  );
+                    backgroundColor: AppColors.error,
+                    behavior: SnackBarBehavior.floating,
+                    margin: EdgeInsets.all(16.w),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.r)),
+                    duration: const Duration(seconds: 4),
+                  ));
                 }
               },
               builder: (context, state) {

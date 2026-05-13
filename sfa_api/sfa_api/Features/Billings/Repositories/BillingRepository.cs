@@ -52,6 +52,10 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
               .Where(x => x.DistributorId == distributorId && productIds.Contains(x.ProductId))
               .ToListAsync(ct);
 
+    public Task<Billing?> GetTrackedByIdAsync(int id, CancellationToken ct = default)
+        => _db.Billings
+              .FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted, ct);
+
     public Task<Billing?> GetByIdAsync(int id, CancellationToken ct = default)
         => _db.Billings
               .AsNoTracking()

@@ -226,11 +226,11 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (color, label, icon) = switch (status) {
-      SyncStatus.synced => (AppColors.success, 'Synced', Icons.cloud_done),
-      SyncStatus.syncing =>
-        (AppColors.primary, 'Syncing', Icons.cloud_upload_rounded),
-      SyncStatus.pending => (AppColors.warning, 'Pending', Icons.schedule),
-      SyncStatus.failed => (AppColors.error, 'Failed', Icons.error_outline),
+      SyncStatus.synced    => (AppColors.success, 'Synced', Icons.cloud_done),
+      SyncStatus.syncing   => (AppColors.primary, 'Syncing', Icons.cloud_upload_rounded),
+      SyncStatus.pending   => (AppColors.warning, 'Pending', Icons.schedule),
+      SyncStatus.failed    => (AppColors.error, 'Failed', Icons.error_outline),
+      SyncStatus.cancelled => (AppColors.error, 'Cancelled', Icons.cancel_outlined),
     };
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),

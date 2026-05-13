@@ -204,10 +204,11 @@ class _NotBillingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (chipColor, chipLabel, chipIcon) = switch (record.syncStatus) {
-      SyncStatus.synced  => (const Color(0xFF22C55E), 'Synced', Icons.cloud_done_outlined),
-      SyncStatus.syncing => (const Color(0xFF3B82F6), 'Syncing', Icons.cloud_upload_outlined),
-      SyncStatus.pending => (const Color(0xFFF59E0B), 'Pending', Icons.schedule_rounded),
-      SyncStatus.failed  => (const Color(0xFFEF4444), 'Failed', Icons.error_outline_rounded),
+      SyncStatus.synced    => (const Color(0xFF22C55E), 'Synced', Icons.cloud_done_outlined),
+      SyncStatus.syncing   => (const Color(0xFF3B82F6), 'Syncing', Icons.cloud_upload_outlined),
+      SyncStatus.pending   => (const Color(0xFFF59E0B), 'Pending', Icons.schedule_rounded),
+      SyncStatus.failed    => (const Color(0xFFEF4444), 'Failed', Icons.error_outline_rounded),
+      SyncStatus.cancelled => (const Color(0xFF6B7280), 'Cancelled', Icons.cancel_outlined),
     };
 
     return GestureDetector(

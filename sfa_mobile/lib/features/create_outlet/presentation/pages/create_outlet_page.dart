@@ -59,9 +59,14 @@ class _CreateOutletPageState extends State<CreateOutletPage> {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(
               'Outlet registered successfully.',
-              style: GoogleFonts.barlow(color: Colors.white),
+              style: GoogleFonts.barlow(
+                  color: Colors.white, fontWeight: FontWeight.w500),
             ),
             backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(16.w),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8.r)),
             duration: const Duration(seconds: 3),
           ));
           context.pop();
@@ -70,9 +75,14 @@ class _CreateOutletPageState extends State<CreateOutletPage> {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(
               state.submitError!,
-              style: GoogleFonts.barlow(color: Colors.white),
+              style: GoogleFonts.barlow(
+                  color: Colors.white, fontWeight: FontWeight.w500),
             ),
             backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(16.w),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8.r)),
             duration: const Duration(seconds: 4),
           ));
         }

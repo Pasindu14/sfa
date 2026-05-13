@@ -96,6 +96,20 @@ public class BillingsController(
     }
 
     /// <summary>
+    /// PATCH /api/v1/billings/{id}/cancel
+    /// SalesRep only — cancels a submitted billing they created.
+    /// Only Submitted billings can be cancelled; Approved/already-Cancelled are rejected.
+    /// </summary>
+    [HttpPatch("{id:int}/cancel")]
+    [Authorize(Roles = "SalesRep")]
+    public async Task<IActionResult> Cancel(int id, CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var billing = await _billingService.CancelAsync(id, GetCallerId(), ct);
+        return Ok(ResponseHelper.Ok(billing, correlationId));
+    }
+
+    /// <summary>
     /// POST /api/v1/billings
     /// SalesRep only — creates a billing for an outlet and deducts stock atomically.
     ///

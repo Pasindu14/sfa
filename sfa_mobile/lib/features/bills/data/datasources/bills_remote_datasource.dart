@@ -82,6 +82,20 @@ class BillsRemoteDatasource {
     }
   }
 
+  /// Cancels a synced billing on the server.
+  /// PATCH /api/v1/billings/{serverBillId}/cancel
+  Future<void> cancelBilling(int serverBillId) async {
+    try {
+      await _dio.patch('/api/v1/billings/$serverBillId/cancel');
+    } on AppException {
+      rethrow;
+    } on DioException catch (e) {
+      final passthrough = e.error;
+      if (passthrough is AppException) throw passthrough;
+      throw NetworkException(message: _networkMessage(e));
+    }
+  }
+
   String _networkMessage(DioException e) => switch (e.type) {
         DioExceptionType.connectionTimeout ||
         DioExceptionType.sendTimeout =>
