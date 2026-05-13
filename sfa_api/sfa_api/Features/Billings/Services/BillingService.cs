@@ -145,6 +145,7 @@ public class BillingService(
         decimal subTotal                  = 0m;
         decimal freeIssueValueCompany     = 0m;
         decimal freeIssueValueDistributor = 0m;
+        decimal returnValue               = 0m;
         var lineItems = request.Items.Select((item, idx) =>
         {
             decimal discountAmount;
@@ -168,6 +169,8 @@ public class BillingService(
                 default: // Return
                     discountAmount = Math.Round(item.Quantity * item.UnitPrice * item.DiscountRate / 100m, 2);
                     totalPrice     = Math.Round(item.Quantity * item.UnitPrice - discountAmount, 2);
+                    if (item.ReturnType == ReturnType.MarketResell)
+                        returnValue += totalPrice;
                     break;
             }
 
@@ -190,7 +193,7 @@ public class BillingService(
         var freeIssueValue = freeIssueValueCompany + freeIssueValueDistributor;
 
         var billDiscountAmount = Math.Round(subTotal * billDiscountRate / 100m, 2);
-        var totalAmount        = subTotal - billDiscountAmount;
+        var totalAmount        = subTotal - billDiscountAmount - returnValue;
 
         // ⑧ Acquire advisory lock scoped to sales rep (BillingId not yet known)
         await using var advisoryLock = await _lockService.AcquireAsync($"billing:create:{salesRepId}", ct)
@@ -222,6 +225,7 @@ public class BillingService(
             BillDiscountRate  = billDiscountRate,
             BillDiscountAmount = billDiscountAmount,
             TotalAmount       = totalAmount,
+            ReturnValue               = returnValue,
             FreeIssueValue            = freeIssueValue,
             FreeIssueValueCompany     = freeIssueValueCompany,
             FreeIssueValueDistributor = freeIssueValueDistributor,
@@ -355,6 +359,7 @@ public class BillingService(
         b.SubTotalAmount,
         b.BillDiscountRate,
         b.BillDiscountAmount,
+        b.ReturnValue,
         b.TotalAmount,
         b.FreeIssueValue,
         b.FreeIssueValueCompany,

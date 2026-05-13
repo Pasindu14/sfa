@@ -36,6 +36,7 @@ public record BillingDto(
     decimal SubTotalAmount,
     decimal BillDiscountRate,
     decimal BillDiscountAmount,
+    decimal ReturnValue,
     decimal TotalAmount,
     decimal FreeIssueValue,
     decimal FreeIssueValueCompany,

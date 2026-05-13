@@ -23,7 +23,23 @@ public class CreateBillingValidator : AbstractValidator<CreateBillingRequest>
 
         RuleFor(x => x.Items)
             .NotEmpty().WithMessage("At least one billing item is required.")
-            .Must(items => items.Count <= 100).WithMessage("A billing may not have more than 100 items.");
+            .Must(items => items.Count <= 100).WithMessage("A billing may not have more than 100 items.")
+            .Must(items => items.Any(i => i.BillingItemType == BillingItemType.Sale))
+                .WithMessage("A bill must contain at least one Sale item.")
+            .Must(items =>
+            {
+                var saleTotal = items
+                    .Where(i => i.BillingItemType == BillingItemType.Sale)
+                    .Sum(i => i.Quantity * i.UnitPrice * (1 - i.DiscountRate / 100m));
+                var returnTotal = items
+                    .Where(i => i.BillingItemType == BillingItemType.Return
+                             && i.ReturnType == ReturnType.MarketResell)
+                    .Sum(i => i.Quantity * i.UnitPrice);
+                return returnTotal <= saleTotal;
+            })
+            .WithMessage("Total market resell return value cannot exceed total sale value.")
+            .When(x => x.Items.Any(i => i.BillingItemType == BillingItemType.Return
+                                     && i.ReturnType == ReturnType.MarketResell));
 
         RuleForEach(x => x.Items).ChildRules(item =>
         {

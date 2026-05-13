@@ -42,6 +42,7 @@ public class Billing
     public decimal FreeIssueValue { get; set; }            // Σ item.TotalPrice for ALL FreeIssue lines (informational, not in TotalAmount)
     public decimal FreeIssueValueCompany { get; set; }     // Σ item.TotalPrice for FreeIssue lines funded by the company (drawn from FOC stock pool)
     public decimal FreeIssueValueDistributor { get; set; } // Σ item.TotalPrice for FreeIssue lines funded by the distributor (drawn from Normal stock pool)
+    public decimal ReturnValue { get; set; }               // Σ item.TotalPrice for MarketResell return lines — deducted from TotalAmount
 
     public BillingStatus Status { get; set; } = BillingStatus.Submitted;
     public string? Notes { get; set; }
