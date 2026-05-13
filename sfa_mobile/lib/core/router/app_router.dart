@@ -104,6 +104,9 @@ import 'package:uswatte/features/todays_route_map/presentation/bloc/todays_route
 import 'package:uswatte/features/todays_route_map/presentation/bloc/todays_route_map_event.dart';
 import 'package:uswatte/features/todays_route_map/presentation/pages/todays_route_map_page.dart';
 import 'package:uswatte/features/supervisor_summary/presentation/cubit/supervisor_summary_cubit.dart';
+import 'package:uswatte/features/supervisor_achievement/data/datasources/supervisor_achievement_remote_datasource.dart';
+import 'package:uswatte/features/supervisor_achievement/presentation/cubit/supervisor_achievement_cubit.dart';
+import 'package:uswatte/features/supervisor_achievement/presentation/pages/supervisor_achievement_page.dart';
 
 class AppRouter {
   AppRouter._();
@@ -544,6 +547,17 @@ class AppRouter {
                   getRouteMap: getIt<GetSupervisorRouteMapUseCase>(),
                 )..add(const SupervisorRouteMapRepsRequested()),
                 child: const SupervisorRouteMapPage(),
+              ),
+            ),
+            GoRoute(
+              path: 'achievement',
+              name: 'supervisorAchievement',
+              builder: (_, __) => BlocProvider(
+                create: (_) => SupervisorAchievementCubit(
+                  getMyReps: getIt<GetMyRepsUseCase>(),
+                  remote: getIt<SupervisorAchievementRemoteDatasource>(),
+                )..loadReps(),
+                child: const SupervisorAchievementPage(),
               ),
             ),
             GoRoute(

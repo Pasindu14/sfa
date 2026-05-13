@@ -121,6 +121,7 @@ import 'package:uswatte/features/rep_monthly_sales/domain/usecases/get_rep_month
 import 'package:uswatte/features/stock/data/datasources/distributor_stock_local_datasource.dart';
 import 'package:uswatte/features/stock/data/datasources/distributor_stock_remote_datasource.dart';
 import 'package:uswatte/features/stock/domain/usecases/sync_distributor_stock_usecase.dart';
+import 'package:uswatte/features/supervisor_achievement/data/datasources/supervisor_achievement_remote_datasource.dart';
 
 final getIt = GetIt.instance;
 
@@ -438,6 +439,10 @@ Future<void> configureDependencies() async {
         getIt<DistributorStockRemoteDatasource>(),
         getIt<DistributorStockLocalDatasource>(),
       ));
+
+  // ── Supervisor Achievement ────────────────────────────────────────────────
+  getIt.registerLazySingleton(
+      () => SupervisorAchievementRemoteDatasource(getIt<Dio>()));
 
   // ── Today's Route Map ─────────────────────────────────────────────────────
   getIt.registerLazySingleton<TodaysRouteMapRepository>(

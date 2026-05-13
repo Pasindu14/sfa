@@ -722,6 +722,14 @@ class _ActionsSection extends StatelessWidget {
               ),
             ],
           ),
+          SizedBox(height: 10.h),
+          _TileActionCard(
+            icon: Icons.emoji_events_rounded,
+            title: 'REP ACHIEVEMENT',
+            subtitle: 'Item-wise target vs sold by month',
+            color: AppColors.primary,
+            onTap: () => context.push('/supervisor/achievement'),
+          ),
         ],
       ),
     );
