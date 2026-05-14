@@ -12,24 +12,38 @@ export default {
       const userRole = auth?.user?.role;
       const path = nextUrl.pathname;
 
-      // Redirect logged-in users away from login page
+      // Always allow the unauthorized page (avoid redirect loops)
+      if (path === "/unauthorized") return true;
+
+      // Redirect logged-in users away from auth pages
       if ((path === "/sign-in" || path === "/login") && isLoggedIn) {
+        if (userRole?.toLowerCase() === "distributor") {
+          return Response.redirect(new URL("/distributor-dashboard", nextUrl));
+        }
         return Response.redirect(new URL("/dashboard", nextUrl));
       }
 
-      // Protect dashboard routes
-      if (path.startsWith("/dashboard")) {
-        if (!isLoggedIn) {
-          return Response.redirect(new URL("/sign-in", nextUrl));
-        }
-        // Only allow admin users to access dashboard
-        if (userRole?.toLowerCase() !== "admin") {
+      // Public auth pages: allow unauthenticated access
+      if (path === "/sign-in" || path === "/login") return true;
+
+      // All other routes are protected — require login
+      if (!isLoggedIn) {
+        return Response.redirect(new URL("/sign-in", nextUrl));
+      }
+
+      // Distributor portal — only Distributor role may enter
+      if (path.startsWith("/distributor-dashboard")) {
+        if (userRole?.toLowerCase() !== "distributor") {
           return Response.redirect(new URL("/unauthorized", nextUrl));
         }
         return true;
       }
 
-      // Allow all other routes
+      // All remaining routes require Admin
+      if (userRole?.toLowerCase() !== "admin") {
+        return Response.redirect(new URL("/unauthorized", nextUrl));
+      }
+
       return true;
     },
     async jwt({ token, user }) {
