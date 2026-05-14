@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uswatte/core/background/background_sync_service.dart';
 import 'package:uswatte/core/device/device_id_service.dart';
 import 'package:uswatte/core/di/injection.dart';
 import 'package:uswatte/core/network/session_expired_notifier.dart';
@@ -17,10 +18,41 @@ import 'package:uswatte/features/auth/domain/usecases/get_current_auth_usecase.d
 import 'package:uswatte/features/auth/domain/usecases/login_usecase.dart';
 import 'package:uswatte/features/auth/domain/usecases/logout_usecase.dart';
 import 'package:uswatte/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:workmanager/workmanager.dart';
+
+// @pragma prevents the Dart tree-shaker from removing this function in release
+// builds. Without it, WorkManager fires but the callback silently does nothing.
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((taskName, inputData) async {
+    try {
+      // Background isolate has no platform binding — must initialize before
+      // calling any Flutter plugin (sqflite, flutter_secure_storage, etc.).
+      WidgetsFlutterBinding.ensureInitialized();
+      await configureDependencies();
+      await getIt<BackgroundSyncService>().runSync();
+    } catch (_) {
+      // Never surface exceptions to WorkManager — it retries immediately on
+      // failure, which would drain battery and spam the server.
+    }
+    return Future.value(true);
+  });
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await configureDependencies();
+
+  // Register the 4-hour background sync task. ExistingWorkPolicy.keep means
+  // relaunching the app does not reset the timer for an already-queued task.
+  await Workmanager().initialize(callbackDispatcher);
+  await Workmanager().registerPeriodicTask(
+    'com.sfa.uswatte.background_sync',
+    'backgroundSyncTask',
+    frequency: const Duration(hours: 4),
+    constraints: Constraints(networkType: NetworkType.connected),
+    existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
+  );
 
   // Composition root: wire use cases explicitly — presentation never touches getIt
   final authBloc = AuthBloc(
