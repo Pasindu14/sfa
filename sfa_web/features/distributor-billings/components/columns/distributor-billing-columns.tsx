@@ -53,7 +53,22 @@ export function getDistributorBillingColumns(
       accessorKey: 'salesRepName',
       header: 'Sales Rep',
       cell: ({ row }) => (
-        <span className="text-sm">{row.original.salesRepName}</span>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-1.5">
+            <span className="shrink-0 rounded px-1 py-px text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary leading-none">
+              Rep
+            </span>
+            <span className="text-sm font-medium leading-none">{row.original.salesRepName}</span>
+          </div>
+          {row.original.supervisorName && (
+            <div className="flex items-center gap-1.5 pl-px">
+              <span className="shrink-0 rounded px-1 py-px text-[9px] font-bold uppercase tracking-wider bg-muted text-muted-foreground leading-none">
+                Sup
+              </span>
+              <span className="text-xs text-muted-foreground leading-none">{row.original.supervisorName}</span>
+            </div>
+          )}
+        </div>
       ),
     },
     {

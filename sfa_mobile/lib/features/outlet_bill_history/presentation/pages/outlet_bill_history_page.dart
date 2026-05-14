@@ -26,6 +26,7 @@ class OutletBillHistoryPage extends StatefulWidget {
 class _OutletBillHistoryPageState extends State<OutletBillHistoryPage> {
   late DateTime _dateFrom;
   late DateTime _dateTo;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -33,6 +34,20 @@ class _OutletBillHistoryPageState extends State<OutletBillHistoryPage> {
     _dateTo = DateTime.now();
     _dateFrom = _dateTo.subtract(const Duration(days: 30));
     _load();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      context.read<OutletBillHistoryCubit>().loadMore();
+    }
   }
 
   void _load() {
@@ -44,10 +59,11 @@ class _OutletBillHistoryPageState extends State<OutletBillHistoryPage> {
   }
 
   Future<void> _pickFrom() async {
+    final earliest = _dateTo.subtract(const Duration(days: 90));
     final picked = await showDatePicker(
       context: context,
       initialDate: _dateFrom,
-      firstDate: DateTime(2020),
+      firstDate: earliest.isAfter(DateTime(2020)) ? earliest : DateTime(2020),
       lastDate: _dateTo,
     );
     if (picked != null && picked != _dateFrom) {
@@ -57,11 +73,13 @@ class _OutletBillHistoryPageState extends State<OutletBillHistoryPage> {
   }
 
   Future<void> _pickTo() async {
+    final latest = _dateFrom.add(const Duration(days: 90));
+    final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
       initialDate: _dateTo,
       firstDate: _dateFrom,
-      lastDate: DateTime.now(),
+      lastDate: latest.isBefore(now) ? latest : now,
     );
     if (picked != null && picked != _dateTo) {
       setState(() => _dateTo = picked);
@@ -106,24 +124,41 @@ class _OutletBillHistoryPageState extends State<OutletBillHistoryPage> {
                       message: message,
                       onRetry: _load,
                     ),
-                  OutletBillHistoryLoaded(:final bills) => bills.isEmpty
+                  OutletBillHistoryLoaded(:final bills, :final hasMore, :final isLoadingMore) =>
+                    bills.isEmpty
                       ? _EmptyView(
                           dateFrom: _dateFrom,
                           dateTo: _dateTo,
                         )
                       : ListView.separated(
+                          controller: _scrollController,
                           padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 40.h),
-                          itemCount: bills.length,
+                          itemCount: bills.length + (hasMore ? 1 : 0),
                           separatorBuilder: (_, __) => SizedBox(height: 10.h),
-                          itemBuilder: (_, i) => _BillTile(
-                            bill: bills[i],
-                            onTap: () => context.pushNamed(
-                              'outletBillDetail',
-                              pathParameters: {
-                                'billingId': bills[i].id.toString(),
-                              },
-                            ),
-                          ),
+                          itemBuilder: (_, i) {
+                            if (i == bills.length) {
+                              return Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16.h),
+                                child: Center(
+                                  child: isLoadingMore
+                                      ? const CircularProgressIndicator(
+                                          color: AppColors.primary,
+                                          strokeWidth: 2,
+                                        )
+                                      : const SizedBox.shrink(),
+                                ),
+                              );
+                            }
+                            return _BillTile(
+                              bill: bills[i],
+                              onTap: () => context.pushNamed(
+                                'outletBillDetail',
+                                pathParameters: {
+                                  'billingId': bills[i].id.toString(),
+                                },
+                              ),
+                            );
+                          },
                         ),
                 };
               },

@@ -14,7 +14,14 @@ class OutletBillHistoryLoading extends OutletBillHistoryState {
 
 class OutletBillHistoryLoaded extends OutletBillHistoryState {
   final List<OutletBillSummary> bills;
-  const OutletBillHistoryLoaded(this.bills);
+  final bool hasMore;
+  final bool isLoadingMore;
+
+  const OutletBillHistoryLoaded(
+    this.bills, {
+    this.hasMore = false,
+    this.isLoadingMore = false,
+  });
 }
 
 class OutletBillHistoryError extends OutletBillHistoryState {

@@ -10,6 +10,7 @@ public record BillingListDto(
     string OutletName,
     int SalesRepId,
     string SalesRepName,
+    string? SupervisorName,
     int DistributorId,
     string DistributorName,
     decimal TotalAmount,

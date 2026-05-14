@@ -115,6 +115,7 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
                 x.Outlet.Name,
                 x.SalesRepId,
                 x.SalesRep.Name,
+                x.Supervisor != null ? x.Supervisor.Name : null,
                 x.DistributorId,
                 x.Distributor.Name,
                 x.TotalAmount,

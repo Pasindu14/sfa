@@ -9,10 +9,12 @@ class OutletBillHistoryRemoteDatasource {
 
   const OutletBillHistoryRemoteDatasource(this._dio);
 
-  Future<List<OutletBillSummaryModel>> getBillsForOutlet({
+  Future<({List<OutletBillSummaryModel> bills, bool hasMore})> getBillsForOutlet({
     required int outletId,
     required String dateFrom,
     required String dateTo,
+    required int page,
+    int pageSize = 20,
   }) async {
     try {
       final response = await _dio.get(
@@ -21,16 +23,21 @@ class OutletBillHistoryRemoteDatasource {
           'outletId': outletId,
           'dateFrom': dateFrom,
           'dateTo': dateTo,
-          'pageSize': 10,
-          'page': 1,
+          'page': page,
+          'pageSize': pageSize,
         },
       );
       final body = response.data as Map<String, dynamic>;
       final rawList = body['data'] as List<dynamic>;
-      return rawList
-          .map((e) =>
-              OutletBillSummaryModel.fromJson(e as Map<String, dynamic>))
+      final bills = rawList
+          .map((e) => OutletBillSummaryModel.fromJson(e as Map<String, dynamic>))
           .toList();
+
+      final pagination = body['pagination'] as Map<String, dynamic>?;
+      final totalPages = (pagination?['totalPages'] as num?)?.toInt() ?? 1;
+      final hasMore = page < totalPages;
+
+      return (bills: bills, hasMore: hasMore);
     } on AppException {
       rethrow;
     } on DioException catch (e) {

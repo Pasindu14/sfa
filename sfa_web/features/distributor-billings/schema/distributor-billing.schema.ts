@@ -8,6 +8,7 @@ export const distributorBillingListItemSchema = z.object({
   outletName: z.string(),
   salesRepId: z.number(),
   salesRepName: z.string(),
+  supervisorName: z.string().nullable(),
   distributorId: z.number(),
   distributorName: z.string(),
   totalAmount: z.number(),

@@ -9,17 +9,24 @@ class OutletBillHistoryRepositoryImpl implements OutletBillHistoryRepository {
   const OutletBillHistoryRepositoryImpl(this._remote);
 
   @override
-  Future<List<OutletBillSummary>> getBillsForOutlet({
+  Future<({List<OutletBillSummary> bills, bool hasMore})> getBillsForOutlet({
     required int outletId,
     required String dateFrom,
     required String dateTo,
+    required int page,
+    int pageSize = 20,
   }) async {
-    final models = await _remote.getBillsForOutlet(
+    final result = await _remote.getBillsForOutlet(
       outletId: outletId,
       dateFrom: dateFrom,
       dateTo: dateTo,
+      page: page,
+      pageSize: pageSize,
     );
-    return models.map((m) => m.toEntity()).toList();
+    return (
+      bills: result.bills.map((m) => m.toEntity()).toList(),
+      hasMore: result.hasMore,
+    );
   }
 
   @override
