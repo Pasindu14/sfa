@@ -43,15 +43,12 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await configureDependencies();
 
-  // Register the 4-hour background sync task. ExistingWorkPolicy.keep means
-  // relaunching the app does not reset the timer for an already-queued task.
+  // TODO: switch back to registerPeriodicTask(hours: 4) before production
   await Workmanager().initialize(callbackDispatcher);
-  await Workmanager().registerPeriodicTask(
-    'com.sfa.uswatte.background_sync',
+  await Workmanager().registerOneOffTask(
+    'com.sfa.uswatte.background_sync_test',
     'backgroundSyncTask',
-    frequency: const Duration(hours: 4),
     constraints: Constraints(networkType: NetworkType.connected),
-    existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
   );
 
   // Composition root: wire use cases explicitly — presentation never touches getIt
