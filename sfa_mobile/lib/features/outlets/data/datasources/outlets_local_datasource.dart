@@ -80,4 +80,15 @@ class OutletsLocalDatasource {
     if (rows.isEmpty) return null;
     return int.tryParse(rows.first['value'] as String);
   }
+
+  Future<String?> getCurrentRouteName() async {
+    final db = await _dbHelper.database;
+    final rows = await db.query(
+      'metadata',
+      where: 'key = ?',
+      whereArgs: ['current_route_name'],
+    );
+    if (rows.isEmpty) return null;
+    return rows.first['value'] as String?;
+  }
 }

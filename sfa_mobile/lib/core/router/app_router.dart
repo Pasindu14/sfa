@@ -60,7 +60,6 @@ import 'package:uswatte/features/bills/presentation/bloc/create_bill_bloc.dart';
 import 'package:uswatte/features/bills/presentation/pages/bill_detail_page.dart';
 import 'package:uswatte/features/bills/presentation/pages/bills_list_page.dart';
 import 'package:uswatte/features/bills/presentation/pages/create_bill_page.dart';
-import 'package:uswatte/features/debug/presentation/pages/debug_page.dart';
 import 'package:uswatte/core/sync/not_billing_sync_service.dart';
 import 'package:uswatte/features/not_billings/domain/usecases/create_not_billing_usecase.dart';
 import 'package:uswatte/features/not_billings/domain/usecases/delete_not_billing_usecase.dart';
@@ -465,11 +464,6 @@ class AppRouter {
               path: 'outlet-billings',
               name: 'outletBillings',
               builder: (_, __) => const OutletBillingsPage(),
-            ),
-            GoRoute(
-              path: 'debug',
-              name: 'salesRepDebug',
-              builder: (_, __) => const DebugPage(),
             ),
             GoRoute(
               path: 'stock',

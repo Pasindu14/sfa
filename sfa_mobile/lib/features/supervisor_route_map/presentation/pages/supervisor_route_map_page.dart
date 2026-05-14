@@ -52,7 +52,7 @@ class SupervisorRouteMapPage extends StatelessWidget {
                         .add(const SupervisorRouteMapRefreshRequested())
                     : null,
                 isOnMap: isOnMap,
-                repName: isOnMap ? (state as SupervisorRouteMapLoaded).rep.userName : null,
+                repName: state is SupervisorRouteMapLoaded ? state.rep.userName : null,
               ),
               Expanded(
                 child: _buildBody(context, state),
