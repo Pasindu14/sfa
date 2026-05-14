@@ -21,26 +21,26 @@ function StockTypeBadge({ type }: { type: string }) {
 export function getStockColumns(): ColumnDef<DistributorStockItem>[] {
   return [
     {
-      id: 'productCode',
+      accessorKey: 'productCode',
       header: 'Product Code',
       cell: ({ row }) => (
         <span className="font-mono text-xs font-medium">{row.original.productCode}</span>
       ),
     },
     {
-      id: 'productDescription',
+      accessorKey: 'productDescription',
       header: 'Description',
       cell: ({ row }) => (
         <span className="text-sm">{row.original.productDescription}</span>
       ),
     },
     {
-      id: 'stockType',
+      accessorKey: 'stockType',
       header: 'Type',
       cell: ({ row }) => <StockTypeBadge type={row.original.stockType} />,
     },
     {
-      id: 'quantityOnHand',
+      accessorKey: 'quantityOnHand',
       header: 'Qty on Hand',
       cell: ({ row }) => {
         const qty = row.original.quantityOnHand
@@ -53,7 +53,7 @@ export function getStockColumns(): ColumnDef<DistributorStockItem>[] {
       },
     },
     {
-      id: 'lastUpdatedAt',
+      accessorKey: 'lastUpdatedAt',
       header: 'Last Updated',
       cell: ({ row }) => (
         <span className="text-xs text-muted-foreground">

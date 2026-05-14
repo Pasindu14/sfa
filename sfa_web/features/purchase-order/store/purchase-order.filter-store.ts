@@ -18,6 +18,14 @@ interface PurchaseOrderFilterState {
   resetFilters: () => void
 }
 
+function toLocalDateStr(date: Date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-')
+}
+
 const getDefaultState = () => {
   const now = new Date()
   const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -27,8 +35,8 @@ const getDefaultState = () => {
     pageSize: 10,
     search: '',
     status: '',
-    fromDate: firstDay.toISOString().split('T')[0],
-    toDate: lastDay.toISOString().split('T')[0],
+    fromDate: toLocalDateStr(firstDay),
+    toDate: toLocalDateStr(lastDay),
   }
 }
 

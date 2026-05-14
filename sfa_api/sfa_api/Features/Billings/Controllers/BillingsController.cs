@@ -7,6 +7,7 @@ using sfa_api.Common.Extensions;
 using sfa_api.Features.Billings.Enums;
 using sfa_api.Features.Billings.Requests;
 using sfa_api.Features.Billings.Services;
+using sfa_api.Features.Users.Repositories;
 
 namespace sfa_api.Features.Billings.Controllers;
 
@@ -15,10 +16,12 @@ namespace sfa_api.Features.Billings.Controllers;
 [Authorize]
 public class BillingsController(
     IBillingService billingService,
-    IValidator<CreateBillingRequest> createValidator) : ControllerBase
+    IValidator<CreateBillingRequest> createValidator,
+    IUserRepository userRepo) : ControllerBase
 {
     private readonly IBillingService _billingService = billingService;
     private readonly IValidator<CreateBillingRequest> _createValidator = createValidator;
+    private readonly IUserRepository _userRepo = userRepo;
 
     private int GetCallerId()
     {
@@ -107,6 +110,56 @@ public class BillingsController(
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
         var billing = await _billingService.CancelAsync(id, GetCallerId(), ct);
         return Ok(ResponseHelper.Ok(billing, correlationId));
+    }
+
+    /// <summary>
+    /// GET /api/v1/billings/portal
+    /// Distributor only — returns paginated billings for the logged-in distributor.
+    /// DistributorId is resolved from JWT, not accepted from the client.
+    /// </summary>
+    [HttpGet("portal")]
+    [Authorize(Roles = "Distributor")]
+    public async Task<IActionResult> GetPortalBillings(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? status = null,
+        [FromQuery] string? dateFrom = null,
+        [FromQuery] string? dateTo = null,
+        CancellationToken ct = default)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId);
+        var user = await _userRepo.GetUserByIdAsync(userId, ct);
+        if (user?.DistributorId == null)
+            throw new BusinessRuleException("NO_DISTRIBUTOR_LINKED",
+                "Your account is not linked to a distributor.");
+        BillingStatus? parsedStatus = Enum.TryParse<BillingStatus>(status, true, out var bs) ? bs : null;
+        DateOnly? parsedFrom = DateOnly.TryParse(dateFrom, out var df) ? df : null;
+        DateOnly? parsedTo   = DateOnly.TryParse(dateTo,   out var dt) ? dt : null;
+        var (items, total) = await _billingService.GetListAsync(
+            page, pageSize, parsedStatus, null, user.DistributorId.Value, null, parsedFrom, parsedTo, ct);
+        return Ok(ResponseHelper.Paged(items, page, pageSize, total, correlationId));
+    }
+
+    /// <summary>
+    /// GET /api/v1/billings/portal/{id}
+    /// Distributor only — returns full billing detail, enforcing ownership.
+    /// </summary>
+    [HttpGet("portal/{id:int}")]
+    [Authorize(Roles = "Distributor")]
+    public async Task<IActionResult> GetPortalBillingDetail(int id, CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId);
+        var user = await _userRepo.GetUserByIdAsync(userId, ct);
+        if (user?.DistributorId == null)
+            throw new BusinessRuleException("NO_DISTRIBUTOR_LINKED",
+                "Your account is not linked to a distributor.");
+        var detail = await _billingService.GetByIdAsync(id, ct)
+            ?? throw new NotFoundException("Billing", id);
+        if (detail.DistributorId != user.DistributorId.Value)
+            throw new BusinessRuleException("BILLING_NOT_FOUND", "Billing not found.");
+        return Ok(ResponseHelper.Ok(detail, correlationId));
     }
 
     /// <summary>

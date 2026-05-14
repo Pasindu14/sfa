@@ -6,6 +6,7 @@ using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.Stock.DTOs;
 using sfa_api.Features.Stock.Repositories;
 using sfa_api.Features.UserGeoAssignments.Repositories;
+using sfa_api.Features.Users.Repositories;
 
 namespace sfa_api.Features.Stock.Controllers;
 
@@ -15,11 +16,13 @@ namespace sfa_api.Features.Stock.Controllers;
 public class StockController(
     IStockRepository stockRepository,
     IUserGeoAssignmentRepository geoRepo,
-    IDistributorRepository distributorRepo) : ControllerBase
+    IDistributorRepository distributorRepo,
+    IUserRepository userRepo) : ControllerBase
 {
     private readonly IStockRepository _stockRepository = stockRepository;
     private readonly IUserGeoAssignmentRepository _geoRepo = geoRepo;
     private readonly IDistributorRepository _distributorRepo = distributorRepo;
+    private readonly IUserRepository _userRepo = userRepo;
 
     /// <summary>
     /// GET /api/v1/stock/my-distributor
@@ -85,6 +88,39 @@ public class StockController(
             s.LastUpdatedAt
         )).ToList();
         return Ok(ResponseHelper.Paged(dtos, page, pageSize, total, correlationId));
+    }
+
+    /// <summary>
+    /// GET /api/v1/stock/portal
+    /// Returns all stock levels for the currently logged-in Distributor user.
+    /// Resolves the distributor from the JWT sub claim → User.DistributorId.
+    /// </summary>
+    [HttpGet("portal")]
+    [Authorize(Roles = "Distributor")]
+    public async Task<IActionResult> GetPortalStock(CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId);
+
+        var user = await _userRepo.GetUserByIdAsync(userId, ct);
+        if (user?.DistributorId == null)
+            throw new BusinessRuleException("NO_DISTRIBUTOR_LINKED",
+                "Your account is not linked to a distributor.");
+
+        var stocks = await _stockRepository.GetAllStockByDistributorAsync(user.DistributorId.Value, ct);
+        var dtos = stocks.Select(s => new DistributorStockDto(
+            s.Id,
+            s.DistributorId,
+            s.Distributor?.Name ?? string.Empty,
+            s.ProductId,
+            s.Product?.Code ?? string.Empty,
+            s.Product?.ItemDescription ?? string.Empty,
+            s.StockType.ToString(),
+            s.QuantityOnHand,
+            s.LastUpdatedAt
+        )).ToList();
+
+        return Ok(ResponseHelper.Ok(dtos, correlationId));
     }
 
     /// <summary>

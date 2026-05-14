@@ -3,6 +3,7 @@ import {
   Cog,
   LayoutDashboard,
   Map,
+  Package,
   ShoppingCart,
   UserCheck,
   type LucideIcon,
@@ -105,16 +106,14 @@ const navConfig: NavGroup[] = [
     ],
   },
   {
-    title: "Sales",
+    title: "Inventory",
     url: "#",
-    icon: ShoppingCart,
+    icon: Package,
     isActive: false,
     roles: ["Distributor"],
     items: [
-      { title: "Purchase Orders", url: "/distributor-dashboard/purchase-orders" },
-      { title: "Sales Invoices", url: "/distributor-dashboard/sales-invoices" },
-      { title: "GRNs", url: "/distributor-dashboard/grns" },
-      { title: "Stock", url: "/distributor-dashboard/stock" },
+      { title: "Stock Balance", url: "/distributor-stock" },
+      { title: "Bills", url: "/distributor-billings" },
     ],
   },
 ];

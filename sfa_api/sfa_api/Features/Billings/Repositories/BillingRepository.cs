@@ -81,9 +81,6 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
 
         var query = _db.Billings
             .AsNoTracking()
-            .Include(x => x.Outlet)
-            .Include(x => x.SalesRep)
-            .Include(x => x.Distributor)
             .Where(x => !x.IsDeleted);
 
         if (status.HasValue)

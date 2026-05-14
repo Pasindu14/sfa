@@ -15,13 +15,21 @@ import {
 import { usePurchaseOrderDataTable } from '../../hooks/purchase-order.hooks'
 import { getPurchaseOrderColumns } from '../columns/purchase-order-columns'
 
+function toLocalDateStr(date: Date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-')
+}
+
 function getCurrentMonthDateRange() {
   const now = new Date()
   const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
   return {
-    from_date: firstDay.toISOString().split('T')[0],
-    to_date: lastDay.toISOString().split('T')[0],
+    from_date: toLocalDateStr(firstDay),
+    to_date: toLocalDateStr(lastDay),
   }
 }
 
