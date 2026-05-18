@@ -379,6 +379,7 @@ public class BillingService(
         b.RepStatus,
         b.DistributorStatus,
         b.RejectionReason,
+        b.PaymentType,
         b.Notes,
         b.Latitude,
         b.Longitude,
@@ -525,6 +526,26 @@ public class BillingService(
         var result = await _billingRepository.GetByIdAsync(billingId, ct)
             ?? throw new DatabaseUnavailableException();
         return ProjectToDto(result);
+    }
+
+    public async Task<BillingDto> UpdatePaymentTypeAsync(int billingId, int userId, PaymentType paymentType, CancellationToken ct = default)
+    {
+        var billing = await _billingRepository.GetTrackedByIdAsync(billingId, ct)
+            ?? throw new NotFoundException("Billing", billingId);
+
+        var user = await _userRepository.GetUserByIdAsync(userId, ct);
+        if (user?.DistributorId == null || user.DistributorId != billing.DistributorId)
+            throw new AuthorizationException("Billing");
+
+        billing.PaymentType = paymentType;
+        billing.UpdatedAt   = DateTime.UtcNow;
+        billing.UpdatedBy   = userId;
+
+        await _billingRepository.SaveChangesAsync(ct);
+
+        var updated = await _billingRepository.GetByIdAsync(billingId, ct)
+            ?? throw new DatabaseUnavailableException();
+        return ProjectToDto(updated);
     }
 
     public async Task<RepMonthlySalesItemwiseDto> GetRepMonthlySalesItemwiseAsync(

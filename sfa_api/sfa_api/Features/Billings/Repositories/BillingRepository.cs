@@ -125,6 +125,7 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
                 x.TotalAmount,
                 x.RepStatus,
                 x.DistributorStatus,
+                x.PaymentType,
                 x.CreatedAt))
             .ToListAsync(ct);
 

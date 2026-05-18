@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
 import { Calendar, Banknote, Store, User } from 'lucide-react'
 import { useMyBillingDetail } from '../../hooks/distributor-billing.hooks'
+import { PaymentTypeBadge } from '../columns/distributor-billing-columns'
 import type { DistributorBillingDetail } from '../../schema/distributor-billing.schema'
 
 function formatCurrency(amount: number) {
@@ -98,10 +99,10 @@ export function DistributorBillingDetailDialog({ id, onClose }: Props) {
 
   return (
     <Dialog open={id !== null} onOpenChange={(v) => { if (!v) onClose() }}>
-      <DialogContent className="w-[90vw]! max-w-5xl! h-[90vh]! flex flex-col gap-0 p-0 overflow-hidden">
+      <DialogContent className="w-[95vw] sm:w-[90vw]! sm:max-w-5xl! h-[92dvh] sm:h-[90vh]! flex flex-col gap-0 p-0 overflow-hidden">
 
         {/* Header */}
-        <DialogHeader className="shrink-0 border-b px-6 pb-4 pt-5">
+        <DialogHeader className="shrink-0 border-b px-4 sm:px-6 pb-4 pt-5">
           <DialogTitle className="flex items-center gap-2 text-base">
             {isLoading ? (
               <Skeleton className="h-5 w-44" />
@@ -116,6 +117,7 @@ export function DistributorBillingDetailDialog({ id, onClose }: Props) {
               <div className="flex flex-wrap items-center gap-2 pt-0.5">
                 <RepStatusBadge status={billing.repStatus} />
                 <DistributorStatusBadge status={billing.distributorStatus} />
+                <PaymentTypeBadge type={billing.paymentType} />
                 <span className="text-xs text-muted-foreground">{billing.outletName}</span>
               </div>
             </DialogDescription>
@@ -129,7 +131,7 @@ export function DistributorBillingDetailDialog({ id, onClose }: Props) {
           <div className="flex min-h-0 flex-1 flex-col">
 
             {/* Stat cards */}
-            <div className="grid shrink-0 grid-cols-2 gap-3 px-6 py-4 sm:grid-cols-4">
+            <div className="grid shrink-0 grid-cols-2 gap-2 px-4 py-3 sm:gap-3 sm:px-6 sm:py-4 sm:grid-cols-4">
               <StatCard
                 icon={Calendar}
                 iconBg="bg-blue-100"
@@ -165,74 +167,78 @@ export function DistributorBillingDetailDialog({ id, onClose }: Props) {
             <Separator />
 
             {/* Line items label */}
-            <div className="shrink-0 px-6 pb-1 pt-3">
+            <div className="shrink-0 px-4 sm:px-6 pb-1 pt-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Line Items ({billing.items.length})
               </p>
             </div>
 
             {/* Scrollable items table */}
-            <ScrollArea className="min-h-0 flex-1 px-6 pb-3">
-              <div className="overflow-hidden rounded-lg border">
+            <ScrollArea className="min-h-0 flex-1 pb-3">
+              <div className="px-4 sm:px-6">
+                <div className="overflow-x-auto rounded-lg border">
+                  <div className="min-w-[480px]">
 
-                {/* Column headers */}
-                <div className="grid grid-cols-[5rem_1fr_6rem_4.5rem_6rem_6rem] gap-x-3 border-b bg-muted/50 px-3 py-2 text-xs font-medium text-muted-foreground">
-                  <span>Type</span>
-                  <span>Product</span>
-                  <span>Code</span>
-                  <span className="text-right">Qty</span>
-                  <span className="text-right">Unit Price</span>
-                  <span className="text-right">Total</span>
-                </div>
+                    {/* Column headers */}
+                    <div className="grid grid-cols-[5rem_1fr_5rem_4rem_5.5rem_5.5rem] gap-x-2 border-b bg-muted/50 px-3 py-2 text-xs font-medium text-muted-foreground">
+                      <span>Type</span>
+                      <span>Product</span>
+                      <span>Code</span>
+                      <span className="text-right">Qty</span>
+                      <span className="text-right">Unit Price</span>
+                      <span className="text-right">Total</span>
+                    </div>
 
-                {/* Data rows */}
-                <div className="divide-y">
-                  {billing.items.map((item) => {
-                    const rowBg =
-                      item.billingItemType === 'FreeIssue'
-                        ? 'bg-amber-50/50'
-                        : item.billingItemType === 'Return'
-                        ? 'bg-red-50/50'
-                        : ''
-                    return (
-                      <div
-                        key={item.id}
-                        className={`grid grid-cols-[5rem_1fr_6rem_4.5rem_6rem_6rem] items-start gap-x-3 px-3 py-2.5 transition-colors hover:bg-muted/30 ${rowBg}`}
-                      >
-                        <div className="pt-0.5">
-                          <ItemTypeBadge type={item.billingItemType} />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium" title={item.productDescription}>
-                            {item.productDescription}
-                          </p>
-                          {item.discountRate > 0 && (
-                            <span className="text-[10px] text-muted-foreground">
-                              {item.discountRate}% disc
+                    {/* Data rows */}
+                    <div className="divide-y">
+                      {billing.items.map((item) => {
+                        const rowBg =
+                          item.billingItemType === 'FreeIssue'
+                            ? 'bg-amber-50/50'
+                            : item.billingItemType === 'Return'
+                            ? 'bg-red-50/50'
+                            : ''
+                        return (
+                          <div
+                            key={item.id}
+                            className={`grid grid-cols-[5rem_1fr_5rem_4rem_5.5rem_5.5rem] items-start gap-x-2 px-3 py-2.5 transition-colors hover:bg-muted/30 ${rowBg}`}
+                          >
+                            <div className="pt-0.5">
+                              <ItemTypeBadge type={item.billingItemType} />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium" title={item.productDescription}>
+                                {item.productDescription}
+                              </p>
+                              {item.discountRate > 0 && (
+                                <span className="text-[10px] text-muted-foreground">
+                                  {item.discountRate}% disc
+                                </span>
+                              )}
+                            </div>
+                            <span className="pt-0.5 font-mono text-xs text-muted-foreground">
+                              {item.productCode}
                             </span>
-                          )}
-                        </div>
-                        <span className="pt-0.5 font-mono text-xs text-muted-foreground">
-                          {item.productCode}
-                        </span>
-                        <span className="pt-0.5 text-right tabular-nums text-sm">
-                          {item.quantity}
-                        </span>
-                        <span className="pt-0.5 text-right tabular-nums text-sm">
-                          {formatCurrency(item.unitPrice)}
-                        </span>
-                        <span className="pt-0.5 text-right tabular-nums text-sm font-semibold">
-                          {formatCurrency(item.totalPrice)}
-                        </span>
-                      </div>
-                    )
-                  })}
+                            <span className="pt-0.5 text-right tabular-nums text-sm">
+                              {item.quantity}
+                            </span>
+                            <span className="pt-0.5 text-right tabular-nums text-sm">
+                              {formatCurrency(item.unitPrice)}
+                            </span>
+                            <span className="pt-0.5 text-right tabular-nums text-sm font-semibold">
+                              {formatCurrency(item.totalPrice)}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
                 </div>
               </div>
             </ScrollArea>
 
             {/* Footer totals */}
-            <div className="shrink-0 border-t bg-muted/30 px-6 py-3 space-y-1">
+            <div className="shrink-0 border-t bg-muted/30 px-4 sm:px-6 py-3 space-y-1">
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>Subtotal</span>
                 <span className="tabular-nums">{formatCurrency(billing.subTotalAmount)}</span>

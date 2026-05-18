@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -21,8 +21,15 @@ import {
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
-import { CheckCircle2, XCircle, Loader2 } from 'lucide-react'
-import { useApproveBilling, useRejectBilling } from '../../hooks/distributor-billing.hooks'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { CheckCircle2, XCircle, Loader2, Save } from 'lucide-react'
+import { useApproveBilling, useRejectBilling, useUpdatePaymentType } from '../../hooks/distributor-billing.hooks'
 import type { DistributorBillingListItem } from '../../schema/distributor-billing.schema'
 
 function formatCurrency(amount: number) {
@@ -42,9 +49,21 @@ export function DistributorBillingReviewDialog({ billing, onClose }: Props) {
   const [showApproveConfirm, setShowApproveConfirm] = useState(false)
   const [showRejectForm, setShowRejectForm] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
+  const [selectedPaymentType, setSelectedPaymentType] = useState<'Cash' | 'Credit'>(billing?.paymentType ?? 'Cash')
+  const [savedPaymentType, setSavedPaymentType] = useState<'Cash' | 'Credit'>(billing?.paymentType ?? 'Cash')
 
   const approveMutation = useApproveBilling(onClose)
   const rejectMutation = useRejectBilling(onClose)
+  const paymentTypeMutation = useUpdatePaymentType()
+
+  useEffect(() => {
+    if (billing) {
+      setSelectedPaymentType(billing.paymentType)
+      setSavedPaymentType(billing.paymentType)
+    }
+  }, [billing?.id])
+
+  const paymentTypeChanged = selectedPaymentType !== savedPaymentType
 
   function handleClose() {
     setShowRejectForm(false)
@@ -83,6 +102,41 @@ export function DistributorBillingReviewDialog({ billing, onClose }: Props) {
                       day: 'numeric', month: 'short', year: 'numeric',
                     })}
                   </span>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-muted-foreground shrink-0">Payment</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Select
+                      value={selectedPaymentType}
+                      onValueChange={(v) => setSelectedPaymentType(v as 'Cash' | 'Credit')}
+                      disabled={paymentTypeMutation.isPending}
+                    >
+                      <SelectTrigger className="h-7 w-28 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Cash">Cash</SelectItem>
+                        <SelectItem value="Credit">Credit</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {paymentTypeChanged && (
+                      <Button
+                        size="sm"
+                        className="h-7 gap-1.5 text-xs"
+                        disabled={paymentTypeMutation.isPending}
+                        onClick={() => paymentTypeMutation.mutate(
+                          { id: billing.id, paymentType: selectedPaymentType },
+                          { onSuccess: () => setSavedPaymentType(selectedPaymentType) },
+                        )}
+                      >
+                        {paymentTypeMutation.isPending
+                          ? <Loader2 className="h-3 w-3 animate-spin" />
+                          : <Save className="h-3 w-3" />
+                        }
+                        Save
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <Separator />
                 <div className="flex justify-between">

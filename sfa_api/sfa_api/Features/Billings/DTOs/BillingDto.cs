@@ -45,6 +45,7 @@ public record BillingDto(
     RepBillingStatus RepStatus,
     DistributorBillingStatus DistributorStatus,
     string? RejectionReason,
+    PaymentType PaymentType,
     string? Notes,
     double? Latitude,
     double? Longitude,

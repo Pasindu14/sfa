@@ -12,3 +12,9 @@ public enum DistributorBillingStatus
     Approved = 1,
     Rejected = 2
 }
+
+public enum PaymentType
+{
+    Cash   = 0,
+    Credit = 1
+}

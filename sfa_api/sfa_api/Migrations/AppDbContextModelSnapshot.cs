@@ -329,6 +329,12 @@ namespace sfa_api.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<string>("PaymentType")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasDefaultValue("Cash")
+                        .HasColumnType("character varying(10)");
+
                     b.Property<string>("RepStatus")
                         .IsRequired()
                         .HasMaxLength(15)

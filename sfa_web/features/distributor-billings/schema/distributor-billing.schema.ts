@@ -14,6 +14,7 @@ export const distributorBillingListItemSchema = z.object({
   totalAmount: z.number(),
   repStatus: z.enum(['Submitted', 'Cancelled']),
   distributorStatus: z.enum(['Pending', 'Approved', 'Rejected']),
+  paymentType: z.enum(['Cash', 'Credit']),
   createdAt: z.string(),
 })
 

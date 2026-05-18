@@ -7,6 +7,7 @@ import {
   getMyBillingDetailAction,
   approveBillingAction,
   rejectBillingAction,
+  updatePaymentTypeAction,
 } from '../actions/distributor-billing.actions'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { DistributorBillingListItem } from '../schema/distributor-billing.schema'
@@ -132,6 +133,24 @@ export function useRejectBilling(onSuccess?: () => void) {
     },
     onError: (error: any) => {
       handleErrorToast(error, 'billing', 'reject')
+    },
+  })
+}
+
+export function useUpdatePaymentType() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, paymentType }: { id: number; paymentType: 'Cash' | 'Credit' }) => {
+      const result = await updatePaymentTypeAction(id, paymentType)
+      if (!result.success) throw result
+      return result.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: myBillingKeys.all })
+      toast.success('Payment type updated')
+    },
+    onError: (error: any) => {
+      handleErrorToast(error, 'billing', 'update')
     },
   })
 }

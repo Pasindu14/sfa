@@ -77,7 +77,7 @@ export function DistributorBillingTable() {
           const hasActiveFilters = !!(filters?.repStatus || filters?.distributorStatus || filters?.dateFrom || filters?.dateTo)
 
           return (
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex flex-wrap items-center gap-2">
               <CalendarDatePicker
                 id="billing-date-range"
                 date={{ from: fromDate, to: toDate }}
@@ -88,7 +88,7 @@ export function DistributorBillingTable() {
                     dateTo: toLocalDateStr(to),
                   })
                 }
-                numberOfMonths={2}
+                numberOfMonths={1}
                 variant="outline"
                 className="w-fit cursor-pointer"
                 closeOnSelect
@@ -100,7 +100,7 @@ export function DistributorBillingTable() {
                   setFilters({ ...filters, repStatus: value === 'all' ? '' : value })
                 }
               >
-                <SelectTrigger className="h-8 w-36">
+                <SelectTrigger className="h-8 w-32 sm:w-36">
                   <SelectValue placeholder="Rep Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -116,7 +116,7 @@ export function DistributorBillingTable() {
                   setFilters({ ...filters, distributorStatus: value === 'all' ? '' : value })
                 }
               >
-                <SelectTrigger className="h-8 w-40">
+                <SelectTrigger className="h-8 w-36 sm:w-40">
                   <SelectValue placeholder="Distributor Status" />
                 </SelectTrigger>
                 <SelectContent>

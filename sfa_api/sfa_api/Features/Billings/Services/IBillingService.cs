@@ -29,4 +29,5 @@ public interface IBillingService
     Task<BillingDto> CancelAsync(int billingId, int salesRepId, CancellationToken ct = default);
     Task<BillingDto> ApproveAsync(int billingId, int userId, CancellationToken ct = default);
     Task<BillingDto> RejectAsync(int billingId, int userId, string? reason, CancellationToken ct = default);
+    Task<BillingDto> UpdatePaymentTypeAsync(int billingId, int userId, PaymentType paymentType, CancellationToken ct = default);
 }

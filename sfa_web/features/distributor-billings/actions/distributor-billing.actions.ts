@@ -59,3 +59,11 @@ export const rejectBillingAction = createAction(
     return res.data.data as DistributorBillingDetail
   }
 )
+
+export const updatePaymentTypeAction = createAction(
+  { name: 'updatePaymentTypeAction', requireAuth: true, requiredRole: 'Distributor' },
+  async (id: number, paymentType: 'Cash' | 'Credit') => {
+    const res = await client.patch(`/api/v1/billings/${id}/payment-type`, { paymentType })
+    return res.data.data as DistributorBillingDetail
+  }
+)

@@ -194,6 +194,19 @@ public class BillingsController(
     }
 
     /// <summary>
+    /// PATCH /api/v1/billings/{id}/payment-type
+    /// Distributor only — updates the payment type (Cash / Credit) for a billing.
+    /// </summary>
+    [HttpPatch("{id:int}/payment-type")]
+    [Authorize(Roles = "Distributor")]
+    public async Task<IActionResult> UpdatePaymentType(int id, [FromBody] UpdatePaymentTypeRequest request, CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var billing = await _billingService.UpdatePaymentTypeAsync(id, GetCallerId(), request.PaymentType, ct);
+        return Ok(ResponseHelper.Ok(billing, correlationId));
+    }
+
+    /// <summary>
     /// POST /api/v1/billings
     /// SalesRep only — creates a billing for an outlet and deducts stock atomically.
     ///

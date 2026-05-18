@@ -28,6 +28,12 @@ function DistributorStatusBadge({ status }: { status: DistributorBillingListItem
   return <Badge variant="secondary" className="text-xs">Pending</Badge>
 }
 
+export function PaymentTypeBadge({ type }: { type: 'Cash' | 'Credit' }) {
+  if (type === 'Credit')
+    return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 text-xs border-0">Credit</Badge>
+  return <Badge variant="outline" className="text-xs">Cash</Badge>
+}
+
 export function getDistributorBillingColumns(
   onView: (id: number) => void,
   onReview: (billing: DistributorBillingListItem) => void,
@@ -62,14 +68,14 @@ export function getDistributorBillingColumns(
       cell: ({ row }) => (
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-1.5">
-            <span className="shrink-0 rounded px-1 py-px text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary leading-none">
+            <span className="shrink-0 rounded px-1 py-px text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary leading-none">
               Rep
             </span>
             <span className="text-sm font-medium leading-none">{row.original.salesRepName}</span>
           </div>
           {row.original.supervisorName && (
             <div className="flex items-center gap-1.5 pl-px">
-              <span className="shrink-0 rounded px-1 py-px text-[9px] font-bold uppercase tracking-wider bg-muted text-muted-foreground leading-none">
+              <span className="shrink-0 rounded px-1 py-px text-[10px] font-bold uppercase tracking-wider bg-muted text-muted-foreground leading-none">
                 Sup
               </span>
               <span className="text-xs text-muted-foreground leading-none">{row.original.supervisorName}</span>
@@ -88,6 +94,11 @@ export function getDistributorBillingColumns(
       ),
     },
     {
+      id: 'paymentType',
+      header: 'Payment',
+      cell: ({ row }) => <PaymentTypeBadge type={row.original.paymentType} />,
+    },
+    {
       id: 'repStatus',
       header: 'Rep Status',
       cell: ({ row }) => <RepStatusBadge status={row.original.repStatus} />,
@@ -104,7 +115,7 @@ export function getDistributorBillingColumns(
         const isPending =
           row.original.repStatus === 'Submitted' && row.original.distributorStatus === 'Pending'
         return (
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             <Button
               variant="ghost"
               size="sm"

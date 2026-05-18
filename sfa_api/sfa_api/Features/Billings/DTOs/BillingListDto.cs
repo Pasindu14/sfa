@@ -16,5 +16,6 @@ public record BillingListDto(
     decimal TotalAmount,
     RepBillingStatus RepStatus,
     DistributorBillingStatus DistributorStatus,
+    PaymentType PaymentType,
     DateTime CreatedAt
 );

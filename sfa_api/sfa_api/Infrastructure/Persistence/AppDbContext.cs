@@ -752,6 +752,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.RepStatus).HasConversion<string>().HasMaxLength(15);
             e.Property(x => x.DistributorStatus).HasConversion<string>().HasMaxLength(15);
             e.Property(x => x.RejectionReason).HasMaxLength(500);
+            e.Property(x => x.PaymentType).HasConversion<string>().HasMaxLength(10).HasDefaultValue(PaymentType.Cash);
             e.Property(x => x.Notes).HasMaxLength(1000);
             e.Property(x => x.SubTotalAmount).HasColumnType("decimal(18,2)");
             e.Property(x => x.BillDiscountRate).HasColumnType("decimal(5,2)");
