@@ -159,9 +159,41 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
         var to   = from.AddMonths(1);
         return await _db.Billings
             .AsNoTracking()
-            .Where(b => b.SalesRepId   == salesRepId
-                     && b.BillingDate  >= from
-                     && b.BillingDate  <  to
+            .Where(b => b.SalesRepId        == salesRepId
+                     && b.BillingDate       >= from
+                     && b.BillingDate       <  to
+                     && b.DistributorStatus == DistributorBillingStatus.Approved
+                     && b.IsActive
+                     && !b.IsDeleted)
+            .SumAsync(b => b.TotalAmount, ct);
+    }
+
+    public async Task<decimal> GetRepMonthlySalesPendingTotalAsync(
+        int salesRepId, int year, int month, CancellationToken ct = default)
+    {
+        var from = new DateOnly(year, month, 1);
+        var to   = from.AddMonths(1);
+        return await _db.Billings
+            .AsNoTracking()
+            .Where(b => b.SalesRepId        == salesRepId
+                     && b.BillingDate       >= from
+                     && b.BillingDate       <  to
+                     && b.DistributorStatus == DistributorBillingStatus.Pending
+                     && b.RepStatus         == RepBillingStatus.Submitted
+                     && b.IsActive
+                     && !b.IsDeleted)
+            .SumAsync(b => b.TotalAmount, ct);
+    }
+
+    public async Task<decimal> GetRepDailySalesTotalAsync(
+        int salesRepId, DateOnly date, DistributorBillingStatus status, CancellationToken ct = default)
+    {
+        return await _db.Billings
+            .AsNoTracking()
+            .Where(b => b.SalesRepId        == salesRepId
+                     && b.BillingDate       == date
+                     && b.DistributorStatus == status
+                     && b.RepStatus         == RepBillingStatus.Submitted
                      && b.IsActive
                      && !b.IsDeleted)
             .SumAsync(b => b.TotalAmount, ct);
@@ -174,10 +206,11 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
         var to   = from.AddMonths(1);
         return await _db.BillingItems
             .AsNoTracking()
-            .Where(bi => bi.BillingItemType == BillingItemType.Sale
-                      && bi.Billing.SalesRepId == salesRepId
-                      && bi.Billing.BillingDate >= from
-                      && bi.Billing.BillingDate <  to
+            .Where(bi => bi.BillingItemType              == BillingItemType.Sale
+                      && bi.Billing.SalesRepId           == salesRepId
+                      && bi.Billing.BillingDate          >= from
+                      && bi.Billing.BillingDate          <  to
+                      && bi.Billing.DistributorStatus    == DistributorBillingStatus.Approved
                       && bi.Billing.IsActive
                       && !bi.Billing.IsDeleted)
             .GroupBy(bi => bi.ProductId)

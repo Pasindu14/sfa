@@ -16,6 +16,8 @@ import 'package:uswatte/features/rep_assignment/presentation/bloc/rep_assignment
 import 'package:uswatte/features/route_assignment/presentation/bloc/assignments_bloc.dart';
 import 'package:uswatte/features/sales_rep_target/presentation/cubit/rep_target_cubit.dart';
 import 'package:uswatte/features/sales_rep_target/presentation/cubit/rep_target_state.dart';
+import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_daily_sales_cubit.dart';
+import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_daily_sales_state.dart';
 import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_monthly_sales_cubit.dart';
 import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_monthly_sales_state.dart';
 
@@ -62,6 +64,7 @@ class _SalesRepHomePageState extends State<SalesRepHomePage>
     context.read<AssignmentsBloc>().add(LoadAssignmentsRequested(date: now));
     await Future.wait([
       context.read<RepMonthlySalesCubit>().load(now.year, now.month),
+      context.read<RepDailySalesCubit>().load(now),
       context.read<RepTargetCubit>().load(now.year, now.month),
     ]);
   }
@@ -791,8 +794,10 @@ class _KpiRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 0),
-      child: Row(
-        children: [
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
           BlocBuilder<RepMonthlySalesCubit, RepMonthlySalesState>(
             builder: (context, state) {
               final value = switch (state) {
@@ -800,9 +805,16 @@ class _KpiRow extends StatelessWidget {
                 RepMonthlySalesLoaded(:final sales) => _formatAmount(sales.totalSales),
                 _ => '—',
               };
+              final pending = state is RepMonthlySalesLoaded && state.sales.pendingTotal > 0
+                  ? '${_formatAmount(state.sales.pendingTotal)} PENDING'
+                  : null;
               return _KpiCard(
-                  label: 'MTD SALES', value: value, unit: 'LKR',
-                  color: AppColors.primary);
+                label: 'MTD SALES',
+                value: value,
+                unit: 'LKR  ·  APPROVED',
+                color: AppColors.primary,
+                pendingText: pending,
+              );
             },
           ),
           SizedBox(width: 10.w),
@@ -820,6 +832,7 @@ class _KpiRow extends StatelessWidget {
           ),
         ],
       ),
+      ),
     );
   }
 }
@@ -830,9 +843,11 @@ class _KpiCard extends StatelessWidget {
     required this.value,
     required this.unit,
     required this.color,
+    this.pendingText,
   });
   final String label, value, unit;
   final Color color;
+  final String? pendingText;
 
   @override
   Widget build(BuildContext context) {
@@ -870,6 +885,18 @@ class _KpiCard extends StatelessWidget {
                   letterSpacing: 1.0,
                   color: color,
                 )),
+            if (pendingText != null) ...[
+              SizedBox(height: 4.h),
+              Text(
+                pendingText!,
+                style: GoogleFonts.barlowCondensed(
+                  fontSize: 9.sp,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.0,
+                  color: const Color(0xFFF59E0B),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -887,11 +914,11 @@ class _DailyPaceRow extends StatelessWidget {
     final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
     final daysElapsed = now.day.clamp(1, daysInMonth);
 
-    return BlocBuilder<RepMonthlySalesCubit, RepMonthlySalesState>(
-      builder: (context, salesState) =>
+    return BlocBuilder<RepDailySalesCubit, RepDailySalesState>(
+      builder: (context, dailyState) =>
           BlocBuilder<RepTargetCubit, RepTargetState>(
         builder: (context, targetState) {
-          final isLoading = salesState is RepMonthlySalesLoading ||
+          final isLoading = dailyState is RepDailySalesLoading ||
               targetState is RepTargetLoading;
 
           double? dailyTarget;
@@ -902,15 +929,13 @@ class _DailyPaceRow extends StatelessWidget {
             final totalTarget = targetState is RepTargetLoaded
                 ? targetState.target.totalTarget
                 : null;
-            final totalSales = salesState is RepMonthlySalesLoaded
-                ? salesState.sales.totalSales
+            final dailyData = dailyState is RepDailySalesLoaded
+                ? dailyState.sales
                 : null;
-            if (totalTarget != null && totalSales != null) {
-              dailyTarget =
-                  totalTarget > 0 ? totalTarget / daysInMonth : 0.0;
-              dailySales =
-                  daysElapsed > 0 ? totalSales / daysElapsed : 0.0;
-              dailyPct = dailyTarget > 0
+            if (totalTarget != null && dailyData != null) {
+              dailyTarget = totalTarget > 0 ? totalTarget / daysInMonth : 0.0;
+              dailySales  = dailyData.pendingTotal;
+              dailyPct    = dailyTarget > 0
                   ? (dailySales / dailyTarget * 100).clamp(0.0, 999.0)
                   : 0.0;
             }
@@ -972,7 +997,7 @@ class _DailyPaceRow extends StatelessWidget {
                       _DailyStat(
                         label: 'DAILY SALES',
                         value: fmtVal(dailySales),
-                        unit: 'LKR / DAY',
+                        unit: 'LKR  ·  PENDING',
                         color: AppColors.foreground,
                       ),
                       Container(

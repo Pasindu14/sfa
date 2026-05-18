@@ -29,6 +29,17 @@ public class RepBillingController(IBillingService billingService) : ControllerBa
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 
+    /// <summary>GET /api/v1/billings/my-daily-sales?date=YYYY-MM-DD — today's approved and pending sales totals for the calling rep.</summary>
+    [HttpGet("my-daily-sales")]
+    public async Task<IActionResult> GetMyDailySales(
+        [FromQuery] DateOnly date,
+        CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var result = await billingService.GetRepDailySalesAsync(GetCallerId(), date, ct);
+        return Ok(ResponseHelper.Ok(result, correlationId));
+    }
+
     /// <summary>GET /api/v1/billings/my-monthly-sales-itemwise — per-product target vs sold for the calling rep.</summary>
     [HttpGet("my-monthly-sales-itemwise")]
     public async Task<IActionResult> GetMyMonthlySalesItemwise(

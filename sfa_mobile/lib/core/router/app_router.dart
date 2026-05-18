@@ -29,7 +29,9 @@ import 'package:uswatte/features/route_assignment/presentation/pages/route_assig
 import 'package:uswatte/features/sales_rep/presentation/pages/sales_rep_home_page.dart';
 import 'package:uswatte/features/sales_rep_target/domain/usecases/get_rep_monthly_target_usecase.dart';
 import 'package:uswatte/features/sales_rep_target/presentation/cubit/rep_target_cubit.dart';
+import 'package:uswatte/features/rep_monthly_sales/domain/usecases/get_rep_daily_sales_usecase.dart';
 import 'package:uswatte/features/rep_monthly_sales/domain/usecases/get_rep_monthly_sales_usecase.dart';
+import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_daily_sales_cubit.dart';
 import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_monthly_sales_cubit.dart';
 import 'package:uswatte/features/item_wise_achievement/domain/usecases/get_item_wise_achievement_usecase.dart';
 import 'package:uswatte/features/item_wise_achievement/presentation/cubit/item_wise_achievement_cubit.dart';
@@ -197,6 +199,10 @@ class AppRouter {
                       return RepMonthlySalesCubit(getIt<GetRepMonthlySalesUseCase>())
                         ..load(now.year, now.month);
                     },
+                  ),
+                  BlocProvider(
+                    create: (_) => RepDailySalesCubit(getIt<GetRepDailySalesUseCase>())
+                      ..load(DateTime.now()),
                   ),
                 ],
                 child: const SalesRepHomePage(),

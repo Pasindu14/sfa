@@ -39,6 +39,8 @@ public interface IBillingRepository
         CancellationToken ct = default);
 
     Task<decimal> GetRepMonthlySalesTotalAsync(int salesRepId, int year, int month, CancellationToken ct = default);
+    Task<decimal> GetRepMonthlySalesPendingTotalAsync(int salesRepId, int year, int month, CancellationToken ct = default);
+    Task<decimal> GetRepDailySalesTotalAsync(int salesRepId, DateOnly date, DistributorBillingStatus status, CancellationToken ct = default);
 
     Task<List<RepProductSalesRow>> GetRepMonthlySalesByProductAsync(
         int salesRepId, int year, int month, CancellationToken ct = default);

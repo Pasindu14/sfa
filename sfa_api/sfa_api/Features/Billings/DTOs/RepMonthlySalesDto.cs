@@ -1,6 +1,8 @@
 namespace sfa_api.Features.Billings.DTOs;
 
-public record RepMonthlySalesDto(int Year, int Month, decimal TotalSales);
+public record RepMonthlySalesDto(int Year, int Month, decimal TotalSales, decimal PendingTotal);
+
+public record RepDailySalesDto(DateOnly Date, decimal ApprovedTotal, decimal PendingTotal);
 
 public record RepMonthlySalesItemDto(
     int ProductId,

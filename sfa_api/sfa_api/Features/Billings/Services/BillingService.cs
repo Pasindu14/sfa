@@ -435,8 +435,23 @@ public class BillingService(
         var cached = await _cache.GetAsync<RepMonthlySalesDto>(cacheKey, ct);
         if (cached is not null) return cached;
 
-        var total = await _billingRepository.GetRepMonthlySalesTotalAsync(salesRepId, year, month, ct);
-        var result = new RepMonthlySalesDto(year, month, total);
+        var approved = await _billingRepository.GetRepMonthlySalesTotalAsync(salesRepId, year, month, ct);
+        var pending  = await _billingRepository.GetRepMonthlySalesPendingTotalAsync(salesRepId, year, month, ct);
+        var result   = new RepMonthlySalesDto(year, month, approved, pending);
+        await _cache.SetAsync(cacheKey, result, SalesCacheTtl, ct);
+        return result;
+    }
+
+    public async Task<RepDailySalesDto> GetRepDailySalesAsync(
+        int salesRepId, DateOnly date, CancellationToken ct = default)
+    {
+        var cacheKey = $"rep-sales-daily:{salesRepId}:{date:yyyy-MM-dd}";
+        var cached = await _cache.GetAsync<RepDailySalesDto>(cacheKey, ct);
+        if (cached is not null) return cached;
+
+        var approved = await _billingRepository.GetRepDailySalesTotalAsync(salesRepId, date, DistributorBillingStatus.Approved, ct);
+        var pending  = await _billingRepository.GetRepDailySalesTotalAsync(salesRepId, date, DistributorBillingStatus.Pending, ct);
+        var result   = new RepDailySalesDto(date, approved, pending);
         await _cache.SetAsync(cacheKey, result, SalesCacheTtl, ct);
         return result;
     }
