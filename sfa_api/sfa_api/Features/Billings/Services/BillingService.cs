@@ -11,6 +11,7 @@ using sfa_api.Features.Stock.Enums;
 using sfa_api.Features.Stock.Repositories;
 using sfa_api.Features.UserGeoAssignments.Repositories;
 using sfa_api.Features.UserReportingLines.Repositories;
+using sfa_api.Features.Users.Repositories;
 using sfa_api.Infrastructure.Caching;
 using sfa_api.Infrastructure.Locking;
 using sfa_api.Infrastructure.Persistence;
@@ -26,6 +27,7 @@ public class BillingService(
     IProductRepository productRepository,
     IDistributedLockService lockService,
     ICacheService cache,
+    IUserRepository userRepository,
     AppDbContext db) : IBillingService
 {
     private readonly IBillingRepository _billingRepository = billingRepository;
@@ -36,6 +38,7 @@ public class BillingService(
     private readonly IProductRepository _productRepository = productRepository;
     private readonly IDistributedLockService _lockService = lockService;
     private readonly ICacheService _cache = cache;
+    private readonly IUserRepository _userRepository = userRepository;
     private readonly AppDbContext _db = db;
 
     private static readonly TimeSpan SalesCacheTtl = TimeSpan.FromMinutes(5);
@@ -229,7 +232,8 @@ public class BillingService(
             FreeIssueValue            = freeIssueValue,
             FreeIssueValueCompany     = freeIssueValueCompany,
             FreeIssueValueDistributor = freeIssueValueDistributor,
-            Status            = BillingStatus.Submitted,
+            RepStatus         = RepBillingStatus.Submitted,
+            DistributorStatus = DistributorBillingStatus.Pending,
             Notes             = request.Notes,
             Latitude          = request.Latitude,
             Longitude         = request.Longitude,
@@ -329,12 +333,13 @@ public class BillingService(
 
     public Task<(List<BillingListDto> Items, int TotalCount)> GetListAsync(
         int page, int pageSize,
-        BillingStatus? status,
+        RepBillingStatus? repStatus,
+        DistributorBillingStatus? distributorStatus,
         int? outletId, int? distributorId, int? salesRepId,
         DateOnly? dateFrom, DateOnly? dateTo,
         CancellationToken ct = default)
         => _billingRepository.GetListAsync(
-            page, pageSize, status,
+            page, pageSize, repStatus, distributorStatus,
             outletId, distributorId, salesRepId,
             dateFrom, dateTo, ct);
 
@@ -371,7 +376,9 @@ public class BillingService(
         b.FreeIssueValue,
         b.FreeIssueValueCompany,
         b.FreeIssueValueDistributor,
-        b.Status,
+        b.RepStatus,
+        b.DistributorStatus,
+        b.RejectionReason,
         b.Notes,
         b.Latitude,
         b.Longitude,
@@ -409,7 +416,7 @@ public class BillingService(
                 g.Count(),
                 g.Sum(r => r.TotalAmount),
                 g.OrderByDescending(r => r.BillingDate)
-                 .Select(r => new BillLineDto(r.Id, r.BillingNumber, r.BillingDate, r.TotalAmount, r.Status.ToString()))
+                 .Select(r => new BillLineDto(r.Id, r.BillingNumber, r.BillingDate, r.TotalAmount, r.RepStatus.ToString()))
                  .ToList()))
             .OrderByDescending(x => x.TotalAmount)
             .ToList();
@@ -441,12 +448,12 @@ public class BillingService(
         if (billing.SalesRepId != salesRepId)
             throw new AuthorizationException("Billing");
 
-        if (billing.Status != BillingStatus.Submitted)
+        if (billing.RepStatus != RepBillingStatus.Submitted)
             throw new BusinessRuleException(
                 "BILLING_NOT_CANCELLABLE",
-                $"Billing {billing.BillingNumber} cannot be cancelled — current status is {billing.Status}.");
+                $"Billing {billing.BillingNumber} cannot be cancelled — current status is {billing.RepStatus}.");
 
-        billing.Status    = BillingStatus.Cancelled;
+        billing.RepStatus = RepBillingStatus.Cancelled;
         billing.UpdatedAt = DateTime.UtcNow;
         billing.UpdatedBy = salesRepId;
 
@@ -455,6 +462,69 @@ public class BillingService(
         var updated = await _billingRepository.GetByIdAsync(billingId, ct)
             ?? throw new DatabaseUnavailableException();
         return ProjectToDto(updated);
+    }
+
+    public async Task<BillingDto> ApproveAsync(int billingId, int userId, CancellationToken ct = default)
+    {
+        var billing = await _billingRepository.GetTrackedByIdAsync(billingId, ct)
+            ?? throw new NotFoundException("Billing", billingId);
+
+        var user = await _userRepository.GetUserByIdAsync(userId, ct);
+        if (user?.DistributorId == null || user.DistributorId != billing.DistributorId)
+            throw new AuthorizationException("Billing");
+
+        if (billing.RepStatus != RepBillingStatus.Submitted)
+            throw new BusinessRuleException(
+                "BILLING_NOT_ACTIONABLE",
+                $"Billing {billing.BillingNumber} cannot be approved — rep status is {billing.RepStatus}.");
+
+        if (billing.DistributorStatus != DistributorBillingStatus.Pending)
+            throw new BusinessRuleException(
+                "BILLING_ALREADY_ACTIONED",
+                $"Billing {billing.BillingNumber} has already been {billing.DistributorStatus}.");
+
+        billing.DistributorStatus = DistributorBillingStatus.Approved;
+        billing.ApprovedAt        = DateTime.UtcNow;
+        billing.UpdatedAt         = DateTime.UtcNow;
+        billing.UpdatedBy         = userId;
+
+        await _billingRepository.SaveChangesAsync(ct);
+
+        var result = await _billingRepository.GetByIdAsync(billingId, ct)
+            ?? throw new DatabaseUnavailableException();
+        return ProjectToDto(result);
+    }
+
+    public async Task<BillingDto> RejectAsync(int billingId, int userId, string? reason, CancellationToken ct = default)
+    {
+        var billing = await _billingRepository.GetTrackedByIdAsync(billingId, ct)
+            ?? throw new NotFoundException("Billing", billingId);
+
+        var user = await _userRepository.GetUserByIdAsync(userId, ct);
+        if (user?.DistributorId == null || user.DistributorId != billing.DistributorId)
+            throw new AuthorizationException("Billing");
+
+        if (billing.RepStatus != RepBillingStatus.Submitted)
+            throw new BusinessRuleException(
+                "BILLING_NOT_ACTIONABLE",
+                $"Billing {billing.BillingNumber} cannot be rejected — rep status is {billing.RepStatus}.");
+
+        if (billing.DistributorStatus != DistributorBillingStatus.Pending)
+            throw new BusinessRuleException(
+                "BILLING_ALREADY_ACTIONED",
+                $"Billing {billing.BillingNumber} has already been {billing.DistributorStatus}.");
+
+        billing.DistributorStatus = DistributorBillingStatus.Rejected;
+        billing.RejectionReason   = reason;
+        billing.RejectedAt        = DateTime.UtcNow;
+        billing.UpdatedAt         = DateTime.UtcNow;
+        billing.UpdatedBy         = userId;
+
+        await _billingRepository.SaveChangesAsync(ct);
+
+        var result = await _billingRepository.GetByIdAsync(billingId, ct)
+            ?? throw new DatabaseUnavailableException();
+        return ProjectToDto(result);
     }
 
     public async Task<RepMonthlySalesItemwiseDto> GetRepMonthlySalesItemwiseAsync(

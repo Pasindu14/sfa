@@ -10,7 +10,8 @@ public interface IBillingService
     Task<BillingDto?> GetByIdAsync(int id, CancellationToken ct = default);
     Task<(List<BillingListDto> Items, int TotalCount)> GetListAsync(
         int page, int pageSize,
-        BillingStatus? status,
+        RepBillingStatus? repStatus,
+        DistributorBillingStatus? distributorStatus,
         int? outletId, int? distributorId, int? salesRepId,
         DateOnly? dateFrom, DateOnly? dateTo,
         CancellationToken ct = default);
@@ -26,4 +27,6 @@ public interface IBillingService
         int salesRepId, int year, int month, CancellationToken ct = default);
 
     Task<BillingDto> CancelAsync(int billingId, int salesRepId, CancellationToken ct = default);
+    Task<BillingDto> ApproveAsync(int billingId, int userId, CancellationToken ct = default);
+    Task<BillingDto> RejectAsync(int billingId, int userId, string? reason, CancellationToken ct = default);
 }

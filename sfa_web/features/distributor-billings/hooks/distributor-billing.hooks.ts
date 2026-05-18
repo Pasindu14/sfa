@@ -1,7 +1,14 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
-import { getMyBillingsAction, getMyBillingDetailAction } from '../actions/distributor-billing.actions'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import {
+  getMyBillingsAction,
+  getMyBillingDetailAction,
+  approveBillingAction,
+  rejectBillingAction,
+} from '../actions/distributor-billing.actions'
+import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { DistributorBillingListItem } from '../schema/distributor-billing.schema'
 
 function toLocalDateStr(d: Date) {
@@ -26,17 +33,19 @@ export function useMyBillingsDataTable(
   _sortBy?: string,
   _sortOrder?: string,
   _caseConfig?: unknown,
-  customFilters?: { status?: string; dateFrom?: string; dateTo?: string },
+  customFilters?: { repStatus?: string; distributorStatus?: string; dateFrom?: string; dateTo?: string },
 ) {
-  const status = customFilters?.status
+  const repStatus = customFilters?.repStatus
+  const distributorStatus = customFilters?.distributorStatus
   const dateFrom = customFilters?.dateFrom
   const dateTo = customFilters?.dateTo
 
   return useQuery({
-    queryKey: myBillingKeys.list({ page, pageSize, search, status, dateFrom, dateTo }),
+    queryKey: myBillingKeys.list({ page, pageSize, search, repStatus, distributorStatus, dateFrom, dateTo }),
     queryFn: async () => {
       const result = await getMyBillingsAction(
-        page, pageSize, search || undefined, status || undefined,
+        page, pageSize, search || undefined,
+        repStatus || undefined, distributorStatus || undefined,
         dateFrom || undefined, dateTo || undefined,
       )
       if (!result.success) throw new Error(result.error)
@@ -62,15 +71,15 @@ export function useMyBillingsTodaySummary() {
   return useQuery({
     queryKey: myBillingKeys.list({ page: 1, pageSize: 500, dateFrom: today, dateTo: today, _summary: true }),
     queryFn: async () => {
-      const result = await getMyBillingsAction(1, 500, undefined, undefined, today, today)
+      const result = await getMyBillingsAction(1, 500, undefined, undefined, undefined, today, today)
       if (!result.success) throw new Error(result.error)
       const bills = result.data.billings
       return {
         totalRevenue: bills.reduce((s, b) => s + b.totalAmount, 0),
         totalCount: result.data.totalCount,
-        approvedRevenue: bills.filter(b => b.status === 'Approved').reduce((s, b) => s + b.totalAmount, 0),
-        approvedCount: bills.filter(b => b.status === 'Approved').length,
-        submittedCount: bills.filter(b => b.status === 'Submitted').length,
+        approvedRevenue: bills.filter(b => b.distributorStatus === 'Approved').reduce((s, b) => s + b.totalAmount, 0),
+        approvedCount: bills.filter(b => b.distributorStatus === 'Approved').length,
+        pendingCount: bills.filter(b => b.distributorStatus === 'Pending').length,
       }
     },
     staleTime: 60_000,
@@ -86,5 +95,43 @@ export function useMyBillingDetail(id: number | null) {
       return result.data
     },
     enabled: id !== null,
+  })
+}
+
+export function useApproveBilling(onSuccess?: () => void) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const result = await approveBillingAction(id)
+      if (!result.success) throw result
+      return result.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: myBillingKeys.all })
+      toast.success('Billing approved successfully')
+      onSuccess?.()
+    },
+    onError: (error: any) => {
+      handleErrorToast(error, 'billing', 'approve')
+    },
+  })
+}
+
+export function useRejectBilling(onSuccess?: () => void) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, reason }: { id: number; reason?: string }) => {
+      const result = await rejectBillingAction(id, reason)
+      if (!result.success) throw result
+      return result.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: myBillingKeys.all })
+      toast.success('Billing rejected')
+      onSuccess?.()
+    },
+    onError: (error: any) => {
+      handleErrorToast(error, 'billing', 'reject')
+    },
   })
 }

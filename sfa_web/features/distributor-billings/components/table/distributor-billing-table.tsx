@@ -58,19 +58,20 @@ export function DistributorBillingTable() {
             outletName: 'Outlet',
             salesRepName: 'Sales Rep',
             totalAmount: 'Total Amount',
-            status: 'Status',
+            repStatus: 'Rep Status',
+            distributorStatus: 'Distributor Status',
           },
-          columnWidths: [{ wch: 16 }, { wch: 30 }, { wch: 20 }, { wch: 14 }, { wch: 12 }],
-          headers: ['Billing No', 'Outlet', 'Sales Rep', 'Total Amount', 'Status'],
+          columnWidths: [{ wch: 16 }, { wch: 30 }, { wch: 20 }, { wch: 14 }, { wch: 12 }, { wch: 14 }],
+          headers: ['Billing No', 'Outlet', 'Sales Rep', 'Total Amount', 'Rep Status', 'Distributor Status'],
         }}
         idField="id"
         renderCustomFilters={(filters, setFilters) => {
           const fromDate = filters?.dateFrom ? new Date(filters.dateFrom as string) : undefined
           const toDate = filters?.dateTo ? new Date(filters.dateTo as string) : undefined
-          const hasActiveFilters = !!(filters?.status || filters?.dateFrom || filters?.dateTo)
+          const hasActiveFilters = !!(filters?.repStatus || filters?.distributorStatus || filters?.dateFrom || filters?.dateTo)
 
           return (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <CalendarDatePicker
                 id="billing-date-range"
                 date={{ from: fromDate, to: toDate }}
@@ -88,19 +89,35 @@ export function DistributorBillingTable() {
               />
 
               <Select
-                value={(filters?.status as string) ?? 'all'}
+                value={(filters?.repStatus as string) ?? 'all'}
                 onValueChange={(value) =>
-                  setFilters({ ...filters, status: value === 'all' ? '' : value })
+                  setFilters({ ...filters, repStatus: value === 'all' ? '' : value })
                 }
               >
                 <SelectTrigger className="h-8 w-36">
-                  <SelectValue placeholder="All Statuses" />
+                  <SelectValue placeholder="Rep Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="all">All Rep Status</SelectItem>
                   <SelectItem value="Submitted">Submitted</SelectItem>
-                  <SelectItem value="Approved">Approved</SelectItem>
                   <SelectItem value="Cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={(filters?.distributorStatus as string) ?? 'all'}
+                onValueChange={(value) =>
+                  setFilters({ ...filters, distributorStatus: value === 'all' ? '' : value })
+                }
+              >
+                <SelectTrigger className="h-8 w-40">
+                  <SelectValue placeholder="Distributor Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Distributor Status</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                  <SelectItem value="Approved">Approved</SelectItem>
+                  <SelectItem value="Rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -109,7 +126,7 @@ export function DistributorBillingTable() {
                   variant="ghost"
                   size="sm"
                   className="h-8 gap-1.5 text-muted-foreground"
-                  onClick={() => setFilters({ status: '', dateFrom: '', dateTo: '' })}
+                  onClick={() => setFilters({ repStatus: '', distributorStatus: '', dateFrom: '', dateTo: '' })}
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                   Reset

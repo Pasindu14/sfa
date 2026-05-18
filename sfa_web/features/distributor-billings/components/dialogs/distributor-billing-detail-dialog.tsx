@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -7,12 +8,24 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
-import { Calendar, Banknote, Package, Store, User } from 'lucide-react'
-import { useMyBillingDetail } from '../../hooks/distributor-billing.hooks'
+import { Calendar, Banknote, Store, User, Loader2, CheckCircle2, XCircle } from 'lucide-react'
+import { useMyBillingDetail, useApproveBilling, useRejectBilling } from '../../hooks/distributor-billing.hooks'
 import type { DistributorBillingDetail } from '../../schema/distributor-billing.schema'
 
 function formatCurrency(amount: number) {
@@ -23,12 +36,18 @@ function formatCurrency(amount: number) {
   }).format(amount)
 }
 
-function StatusBadge({ status }: { status: DistributorBillingDetail['status'] }) {
-  if (status === 'Approved')
-    return <Badge className="bg-green-600 hover:bg-green-700 text-white text-xs">Approved</Badge>
+function RepStatusBadge({ status }: { status: DistributorBillingDetail['repStatus'] }) {
   if (status === 'Cancelled')
     return <Badge variant="destructive" className="text-xs">Cancelled</Badge>
   return <Badge variant="outline" className="text-xs">Submitted</Badge>
+}
+
+function DistributorStatusBadge({ status }: { status: DistributorBillingDetail['distributorStatus'] }) {
+  if (status === 'Approved')
+    return <Badge className="bg-green-600 hover:bg-green-700 text-white text-xs">Approved</Badge>
+  if (status === 'Rejected')
+    return <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-xs">Rejected</Badge>
+  return <Badge variant="secondary" className="text-xs">Pending</Badge>
 }
 
 function ItemTypeBadge({ type }: { type: 'Sale' | 'Return' | 'FreeIssue' }) {
@@ -82,6 +101,107 @@ function LoadingSkeleton() {
   )
 }
 
+interface ActionsProps {
+  billing: DistributorBillingDetail
+  onClose: () => void
+}
+
+function BillingActionsPanel({ billing, onClose }: ActionsProps) {
+  const [showApproveConfirm, setShowApproveConfirm] = useState(false)
+  const [showRejectForm, setShowRejectForm] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
+
+  const approveMutation = useApproveBilling(onClose)
+  const rejectMutation = useRejectBilling(onClose)
+
+  const canAct = billing.repStatus === 'Submitted' && billing.distributorStatus === 'Pending'
+  if (!canAct) return null
+
+  return (
+    <>
+      <div className="shrink-0 border-t bg-muted/20 px-6 py-3">
+        {!showRejectForm ? (
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 border-amber-400 text-amber-700 hover:bg-amber-50"
+              onClick={() => setShowRejectForm(true)}
+              disabled={approveMutation.isPending || rejectMutation.isPending}
+            >
+              <XCircle className="h-3.5 w-3.5" />
+              Reject
+            </Button>
+            <Button
+              size="sm"
+              className="gap-1.5 bg-green-600 hover:bg-green-700 text-white"
+              onClick={() => setShowApproveConfirm(true)}
+              disabled={approveMutation.isPending || rejectMutation.isPending}
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Approve
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-end justify-end gap-3">
+            <div className="w-72 space-y-2">
+              <Textarea
+                placeholder="Reason for rejection (optional)"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                rows={2}
+                className="text-sm resize-none"
+              />
+              <div className="flex items-center justify-end gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => { setShowRejectForm(false); setRejectReason('') }}
+                  disabled={rejectMutation.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="gap-1.5"
+                  disabled={rejectMutation.isPending}
+                  onClick={() => rejectMutation.mutate({ id: billing.id, reason: rejectReason || undefined })}
+                >
+                  {rejectMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  Confirm Reject
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <AlertDialog open={showApproveConfirm} onOpenChange={setShowApproveConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Approve this billing?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Billing <span className="font-mono font-semibold">{billing.billingNumber}</span> from {billing.salesRepName} will be marked as approved.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={approveMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-green-600 hover:bg-green-700"
+              disabled={approveMutation.isPending}
+              onClick={() => approveMutation.mutate(billing.id)}
+            >
+              {approveMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Approve
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
+}
+
 interface Props {
   id: number | null
   onClose: () => void
@@ -108,7 +228,8 @@ export function DistributorBillingDetailDialog({ id, onClose }: Props) {
           {billing && (
             <DialogDescription asChild>
               <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                <StatusBadge status={billing.status} />
+                <RepStatusBadge status={billing.repStatus} />
+                <DistributorStatusBadge status={billing.distributorStatus} />
                 <span className="text-xs text-muted-foreground">{billing.outletName}</span>
               </div>
             </DialogDescription>
@@ -254,6 +375,10 @@ export function DistributorBillingDetailDialog({ id, onClose }: Props) {
                 <span className="tabular-nums">{formatCurrency(billing.totalAmount)}</span>
               </div>
             </div>
+
+            {/* Action footer */}
+            <BillingActionsPanel billing={billing} onClose={onClose} />
+
           </div>
         ) : (
           <p className="px-6 py-10 text-sm text-muted-foreground">Billing not found.</p>

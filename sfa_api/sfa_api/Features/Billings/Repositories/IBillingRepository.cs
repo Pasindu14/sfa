@@ -27,7 +27,8 @@ public interface IBillingRepository
     Task<Billing?> GetByIdAsync(int id, CancellationToken ct = default);
     Task<(List<BillingListDto> Items, int TotalCount)> GetListAsync(
         int page, int pageSize,
-        BillingStatus? status,
+        RepBillingStatus? repStatus,
+        DistributorBillingStatus? distributorStatus,
         int? outletId, int? distributorId, int? salesRepId,
         DateOnly? dateFrom, DateOnly? dateTo,
         CancellationToken ct = default);

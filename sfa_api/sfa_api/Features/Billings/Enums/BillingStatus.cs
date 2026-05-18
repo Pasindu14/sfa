@@ -1,8 +1,14 @@
 namespace sfa_api.Features.Billings.Enums;
 
-public enum BillingStatus
+public enum RepBillingStatus
 {
-    Submitted  = 0,
-    Approved   = 1,
-    Cancelled  = 2
+    Submitted = 0,
+    Cancelled = 1
+}
+
+public enum DistributorBillingStatus
+{
+    Pending  = 0,
+    Approved = 1,
+    Rejected = 2
 }

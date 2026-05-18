@@ -10,7 +10,8 @@ export const getMyBillingsAction = createAction(
     page: number = 1,
     pageSize: number = 20,
     search?: string,
-    status?: string,
+    repStatus?: string,
+    distributorStatus?: string,
     dateFrom?: string,
     dateTo?: string,
   ) => {
@@ -19,7 +20,8 @@ export const getMyBillingsAction = createAction(
         page,
         pageSize,
         search: search || undefined,
-        status: status || undefined,
+        repStatus: repStatus || undefined,
+        distributorStatus: distributorStatus || undefined,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
       },
@@ -38,6 +40,22 @@ export const getMyBillingDetailAction = createAction(
   { name: 'getMyBillingDetailAction', requireAuth: true, requiredRole: 'Distributor' },
   async (id: number) => {
     const res = await client.get(`/api/v1/billings/portal/${id}`)
+    return res.data.data as DistributorBillingDetail
+  }
+)
+
+export const approveBillingAction = createAction(
+  { name: 'approveBillingAction', requireAuth: true, requiredRole: 'Distributor' },
+  async (id: number) => {
+    const res = await client.patch(`/api/v1/billings/${id}/approve`)
+    return res.data.data as DistributorBillingDetail
+  }
+)
+
+export const rejectBillingAction = createAction(
+  { name: 'rejectBillingAction', requireAuth: true, requiredRole: 'Distributor' },
+  async (id: number, reason?: string) => {
+    const res = await client.patch(`/api/v1/billings/${id}/reject`, { reason: reason ?? null })
     return res.data.data as DistributorBillingDetail
   }
 )

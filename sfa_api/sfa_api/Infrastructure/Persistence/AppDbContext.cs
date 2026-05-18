@@ -749,7 +749,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(x => x.Id);
             e.Property(x => x.BillingNumber).IsRequired().HasMaxLength(30);
             e.HasIndex(x => x.BillingNumber).IsUnique();
-            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(15);
+            e.Property(x => x.RepStatus).HasConversion<string>().HasMaxLength(15);
+            e.Property(x => x.DistributorStatus).HasConversion<string>().HasMaxLength(15);
+            e.Property(x => x.RejectionReason).HasMaxLength(500);
             e.Property(x => x.Notes).HasMaxLength(1000);
             e.Property(x => x.SubTotalAmount).HasColumnType("decimal(18,2)");
             e.Property(x => x.BillDiscountRate).HasColumnType("decimal(5,2)");
@@ -772,7 +774,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => new { x.AreaId,           x.BillingDate });
             e.HasIndex(x => new { x.RegionId,         x.BillingDate });
             e.HasIndex(x => new { x.OutletId,         x.BillingDate });
-            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.RepStatus);
+            e.HasIndex(x => x.DistributorStatus);
             e.HasIndex(x => x.IsDeleted).HasFilter("\"IsDeleted\" = false");
             // Matching query filter prevents EF warning about Outlet's global IsActive+IsDeleted filter
             // being the required end of this relationship.

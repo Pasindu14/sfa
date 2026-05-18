@@ -12,7 +12,8 @@ export const distributorBillingListItemSchema = z.object({
   distributorId: z.number(),
   distributorName: z.string(),
   totalAmount: z.number(),
-  status: z.enum(['Submitted', 'Approved', 'Cancelled']),
+  repStatus: z.enum(['Submitted', 'Cancelled']),
+  distributorStatus: z.enum(['Pending', 'Approved', 'Rejected']),
   createdAt: z.string(),
 })
 
@@ -40,10 +41,16 @@ export const distributorBillingDetailSchema = distributorBillingListItemSchema.e
   freeIssueValue: z.number(),
   freeIssueValueCompany: z.number(),
   freeIssueValueDistributor: z.number(),
+  rejectionReason: z.string().nullable().optional(),
   notes: z.string().nullable(),
   items: z.array(billingItemSchema),
+})
+
+export const rejectBillingSchema = z.object({
+  reason: z.string().optional(),
 })
 
 export type DistributorBillingListItem = z.infer<typeof distributorBillingListItemSchema>
 export type DistributorBillingDetail = z.infer<typeof distributorBillingDetailSchema>
 export type BillingLineItem = z.infer<typeof billingItemSchema>
+export type RejectBillingInput = z.infer<typeof rejectBillingSchema>

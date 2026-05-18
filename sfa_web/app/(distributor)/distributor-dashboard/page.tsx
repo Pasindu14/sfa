@@ -71,7 +71,7 @@ function BillingStats() {
     )
   }
 
-  const s = data ?? { totalRevenue: 0, totalCount: 0, approvedRevenue: 0, approvedCount: 0, submittedCount: 0 }
+  const s = data ?? { totalRevenue: 0, totalCount: 0, approvedRevenue: 0, approvedCount: 0, pendingCount: 0 }
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -92,8 +92,8 @@ function BillingStats() {
       <StatCard
         icon={Clock4}
         label="Pending Review"
-        value={s.submittedCount}
-        sub={s.submittedCount > 0 ? "Awaiting approval" : "All bills reviewed"}
+        value={s.pendingCount}
+        sub={s.pendingCount > 0 ? "Awaiting approval" : "All bills reviewed"}
         iconClass="bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400"
       />
     </div>

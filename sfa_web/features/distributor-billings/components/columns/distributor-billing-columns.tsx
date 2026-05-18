@@ -14,12 +14,18 @@ function formatCurrency(amount: number) {
   }).format(amount)
 }
 
-function StatusBadge({ status }: { status: DistributorBillingListItem['status'] }) {
-  if (status === 'Approved')
-    return <Badge className="bg-green-600 hover:bg-green-700 text-white text-xs">Approved</Badge>
+function RepStatusBadge({ status }: { status: DistributorBillingListItem['repStatus'] }) {
   if (status === 'Cancelled')
     return <Badge variant="destructive" className="text-xs">Cancelled</Badge>
   return <Badge variant="outline" className="text-xs">Submitted</Badge>
+}
+
+function DistributorStatusBadge({ status }: { status: DistributorBillingListItem['distributorStatus'] }) {
+  if (status === 'Approved')
+    return <Badge className="bg-green-600 hover:bg-green-700 text-white text-xs">Approved</Badge>
+  if (status === 'Rejected')
+    return <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-xs">Rejected</Badge>
+  return <Badge variant="secondary" className="text-xs">Pending</Badge>
 }
 
 export function getDistributorBillingColumns(
@@ -81,9 +87,14 @@ export function getDistributorBillingColumns(
       ),
     },
     {
-      accessorKey: 'status',
-      header: 'Status',
-      cell: ({ row }) => <StatusBadge status={row.original.status} />,
+      id: 'repStatus',
+      header: 'Rep Status',
+      cell: ({ row }) => <RepStatusBadge status={row.original.repStatus} />,
+    },
+    {
+      id: 'distributorStatus',
+      header: 'Distributor Status',
+      cell: ({ row }) => <DistributorStatusBadge status={row.original.distributorStatus} />,
     },
     {
       id: 'actions',

@@ -37,7 +37,8 @@ public class BillingsController(
     public async Task<IActionResult> GetList(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
-        [FromQuery] string? status = null,
+        [FromQuery] string? repStatus = null,
+        [FromQuery] string? distributorStatus = null,
         [FromQuery] int? outletId = null,
         [FromQuery] int? distributorId = null,
         [FromQuery] int? salesRepId = null,
@@ -47,12 +48,13 @@ public class BillingsController(
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
 
-        BillingStatus? parsedStatus  = Enum.TryParse<BillingStatus>(status, true, out var bs) ? bs : null;
-        DateOnly? parsedDateFrom     = DateOnly.TryParse(dateFrom, out var df) ? df : null;
-        DateOnly? parsedDateTo       = DateOnly.TryParse(dateTo, out var dt) ? dt : null;
+        RepBillingStatus? parsedRepStatus                 = Enum.TryParse<RepBillingStatus>(repStatus, true, out var rs) ? rs : null;
+        DistributorBillingStatus? parsedDistributorStatus = Enum.TryParse<DistributorBillingStatus>(distributorStatus, true, out var ds) ? ds : null;
+        DateOnly? parsedDateFrom                          = DateOnly.TryParse(dateFrom, out var df) ? df : null;
+        DateOnly? parsedDateTo                            = DateOnly.TryParse(dateTo, out var dt) ? dt : null;
 
         var (items, total) = await _billingService.GetListAsync(
-            page, pageSize, parsedStatus,
+            page, pageSize, parsedRepStatus, parsedDistributorStatus,
             outletId, distributorId, salesRepId,
             parsedDateFrom, parsedDateTo, ct);
 
@@ -122,7 +124,8 @@ public class BillingsController(
     public async Task<IActionResult> GetPortalBillings(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
-        [FromQuery] string? status = null,
+        [FromQuery] string? repStatus = null,
+        [FromQuery] string? distributorStatus = null,
         [FromQuery] string? dateFrom = null,
         [FromQuery] string? dateTo = null,
         CancellationToken ct = default)
@@ -133,11 +136,13 @@ public class BillingsController(
         if (user?.DistributorId == null)
             throw new BusinessRuleException("NO_DISTRIBUTOR_LINKED",
                 "Your account is not linked to a distributor.");
-        BillingStatus? parsedStatus = Enum.TryParse<BillingStatus>(status, true, out var bs) ? bs : null;
-        DateOnly? parsedFrom = DateOnly.TryParse(dateFrom, out var df) ? df : null;
-        DateOnly? parsedTo   = DateOnly.TryParse(dateTo,   out var dt) ? dt : null;
+        RepBillingStatus? parsedRepStatus                 = Enum.TryParse<RepBillingStatus>(repStatus, true, out var rs) ? rs : null;
+        DistributorBillingStatus? parsedDistributorStatus = Enum.TryParse<DistributorBillingStatus>(distributorStatus, true, out var ds) ? ds : null;
+        DateOnly? parsedFrom                              = DateOnly.TryParse(dateFrom, out var df) ? df : null;
+        DateOnly? parsedTo                                = DateOnly.TryParse(dateTo, out var dt) ? dt : null;
         var (items, total) = await _billingService.GetListAsync(
-            page, pageSize, parsedStatus, null, user.DistributorId.Value, null, parsedFrom, parsedTo, ct);
+            page, pageSize, parsedRepStatus, parsedDistributorStatus,
+            null, user.DistributorId.Value, null, parsedFrom, parsedTo, ct);
         return Ok(ResponseHelper.Paged(items, page, pageSize, total, correlationId));
     }
 
@@ -160,6 +165,32 @@ public class BillingsController(
         if (detail.DistributorId != user.DistributorId.Value)
             throw new BusinessRuleException("BILLING_NOT_FOUND", "Billing not found.");
         return Ok(ResponseHelper.Ok(detail, correlationId));
+    }
+
+    /// <summary>
+    /// PATCH /api/v1/billings/{id}/approve
+    /// Distributor only — approves a submitted billing.
+    /// </summary>
+    [HttpPatch("{id:int}/approve")]
+    [Authorize(Roles = "Distributor")]
+    public async Task<IActionResult> Approve(int id, CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var billing = await _billingService.ApproveAsync(id, GetCallerId(), ct);
+        return Ok(ResponseHelper.Ok(billing, correlationId));
+    }
+
+    /// <summary>
+    /// PATCH /api/v1/billings/{id}/reject
+    /// Distributor only — rejects a submitted billing with an optional reason.
+    /// </summary>
+    [HttpPatch("{id:int}/reject")]
+    [Authorize(Roles = "Distributor")]
+    public async Task<IActionResult> Reject(int id, [FromBody] RejectBillingRequest request, CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var billing = await _billingService.RejectAsync(id, GetCallerId(), request.Reason, ct);
+        return Ok(ResponseHelper.Ok(billing, correlationId));
     }
 
     /// <summary>

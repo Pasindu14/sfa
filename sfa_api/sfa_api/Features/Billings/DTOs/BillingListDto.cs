@@ -14,6 +14,7 @@ public record BillingListDto(
     int DistributorId,
     string DistributorName,
     decimal TotalAmount,
-    BillingStatus Status,
+    RepBillingStatus RepStatus,
+    DistributorBillingStatus DistributorStatus,
     DateTime CreatedAt
 );

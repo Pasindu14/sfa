@@ -44,7 +44,11 @@ public class Billing
     public decimal FreeIssueValueDistributor { get; set; } // Σ item.TotalPrice for FreeIssue lines funded by the distributor (drawn from Normal stock pool)
     public decimal ReturnValue { get; set; }               // Σ item.TotalPrice for MarketResell return lines — deducted from TotalAmount
 
-    public BillingStatus Status { get; set; } = BillingStatus.Submitted;
+    public RepBillingStatus RepStatus { get; set; } = RepBillingStatus.Submitted;
+    public DistributorBillingStatus DistributorStatus { get; set; } = DistributorBillingStatus.Pending;
+    public string? RejectionReason { get; set; }
+    public DateTime? ApprovedAt { get; set; }
+    public DateTime? RejectedAt { get; set; }
     public string? Notes { get; set; }
 
     // Location captured on the device at time of billing

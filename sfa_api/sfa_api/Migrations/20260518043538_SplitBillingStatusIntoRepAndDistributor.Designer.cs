@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using sfa_api.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using sfa_api.Infrastructure.Persistence;
 namespace sfa_api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260518043538_SplitBillingStatusIntoRepAndDistributor")]
+    partial class SplitBillingStatusIntoRepAndDistributor
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -314,22 +317,7 @@ namespace sfa_api.Migrations
                     b.Property<int>("SalesRepId")
                         .HasColumnType("integer");
 
-                    b.Property<DateTime?>("ApprovedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("DistributorStatus")
-                        .IsRequired()
-                        .HasMaxLength(15)
-                        .HasColumnType("character varying(15)");
-
-                    b.Property<DateTime?>("RejectedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("RejectionReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("RepStatus")
+                    b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(15)
                         .HasColumnType("character varying(15)");
@@ -362,9 +350,7 @@ namespace sfa_api.Migrations
                     b.HasIndex("IsDeleted")
                         .HasFilter("\"IsDeleted\" = false");
 
-                    b.HasIndex("DistributorStatus");
-
-                    b.HasIndex("RepStatus");
+                    b.HasIndex("Status");
 
                     b.HasIndex("AreaId", "BillingDate");
 

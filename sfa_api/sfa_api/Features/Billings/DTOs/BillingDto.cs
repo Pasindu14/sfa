@@ -42,7 +42,9 @@ public record BillingDto(
     decimal FreeIssueValueCompany,
     decimal FreeIssueValueDistributor,
 
-    BillingStatus Status,
+    RepBillingStatus RepStatus,
+    DistributorBillingStatus DistributorStatus,
+    string? RejectionReason,
     string? Notes,
     double? Latitude,
     double? Longitude,
