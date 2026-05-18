@@ -32,7 +32,7 @@ export default {
       }
 
       // Distributor portal — only Distributor role may enter
-      if (path.startsWith("/distributor-dashboard") || path.startsWith("/distributor-stock") || path.startsWith("/distributor-billings")) {
+      if (path.startsWith("/distributor-dashboard") || path.startsWith("/distributor-stock") || path.startsWith("/distributor-billings") || path.startsWith("/distributor-grns")) {
         if (userRole?.toLowerCase() !== "distributor") {
           return Response.redirect(new URL("/unauthorized", nextUrl));
         }

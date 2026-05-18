@@ -202,66 +202,67 @@ export function SalesInvoiceDetailDialog() {
 
             {/* Scrollable table */}
             <ScrollArea className="min-h-0 flex-1 px-6 pb-5">
-              <div className="overflow-hidden rounded-lg border">
-
-                {/* Column header row */}
-                <div className="grid grid-cols-[2.5rem_1fr_8rem_4.5rem_4rem_7rem_7rem] gap-x-3 border-b bg-muted/50 px-3 py-2 text-xs font-medium text-muted-foreground">
-                  <span>#</span>
-                  <span>Description</span>
-                  <span>Code</span>
-                  <span className="text-right">Qty</span>
-                  <span>Unit</span>
-                  <span className="text-right">Unit Price</span>
-                  <span className="text-right">Total</span>
-                </div>
-
-                {/* Data rows */}
-                <div className="divide-y">
-                  {invoice.items.map((item) => {
-                    const isFreeRow = invoice.hasFreeIssueItems || item.isFreeIssue
-                    return (
-                    <div
-                      key={item.id}
-                      className={`grid grid-cols-[2.5rem_1fr_8rem_4.5rem_4rem_7rem_7rem] items-start gap-x-3 px-3 py-2.5 transition-colors hover:bg-muted/30 ${isFreeRow ? 'bg-amber-50/50' : ''}`}
-                    >
-                      <span className="pt-0.5 text-xs tabular-nums text-muted-foreground/60">
-                        {item.lineNumber}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium" title={item.itemDescription}>
-                          {item.itemDescription}
-                        </p>
-                        {isFreeRow && (
-                          <span className="mt-0.5 inline-block rounded bg-amber-100 px-1 text-[10px] font-medium text-amber-700">
-                            FREE
-                          </span>
-                        )}
-                      </div>
-                      <span className="pt-0.5 font-mono text-xs text-muted-foreground">
-                        {item.itemErpCode}
-                      </span>
-                      <span className="pt-0.5 text-right tabular-nums text-sm">{item.quantity}</span>
-                      <span className="pt-0.5 text-xs text-muted-foreground">{item.unit}</span>
-                      <span className="pt-0.5 text-right tabular-nums text-sm">
-                        {formatCurrency(item.unitPrice)}
-                      </span>
-                      <span className="pt-0.5 text-right tabular-nums text-sm font-semibold">
-                        {formatCurrency(item.totalPrice)}
-                      </span>
-                    </div>
-                  )})}
-                </div>
-
-                {/* Total footer */}
-                <div className="grid grid-cols-[2.5rem_1fr_8rem_4.5rem_4rem_7rem_7rem] gap-x-3 border-t bg-muted/30 px-3 py-2.5">
-                  <span />
-                  <span className="col-span-5 text-right text-sm font-semibold text-muted-foreground">
-                    Total
-                  </span>
-                  <span className="text-right tabular-nums text-sm font-bold">
-                    {formatCurrency(invoice.totalAmount)}
-                  </span>
-                </div>
+              <div className="overflow-x-auto rounded-lg border">
+                <table className="w-full min-w-[560px] border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="border-r px-3 py-2 text-right text-xs font-medium text-muted-foreground w-10">#</th>
+                      <th className="border-r px-3 py-2 text-left text-xs font-medium text-muted-foreground">Description</th>
+                      <th className="border-r px-3 py-2 text-left text-xs font-medium text-muted-foreground w-32">Code</th>
+                      <th className="border-r px-3 py-2 text-right text-xs font-medium text-muted-foreground w-16">Qty</th>
+                      <th className="border-r px-3 py-2 text-left text-xs font-medium text-muted-foreground w-16">Unit</th>
+                      <th className="border-r px-3 py-2 text-right text-xs font-medium text-muted-foreground w-28">Unit Price</th>
+                      <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground w-28">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {invoice.items.map((item) => {
+                      const isFreeRow = invoice.hasFreeIssueItems || item.isFreeIssue
+                      return (
+                        <tr key={item.id} className={`transition-colors hover:bg-muted/30 ${isFreeRow ? 'bg-amber-50/50' : ''}`}>
+                          <td className="border-r px-3 py-2.5 text-right text-xs tabular-nums text-muted-foreground/60">
+                            {item.lineNumber}
+                          </td>
+                          <td className="border-r px-3 py-2.5 max-w-[220px]">
+                            <p className="truncate font-medium" title={item.itemDescription}>
+                              {item.itemDescription}
+                            </p>
+                            {isFreeRow && (
+                              <span className="mt-0.5 inline-block rounded bg-amber-100 px-1 text-[10px] font-medium text-amber-700">
+                                FREE
+                              </span>
+                            )}
+                          </td>
+                          <td className="border-r px-3 py-2.5 font-mono text-xs text-muted-foreground whitespace-nowrap">
+                            {item.itemErpCode}
+                          </td>
+                          <td className="border-r px-3 py-2.5 text-right tabular-nums">
+                            {item.quantity}
+                          </td>
+                          <td className="border-r px-3 py-2.5 text-xs text-muted-foreground">
+                            {item.unit}
+                          </td>
+                          <td className="border-r px-3 py-2.5 text-right tabular-nums">
+                            {formatCurrency(item.unitPrice)}
+                          </td>
+                          <td className="px-3 py-2.5 text-right tabular-nums font-semibold">
+                            {formatCurrency(item.totalPrice)}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t bg-muted/30">
+                      <td colSpan={6} className="border-r px-3 py-2.5 text-right text-sm font-semibold text-muted-foreground">
+                        Total
+                      </td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-sm font-bold">
+                        {formatCurrency(invoice.totalAmount)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
             </ScrollArea>
           </div>

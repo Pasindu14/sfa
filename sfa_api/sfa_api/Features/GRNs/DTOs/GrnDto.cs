@@ -21,6 +21,7 @@ public record GrnItemDto(
     int     Id,
     int     ProductId,
     string  ProductName,
+    string  ProductCode,
     decimal Quantity,
     string  Unit,
     string? Notes

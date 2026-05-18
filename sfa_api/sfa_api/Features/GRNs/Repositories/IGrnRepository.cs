@@ -11,7 +11,7 @@ public interface IGrnRepository
     Task<SalesInvoice?> GetSalesInvoiceWithItemsAsync(int salesInvoiceId, CancellationToken ct = default);
 
     // ── GRN read ───────────────────────────────────────────────────────────
-    Task<(List<GRN> Items, int TotalCount)> GetListAsync(int page, int pageSize, string? status, int? distributorId, DateOnly? dateFrom = null, DateOnly? dateTo = null, CancellationToken ct = default);
+    Task<(List<GRN> Items, int TotalCount)> GetListAsync(int page, int pageSize, string? status, int? distributorId, DateOnly? dateFrom = null, DateOnly? dateTo = null, string? search = null, CancellationToken ct = default);
     /// <summary>Tracked — use when you will mutate the returned entity (e.g. ConfirmAsync).</summary>
     Task<GRN?> GetGrnWithItemsAsync(int grnId, CancellationToken ct = default);
     /// <summary>AsNoTracking — use for read-only projections (GET endpoints, post-save reloads).</summary>

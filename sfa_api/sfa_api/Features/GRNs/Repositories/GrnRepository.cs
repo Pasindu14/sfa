@@ -23,7 +23,7 @@ public class GrnRepository(AppDbContext db) : IGrnRepository
     // ── GRN list ──────────────────────────────────────────────────────────
 
     public async Task<(List<GRN> Items, int TotalCount)> GetListAsync(
-        int page, int pageSize, string? status, int? distributorId, DateOnly? dateFrom = null, DateOnly? dateTo = null, CancellationToken ct = default)
+        int page, int pageSize, string? status, int? distributorId, DateOnly? dateFrom = null, DateOnly? dateTo = null, string? search = null, CancellationToken ct = default)
     {
         var query = _db.GRNs
             .AsNoTracking()
@@ -49,6 +49,11 @@ public class GrnRepository(AppDbContext db) : IGrnRepository
             var end = DateTime.SpecifyKind(dateTo.Value.ToDateTime(TimeOnly.MaxValue), DateTimeKind.Utc);
             query = query.Where(x => x.CreatedAt <= end);
         }
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(x =>
+                x.GrnNumber.Contains(search) ||
+                (x.SalesInvoice != null && x.SalesInvoice.VchBillNo.Contains(search)));
 
         var total = await query.CountAsync(ct);
         var items = await query
