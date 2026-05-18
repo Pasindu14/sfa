@@ -3,7 +3,7 @@
 import type { ColumnDef } from '@tanstack/react-table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Eye } from 'lucide-react'
+import { Eye, ClipboardCheck } from 'lucide-react'
 import type { DistributorBillingListItem } from '../../schema/distributor-billing.schema'
 
 function formatCurrency(amount: number) {
@@ -30,6 +30,7 @@ function DistributorStatusBadge({ status }: { status: DistributorBillingListItem
 
 export function getDistributorBillingColumns(
   onView: (id: number) => void,
+  onReview: (billing: DistributorBillingListItem) => void,
 ): ColumnDef<DistributorBillingListItem>[] {
   return [
     {
@@ -99,17 +100,33 @@ export function getDistributorBillingColumns(
     {
       id: 'actions',
       header: '',
-      cell: ({ row }) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 gap-1.5 text-xs"
-          onClick={() => onView(row.original.id)}
-        >
-          <Eye className="h-3.5 w-3.5" />
-          View Details
-        </Button>
-      ),
+      cell: ({ row }) => {
+        const isPending =
+          row.original.repStatus === 'Submitted' && row.original.distributorStatus === 'Pending'
+        return (
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 text-xs"
+              onClick={() => onView(row.original.id)}
+            >
+              <Eye className="h-3.5 w-3.5" />
+              View
+            </Button>
+            {isPending && (
+              <Button
+                size="sm"
+                className="h-7 gap-1.5 text-xs bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => onReview(row.original)}
+              >
+                <ClipboardCheck className="h-3.5 w-3.5" />
+                Review
+              </Button>
+            )}
+          </div>
+        )
+      },
     },
   ]
 }

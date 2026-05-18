@@ -15,6 +15,8 @@ import { CalendarDatePicker } from '@/components/calendar-date-picker'
 import { getDistributorBillingColumns } from '../columns/distributor-billing-columns'
 import { useMyBillingsDataTable } from '../../hooks/distributor-billing.hooks'
 import { DistributorBillingDetailDialog } from '../dialogs/distributor-billing-detail-dialog'
+import { DistributorBillingReviewDialog } from '../dialogs/distributor-billing-review-dialog'
+import type { DistributorBillingListItem } from '../../schema/distributor-billing.schema'
 
 function toLocalDateStr(date: Date) {
   return [
@@ -28,9 +30,13 @@ const today = toLocalDateStr(new Date())
 
 export function DistributorBillingTable() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [reviewBilling, setReviewBilling] = useState<DistributorBillingListItem | null>(null)
 
   const getColumns = useCallback(
-    () => getDistributorBillingColumns((id) => setSelectedId(id)),
+    () => getDistributorBillingColumns(
+      (id) => setSelectedId(id),
+      (billing) => setReviewBilling(billing),
+    ),
     [],
   )
 
@@ -139,6 +145,10 @@ export function DistributorBillingTable() {
       <DistributorBillingDetailDialog
         id={selectedId}
         onClose={() => setSelectedId(null)}
+      />
+      <DistributorBillingReviewDialog
+        billing={reviewBilling}
+        onClose={() => setReviewBilling(null)}
       />
     </>
   )
