@@ -108,6 +108,14 @@ import 'package:uswatte/features/supervisor_summary/presentation/cubit/superviso
 import 'package:uswatte/features/supervisor_achievement/data/datasources/supervisor_achievement_remote_datasource.dart';
 import 'package:uswatte/features/supervisor_achievement/presentation/cubit/supervisor_achievement_cubit.dart';
 import 'package:uswatte/features/supervisor_achievement/presentation/pages/supervisor_achievement_page.dart';
+import 'package:uswatte/features/purchase_orders/domain/usecases/get_pending_purchase_orders_usecase.dart';
+import 'package:uswatte/features/purchase_orders/domain/usecases/get_purchase_order_usecase.dart';
+import 'package:uswatte/features/purchase_orders/domain/usecases/rep_approve_purchase_order_usecase.dart';
+import 'package:uswatte/features/purchase_orders/domain/usecases/reject_purchase_order_usecase.dart';
+import 'package:uswatte/features/purchase_orders/presentation/bloc/purchase_orders_bloc.dart';
+import 'package:uswatte/features/purchase_orders/presentation/bloc/purchase_orders_event.dart';
+import 'package:uswatte/features/purchase_orders/presentation/pages/purchase_orders_list_page.dart';
+import 'package:uswatte/features/purchase_orders/presentation/pages/purchase_order_detail_page.dart';
 
 class AppRouter {
   AppRouter._();
@@ -485,6 +493,38 @@ class AppRouter {
                 )..add(const LoadTodaysRouteMapRequested()),
                 child: const TodaysRouteMapPage(),
               ),
+            ),
+            GoRoute(
+              path: 'purchase-orders',
+              name: 'purchaseOrders',
+              builder: (_, __) => BlocProvider(
+                create: (_) => PurchaseOrdersBloc(
+                  getPendingOrders: getIt<GetPendingPurchaseOrdersUseCase>(),
+                  getOrderDetail: getIt<GetPurchaseOrderUseCase>(),
+                  repApprove: getIt<RepApprovePurchaseOrderUseCase>(),
+                  rejectOrder: getIt<RejectPurchaseOrderUseCase>(),
+                )..add(const LoadPendingOrders()),
+                child: const PurchaseOrdersListPage(),
+              ),
+              routes: [
+                GoRoute(
+                  path: ':id',
+                  name: 'purchaseOrderDetail',
+                  builder: (_, state) {
+                    final id = int.parse(state.pathParameters['id']!);
+                    return BlocProvider(
+                      create: (_) => PurchaseOrdersBloc(
+                        getPendingOrders:
+                            getIt<GetPendingPurchaseOrdersUseCase>(),
+                        getOrderDetail: getIt<GetPurchaseOrderUseCase>(),
+                        repApprove: getIt<RepApprovePurchaseOrderUseCase>(),
+                        rejectOrder: getIt<RejectPurchaseOrderUseCase>(),
+                      )..add(LoadOrderDetail(id)),
+                      child: const PurchaseOrderDetailPage(),
+                    );
+                  },
+                ),
+              ],
             ),
           ],
         ),

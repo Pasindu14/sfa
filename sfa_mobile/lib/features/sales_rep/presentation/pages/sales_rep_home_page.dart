@@ -1366,6 +1366,22 @@ class _ActionsGrid extends StatelessWidget {
           Row(
             children: [
               Expanded(
+                child: _TileActionCard(
+                  icon: Icons.assignment_turned_in_rounded,
+                  title: 'PURCHASE\nORDERS',
+                  subtitle: 'Approve pending orders',
+                  color: AppColors.primary,
+                  onTap: () => context.push('/sales-rep/purchase-orders'),
+                ),
+              ),
+              SizedBox(width: 10.w),
+              const Expanded(child: SizedBox()),
+            ],
+          ),
+          SizedBox(height: 10.h),
+          Row(
+            children: [
+              Expanded(
                 child: _SecondaryAction(
                   icon: Icons.location_on_rounded,
                   label: 'Check In',

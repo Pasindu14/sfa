@@ -26,7 +26,7 @@ public class PurchaseOrderRepository(AppDbContext context) : IPurchaseOrderRepos
         int take,
         string? search = null,
         PurchaseOrderStatus? status = null,
-        int? distributorId = null,
+        IEnumerable<int>? distributorIds = null,
         DateOnly? fromDate = null,
         DateOnly? toDate = null,
         CancellationToken ct = default)
@@ -49,8 +49,11 @@ public class PurchaseOrderRepository(AppDbContext context) : IPurchaseOrderRepos
         if (status.HasValue)
             query = query.Where(o => o.Status == status.Value);
 
-        if (distributorId.HasValue)
-            query = query.Where(o => o.DistributorId == distributorId.Value);
+        if (distributorIds != null)
+        {
+            var ids = distributorIds.ToList();
+            query = query.Where(o => ids.Contains(o.DistributorId));
+        }
 
         if (fromDate.HasValue)
         {

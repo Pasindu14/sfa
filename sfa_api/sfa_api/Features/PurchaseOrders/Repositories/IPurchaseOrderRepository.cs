@@ -12,7 +12,7 @@ public interface IPurchaseOrderRepository
         int take,
         string? search = null,
         PurchaseOrderStatus? status = null,
-        int? distributorId = null,
+        IEnumerable<int>? distributorIds = null,
         DateOnly? fromDate = null,
         DateOnly? toDate = null,
         CancellationToken ct = default);

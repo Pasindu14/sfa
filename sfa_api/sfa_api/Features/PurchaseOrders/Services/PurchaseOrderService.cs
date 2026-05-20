@@ -1,11 +1,13 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using sfa_api.Common.Errors;
+using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.PurchaseOrders.DTOs;
 using sfa_api.Features.PurchaseOrders.Entities;
 using sfa_api.Features.PurchaseOrders.Enums;
 using sfa_api.Features.PurchaseOrders.Repositories;
 using sfa_api.Features.PurchaseOrders.Requests;
+using sfa_api.Features.UserGeoAssignments.Repositories;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Features.Users.Repositories;
 using sfa_api.Infrastructure.Locking;
@@ -16,12 +18,16 @@ namespace sfa_api.Features.PurchaseOrders.Services;
 public class PurchaseOrderService(
     IPurchaseOrderRepository repo,
     IUserRepository userRepo,
+    IUserGeoAssignmentRepository geoRepo,
+    IDistributorRepository distributorRepo,
     AppDbContext context,
     IDistributedLockService lockService,
     ILogger<PurchaseOrderService> logger) : IPurchaseOrderService
 {
     private readonly IPurchaseOrderRepository _repo = repo;
     private readonly IUserRepository _userRepo = userRepo;
+    private readonly IUserGeoAssignmentRepository _geoRepo = geoRepo;
+    private readonly IDistributorRepository _distributorRepo = distributorRepo;
     private readonly AppDbContext _context = context;
     private readonly IDistributedLockService _lockService = lockService;
     private readonly ILogger<PurchaseOrderService> _logger = logger;
@@ -61,16 +67,31 @@ public class PurchaseOrderService(
     {
         var skip = (page - 1) * pageSize;
 
-        int? distributorFilter = null;
+        IEnumerable<int>? distributorIds = null;
+
         if (callerRole == UserRole.Distributor)
         {
             var caller = await _userRepo.GetUserByIdAsync(callerId, ct)
                 ?? throw new NotFoundException("User", callerId);
-            distributorFilter = caller.DistributorId;
+            if (caller.DistributorId.HasValue)
+                distributorIds = [caller.DistributorId.Value];
+        }
+        else if (callerRole == UserRole.SalesRep)
+        {
+            var geo = await _geoRepo.GetActiveByUserIdAsync(callerId, ct);
+            if (geo?.TerritoryId.HasValue == true)
+            {
+                var distributor = await _distributorRepo.GetByTerritoryIdAsync(geo.TerritoryId.Value, ct);
+                distributorIds = distributor != null ? [distributor.Id] : [];
+            }
+            else
+            {
+                distributorIds = [];
+            }
         }
 
         var (orders, totalCount) = await _repo.GetAllAsync(
-            skip, pageSize, search, status, distributorFilter, fromDate, toDate, ct);
+            skip, pageSize, search, status, distributorIds, fromDate, toDate, ct);
 
         return new PurchaseOrderListDto(
             PurchaseOrders: orders.Select(MapToSummaryDto),

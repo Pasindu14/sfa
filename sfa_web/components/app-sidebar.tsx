@@ -115,6 +115,7 @@ const navConfig: NavGroup[] = [
       { title: "Stock Balance", url: "/distributor-stock" },
       { title: "Bills", url: "/distributor-billings" },
       { title: "GRNs", url: "/distributor-grns" },
+      { title: "Purchase Orders", url: "/distributor-purchase-orders" },
     ],
   },
 ];

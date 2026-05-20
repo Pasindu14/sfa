@@ -124,6 +124,13 @@ import 'package:uswatte/features/stock/data/datasources/distributor_stock_remote
 import 'package:uswatte/features/stock/domain/usecases/sync_distributor_stock_usecase.dart';
 import 'package:uswatte/core/background/background_sync_service.dart';
 import 'package:uswatte/features/supervisor_achievement/data/datasources/supervisor_achievement_remote_datasource.dart';
+import 'package:uswatte/features/purchase_orders/data/datasources/purchase_orders_remote_datasource.dart';
+import 'package:uswatte/features/purchase_orders/data/repositories/purchase_orders_repository_impl.dart';
+import 'package:uswatte/features/purchase_orders/domain/repositories/purchase_orders_repository.dart';
+import 'package:uswatte/features/purchase_orders/domain/usecases/get_pending_purchase_orders_usecase.dart';
+import 'package:uswatte/features/purchase_orders/domain/usecases/get_purchase_order_usecase.dart';
+import 'package:uswatte/features/purchase_orders/domain/usecases/rep_approve_purchase_order_usecase.dart';
+import 'package:uswatte/features/purchase_orders/domain/usecases/reject_purchase_order_usecase.dart';
 
 final getIt = GetIt.instance;
 
@@ -459,6 +466,21 @@ Future<void> configureDependencies() async {
   );
   getIt.registerLazySingleton(
       () => GetTodaysRouteMapUseCase(getIt<TodaysRouteMapRepository>()));
+
+  // ── Purchase Orders ──────────────────────────────────────────────────────────
+  getIt.registerLazySingleton(
+      () => PurchaseOrdersRemoteDatasource(getIt<Dio>()));
+  getIt.registerLazySingleton<PurchaseOrdersRepository>(
+    () => PurchaseOrdersRepositoryImpl(getIt<PurchaseOrdersRemoteDatasource>()),
+  );
+  getIt.registerLazySingleton(
+      () => GetPendingPurchaseOrdersUseCase(getIt<PurchaseOrdersRepository>()));
+  getIt.registerLazySingleton(
+      () => GetPurchaseOrderUseCase(getIt<PurchaseOrdersRepository>()));
+  getIt.registerLazySingleton(
+      () => RepApprovePurchaseOrderUseCase(getIt<PurchaseOrdersRepository>()));
+  getIt.registerLazySingleton(
+      () => RejectPurchaseOrderUseCase(getIt<PurchaseOrdersRepository>()));
 
   // ── Background Sync ──────────────────────────────────────────────────────────
   getIt.registerLazySingleton<BackgroundSyncService>(
