@@ -8,8 +8,8 @@ class PurchaseOrdersRemoteDatasource {
   final Dio _dio;
   const PurchaseOrdersRemoteDatasource(this._dio);
 
-  // status=1 → PendingRepApproval
   Future<List<PurchaseOrderSummaryModel>> getPendingOrders({
+    String status = 'PendingRepApproval',
     int page = 1,
     int pageSize = 20,
   }) async {
@@ -17,7 +17,7 @@ class PurchaseOrdersRemoteDatasource {
       final response = await _dio.get(
         '/api/v1/purchase-orders',
         queryParameters: {
-          'status': 'PendingRepApproval',
+          'status': status,
           'page': page,
           'pageSize': pageSize,
         },
@@ -54,6 +54,16 @@ class PurchaseOrdersRemoteDatasource {
   Future<void> repApprove(int id) async {
     try {
       await _dio.post('/api/v1/purchase-orders/$id/rep-approve');
+    } on AppException {
+      rethrow;
+    } on DioException catch (e) {
+      throw _mapDioError(e);
+    }
+  }
+
+  Future<void> managerApprove(int id) async {
+    try {
+      await _dio.post('/api/v1/purchase-orders/$id/approve');
     } on AppException {
       rethrow;
     } on DioException catch (e) {

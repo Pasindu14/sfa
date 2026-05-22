@@ -28,6 +28,13 @@ final class RepApproveOrder extends PurchaseOrdersEvent {
   List<Object?> get props => [id];
 }
 
+final class ManagerApproveOrder extends PurchaseOrdersEvent {
+  final int id;
+  const ManagerApproveOrder(this.id);
+  @override
+  List<Object?> get props => [id];
+}
+
 final class RejectOrder extends PurchaseOrdersEvent {
   final int id;
   final String reason;

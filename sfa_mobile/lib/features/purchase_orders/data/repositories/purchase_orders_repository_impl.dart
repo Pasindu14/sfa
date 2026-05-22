@@ -9,16 +9,20 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
 
   @override
   Future<List<PurchaseOrderSummary>> getPendingOrders({
+    String status = 'PendingRepApproval',
     int page = 1,
     int pageSize = 20,
   }) =>
-      _remote.getPendingOrders(page: page, pageSize: pageSize);
+      _remote.getPendingOrders(status: status, page: page, pageSize: pageSize);
 
   @override
   Future<PurchaseOrderDetail> getOrderById(int id) => _remote.getOrderById(id);
 
   @override
   Future<void> repApprove(int id) => _remote.repApprove(id);
+
+  @override
+  Future<void> managerApprove(int id) => _remote.managerApprove(id);
 
   @override
   Future<void> reject(int id, String reason) => _remote.reject(id, reason);

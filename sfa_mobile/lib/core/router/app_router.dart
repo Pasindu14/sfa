@@ -49,6 +49,7 @@ import 'package:uswatte/features/stock/presentation/pages/stock_catalog_page.dar
 import 'package:uswatte/features/sync/presentation/pages/sync_page.dart';
 import 'package:uswatte/features/sales_rep/presentation/pages/unsupported_role_page.dart';
 import 'package:uswatte/features/splash/presentation/pages/splash_page.dart';
+import 'package:uswatte/features/debug/presentation/pages/debug_page.dart';
 import 'package:uswatte/features/supervisor/presentation/pages/supervisor_home_page.dart';
 import 'package:uswatte/core/sync/bill_sync_service.dart';
 import 'package:uswatte/features/bills/domain/usecases/create_bill_usecase.dart';
@@ -111,6 +112,7 @@ import 'package:uswatte/features/supervisor_achievement/presentation/pages/super
 import 'package:uswatte/features/purchase_orders/domain/usecases/get_pending_purchase_orders_usecase.dart';
 import 'package:uswatte/features/purchase_orders/domain/usecases/get_purchase_order_usecase.dart';
 import 'package:uswatte/features/purchase_orders/domain/usecases/rep_approve_purchase_order_usecase.dart';
+import 'package:uswatte/features/purchase_orders/domain/usecases/manager_approve_purchase_order_usecase.dart';
 import 'package:uswatte/features/purchase_orders/domain/usecases/reject_purchase_order_usecase.dart';
 import 'package:uswatte/features/purchase_orders/presentation/bloc/purchase_orders_bloc.dart';
 import 'package:uswatte/features/purchase_orders/presentation/bloc/purchase_orders_event.dart';
@@ -495,6 +497,11 @@ class AppRouter {
               ),
             ),
             GoRoute(
+              path: 'debug',
+              name: 'salesRepDebug',
+              builder: (_, __) => const DebugPage(),
+            ),
+            GoRoute(
               path: 'purchase-orders',
               name: 'purchaseOrders',
               builder: (_, __) => BlocProvider(
@@ -502,9 +509,11 @@ class AppRouter {
                   getPendingOrders: getIt<GetPendingPurchaseOrdersUseCase>(),
                   getOrderDetail: getIt<GetPurchaseOrderUseCase>(),
                   repApprove: getIt<RepApprovePurchaseOrderUseCase>(),
+                  managerApprove: getIt<ManagerApprovePurchaseOrderUseCase>(),
                   rejectOrder: getIt<RejectPurchaseOrderUseCase>(),
                 )..add(const LoadPendingOrders()),
-                child: const PurchaseOrdersListPage(),
+                child: const PurchaseOrdersListPage(
+                    approvalMode: ApprovalMode.salesRep),
               ),
               routes: [
                 GoRoute(
@@ -518,6 +527,8 @@ class AppRouter {
                             getIt<GetPendingPurchaseOrdersUseCase>(),
                         getOrderDetail: getIt<GetPurchaseOrderUseCase>(),
                         repApprove: getIt<RepApprovePurchaseOrderUseCase>(),
+                        managerApprove:
+                            getIt<ManagerApprovePurchaseOrderUseCase>(),
                         rejectOrder: getIt<RejectPurchaseOrderUseCase>(),
                       )..add(LoadOrderDetail(id)),
                       child: const PurchaseOrderDetailPage(),
@@ -623,6 +634,46 @@ class AppRouter {
                       billingNumber: state.extra as String?,
                     ),
                   ),
+                ),
+              ],
+            ),
+            GoRoute(
+              path: 'purchase-orders',
+              name: 'supervisorPurchaseOrders',
+              builder: (_, __) => BlocProvider(
+                create: (_) => PurchaseOrdersBloc(
+                  getPendingOrders: getIt<GetPendingPurchaseOrdersUseCase>(),
+                  getOrderDetail: getIt<GetPurchaseOrderUseCase>(),
+                  repApprove: getIt<RepApprovePurchaseOrderUseCase>(),
+                  managerApprove: getIt<ManagerApprovePurchaseOrderUseCase>(),
+                  rejectOrder: getIt<RejectPurchaseOrderUseCase>(),
+                  statusFilter: 'PendingManagerApproval',
+                )..add(const LoadPendingOrders()),
+                child: const PurchaseOrdersListPage(
+                    approvalMode: ApprovalMode.manager),
+              ),
+              routes: [
+                GoRoute(
+                  path: ':id',
+                  name: 'supervisorPurchaseOrderDetail',
+                  builder: (_, state) {
+                    final id = int.parse(state.pathParameters['id']!);
+                    return BlocProvider(
+                      create: (_) => PurchaseOrdersBloc(
+                        getPendingOrders:
+                            getIt<GetPendingPurchaseOrdersUseCase>(),
+                        getOrderDetail: getIt<GetPurchaseOrderUseCase>(),
+                        repApprove: getIt<RepApprovePurchaseOrderUseCase>(),
+                        managerApprove:
+                            getIt<ManagerApprovePurchaseOrderUseCase>(),
+                        rejectOrder: getIt<RejectPurchaseOrderUseCase>(),
+                        statusFilter: 'PendingManagerApproval',
+                      )..add(LoadOrderDetail(id)),
+                      child: const PurchaseOrderDetailPage(
+                        approvalMode: ApprovalMode.manager,
+                      ),
+                    );
+                  },
                 ),
               ],
             ),

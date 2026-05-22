@@ -130,6 +130,7 @@ import 'package:uswatte/features/purchase_orders/domain/repositories/purchase_or
 import 'package:uswatte/features/purchase_orders/domain/usecases/get_pending_purchase_orders_usecase.dart';
 import 'package:uswatte/features/purchase_orders/domain/usecases/get_purchase_order_usecase.dart';
 import 'package:uswatte/features/purchase_orders/domain/usecases/rep_approve_purchase_order_usecase.dart';
+import 'package:uswatte/features/purchase_orders/domain/usecases/manager_approve_purchase_order_usecase.dart';
 import 'package:uswatte/features/purchase_orders/domain/usecases/reject_purchase_order_usecase.dart';
 
 final getIt = GetIt.instance;
@@ -479,6 +480,8 @@ Future<void> configureDependencies() async {
       () => GetPurchaseOrderUseCase(getIt<PurchaseOrdersRepository>()));
   getIt.registerLazySingleton(
       () => RepApprovePurchaseOrderUseCase(getIt<PurchaseOrdersRepository>()));
+  getIt.registerLazySingleton(
+      () => ManagerApprovePurchaseOrderUseCase(getIt<PurchaseOrdersRepository>()));
   getIt.registerLazySingleton(
       () => RejectPurchaseOrderUseCase(getIt<PurchaseOrdersRepository>()));
 

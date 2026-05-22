@@ -730,6 +730,14 @@ class _ActionsSection extends StatelessWidget {
             color: AppColors.primary,
             onTap: () => context.push('/supervisor/achievement'),
           ),
+          SizedBox(height: 10.h),
+          _TileActionCard(
+            icon: Icons.assignment_turned_in_rounded,
+            title: 'PURCHASE ORDERS',
+            subtitle: 'Approve orders pending manager review',
+            color: AppColors.primary,
+            onTap: () => context.push('/supervisor/purchase-orders'),
+          ),
         ],
       ),
     );
