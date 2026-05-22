@@ -12,6 +12,11 @@ public interface IProductCategoryPricingRepository
     Task<IEnumerable<ProductCategoryPricingDto>> GetAllWithPricingAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Returns all active products with a single resolved price for the given distributor category.
+    /// </summary>
+    Task<IEnumerable<ProductPriceForDistributorDto>> GetForCategoryAsync(string category, CancellationToken ct = default);
+
+    /// <summary>
     /// Upserts all 4 category prices for each product row in a single SaveChanges call.
     /// </summary>
     Task BulkUpsertAsync(IEnumerable<PricingRowRequest> items, int callerId, CancellationToken ct = default);

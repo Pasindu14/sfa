@@ -1,3 +1,5 @@
+using sfa_api.Common.Errors;
+using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.ProductCategoryPricings.DTOs;
 using sfa_api.Features.ProductCategoryPricings.Repositories;
 using sfa_api.Features.ProductCategoryPricings.Requests;
@@ -6,13 +8,23 @@ namespace sfa_api.Features.ProductCategoryPricings.Services;
 
 public class ProductCategoryPricingService(
     IProductCategoryPricingRepository repo,
+    IDistributorRepository distributorRepo,
     ILogger<ProductCategoryPricingService> logger) : IProductCategoryPricingService
 {
     private readonly IProductCategoryPricingRepository _repo = repo;
+    private readonly IDistributorRepository _distributorRepo = distributorRepo;
     private readonly ILogger<ProductCategoryPricingService> _logger = logger;
 
     public async Task<IEnumerable<ProductCategoryPricingDto>> GetAllAsync(CancellationToken ct = default)
         => await _repo.GetAllWithPricingAsync(ct);
+
+    public async Task<IEnumerable<ProductPriceForDistributorDto>> GetForDistributorAsync(int distributorId, CancellationToken ct = default)
+    {
+        var distributor = await _distributorRepo.GetByIdAsync(distributorId, ct)
+            ?? throw new NotFoundException("Distributor", distributorId);
+
+        return await _repo.GetForCategoryAsync(distributor.Category, ct);
+    }
 
     public async Task BulkUpsertAsync(BulkUpsertPricingRequest request, int callerId, CancellationToken ct = default)
     {

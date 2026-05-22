@@ -712,6 +712,7 @@ public class PurchaseOrderService(
             OrderNumber: o.OrderNumber,
             DistributorId: o.DistributorId,
             DistributorName: o.Distributor?.Name ?? string.Empty,
+            DistributorCategory: o.Distributor?.Category ?? "A",
             Status: o.Status,
             StatusLabel: o.Status.ToString(),
             Notes: o.Notes,

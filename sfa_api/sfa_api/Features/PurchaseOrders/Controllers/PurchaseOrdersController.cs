@@ -114,7 +114,7 @@ public class PurchaseOrdersController(
     /// Role + status gated (see edit rights table)
     /// </summary>
     [HttpPut("{id}")]
-    [Authorize(Roles = "Distributor,SalesRep,Manager,Admin")]
+    [Authorize(Roles = "Distributor,SalesRep,Supervisor,Admin")]
     [EnableRateLimiting("user")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdatePurchaseOrderRequest request, CancellationToken ct)
     {
@@ -160,7 +160,7 @@ public class PurchaseOrdersController(
     /// Manager, Admin — Status must be PendingManagerApproval
     /// </summary>
     [HttpPost("{id}/approve")]
-    [Authorize(Roles = "Manager,Admin")]
+    [Authorize(Roles = "Supervisor,Admin")]
     public async Task<IActionResult> Approve(int id, CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
@@ -174,7 +174,7 @@ public class PurchaseOrdersController(
     /// SalesRep/Manager/Admin — Role + status gated
     /// </summary>
     [HttpPost("{id}/reject")]
-    [Authorize(Roles = "SalesRep,Manager,Admin")]
+    [Authorize(Roles = "SalesRep,Supervisor,Admin")]
     public async Task<IActionResult> Reject(int id, [FromBody] RejectPurchaseOrderRequest request, CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;

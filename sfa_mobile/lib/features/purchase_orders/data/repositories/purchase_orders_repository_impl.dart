@@ -1,3 +1,5 @@
+import '../../domain/entities/editable_order_item.dart';
+import '../../domain/entities/product_with_price.dart';
 import '../../domain/entities/purchase_order_detail.dart';
 import '../../domain/entities/purchase_order_summary.dart';
 import '../../domain/repositories/purchase_orders_repository.dart';
@@ -26,4 +28,12 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
 
   @override
   Future<void> reject(int id, String reason) => _remote.reject(id, reason);
+
+  @override
+  Future<void> updateOrder(int id, List<EditableOrderItem> items, String? notes) =>
+      _remote.updateOrder(id, items, notes);
+
+  @override
+  Future<List<ProductWithPrice>> getProductsForDistributor(int distributorId) =>
+      _remote.getProductsForDistributor(distributorId);
 }

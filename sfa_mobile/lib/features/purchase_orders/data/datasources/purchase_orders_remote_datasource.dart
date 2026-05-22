@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:uswatte/core/errors/app_exception.dart';
 import 'package:uswatte/core/network/api_response.dart';
+import '../../domain/entities/editable_order_item.dart';
+import '../../domain/entities/product_with_price.dart';
 import '../models/purchase_order_detail_model.dart';
 import '../models/purchase_order_summary_model.dart';
 
@@ -81,6 +83,55 @@ class PurchaseOrdersRemoteDatasource {
       rethrow;
     } on DioException catch (e) {
       throw _mapDioError(e);
+    }
+  }
+
+  Future<void> updateOrder(int id, List<EditableOrderItem> items, String? notes) async {
+    try {
+      await _dio.put(
+        '/api/v1/purchase-orders/$id',
+        data: {
+          'notes': notes,
+          'items': items
+              .map((i) => {
+                    'productId': i.productId,
+                    'productCode': i.productCode,
+                    'quantity': i.quantity,
+                    'unitPrice': i.unitPrice,
+                    'discount': i.discount,
+                  })
+              .toList(),
+        },
+      );
+    } on AppException {
+      rethrow;
+    } on DioException catch (e) {
+      throw _mapDioError(e);
+    }
+  }
+
+  Future<List<ProductWithPrice>> getProductsForDistributor(int distributorId) async {
+    try {
+      final response = await _dio.get(
+        '/api/v1/product-category-pricings/for-distributor/$distributorId',
+      );
+      final body = response.data as Map<String, dynamic>;
+      final list = body['data'] as List<dynamic>;
+      return list.map((e) {
+        final m = e as Map<String, dynamic>;
+        return ProductWithPrice(
+          productId: m['productId'] as int,
+          productCode: m['productCode'] as String,
+          itemDescription: m['itemDescription'] as String,
+          unitPrice: (m['unitPrice'] as num).toDouble(),
+        );
+      }).toList();
+    } on AppException {
+      rethrow;
+    } on DioException catch (e) {
+      throw _mapDioError(e);
+    } catch (_) {
+      throw const ParseException(message: 'Failed to read product pricing.');
     }
   }
 

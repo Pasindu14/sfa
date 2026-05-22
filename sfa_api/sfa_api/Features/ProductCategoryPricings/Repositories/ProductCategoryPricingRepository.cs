@@ -48,6 +48,30 @@ public class ProductCategoryPricingRepository(AppDbContext context) : IProductCa
         });
     }
 
+    public async Task<IEnumerable<ProductPriceForDistributorDto>> GetForCategoryAsync(string category, CancellationToken ct = default)
+    {
+        var products = await _context.Products
+            .AsNoTracking()
+            .OrderBy(p => p.Code)
+            .ToListAsync(ct);
+
+        var productIds = products.Select(p => p.Id).ToList();
+
+        var pricingRows = await _context.ProductCategoryPrices
+            .AsNoTracking()
+            .Where(x => productIds.Contains(x.ProductId) && x.Category == category)
+            .ToListAsync(ct);
+
+        var priceByProduct = pricingRows.ToDictionary(x => x.ProductId, x => x.Price);
+
+        return products.Select(p => new ProductPriceForDistributorDto(
+            ProductId: p.Id,
+            ProductCode: p.Code,
+            ItemDescription: p.ItemDescription,
+            UnitPrice: priceByProduct.GetValueOrDefault(p.Id, 0m)
+        ));
+    }
+
     public async Task BulkUpsertAsync(IEnumerable<PricingRowRequest> items, int callerId, CancellationToken ct = default)
     {
         var itemList = items.ToList();

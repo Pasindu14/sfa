@@ -132,6 +132,8 @@ import 'package:uswatte/features/purchase_orders/domain/usecases/get_purchase_or
 import 'package:uswatte/features/purchase_orders/domain/usecases/rep_approve_purchase_order_usecase.dart';
 import 'package:uswatte/features/purchase_orders/domain/usecases/manager_approve_purchase_order_usecase.dart';
 import 'package:uswatte/features/purchase_orders/domain/usecases/reject_purchase_order_usecase.dart';
+import 'package:uswatte/features/purchase_orders/domain/usecases/update_purchase_order_usecase.dart';
+import 'package:uswatte/features/purchase_orders/domain/usecases/get_products_for_distributor_usecase.dart';
 
 final getIt = GetIt.instance;
 
@@ -484,6 +486,10 @@ Future<void> configureDependencies() async {
       () => ManagerApprovePurchaseOrderUseCase(getIt<PurchaseOrdersRepository>()));
   getIt.registerLazySingleton(
       () => RejectPurchaseOrderUseCase(getIt<PurchaseOrdersRepository>()));
+  getIt.registerLazySingleton(
+      () => UpdatePurchaseOrderUseCase(getIt<PurchaseOrdersRepository>()));
+  getIt.registerLazySingleton(
+      () => GetProductsForDistributorUseCase(getIt<PurchaseOrdersRepository>()));
 
   // ── Background Sync ──────────────────────────────────────────────────────────
   getIt.registerLazySingleton<BackgroundSyncService>(

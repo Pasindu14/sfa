@@ -26,6 +26,7 @@ class PurchaseOrderHistoryEntry {
   final String? performedByName;
   final DateTime performedAt;
   final String? notes;
+  final String? itemsSnapshot;
 
   const PurchaseOrderHistoryEntry({
     required this.id,
@@ -33,6 +34,7 @@ class PurchaseOrderHistoryEntry {
     this.performedByName,
     required this.performedAt,
     this.notes,
+    this.itemsSnapshot,
   });
 }
 
@@ -41,6 +43,7 @@ class PurchaseOrderDetail {
   final String orderNumber;
   final int distributorId;
   final String distributorName;
+  final String distributorCategory;
   final int status;
   final double totalAmount;
   final String? notes;
@@ -55,6 +58,7 @@ class PurchaseOrderDetail {
     required this.orderNumber,
     required this.distributorId,
     required this.distributorName,
+    this.distributorCategory = 'A',
     required this.status,
     required this.totalAmount,
     this.notes,

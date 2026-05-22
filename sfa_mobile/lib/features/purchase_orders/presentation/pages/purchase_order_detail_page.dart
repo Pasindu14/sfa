@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -734,9 +736,16 @@ class _ColHeader extends StatelessWidget {
 
 // ── History section ───────────────────────────────────────────────────────────
 
-class _HistorySection extends StatelessWidget {
+class _HistorySection extends StatefulWidget {
   final PurchaseOrderDetail order;
   const _HistorySection({required this.order});
+
+  @override
+  State<_HistorySection> createState() => _HistorySectionState();
+}
+
+class _HistorySectionState extends State<_HistorySection> {
+  bool _expanded = false;
 
   String _fmt(DateTime? dt) {
     if (dt == null) return '—';
@@ -752,35 +761,80 @@ class _HistorySection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SectionHeader(
-            icon: Icons.history_rounded,
-            title: 'AUDIT TRAIL',
-            badge: '${order.history.length}',
-          ),
-          SizedBox(height: 10.h),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16.r),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF1C1917).withValues(alpha: 0.06),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
+          // Tappable header — toggles expansion
+          GestureDetector(
+            onTap: () => setState(() => _expanded = !_expanded),
+            behavior: HitTestBehavior.opaque,
+            child: Row(
+              children: [
+                _SectionHeader(
+                  icon: Icons.history_rounded,
+                  title: 'AUDIT TRAIL',
+                  badge: '${widget.order.history.length}',
+                ),
+                const Spacer(),
+                AnimatedRotation(
+                  turns: _expanded ? 0.5 : 0.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: Container(
+                    width: 24.r,
+                    height: 24.r,
+                    decoration: BoxDecoration(
+                      color: AppColors.foregroundMuted.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(6.r),
+                    ),
+                    child: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 16.r,
+                      color: AppColors.foregroundMuted,
+                    ),
+                  ),
                 ),
               ],
             ),
-            padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 8.h),
-            child: Column(
-              children: List.generate(order.history.length, (i) {
-                final entry = order.history[i];
-                final isLast = i == order.history.length - 1;
-                return _TimelineEntry(
-                  entry: entry,
-                  isLast: isLast,
-                  formatDate: _fmt,
-                );
-              }),
+          ),
+          // Use AnimatedAlign+ClipRect (same as ExpansionTile internally) to
+          // avoid AnimatedCrossFade's size-measurement issues with IntrinsicHeight.
+          ClipRect(
+            child: AnimatedAlign(
+              alignment: Alignment.topCenter,
+              heightFactor: _expanded ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeInOut,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(height: 10.h),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16.r),
+                      boxShadow: [
+                        BoxShadow(
+                          color:
+                              const Color(0xFF1C1917).withValues(alpha: 0.06),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 8.h),
+                    child: Column(
+                      children:
+                          List.generate(widget.order.history.length, (i) {
+                        final entry = widget.order.history[i];
+                        final isLast = i == widget.order.history.length - 1;
+                        return _TimelineEntry(
+                          entry: entry,
+                          isLast: isLast,
+                          formatDate: _fmt,
+                          orderItems: widget.order.items,
+                        );
+                      }),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -793,10 +847,12 @@ class _TimelineEntry extends StatelessWidget {
   final PurchaseOrderHistoryEntry entry;
   final bool isLast;
   final String Function(DateTime?) formatDate;
+  final List<PurchaseOrderItem> orderItems;
   const _TimelineEntry({
     required this.entry,
     required this.isLast,
     required this.formatDate,
+    required this.orderItems,
   });
 
   Color get _dotColor {
@@ -877,59 +933,36 @@ class _TimelineEntry extends StatelessWidget {
                     children: [
                       if (entry.performedByName != null) ...[
                         Icon(Icons.person_outline_rounded,
-                            size: 11.r,
-                            color: AppColors.foregroundMuted),
+                            size: 11.r, color: AppColors.foregroundMuted),
                         SizedBox(width: 3.w),
                         Text(
                           entry.performedByName!,
                           style: GoogleFonts.barlow(
-                              fontSize: 11.sp,
-                              color: AppColors.foregroundMuted),
+                              fontSize: 11.sp, color: AppColors.foregroundMuted),
                         ),
                         Container(
                           width: 3.r,
                           height: 3.r,
                           margin: EdgeInsets.symmetric(horizontal: 6.w),
                           decoration: BoxDecoration(
-                            color: AppColors.foregroundMuted
-                                .withValues(alpha: 0.4),
+                            color: AppColors.foregroundMuted.withValues(alpha: 0.4),
                             shape: BoxShape.circle,
                           ),
                         ),
                       ],
                       Icon(Icons.schedule_rounded,
-                          size: 11.r,
-                          color: AppColors.foregroundMuted),
+                          size: 11.r, color: AppColors.foregroundMuted),
                       SizedBox(width: 3.w),
                       Text(
                         formatDate(entry.performedAt),
                         style: GoogleFonts.barlow(
-                            fontSize: 11.sp,
-                            color: AppColors.foregroundMuted),
+                            fontSize: 11.sp, color: AppColors.foregroundMuted),
                       ),
                     ],
                   ),
                   if (entry.notes != null && entry.notes!.isNotEmpty) ...[
-                    SizedBox(height: 4.h),
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: 8.w, vertical: 5.h),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF59E0B).withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(6.r),
-                        border: Border.all(
-                          color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
-                        ),
-                      ),
-                      child: Text(
-                        entry.notes!,
-                        style: GoogleFonts.barlow(
-                          fontSize: 11.sp,
-                          color: AppColors.foreground,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ),
+                    SizedBox(height: 6.h),
+                    _buildNotes(entry.notes!),
                   ],
                 ],
               ),
@@ -940,11 +973,222 @@ class _TimelineEntry extends StatelessWidget {
     );
   }
 
+  Widget _buildNotes(String notes) {
+    // Items Edited → parse the AFTER snapshot (itemsSnapshot) so we show
+    // the new state, not the old state that was stored in notes.
+    if (entry.action.toLowerCase().contains('edit')) {
+      final source = entry.itemsSnapshot ?? notes;
+      try {
+        final parsed = jsonDecode(source);
+        if (parsed is List) {
+          return _ItemsChangedCard(
+            items: parsed.cast<Map<String, dynamic>>(),
+            orderItems: orderItems,
+          );
+        }
+      } catch (_) {}
+    }
+    // Generic notes (rejection reason, etc.)
+    return Container(
+      padding: EdgeInsets.fromLTRB(10.w, 8.h, 10.w, 8.h),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF59E0B).withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8.r),
+        border: Border.all(
+          color: const Color(0xFFF59E0B).withValues(alpha: 0.25),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.format_quote_rounded,
+              size: 13.r, color: const Color(0xFFF59E0B)),
+          SizedBox(width: 6.w),
+          Expanded(
+            child: Text(
+              notes,
+              style: GoogleFonts.barlow(
+                  fontSize: 12.sp, color: AppColors.foreground),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _formatAction(String raw) {
-    // Insert spaces before capitals: "RepApproved" → "Rep Approved"
     return raw.replaceAllMapped(
       RegExp(r'(?<=[a-z])(?=[A-Z])'),
       (m) => ' ',
+    );
+  }
+}
+
+// ── Items-changed card (shown for "Items Edited" history entries) ──────────────
+
+class _ItemsChangedCard extends StatelessWidget {
+  final List<Map<String, dynamic>> items;
+  final List<PurchaseOrderItem> orderItems;
+  const _ItemsChangedCard({required this.items, required this.orderItems});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(10.r),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Card header
+          Padding(
+            padding: EdgeInsets.fromLTRB(10.w, 8.h, 10.w, 7.h),
+            child: Row(
+              children: [
+                Icon(Icons.edit_note_rounded,
+                    size: 13.r, color: AppColors.primary),
+                SizedBox(width: 5.w),
+                Text(
+                  '${items.length} ITEM${items.length == 1 ? '' : 'S'} UPDATED',
+                  style: GoogleFonts.barlowCondensed(
+                    fontSize: 9.sp,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.5,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+              height: 1, color: AppColors.primary.withValues(alpha: 0.1)),
+          // One row per item
+          ...items.asMap().entries.map((e) {
+            final idx = e.key;
+            final item = e.value;
+            final isLast = idx == items.length - 1;
+            // camelCase keys from new snapshots; PascalCase from old ones
+            final productCode = item['productCode'] as String?
+                ?? item['ProductCode'] as String?;
+            final productId = item['productId'] as int?
+                ?? item['ProductId'] as int?
+                ?? 0;
+            // For old snapshots without productCode, look it up from the
+            // order's current items list (codes are stable on the product entity)
+            final lookedUp = orderItems
+                .where((o) => o.productId == productId)
+                .map((o) => o.productCode)
+                .firstOrNull;
+            final codeLabel = (productCode != null && productCode.isNotEmpty)
+                ? productCode
+                : (lookedUp != null && lookedUp.isNotEmpty)
+                    ? lookedUp
+                    : 'PID $productId';
+            final qty = item['quantity'] ?? item['Quantity'] ?? 0;
+            final price =
+                ((item['unitPrice'] ?? item['UnitPrice']) as num?)?.toDouble() ?? 0.0;
+            final discount =
+                ((item['discount'] ?? item['Discount']) as num?)?.toDouble() ?? 0.0;
+            return Container(
+              padding:
+                  EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+              decoration: isLast
+                  ? null
+                  : BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color:
+                              AppColors.primary.withValues(alpha: 0.07),
+                        ),
+                      ),
+                    ),
+              child: Row(
+                children: [
+                  // Product code badge
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: 6.w, vertical: 2.h),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(4.r),
+                    ),
+                    child: Text(
+                      codeLabel,
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 9.sp,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  _InfoChip(label: 'QTY', value: '$qty'),
+                  SizedBox(width: 5.w),
+                  _InfoChip(
+                      label: 'PRICE',
+                      value: 'LKR ${price.toStringAsFixed(2)}'),
+                  if (discount > 0) ...[
+                    SizedBox(width: 5.w),
+                    _InfoChip(
+                      label: 'DISC',
+                      value: '${discount.toStringAsFixed(1)}%',
+                      accent: true,
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  final String label, value;
+  final bool accent;
+  const _InfoChip(
+      {required this.label, required this.value, this.accent = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final valueColor =
+        accent ? const Color(0xFF3B82F6) : AppColors.foreground;
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
+      decoration: BoxDecoration(
+        color: accent
+            ? const Color(0xFF3B82F6).withValues(alpha: 0.08)
+            : const Color(0xFF1C1917).withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(4.r),
+      ),
+      child: RichText(
+        text: TextSpan(
+          children: [
+            TextSpan(
+              text: '$label ',
+              style: GoogleFonts.barlowCondensed(
+                fontSize: 8.sp,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.8,
+                color: AppColors.foregroundMuted,
+              ),
+            ),
+            TextSpan(
+              text: value,
+              style: GoogleFonts.barlowCondensed(
+                fontSize: 10.sp,
+                fontWeight: FontWeight.w900,
+                color: valueColor,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1118,6 +1362,29 @@ class _ActionSectionState extends State<_ActionSection> {
               ),
             ),
           ] else ...[
+            if (widget.approvalMode == ApprovalMode.manager) ...[
+              SizedBox(
+                width: double.infinity,
+                child: _ActionButton(
+                  label: 'EDIT ORDER',
+                  icon: Icons.edit_outlined,
+                  color: const Color(0xFF3B82F6),
+                  outlined: true,
+                  onTap: () async {
+                    final saved = await context.push<bool>(
+                      '/supervisor/purchase-orders/${widget.order.id}/edit',
+                      extra: widget.order,
+                    );
+                    if (saved == true && context.mounted) {
+                      context.read<PurchaseOrdersBloc>().add(
+                            LoadOrderDetail(widget.order.id),
+                          );
+                    }
+                  },
+                ),
+              ),
+              SizedBox(height: 10.h),
+            ],
             Row(
               children: [
                 // Reject button

@@ -46,6 +46,7 @@ class PurchaseOrderHistoryEntryModel extends PurchaseOrderHistoryEntry {
     super.performedByName,
     required super.performedAt,
     super.notes,
+    super.itemsSnapshot,
   });
 
   factory PurchaseOrderHistoryEntryModel.fromJson(Map<String, dynamic> json) {
@@ -55,6 +56,7 @@ class PurchaseOrderHistoryEntryModel extends PurchaseOrderHistoryEntry {
       performedByName: json['performedByName'] as String?,
       performedAt: DateTime.parse(json['performedAt'] as String),
       notes: json['notes'] as String?,
+      itemsSnapshot: json['itemsSnapshot'] as String?,
     );
   }
 }
@@ -65,6 +67,7 @@ class PurchaseOrderDetailModel extends PurchaseOrderDetail {
     required super.orderNumber,
     required super.distributorId,
     required super.distributorName,
+    super.distributorCategory = 'A',
     required super.status,
     required super.totalAmount,
     super.notes,
@@ -81,6 +84,7 @@ class PurchaseOrderDetailModel extends PurchaseOrderDetail {
       orderNumber: json['orderNumber'] as String,
       distributorId: json['distributorId'] as int,
       distributorName: json['distributorName'] as String,
+      distributorCategory: json['distributorCategory'] as String? ?? 'A',
       status: _parseStatus(json['status']),
       totalAmount: (json['totalAmount'] as num).toDouble(),
       notes: json['notes'] as String?,

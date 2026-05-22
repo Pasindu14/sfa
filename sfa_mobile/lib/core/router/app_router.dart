@@ -114,10 +114,14 @@ import 'package:uswatte/features/purchase_orders/domain/usecases/get_purchase_or
 import 'package:uswatte/features/purchase_orders/domain/usecases/rep_approve_purchase_order_usecase.dart';
 import 'package:uswatte/features/purchase_orders/domain/usecases/manager_approve_purchase_order_usecase.dart';
 import 'package:uswatte/features/purchase_orders/domain/usecases/reject_purchase_order_usecase.dart';
+import 'package:uswatte/features/purchase_orders/domain/usecases/update_purchase_order_usecase.dart';
+import 'package:uswatte/features/purchase_orders/domain/usecases/get_products_for_distributor_usecase.dart';
+import 'package:uswatte/features/purchase_orders/domain/entities/purchase_order_detail.dart';
 import 'package:uswatte/features/purchase_orders/presentation/bloc/purchase_orders_bloc.dart';
 import 'package:uswatte/features/purchase_orders/presentation/bloc/purchase_orders_event.dart';
 import 'package:uswatte/features/purchase_orders/presentation/pages/purchase_orders_list_page.dart';
 import 'package:uswatte/features/purchase_orders/presentation/pages/purchase_order_detail_page.dart';
+import 'package:uswatte/features/purchase_orders/presentation/pages/purchase_order_edit_page.dart';
 
 class AppRouter {
   AppRouter._();
@@ -674,6 +678,21 @@ class AppRouter {
                       ),
                     );
                   },
+                  routes: [
+                    GoRoute(
+                      path: 'edit',
+                      name: 'supervisorPurchaseOrderEdit',
+                      builder: (_, state) {
+                        final order = state.extra as PurchaseOrderDetail;
+                        return PurchaseOrderEditPage(
+                          order: order,
+                          updateOrder: getIt<UpdatePurchaseOrderUseCase>(),
+                          getProducts:
+                              getIt<GetProductsForDistributorUseCase>(),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ],
             ),

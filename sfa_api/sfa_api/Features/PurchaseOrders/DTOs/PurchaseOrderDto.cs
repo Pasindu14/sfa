@@ -7,6 +7,7 @@ public record PurchaseOrderDto(
     string OrderNumber,
     int DistributorId,
     string DistributorName,
+    string DistributorCategory,
     PurchaseOrderStatus Status,
     string StatusLabel,
     string? Notes,
