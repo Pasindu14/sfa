@@ -8,6 +8,7 @@ import {
   approveBillingAction,
   rejectBillingAction,
   updatePaymentTypeAction,
+  updateCashCollectedAction,
 } from '../actions/distributor-billing.actions'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { DistributorBillingListItem } from '../schema/distributor-billing.schema'
@@ -34,20 +35,23 @@ export function useMyBillingsDataTable(
   _sortBy?: string,
   _sortOrder?: string,
   _caseConfig?: unknown,
-  customFilters?: { repStatus?: string; distributorStatus?: string; dateFrom?: string; dateTo?: string },
+  customFilters?: { repStatus?: string; distributorStatus?: string; dateFrom?: string; dateTo?: string; paymentType?: string; isCashCollected?: string },
 ) {
   const repStatus = customFilters?.repStatus
   const distributorStatus = customFilters?.distributorStatus
   const dateFrom = customFilters?.dateFrom
   const dateTo = customFilters?.dateTo
+  const paymentType = customFilters?.paymentType
+  const isCashCollected = customFilters?.isCashCollected
 
   return useQuery({
-    queryKey: myBillingKeys.list({ page, pageSize, search, repStatus, distributorStatus, dateFrom, dateTo }),
+    queryKey: myBillingKeys.list({ page, pageSize, search, repStatus, distributorStatus, dateFrom, dateTo, paymentType, isCashCollected }),
     queryFn: async () => {
       const result = await getMyBillingsAction(
         page, pageSize, search || undefined,
         repStatus || undefined, distributorStatus || undefined,
         dateFrom || undefined, dateTo || undefined,
+        paymentType || undefined, isCashCollected || undefined,
       )
       if (!result.success) throw new Error(result.error)
       const { billings, totalCount, page: p, pageSize: ps } = result.data
@@ -148,6 +152,24 @@ export function useUpdatePaymentType() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: myBillingKeys.all })
       toast.success('Payment type updated')
+    },
+    onError: (error: any) => {
+      handleErrorToast(error, 'billing', 'update')
+    },
+  })
+}
+
+export function useUpdateCashCollected() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, isCashCollected }: { id: number; isCashCollected: boolean }) => {
+      const result = await updateCashCollectedAction(id, isCashCollected)
+      if (!result.success) throw result
+      return result.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: myBillingKeys.all })
+      toast.success('Cash collection status updated')
     },
     onError: (error: any) => {
       handleErrorToast(error, 'billing', 'update')

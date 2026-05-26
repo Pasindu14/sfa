@@ -3,7 +3,7 @@
 import type { ColumnDef } from '@tanstack/react-table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Eye, ClipboardCheck } from 'lucide-react'
+import { Eye, ClipboardCheck, Banknote } from 'lucide-react'
 import type { DistributorBillingListItem } from '../../schema/distributor-billing.schema'
 
 function formatCurrency(amount: number) {
@@ -37,6 +37,7 @@ export function PaymentTypeBadge({ type }: { type: 'Cash' | 'Credit' }) {
 export function getDistributorBillingColumns(
   onView: (id: number) => void,
   onReview: (billing: DistributorBillingListItem) => void,
+  onCashCollected: (billing: DistributorBillingListItem) => void,
 ): ColumnDef<DistributorBillingListItem>[] {
   return [
     {
@@ -99,9 +100,24 @@ export function getDistributorBillingColumns(
       cell: ({ row }) => <PaymentTypeBadge type={row.original.paymentType} />,
     },
     {
-      id: 'repStatus',
-      header: 'Rep Status',
-      cell: ({ row }) => <RepStatusBadge status={row.original.repStatus} />,
+      id: 'cashCollected',
+      header: 'Cash',
+      cell: ({ row }) => {
+        if (row.original.isCashCollected)
+          return <Badge className="bg-green-100 text-green-700 hover:bg-green-100 text-xs border-0">Collected</Badge>
+        return <Badge variant="secondary" className="text-xs text-muted-foreground">Pending</Badge>
+      },
+    },
+    {
+      id: 'billingDate',
+      header: 'Billed Date',
+      cell: ({ row }) => (
+        <span className="text-sm tabular-nums">
+          {new Date(row.original.billingDate).toLocaleDateString('en-US', {
+            day: 'numeric', month: 'short', year: 'numeric',
+          })}
+        </span>
+      ),
     },
     {
       id: 'distributorStatus',
@@ -111,11 +127,12 @@ export function getDistributorBillingColumns(
     {
       id: 'actions',
       header: '',
+      size: 210,
       cell: ({ row }) => {
         const isPending =
           row.original.repStatus === 'Submitted' && row.original.distributorStatus === 'Pending'
         return (
-          <div className="flex flex-wrap items-center gap-1">
+          <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="sm"
@@ -124,6 +141,15 @@ export function getDistributorBillingColumns(
             >
               <Eye className="h-3.5 w-3.5" />
               View
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 text-xs"
+              onClick={() => onCashCollected(row.original)}
+            >
+              <Banknote className="h-3.5 w-3.5" />
+              Cash
             </Button>
             {isPending && (
               <Button

@@ -76,6 +76,8 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
         DistributorBillingStatus? distributorStatus,
         int? outletId, int? distributorId, int? salesRepId,
         DateOnly? dateFrom, DateOnly? dateTo,
+        PaymentType? paymentType = null,
+        bool? isCashCollected = null,
         CancellationToken ct = default)
     {
         pageSize = Math.Clamp(pageSize, 1, 200);
@@ -105,6 +107,12 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
         if (dateTo.HasValue)
             query = query.Where(x => x.BillingDate <= dateTo.Value);
 
+        if (paymentType.HasValue)
+            query = query.Where(x => x.PaymentType == paymentType.Value);
+
+        if (isCashCollected.HasValue)
+            query = query.Where(x => x.IsCashCollected == isCashCollected.Value);
+
         var total = await query.CountAsync(ct);
         var items = await query
             .OrderByDescending(x => x.BillingDate)
@@ -126,6 +134,7 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
                 x.RepStatus,
                 x.DistributorStatus,
                 x.PaymentType,
+                x.IsCashCollected,
                 x.CreatedAt))
             .ToListAsync(ct);
 

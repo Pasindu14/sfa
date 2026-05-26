@@ -46,6 +46,7 @@ public record BillingDto(
     DistributorBillingStatus DistributorStatus,
     string? RejectionReason,
     PaymentType PaymentType,
+    bool IsCashCollected,
     string? Notes,
     double? Latitude,
     double? Longitude,

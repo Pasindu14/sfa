@@ -14,6 +14,8 @@ export const getMyBillingsAction = createAction(
     distributorStatus?: string,
     dateFrom?: string,
     dateTo?: string,
+    paymentType?: string,
+    isCashCollected?: string,
   ) => {
     const res = await client.get('/api/v1/billings/portal', {
       params: {
@@ -24,6 +26,8 @@ export const getMyBillingsAction = createAction(
         distributorStatus: distributorStatus || undefined,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
+        paymentType: paymentType || undefined,
+        isCashCollected: isCashCollected === 'true' ? true : isCashCollected === 'false' ? false : undefined,
       },
     })
     const body = res.data
@@ -64,6 +68,14 @@ export const updatePaymentTypeAction = createAction(
   { name: 'updatePaymentTypeAction', requireAuth: true, requiredRole: 'Distributor' },
   async (id: number, paymentType: 'Cash' | 'Credit') => {
     const res = await client.patch(`/api/v1/billings/${id}/payment-type`, { paymentType })
+    return res.data.data as DistributorBillingDetail
+  }
+)
+
+export const updateCashCollectedAction = createAction(
+  { name: 'updateCashCollectedAction', requireAuth: true, requiredRole: 'Distributor' },
+  async (id: number, isCashCollected: boolean) => {
+    const res = await client.patch(`/api/v1/billings/${id}/cash-collected`, { isCashCollected })
     return res.data.data as DistributorBillingDetail
   }
 )

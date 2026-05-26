@@ -31,6 +31,8 @@ public interface IBillingRepository
         DistributorBillingStatus? distributorStatus,
         int? outletId, int? distributorId, int? salesRepId,
         DateOnly? dateFrom, DateOnly? dateTo,
+        PaymentType? paymentType = null,
+        bool? isCashCollected = null,
         CancellationToken ct = default);
 
     Task<List<OutletBillingSummaryRawRow>> GetOutletSummaryRawAsync(

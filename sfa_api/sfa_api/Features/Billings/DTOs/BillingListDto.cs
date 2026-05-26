@@ -17,5 +17,6 @@ public record BillingListDto(
     RepBillingStatus RepStatus,
     DistributorBillingStatus DistributorStatus,
     PaymentType PaymentType,
+    bool IsCashCollected,
     DateTime CreatedAt
 );

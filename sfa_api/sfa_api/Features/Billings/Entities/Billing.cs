@@ -48,6 +48,7 @@ public class Billing
     public DistributorBillingStatus DistributorStatus { get; set; } = DistributorBillingStatus.Pending;
     public string? RejectionReason { get; set; }
     public PaymentType PaymentType { get; set; } = PaymentType.Cash;
+    public bool IsCashCollected { get; set; } = false;
     public DateTime? ApprovedAt { get; set; }
     public DateTime? RejectedAt { get; set; }
     public string? Notes { get; set; }

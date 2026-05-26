@@ -44,6 +44,8 @@ public class BillingsController(
         [FromQuery] int? salesRepId = null,
         [FromQuery] string? dateFrom = null,
         [FromQuery] string? dateTo = null,
+        [FromQuery] string? paymentType = null,
+        [FromQuery] bool? isCashCollected = null,
         CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
@@ -52,11 +54,12 @@ public class BillingsController(
         DistributorBillingStatus? parsedDistributorStatus = Enum.TryParse<DistributorBillingStatus>(distributorStatus, true, out var ds) ? ds : null;
         DateOnly? parsedDateFrom                          = DateOnly.TryParse(dateFrom, out var df) ? df : null;
         DateOnly? parsedDateTo                            = DateOnly.TryParse(dateTo, out var dt) ? dt : null;
+        PaymentType? parsedPaymentType                    = Enum.TryParse<PaymentType>(paymentType, true, out var pt) ? pt : null;
 
         var (items, total) = await _billingService.GetListAsync(
             page, pageSize, parsedRepStatus, parsedDistributorStatus,
             outletId, distributorId, salesRepId,
-            parsedDateFrom, parsedDateTo, ct);
+            parsedDateFrom, parsedDateTo, parsedPaymentType, isCashCollected, ct);
 
         return Ok(ResponseHelper.Paged(items, page, pageSize, total, correlationId));
     }
@@ -128,6 +131,8 @@ public class BillingsController(
         [FromQuery] string? distributorStatus = null,
         [FromQuery] string? dateFrom = null,
         [FromQuery] string? dateTo = null,
+        [FromQuery] string? paymentType = null,
+        [FromQuery] bool? isCashCollected = null,
         CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
@@ -140,9 +145,11 @@ public class BillingsController(
         DistributorBillingStatus? parsedDistributorStatus = Enum.TryParse<DistributorBillingStatus>(distributorStatus, true, out var ds) ? ds : null;
         DateOnly? parsedFrom                              = DateOnly.TryParse(dateFrom, out var df) ? df : null;
         DateOnly? parsedTo                                = DateOnly.TryParse(dateTo, out var dt) ? dt : null;
+        PaymentType? parsedPaymentType                    = Enum.TryParse<PaymentType>(paymentType, true, out var pt) ? pt : null;
         var (items, total) = await _billingService.GetListAsync(
             page, pageSize, parsedRepStatus, parsedDistributorStatus,
-            null, user.DistributorId.Value, null, parsedFrom, parsedTo, ct);
+            null, user.DistributorId.Value, null, parsedFrom, parsedTo,
+            parsedPaymentType, isCashCollected, ct);
         return Ok(ResponseHelper.Paged(items, page, pageSize, total, correlationId));
     }
 
@@ -203,6 +210,19 @@ public class BillingsController(
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
         var billing = await _billingService.UpdatePaymentTypeAsync(id, GetCallerId(), request.PaymentType, ct);
+        return Ok(ResponseHelper.Ok(billing, correlationId));
+    }
+
+    /// <summary>
+    /// PATCH /api/v1/billings/{id}/cash-collected
+    /// Distributor only — marks whether cash has been collected for this billing.
+    /// </summary>
+    [HttpPatch("{id:int}/cash-collected")]
+    [Authorize(Roles = "Distributor")]
+    public async Task<IActionResult> UpdateCashCollected(int id, [FromBody] UpdateCashCollectedRequest request, CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var billing = await _billingService.UpdateCashCollectedAsync(id, GetCallerId(), request.IsCashCollected, ct);
         return Ok(ResponseHelper.Ok(billing, correlationId));
     }
 

@@ -14,6 +14,8 @@ public interface IBillingService
         DistributorBillingStatus? distributorStatus,
         int? outletId, int? distributorId, int? salesRepId,
         DateOnly? dateFrom, DateOnly? dateTo,
+        PaymentType? paymentType = null,
+        bool? isCashCollected = null,
         CancellationToken ct = default);
 
     Task<OutletBillingSummaryResponseDto> GetOutletSummaryAsync(
@@ -31,4 +33,5 @@ public interface IBillingService
     Task<BillingDto> ApproveAsync(int billingId, int userId, CancellationToken ct = default);
     Task<BillingDto> RejectAsync(int billingId, int userId, string? reason, CancellationToken ct = default);
     Task<BillingDto> UpdatePaymentTypeAsync(int billingId, int userId, PaymentType paymentType, CancellationToken ct = default);
+    Task<BillingDto> UpdateCashCollectedAsync(int billingId, int userId, bool isCashCollected, CancellationToken ct = default);
 }

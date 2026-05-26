@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { signIn } from "next-auth/react"
+import { signIn, getSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
@@ -33,7 +33,9 @@ export function LoginForm({
       if (result?.error) {
         toast.error("Invalid credentials")
       } else {
-        router.push("/users")
+        const session = await getSession()
+        const role = session?.user?.role?.toLowerCase()
+        router.push(role === "distributor" ? "/distributor-dashboard" : "/users")
         router.refresh()
       }
     } catch (err) {

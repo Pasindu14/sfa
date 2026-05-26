@@ -16,6 +16,7 @@ import { getDistributorBillingColumns } from '../columns/distributor-billing-col
 import { useMyBillingsDataTable } from '../../hooks/distributor-billing.hooks'
 import { DistributorBillingDetailDialog } from '../dialogs/distributor-billing-detail-dialog'
 import { DistributorBillingReviewDialog } from '../dialogs/distributor-billing-review-dialog'
+import { DistributorBillingCashCollectedDialog } from '../dialogs/distributor-billing-cash-collected-dialog'
 import type { DistributorBillingListItem } from '../../schema/distributor-billing.schema'
 
 function toLocalDateStr(date: Date) {
@@ -27,15 +28,18 @@ function toLocalDateStr(date: Date) {
 }
 
 const today = toLocalDateStr(new Date())
+const thisMonthStart = toLocalDateStr(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
 
 export function DistributorBillingTable() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [reviewBilling, setReviewBilling] = useState<DistributorBillingListItem | null>(null)
+  const [cashCollectedBilling, setCashCollectedBilling] = useState<DistributorBillingListItem | null>(null)
 
   const getColumns = useCallback(
     () => getDistributorBillingColumns(
       (id) => setSelectedId(id),
       (billing) => setReviewBilling(billing),
+      (billing) => setCashCollectedBilling(billing),
     ),
     [],
   )
@@ -43,7 +47,7 @@ export function DistributorBillingTable() {
   return (
     <>
       <DataTable
-        customFilters={{ dateFrom: today, dateTo: today }}
+        customFilters={{ dateFrom: thisMonthStart, dateTo: today }}
         config={{
           enableRowSelection: false,
           enableSearch: true,
@@ -74,7 +78,7 @@ export function DistributorBillingTable() {
         renderCustomFilters={(filters, setFilters) => {
           const fromDate = filters?.dateFrom ? new Date(filters.dateFrom as string) : undefined
           const toDate = filters?.dateTo ? new Date(filters.dateTo as string) : undefined
-          const hasActiveFilters = !!(filters?.repStatus || filters?.distributorStatus || filters?.dateFrom || filters?.dateTo)
+          const hasActiveFilters = !!(filters?.distributorStatus || filters?.dateFrom || filters?.dateTo || filters?.paymentType || filters?.isCashCollected)
 
           return (
             <div className="flex flex-wrap items-center gap-2">
@@ -88,27 +92,10 @@ export function DistributorBillingTable() {
                     dateTo: toLocalDateStr(to),
                   })
                 }
-                numberOfMonths={1}
+                numberOfMonths={2}
                 variant="outline"
                 className="w-fit cursor-pointer"
-                closeOnSelect
               />
-
-              <Select
-                value={(filters?.repStatus as string) ?? 'all'}
-                onValueChange={(value) =>
-                  setFilters({ ...filters, repStatus: value === 'all' ? '' : value })
-                }
-              >
-                <SelectTrigger className="h-8 w-32 sm:w-36">
-                  <SelectValue placeholder="Rep Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Rep Status</SelectItem>
-                  <SelectItem value="Submitted">Submitted</SelectItem>
-                  <SelectItem value="Cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
 
               <Select
                 value={(filters?.distributorStatus as string) ?? 'all'}
@@ -127,12 +114,44 @@ export function DistributorBillingTable() {
                 </SelectContent>
               </Select>
 
+              <Select
+                value={(filters?.paymentType as string) ?? 'all'}
+                onValueChange={(value) =>
+                  setFilters({ ...filters, paymentType: value === 'all' ? '' : value })
+                }
+              >
+                <SelectTrigger className="h-8 w-28 sm:w-32">
+                  <SelectValue placeholder="Payment" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Payments</SelectItem>
+                  <SelectItem value="Cash">Cash</SelectItem>
+                  <SelectItem value="Credit">Credit</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={(filters?.isCashCollected as string) ?? 'all'}
+                onValueChange={(value) =>
+                  setFilters({ ...filters, isCashCollected: value === 'all' ? '' : value })
+                }
+              >
+                <SelectTrigger className="h-8 w-36 sm:w-40">
+                  <SelectValue placeholder="Cash Collected" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Collections</SelectItem>
+                  <SelectItem value="true">Collected</SelectItem>
+                  <SelectItem value="false">Not Collected</SelectItem>
+                </SelectContent>
+              </Select>
+
               {hasActiveFilters && (
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-8 gap-1.5 text-muted-foreground"
-                  onClick={() => setFilters({ repStatus: '', distributorStatus: '', dateFrom: '', dateTo: '' })}
+                  onClick={() => setFilters({ distributorStatus: '', dateFrom: '', dateTo: '', paymentType: '', isCashCollected: '' })}
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                   Reset
@@ -149,6 +168,10 @@ export function DistributorBillingTable() {
       <DistributorBillingReviewDialog
         billing={reviewBilling}
         onClose={() => setReviewBilling(null)}
+      />
+      <DistributorBillingCashCollectedDialog
+        billing={cashCollectedBilling}
+        onClose={() => setCashCollectedBilling(null)}
       />
     </>
   )

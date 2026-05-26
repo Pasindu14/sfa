@@ -337,11 +337,13 @@ public class BillingService(
         DistributorBillingStatus? distributorStatus,
         int? outletId, int? distributorId, int? salesRepId,
         DateOnly? dateFrom, DateOnly? dateTo,
+        PaymentType? paymentType = null,
+        bool? isCashCollected = null,
         CancellationToken ct = default)
         => _billingRepository.GetListAsync(
             page, pageSize, repStatus, distributorStatus,
             outletId, distributorId, salesRepId,
-            dateFrom, dateTo, ct);
+            dateFrom, dateTo, paymentType, isCashCollected, ct);
 
     // ── Projection ────────────────────────────────────────────────────────
 
@@ -380,6 +382,7 @@ public class BillingService(
         b.DistributorStatus,
         b.RejectionReason,
         b.PaymentType,
+        b.IsCashCollected,
         b.Notes,
         b.Latitude,
         b.Longitude,
@@ -555,6 +558,26 @@ public class BillingService(
         billing.PaymentType = paymentType;
         billing.UpdatedAt   = DateTime.UtcNow;
         billing.UpdatedBy   = userId;
+
+        await _billingRepository.SaveChangesAsync(ct);
+
+        var updated = await _billingRepository.GetByIdAsync(billingId, ct)
+            ?? throw new DatabaseUnavailableException();
+        return ProjectToDto(updated);
+    }
+
+    public async Task<BillingDto> UpdateCashCollectedAsync(int billingId, int userId, bool isCashCollected, CancellationToken ct = default)
+    {
+        var billing = await _billingRepository.GetTrackedByIdAsync(billingId, ct)
+            ?? throw new NotFoundException("Billing", billingId);
+
+        var user = await _userRepository.GetUserByIdAsync(userId, ct);
+        if (user?.DistributorId == null || user.DistributorId != billing.DistributorId)
+            throw new AuthorizationException("Billing");
+
+        billing.IsCashCollected = isCashCollected;
+        billing.UpdatedAt       = DateTime.UtcNow;
+        billing.UpdatedBy       = userId;
 
         await _billingRepository.SaveChangesAsync(ct);
 
