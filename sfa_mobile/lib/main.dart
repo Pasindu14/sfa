@@ -18,6 +18,8 @@ import 'package:uswatte/features/auth/domain/usecases/get_current_auth_usecase.d
 import 'package:uswatte/features/auth/domain/usecases/login_usecase.dart';
 import 'package:uswatte/features/auth/domain/usecases/logout_usecase.dart';
 import 'package:uswatte/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:uswatte/firebase_options.dart';
 import 'package:workmanager/workmanager.dart';
 
 // @pragma prevents the Dart tree-shaker from removing this function in release
@@ -41,6 +43,7 @@ void callbackDispatcher() {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await configureDependencies();
 
   // Register the 4-hour background sync task. ExistingWorkPolicy.keep means
