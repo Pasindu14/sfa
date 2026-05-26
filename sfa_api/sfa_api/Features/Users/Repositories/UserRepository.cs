@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using sfa_api.Features.UserGeoAssignments.Entities;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Infrastructure.Persistence;
 
@@ -108,6 +109,25 @@ public class UserRepository(AppDbContext context) : IUserRepository
             .Select(u => new { u.Id, Token = u.FcmToken! })
             .AsNoTracking()
             .ToListAsync(ct);
+        return rows.Select(r => (r.Id, r.Token)).ToList();
+    }
+
+    public async Task<List<(int UserId, string Token)>> GetFcmTokensByDistributorSalesRepsAsync(int distributorId, CancellationToken ct = default)
+    {
+        // SalesReps are not linked to distributors via User.DistributorId (that field is for Distributor-role users only).
+        // The relationship is: SalesRep → UserGeoAssignment.TerritoryId ← Distributor.TerritoryId
+        var rows = await (
+            from u in _context.Users
+            join geo in _context.UserGeoAssignments on u.Id equals geo.UserId
+            join d in _context.Distributors on geo.TerritoryId equals d.TerritoryId
+            where d.Id == distributorId
+                && u.Role == UserRole.SalesRep
+                && !u.IsDeleted
+                && u.FcmToken != null
+                && geo.IsActive
+                && !geo.IsDeleted
+            select new { u.Id, Token = u.FcmToken! }
+        ).Distinct().AsNoTracking().ToListAsync(ct);
         return rows.Select(r => (r.Id, r.Token)).ToList();
     }
 

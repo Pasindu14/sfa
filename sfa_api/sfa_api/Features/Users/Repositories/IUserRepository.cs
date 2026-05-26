@@ -22,6 +22,7 @@ public interface IUserRepository
     Task SaveChangesAsync(CancellationToken ct = default);
     Task<string?> GetFcmTokenByUserIdAsync(int userId, CancellationToken ct = default);
     Task<List<(int UserId, string Token)>> GetFcmTokensByDistributorIdAsync(int distributorId, CancellationToken ct = default);
+    Task<List<(int UserId, string Token)>> GetFcmTokensByDistributorSalesRepsAsync(int distributorId, CancellationToken ct = default);
     Task UpdateFcmTokenAsync(int userId, string? token, CancellationToken ct = default);
     Task ClearFcmTokenAsync(int userId, CancellationToken ct = default);
 }

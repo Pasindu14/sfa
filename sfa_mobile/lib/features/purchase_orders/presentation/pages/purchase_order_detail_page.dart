@@ -96,16 +96,8 @@ class PurchaseOrderDetailPage extends StatelessWidget {
         if (state is PurchaseOrderDetailLoaded) {
           order = state.order;
         } else if (state is PurchaseOrderActionInProgress) {
+          order = state.order;
           isActionInProgress = true;
-        }
-
-        if (isActionInProgress) {
-          return const Scaffold(
-            backgroundColor: Color(0xFFF8F7F5),
-            body: Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            ),
-          );
         }
 
         if (order == null) {
@@ -119,7 +111,11 @@ class PurchaseOrderDetailPage extends StatelessWidget {
 
         return Scaffold(
           backgroundColor: const Color(0xFFF8F7F5),
-          body: _DetailView(order: order, approvalMode: approvalMode),
+          body: _DetailView(
+            order: order,
+            approvalMode: approvalMode,
+            isActionInProgress: isActionInProgress,
+          ),
         );
       },
     );
@@ -131,7 +127,12 @@ class PurchaseOrderDetailPage extends StatelessWidget {
 class _DetailView extends StatelessWidget {
   final PurchaseOrderDetail order;
   final ApprovalMode approvalMode;
-  const _DetailView({required this.order, required this.approvalMode});
+  final bool isActionInProgress;
+  const _DetailView({
+    required this.order,
+    required this.approvalMode,
+    required this.isActionInProgress,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -149,7 +150,11 @@ class _DetailView extends StatelessWidget {
             child: _HistorySection(order: order),
           ),
         SliverToBoxAdapter(
-          child: _ActionSection(order: order, approvalMode: approvalMode),
+          child: _ActionSection(
+            order: order,
+            approvalMode: approvalMode,
+            isActionInProgress: isActionInProgress,
+          ),
         ),
         SliverToBoxAdapter(child: SizedBox(height: 40.h)),
       ],
@@ -1198,7 +1203,12 @@ class _InfoChip extends StatelessWidget {
 class _ActionSection extends StatefulWidget {
   final PurchaseOrderDetail order;
   final ApprovalMode approvalMode;
-  const _ActionSection({required this.order, required this.approvalMode});
+  final bool isActionInProgress;
+  const _ActionSection({
+    required this.order,
+    required this.approvalMode,
+    required this.isActionInProgress,
+  });
 
   @override
   State<_ActionSection> createState() => _ActionSectionState();
@@ -1335,6 +1345,8 @@ class _ActionSectionState extends State<_ActionSection> {
                             if (reason.isEmpty) return;
                             context.read<PurchaseOrdersBloc>().add(
                                 RejectOrder(widget.order.id, reason));
+                            _reasonController.clear();
+                            setState(() => _showRejectField = false);
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFEF4444),
@@ -1407,15 +1419,18 @@ class _ActionSectionState extends State<_ActionSection> {
                     icon: Icons.check_circle_outline_rounded,
                     color: AppColors.primary,
                     outlined: false,
-                    onTap: () {
-                      final event = widget.approvalMode ==
-                              ApprovalMode.salesRep
-                          ? RepApproveOrder(widget.order.id)
-                          : ManagerApproveOrder(widget.order.id);
-                      context
-                          .read<PurchaseOrdersBloc>()
-                          .add(event);
-                    },
+                    isLoading: widget.isActionInProgress,
+                    onTap: widget.isActionInProgress
+                        ? null
+                        : () {
+                            final event = widget.approvalMode ==
+                                    ApprovalMode.salesRep
+                                ? RepApproveOrder(widget.order.id)
+                                : ManagerApproveOrder(widget.order.id);
+                            context
+                                .read<PurchaseOrdersBloc>()
+                                .add(event);
+                          },
                   ),
                 ),
               ],
@@ -1432,13 +1447,15 @@ class _ActionButton extends StatelessWidget {
   final IconData icon;
   final Color color;
   final bool outlined;
-  final VoidCallback onTap;
+  final bool isLoading;
+  final VoidCallback? onTap;
   const _ActionButton({
     required this.label,
     required this.icon,
     required this.color,
     required this.outlined,
     required this.onTap,
+    this.isLoading = false,
   });
 
   @override
@@ -1464,18 +1481,8 @@ class _ActionButton extends StatelessWidget {
         ),
       );
     }
-    return ElevatedButton.icon(
+    return ElevatedButton(
       onPressed: onTap,
-      icon: Icon(icon, size: 15.r, color: Colors.white),
-      label: Text(
-        label,
-        style: GoogleFonts.barlowCondensed(
-          fontSize: 14.sp,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 1.0,
-          color: Colors.white,
-        ),
-      ),
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
         padding: EdgeInsets.symmetric(vertical: 14.h),
@@ -1484,6 +1491,31 @@ class _ActionButton extends StatelessWidget {
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
       ),
+      child: isLoading
+          ? SizedBox(
+              height: 18.r,
+              width: 18.r,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 15.r, color: Colors.white),
+                SizedBox(width: 6.w),
+                Text(
+                  label,
+                  style: GoogleFonts.barlowCondensed(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.0,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }

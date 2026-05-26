@@ -187,7 +187,10 @@ export function DistributorBillingReviewDialog({ billing, onClose }: Props) {
                       variant="destructive"
                       className="gap-1.5"
                       disabled={rejectMutation.isPending}
-                      onClick={() => rejectMutation.mutate({ id: billing.id, reason: rejectReason || undefined })}
+                      onClick={() => rejectMutation.mutate(
+                        { id: billing.id, reason: rejectReason || undefined },
+                        { onSuccess: () => { setShowRejectForm(false); setRejectReason('') } }
+                      )}
                     >
                       {rejectMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                       Confirm Reject

@@ -38,6 +38,20 @@ public class FirebaseNotificationService(
         }
     }
 
+    public async Task SendToDistributorSalesRepsAsync(int distributorId, string title, string body, Dictionary<string, string>? data = null, CancellationToken ct = default)
+    {
+        try
+        {
+            var users = await _userRepository.GetFcmTokensByDistributorSalesRepsAsync(distributorId, ct);
+            foreach (var (userId, token) in users)
+                await SendToTokenAsync(token, userId, title, body, data);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "FCM notification failed for sales reps of distributor {DistributorId}", distributorId);
+        }
+    }
+
     private async Task SendToTokenAsync(string token, int userId, string title, string body, Dictionary<string, string>? data)
     {
         try

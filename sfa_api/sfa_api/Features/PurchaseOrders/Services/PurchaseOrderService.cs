@@ -11,6 +11,7 @@ using sfa_api.Features.UserGeoAssignments.Repositories;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Features.Users.Repositories;
 using sfa_api.Infrastructure.Locking;
+using sfa_api.Infrastructure.Notifications;
 using sfa_api.Infrastructure.Persistence;
 
 namespace sfa_api.Features.PurchaseOrders.Services;
@@ -22,6 +23,7 @@ public class PurchaseOrderService(
     IDistributorRepository distributorRepo,
     AppDbContext context,
     IDistributedLockService lockService,
+    INotificationService notificationService,
     ILogger<PurchaseOrderService> logger) : IPurchaseOrderService
 {
     private readonly IPurchaseOrderRepository _repo = repo;
@@ -30,6 +32,7 @@ public class PurchaseOrderService(
     private readonly IDistributorRepository _distributorRepo = distributorRepo;
     private readonly AppDbContext _context = context;
     private readonly IDistributedLockService _lockService = lockService;
+    private readonly INotificationService _notificationService = notificationService;
     private readonly ILogger<PurchaseOrderService> _logger = logger;
 
     public async Task<PurchaseOrderDto> GetByIdAsync(int id, int callerId, UserRole callerRole, CancellationToken ct = default)
@@ -330,6 +333,13 @@ public class PurchaseOrderService(
 
         _logger.LogInformation("PurchaseOrder {OrderId} submitted by user {CallerId}", id, callerId);
 
+        await _notificationService.SendToDistributorSalesRepsAsync(
+            order.DistributorId,
+            "New Purchase Order",
+            $"Order {order.OrderNumber} has been submitted and is awaiting your approval.",
+            new Dictionary<string, string> { ["orderId"] = id.ToString(), ["orderNumber"] = order.OrderNumber },
+            ct);
+
         var updated = await _repo.GetByIdWithItemsAsync(id, ct);
         return MapToDto(updated!);
     }
@@ -455,6 +465,9 @@ public class PurchaseOrderService(
             && order.Status != PurchaseOrderStatus.PendingManagerApproval)
             throw new BusinessRuleException("ORDER_NOT_REJECTABLE", "Order cannot be rejected at this stage.");
 
+        // Capture before the transaction lambda mutates order.Status
+        var rejectedFromManagerStage = order.Status == PurchaseOrderStatus.PendingManagerApproval;
+
         var rejectStrategy = _context.Database.CreateExecutionStrategy();
         await rejectStrategy.ExecuteAsync(async () =>
         {
@@ -486,6 +499,31 @@ public class PurchaseOrderService(
         });
 
         _logger.LogInformation("PurchaseOrder {OrderId} rejected by user {CallerId}", id, callerId);
+
+        var notificationData = new Dictionary<string, string>
+        {
+            ["orderId"] = id.ToString(),
+            ["orderNumber"] = order.OrderNumber
+        };
+
+        // Always notify the distributor — they must acknowledge the rejection
+        await _notificationService.SendToDistributorUsersAsync(
+            order.DistributorId,
+            "Purchase Order Rejected",
+            $"Order {order.OrderNumber} has been rejected. Please review the reason and acknowledge.",
+            notificationData,
+            ct);
+
+        // When a supervisor/manager rejects, also notify the sales rep who forwarded it
+        if (rejectedFromManagerStage)
+        {
+            await _notificationService.SendToDistributorSalesRepsAsync(
+                order.DistributorId,
+                "Purchase Order Rejected by Manager",
+                $"Order {order.OrderNumber} you approved was rejected by the manager.",
+                notificationData,
+                ct);
+        }
 
         var updated = await _repo.GetByIdWithItemsAsync(id, ct);
         return MapToDto(updated!);

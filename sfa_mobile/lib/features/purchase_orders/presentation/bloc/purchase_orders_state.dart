@@ -35,7 +35,10 @@ final class PurchaseOrderDetailLoaded extends PurchaseOrdersState {
 }
 
 final class PurchaseOrderActionInProgress extends PurchaseOrdersState {
-  const PurchaseOrderActionInProgress();
+  final PurchaseOrderDetail order;
+  const PurchaseOrderActionInProgress(this.order);
+  @override
+  List<Object?> get props => [order];
 }
 
 final class PurchaseOrderActionSuccess extends PurchaseOrdersState {

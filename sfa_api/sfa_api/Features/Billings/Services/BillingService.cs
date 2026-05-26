@@ -315,7 +315,7 @@ public class BillingService(
         });
 
         // Stamp outlet's last bill date and bust the route cache
-        var lastBillDate = billing.BillingDate.ToDateTime(TimeOnly.MinValue);
+        var lastBillDate = billing.BillingDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
         await _db.Outlets
             .Where(o => o.Id == billing.OutletId)
             .ExecuteUpdateAsync(s => s.SetProperty(o => o.LastBillDate, lastBillDate), ct);

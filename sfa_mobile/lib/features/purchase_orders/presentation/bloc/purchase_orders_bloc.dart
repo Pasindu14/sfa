@@ -73,33 +73,42 @@ class PurchaseOrdersBloc extends Bloc<PurchaseOrdersEvent, PurchaseOrdersState> 
 
   Future<void> _onRepApprove(
       RepApproveOrder event, Emitter<PurchaseOrdersState> emit) async {
-    emit(const PurchaseOrderActionInProgress());
+    final s = state;
+    if (s is! PurchaseOrderDetailLoaded) return;
+    emit(PurchaseOrderActionInProgress(s.order));
     try {
       await _repApprove(event.id);
       emit(const PurchaseOrderActionSuccess('Purchase order approved.'));
     } on AppException catch (e) {
+      emit(PurchaseOrderDetailLoaded(s.order));
       emit(PurchaseOrdersError(e.message));
     }
   }
 
   Future<void> _onManagerApprove(
       ManagerApproveOrder event, Emitter<PurchaseOrdersState> emit) async {
-    emit(const PurchaseOrderActionInProgress());
+    final s = state;
+    if (s is! PurchaseOrderDetailLoaded) return;
+    emit(PurchaseOrderActionInProgress(s.order));
     try {
       await _managerApprove(event.id);
       emit(const PurchaseOrderActionSuccess('Purchase order approved.'));
     } on AppException catch (e) {
+      emit(PurchaseOrderDetailLoaded(s.order));
       emit(PurchaseOrdersError(e.message));
     }
   }
 
   Future<void> _onReject(
       RejectOrder event, Emitter<PurchaseOrdersState> emit) async {
-    emit(const PurchaseOrderActionInProgress());
+    final s = state;
+    if (s is! PurchaseOrderDetailLoaded) return;
+    emit(PurchaseOrderActionInProgress(s.order));
     try {
       await _rejectOrder(event.id, event.reason);
       emit(const PurchaseOrderActionSuccess('Purchase order rejected.'));
     } on AppException catch (e) {
+      emit(PurchaseOrderDetailLoaded(s.order));
       emit(PurchaseOrdersError(e.message));
     }
   }
