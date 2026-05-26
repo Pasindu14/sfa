@@ -135,6 +135,13 @@ import 'package:uswatte/features/purchase_orders/domain/usecases/reject_purchase
 import 'package:uswatte/features/purchase_orders/domain/usecases/update_purchase_order_usecase.dart';
 import 'package:uswatte/features/purchase_orders/domain/usecases/get_products_for_distributor_usecase.dart';
 import 'package:uswatte/core/notifications/fcm_service.dart';
+import 'package:uswatte/features/notifications/data/datasources/notifications_remote_datasource.dart';
+import 'package:uswatte/features/notifications/data/repositories/notifications_repository_impl.dart';
+import 'package:uswatte/features/notifications/domain/repositories/notifications_repository.dart';
+import 'package:uswatte/features/notifications/domain/usecases/get_notifications_usecase.dart';
+import 'package:uswatte/features/notifications/domain/usecases/get_unread_count_usecase.dart';
+import 'package:uswatte/features/notifications/domain/usecases/mark_notification_read_usecase.dart';
+import 'package:uswatte/features/notifications/domain/usecases/mark_all_read_usecase.dart';
 
 final getIt = GetIt.instance;
 
@@ -492,6 +499,21 @@ Future<void> configureDependencies() async {
       () => UpdatePurchaseOrderUseCase(getIt<PurchaseOrdersRepository>()));
   getIt.registerLazySingleton(
       () => GetProductsForDistributorUseCase(getIt<PurchaseOrdersRepository>()));
+
+  // ── Notifications ────────────────────────────────────────────────────────────
+  getIt.registerLazySingleton(
+      () => NotificationsRemoteDatasource(getIt<Dio>()));
+  getIt.registerLazySingleton<NotificationsRepository>(
+    () => NotificationsRepositoryImpl(getIt<NotificationsRemoteDatasource>()),
+  );
+  getIt.registerLazySingleton(
+      () => GetNotificationsUseCase(getIt<NotificationsRepository>()));
+  getIt.registerLazySingleton(
+      () => GetUnreadCountUseCase(getIt<NotificationsRepository>()));
+  getIt.registerLazySingleton(
+      () => MarkNotificationReadUseCase(getIt<NotificationsRepository>()));
+  getIt.registerLazySingleton(
+      () => MarkAllReadUseCase(getIt<NotificationsRepository>()));
 
   // ── Background Sync ──────────────────────────────────────────────────────────
   getIt.registerLazySingleton<BackgroundSyncService>(

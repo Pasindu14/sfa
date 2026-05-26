@@ -29,6 +29,7 @@ using sfa_api.Features.UserGeoAssignments.Entities;
 using sfa_api.Features.UserReportingLines.Entities;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Features.SalesTargets.Entities;
+using sfa_api.Features.Notifications.Entities;
 using RouteEntity = sfa_api.Features.Routes.Entities.Route;
 
 namespace sfa_api.Infrastructure.Persistence;
@@ -74,6 +75,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<NotBilling> NotBillings => Set<NotBilling>();
     public DbSet<SalesTarget> SalesTargets => Set<SalesTarget>();
     public DbSet<SalesTargetImportBatch> SalesTargetImportBatches => Set<SalesTargetImportBatch>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -1047,6 +1049,23 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .WithMany()
              .HasForeignKey(x => x.ImportBatchId)
              .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── Notification ──────────────────────────────────────────────────────
+        modelBuilder.Entity<Notification>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.Property(x => x.Title).IsRequired().HasMaxLength(255);
+            e.Property(x => x.Body).IsRequired().HasMaxLength(1000);
+            e.Property(x => x.Data).HasColumnType("text");
+            // Composite covering index for inbox query (WHERE UserId=? ORDER BY CreatedAt DESC) + unread count
+            e.HasIndex(x => new { x.UserId, x.IsRead, x.CreatedAt })
+             .IsDescending(false, false, true);
+            e.HasOne(x => x.User)
+             .WithMany()
+             .HasForeignKey(x => x.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);

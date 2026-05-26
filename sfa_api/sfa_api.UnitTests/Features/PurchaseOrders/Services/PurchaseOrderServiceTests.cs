@@ -13,6 +13,7 @@ using sfa_api.Features.UserGeoAssignments.Repositories;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Features.Users.Repositories;
 using sfa_api.Infrastructure.Locking;
+using sfa_api.Infrastructure.Notifications;
 using sfa_api.Infrastructure.Persistence;
 
 namespace sfa_api.UnitTests.Features.PurchaseOrders.Services;
@@ -24,6 +25,7 @@ public class PurchaseOrderServiceTests
     private readonly Mock<IUserGeoAssignmentRepository> _geoRepoMock;
     private readonly Mock<IDistributorRepository> _distributorRepoMock;
     private readonly Mock<IDistributedLockService> _lockMock;
+    private readonly Mock<INotificationService> _notificationMock;
     private readonly AppDbContext _dbContext;
     private readonly PurchaseOrderService _sut;
 
@@ -39,6 +41,8 @@ public class PurchaseOrderServiceTests
         _lockMock
             .Setup(l => l.AcquireAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Mock<IAsyncDisposable>().Object);
+
+        _notificationMock = new Mock<INotificationService>();
 
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseSqlite("DataSource=:memory:")
@@ -56,6 +60,7 @@ public class PurchaseOrderServiceTests
             _distributorRepoMock.Object,
             _dbContext,
             _lockMock.Object,
+            _notificationMock.Object,
             NullLogger<PurchaseOrderService>.Instance);
     }
 

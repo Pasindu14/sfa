@@ -122,6 +122,12 @@ import 'package:uswatte/features/purchase_orders/presentation/bloc/purchase_orde
 import 'package:uswatte/features/purchase_orders/presentation/pages/purchase_orders_list_page.dart';
 import 'package:uswatte/features/purchase_orders/presentation/pages/purchase_order_detail_page.dart';
 import 'package:uswatte/features/purchase_orders/presentation/pages/purchase_order_edit_page.dart';
+import 'package:uswatte/features/notifications/domain/usecases/get_notifications_usecase.dart';
+import 'package:uswatte/features/notifications/domain/usecases/get_unread_count_usecase.dart';
+import 'package:uswatte/features/notifications/domain/usecases/mark_notification_read_usecase.dart';
+import 'package:uswatte/features/notifications/domain/usecases/mark_all_read_usecase.dart';
+import 'package:uswatte/features/notifications/presentation/bloc/notifications_bloc.dart';
+import 'package:uswatte/features/notifications/presentation/pages/notifications_page.dart';
 
 class AppRouter {
   AppRouter._();
@@ -506,6 +512,19 @@ class AppRouter {
               builder: (_, __) => const DebugPage(),
             ),
             GoRoute(
+              path: 'notifications',
+              name: 'salesRepNotifications',
+              builder: (_, __) => BlocProvider(
+                create: (_) => NotificationsBloc(
+                  getNotifications: getIt<GetNotificationsUseCase>(),
+                  getUnreadCount: getIt<GetUnreadCountUseCase>(),
+                  markRead: getIt<MarkNotificationReadUseCase>(),
+                  markAllRead: getIt<MarkAllReadUseCase>(),
+                )..add(const LoadNotifications()),
+                child: const NotificationsPage(),
+              ),
+            ),
+            GoRoute(
               path: 'purchase-orders',
               name: 'purchaseOrders',
               builder: (_, __) => BlocProvider(
@@ -554,6 +573,19 @@ class AppRouter {
                 create: (_) => SupervisorSummaryCubit(
                     getIt<GetSupervisorSummaryUseCase>()),
                 child: const SupervisorHomePage(),
+              ),
+            ),
+            GoRoute(
+              path: 'notifications',
+              name: 'supervisorNotifications',
+              builder: (_, __) => BlocProvider(
+                create: (_) => NotificationsBloc(
+                  getNotifications: getIt<GetNotificationsUseCase>(),
+                  getUnreadCount: getIt<GetUnreadCountUseCase>(),
+                  markRead: getIt<MarkNotificationReadUseCase>(),
+                  markAllRead: getIt<MarkAllReadUseCase>(),
+                )..add(const LoadNotifications()),
+                child: const NotificationsPage(),
               ),
             ),
             GoRoute(

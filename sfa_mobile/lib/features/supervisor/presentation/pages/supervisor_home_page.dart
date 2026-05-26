@@ -156,6 +156,11 @@ class _TopBar extends StatelessWidget {
                 )),
             SizedBox(width: 12.w),
             _NavIconBtn(
+              icon: Icons.notifications_outlined,
+              onTap: () => context.push('/supervisor/notifications'),
+            ),
+            SizedBox(width: 6.w),
+            _NavIconBtn(
               icon: Icons.logout_rounded,
               onTap: () =>
                   context.read<AuthBloc>().add(const LogoutRequested()),

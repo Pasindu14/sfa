@@ -1,26 +1,41 @@
+using System.Text.Json;
 using FirebaseAdmin.Messaging;
+using sfa_api.Features.Notifications.Repositories;
 using sfa_api.Features.Users.Repositories;
+using FcmNotification = FirebaseAdmin.Messaging.Notification;
+using NotificationEntity = sfa_api.Features.Notifications.Entities.Notification;
 
 namespace sfa_api.Infrastructure.Notifications;
 
 public class FirebaseNotificationService(
     IUserRepository userRepository,
+    INotificationRepository notificationRepository,
     ILogger<FirebaseNotificationService> logger) : INotificationService
 {
     private readonly IUserRepository _userRepository = userRepository;
+    private readonly INotificationRepository _notificationRepository = notificationRepository;
     private readonly ILogger<FirebaseNotificationService> _logger = logger;
 
     public async Task SendToUserAsync(int userId, string title, string body, Dictionary<string, string>? data = null, CancellationToken ct = default)
     {
         try
         {
+            // Persist first — inbox is complete even if FCM fails
+            await _notificationRepository.CreateAsync(new NotificationEntity
+            {
+                UserId = userId,
+                Title = title,
+                Body = body,
+                Data = data is { Count: > 0 } ? JsonSerializer.Serialize(data) : null,
+            }, ct);
+
             var token = await _userRepository.GetFcmTokenByUserIdAsync(userId, ct);
-            if (string.IsNullOrWhiteSpace(token)) return;
-            await SendToTokenAsync(token, userId, title, body, data);
+            if (!string.IsNullOrWhiteSpace(token))
+                await SendToTokenAsync(token, userId, title, body, data);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "FCM notification failed for user {UserId}", userId);
+            _logger.LogWarning(ex, "Notification failed for user {UserId}", userId);
         }
     }
 
@@ -29,12 +44,17 @@ public class FirebaseNotificationService(
         try
         {
             var users = await _userRepository.GetFcmTokensByDistributorIdAsync(distributorId, ct);
+            var dataJson = data is { Count: > 0 } ? JsonSerializer.Serialize(data) : null;
+
+            await _notificationRepository.CreateManyAsync(
+                users.Select(u => new NotificationEntity { UserId = u.UserId, Title = title, Body = body, Data = dataJson }), ct);
+
             foreach (var (userId, token) in users)
                 await SendToTokenAsync(token, userId, title, body, data);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "FCM notification failed for distributor {DistributorId}", distributorId);
+            _logger.LogWarning(ex, "Notification failed for distributor {DistributorId}", distributorId);
         }
     }
 
@@ -43,12 +63,17 @@ public class FirebaseNotificationService(
         try
         {
             var users = await _userRepository.GetFcmTokensByDistributorSalesRepsAsync(distributorId, ct);
+            var dataJson = data is { Count: > 0 } ? JsonSerializer.Serialize(data) : null;
+
+            await _notificationRepository.CreateManyAsync(
+                users.Select(u => new NotificationEntity { UserId = u.UserId, Title = title, Body = body, Data = dataJson }), ct);
+
             foreach (var (userId, token) in users)
                 await SendToTokenAsync(token, userId, title, body, data);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "FCM notification failed for sales reps of distributor {DistributorId}", distributorId);
+            _logger.LogWarning(ex, "Notification failed for sales reps of distributor {DistributorId}", distributorId);
         }
     }
 
@@ -59,7 +84,7 @@ public class FirebaseNotificationService(
             var message = new Message
             {
                 Token = token,
-                Notification = new Notification { Title = title, Body = body },
+                Notification = new FcmNotification { Title = title, Body = body },
                 Data = data ?? [],
                 Android = new AndroidConfig { Priority = Priority.High },
                 Apns = new ApnsConfig

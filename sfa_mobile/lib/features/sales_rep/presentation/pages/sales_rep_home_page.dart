@@ -380,7 +380,10 @@ class _TopBar extends StatelessWidget {
                       color: AppColors.foregroundMuted,
                     )),
                 SizedBox(width: 12.w),
-                _NavIconBtn(icon: Icons.notifications_outlined, onTap: () {}),
+                _NavIconBtn(
+                  icon: Icons.notifications_outlined,
+                  onTap: () => context.push('/sales-rep/notifications'),
+                ),
                 SizedBox(width: 6.w),
                 _NavIconBtn(
                   icon: Icons.logout_rounded,
