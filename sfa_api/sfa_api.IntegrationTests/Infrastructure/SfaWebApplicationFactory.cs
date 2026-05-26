@@ -93,9 +93,18 @@ public class SfaWebApplicationFactory : WebApplicationFactory<Program>
             foreach (var d in descriptorsToRemove)
                 services.Remove(d);
 
-            // Add DbContext using the shared SQLite in-memory connection
-            services.AddDbContext<AppDbContext>(opt =>
-                opt.UseSqlite(_connection));
+            // Set up EF Core internal services for AppDbContext with SQLite (registers DbContextOptions<AppDbContext>).
+            services.AddDbContext<AppDbContext>(opt => opt.UseSqlite(_connection));
+
+            // Replace the AppDbContext service binding so the runtime resolves TestAppDbContext.
+            // TestAppDbContext.OnModelCreating patches SQLite incompatibilities: removes sequences
+            // and changes Area.RowVersion from a store-generated PostgreSQL xmin column to a
+            // plain INTEGER column so inserts do not fail with "NOT NULL constraint failed: Areas.xmin".
+            // TestAppDbContext accepts DbContextOptions<AppDbContext> (not DbContextOptions<TestAppDbContext>),
+            // so AddDbContext<TContext, TImpl> cannot be used — we swap the registration manually.
+            services.Remove(services.First(d => d.ServiceType == typeof(AppDbContext)));
+            services.AddScoped<AppDbContext>(sp =>
+                new TestAppDbContext(sp.GetRequiredService<DbContextOptions<AppDbContext>>()));
 
             // Remove background services that use PostgreSQL-specific features
             services.RemoveAll<IHostedService>();

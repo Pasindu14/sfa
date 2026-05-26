@@ -38,7 +38,9 @@ public class AreaRepository(AppDbContext context) : IAreaRepository
         if (!string.IsNullOrWhiteSpace(search))
         {
             var pattern = $"%{search}%";
-            query = query.Where(a => EF.Functions.ILike(a.Name, pattern));
+            query = _context.Database.ProviderName?.Contains("Npgsql") == true
+                ? query.Where(a => EF.Functions.ILike(a.Name, pattern))
+                : query.Where(a => EF.Functions.Like(a.Name, pattern));
         }
 
         var totalCount = await query.CountAsync(ct);
@@ -73,12 +75,22 @@ public class AreaRepository(AppDbContext context) : IAreaRepository
     }
 
     public async Task<bool> ExistsByNameAsync(string name, int regionId, CancellationToken ct = default)
-        => await _context.Areas.IgnoreQueryFilters()
-            .AnyAsync(a => EF.Functions.ILike(a.Name, name) && a.RegionId == regionId && !a.IsDeleted, ct);
+    {
+        var query = _context.Areas.IgnoreQueryFilters().Where(a => a.RegionId == regionId && !a.IsDeleted);
+        query = _context.Database.ProviderName?.Contains("Npgsql") == true
+            ? query.Where(a => EF.Functions.ILike(a.Name, name))
+            : query.Where(a => EF.Functions.Like(a.Name, name));
+        return await query.AnyAsync(ct);
+    }
 
     public async Task<bool> ExistsByNameAsync(string name, int regionId, int excludeId, CancellationToken ct = default)
-        => await _context.Areas.IgnoreQueryFilters()
-            .AnyAsync(a => EF.Functions.ILike(a.Name, name) && a.RegionId == regionId && a.Id != excludeId && !a.IsDeleted, ct);
+    {
+        var query = _context.Areas.IgnoreQueryFilters().Where(a => a.RegionId == regionId && a.Id != excludeId && !a.IsDeleted);
+        query = _context.Database.ProviderName?.Contains("Npgsql") == true
+            ? query.Where(a => EF.Functions.ILike(a.Name, name))
+            : query.Where(a => EF.Functions.Like(a.Name, name));
+        return await query.AnyAsync(ct);
+    }
 
     public async Task<bool> RegionExistsAsync(int regionId, CancellationToken ct = default)
         => await _context.Regions.IgnoreQueryFilters().AnyAsync(r => r.Id == regionId, ct);

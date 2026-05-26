@@ -14,7 +14,8 @@ public class User
     public UserRole Role { get; set; } = UserRole.SalesRep;
     public int? DistributorId { get; set; }
     public Distributor? Distributor { get; set; }
-    public string? DeviceId { get; set; }                    // Mobile device identifier
+    public string? DeviceId { get; set; }
+    public string? FcmToken { get; set; }
     public bool IsActive { get; set; } = true;
 
     // Audit fields

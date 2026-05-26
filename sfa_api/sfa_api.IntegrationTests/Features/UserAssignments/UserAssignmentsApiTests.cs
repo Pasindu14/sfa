@@ -43,6 +43,26 @@ public class UserAssignmentsApiTests
             .GetProperty("data").GetProperty("id").GetInt32();
     }
 
+    private async Task<int> CreateNsmAsync(string prefix = "NSM")
+    {
+        SetToken(AuthHelper.AdminToken);
+        var uid = Uid();
+        var payload = new
+        {
+            name = $"{prefix} {uid}",
+            username = $"{prefix.ToLower()}_{uid}",
+            email = $"{prefix.ToLower()}_{uid}@test.com",
+            phone = $"+94{Math.Abs(uid.GetHashCode() % 100000000):D8}",
+            password = "Password1!",
+            role = "NSM",
+            deviceId = $"device_{uid}"
+        };
+        var resp = await _client.PostAsJsonAsync("/api/v1/users", payload);
+        resp.StatusCode.Should().Be(HttpStatusCode.Created, $"seeding {prefix} NSM user must succeed");
+        return (await resp.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data").GetProperty("id").GetInt32();
+    }
+
     private async Task<int> CreateRegionAsync(string name)
     {
         SetToken(AuthHelper.AdminToken);
@@ -261,8 +281,8 @@ public class UserAssignmentsApiTests
     [Fact]
     public async Task Create_WithoutDivision_Returns201WithNullGeoFields()
     {
-        var userId = await CreateSalesRepAsync("AsgNoDivRep");
-        var managerId = await CreateSalesRepAsync("AsgNoDivMgr");
+        var userId = await CreateNsmAsync("AsgNoDivRep");
+        var managerId = await CreateNsmAsync("AsgNoDivMgr");
 
         SetToken(AuthHelper.AdminToken);
         var response = await _client.PostAsJsonAsync("/api/v1/user-assignments",
@@ -279,8 +299,8 @@ public class UserAssignmentsApiTests
     [Fact]
     public async Task GetById_AfterCreate_Returns200WithCorrectData()
     {
-        var userId = await CreateSalesRepAsync("AsgGetById");
-        var managerId = await CreateSalesRepAsync("AsgGetByIdMgr");
+        var userId = await CreateNsmAsync("AsgGetById");
+        var managerId = await CreateNsmAsync("AsgGetByIdMgr");
 
         SetToken(AuthHelper.AdminToken);
         var createResp = await _client.PostAsJsonAsync("/api/v1/user-assignments",
@@ -299,7 +319,7 @@ public class UserAssignmentsApiTests
     [Fact]
     public async Task Update_ValidPayload_Returns200WithUpdatedData()
     {
-        var userId = await CreateSalesRepAsync("AsgUpdate");
+        var userId = await CreateNsmAsync("AsgUpdate");
         var (regionId, areaId, territoryId, divisionId) = await SeedFullHierarchyAsync();
 
         SetToken(AuthHelper.AdminToken);
@@ -320,8 +340,8 @@ public class UserAssignmentsApiTests
     [Fact]
     public async Task Delete_ExistingAssignment_Returns204()
     {
-        var userId = await CreateSalesRepAsync("AsgDelete");
-        var managerId = await CreateSalesRepAsync("AsgDeleteMgr");
+        var userId = await CreateNsmAsync("AsgDelete");
+        var managerId = await CreateNsmAsync("AsgDeleteMgr");
 
         SetToken(AuthHelper.AdminToken);
         var createResp = await _client.PostAsJsonAsync("/api/v1/user-assignments",
@@ -337,8 +357,8 @@ public class UserAssignmentsApiTests
     [Fact]
     public async Task Delete_DeactivatesBothGeoAndRl()
     {
-        var userId = await CreateSalesRepAsync("AsgDelBoth");
-        var managerId = await CreateSalesRepAsync("AsgDelBothMgr");
+        var userId = await CreateNsmAsync("AsgDelBoth");
+        var managerId = await CreateNsmAsync("AsgDelBothMgr");
 
         SetToken(AuthHelper.AdminToken);
         var createResp = await _client.PostAsJsonAsync("/api/v1/user-assignments",
@@ -415,7 +435,7 @@ public class UserAssignmentsApiTests
     [Fact]
     public async Task Create_MinimalPayload_Returns201()
     {
-        var userId = await CreateSalesRepAsync("MinAsgRep");
+        var userId = await CreateNsmAsync("MinAsgRep");
         SetToken(AuthHelper.AdminToken);
 
         var response = await _client.PostAsJsonAsync("/api/v1/user-assignments",
@@ -446,9 +466,9 @@ public class UserAssignmentsApiTests
     [Fact]
     public async Task Create_SecondAssignmentForSameUser_DeactivatesPreviousGeoAssignment()
     {
-        var userId = await CreateSalesRepAsync("DupAsgRep");
-        var mgr1 = await CreateSalesRepAsync("DupAsgMgr1");
-        var mgr2 = await CreateSalesRepAsync("DupAsgMgr2");
+        var userId = await CreateNsmAsync("DupAsgRep");
+        var mgr1 = await CreateNsmAsync("DupAsgMgr1");
+        var mgr2 = await CreateNsmAsync("DupAsgMgr2");
 
         SetToken(AuthHelper.AdminToken);
 

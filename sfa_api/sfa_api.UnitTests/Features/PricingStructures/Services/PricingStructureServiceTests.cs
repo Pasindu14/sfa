@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using sfa_api.Common.Errors;
+using sfa_api.Features.PricingStructures.DTOs;
 using sfa_api.Features.PricingStructures.Entities;
 using sfa_api.Features.PricingStructures.Repositories;
 using sfa_api.Features.PricingStructures.Requests;
@@ -24,6 +25,10 @@ public class PricingStructureServiceTests
         _repoMock        = new Mock<IPricingStructureRepository>();
         _productRepoMock = new Mock<IProductRepository>();
         _cacheMock       = new Mock<ICacheService>();
+        // Moq 4.20+ returns non-null empty IEnumerable for unstubbed generic Task<IEnumerable<T>>.
+        // Explicitly return null so cache-miss path is exercised in tests that don't prime the cache.
+        _cacheMock.Setup(c => c.GetAsync<IEnumerable<PricingStructureItemDto>>(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                  .ReturnsAsync((IEnumerable<PricingStructureItemDto>?)null);
         _sut = new PricingStructureService(
             _repoMock.Object,
             _productRepoMock.Object,
@@ -440,12 +445,8 @@ public class PricingStructureServiceTests
         };
         _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(CreateFakeStructure());
-        var activeProducts = new[]
-        {
-            new Product { Id = 10, Code = "PROD-10", ItemDescription = "Product 10", IsActive = true }
-        };
-        _productRepoMock.Setup(r => r.GetAllAsync(0, int.MaxValue, null, It.IsAny<CancellationToken>()))
-                        .ReturnsAsync((activeProducts.AsEnumerable(), 1));
+        _productRepoMock.Setup(r => r.GetActiveProductIdsInSetAsync(It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()))
+                        .ReturnsAsync(new HashSet<int> { 10 });
         _repoMock.Setup(r => r.GetItemsAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync([CreateFakeItem(productId: 10)]);
 
@@ -484,9 +485,9 @@ public class PricingStructureServiceTests
         };
         _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(CreateFakeStructure());
-        // Return empty active products list — productId 999 won't be found
-        _productRepoMock.Setup(r => r.GetAllAsync(0, int.MaxValue, null, It.IsAny<CancellationToken>()))
-                        .ReturnsAsync((Enumerable.Empty<Product>(), 0));
+        // Return empty active product IDs — productId 999 won't be found
+        _productRepoMock.Setup(r => r.GetActiveProductIdsInSetAsync(It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()))
+                        .ReturnsAsync(new HashSet<int>());
 
         var act = () => _sut.BulkReplaceItemsAsync(1, request, callerId: 1);
 
@@ -506,12 +507,8 @@ public class PricingStructureServiceTests
         };
         _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(CreateFakeStructure());
-        var activeProducts = new[]
-        {
-            new Product { Id = 10, Code = "PROD-10", ItemDescription = "Product 10", IsActive = true }
-        };
-        _productRepoMock.Setup(r => r.GetAllAsync(0, int.MaxValue, null, It.IsAny<CancellationToken>()))
-                        .ReturnsAsync((activeProducts.AsEnumerable(), 1));
+        _productRepoMock.Setup(r => r.GetActiveProductIdsInSetAsync(It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()))
+                        .ReturnsAsync(new HashSet<int> { 10 });
 
         IEnumerable<PricingStructureItem>? capturedItems = null;
         _repoMock.Setup(r => r.BulkReplaceItemsAsync(1, It.IsAny<IEnumerable<PricingStructureItem>>(), It.IsAny<CancellationToken>()))

@@ -47,6 +47,9 @@ public static class AuthHelper
     /// <summary>SalesRep token for userId=200</summary>
     public static string SalesRepToken => GenerateToken(200, "SalesRep", "rep@sfa.com", "Test Rep");
 
-    /// <summary>Manager token for userId=300</summary>
+    /// <summary>Manager token for userId=300 — intentionally uses non-existent role to produce 403 in auth tests</summary>
     public static string ManagerToken => GenerateToken(300, "Manager", "manager@sfa.com", "Test Manager");
+
+    /// <summary>Supervisor token for userId=400 — used in PurchaseOrder workflow tests (approve, manager-edit)</summary>
+    public static string SupervisorToken => GenerateToken(400, "Supervisor", "supervisor@sfa.com", "Test Supervisor");
 }

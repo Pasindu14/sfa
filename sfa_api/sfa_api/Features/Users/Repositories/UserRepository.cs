@@ -94,4 +94,30 @@ public class UserRepository(AppDbContext context) : IUserRepository
 
     public async Task SaveChangesAsync(CancellationToken ct = default)
         => await _context.SaveChangesAsync(ct);
+
+    public async Task<string?> GetFcmTokenByUserIdAsync(int userId, CancellationToken ct = default)
+        => await _context.Users
+            .Where(u => u.Id == userId && !u.IsDeleted)
+            .Select(u => u.FcmToken)
+            .FirstOrDefaultAsync(ct);
+
+    public async Task<List<(int UserId, string Token)>> GetFcmTokensByDistributorIdAsync(int distributorId, CancellationToken ct = default)
+    {
+        var rows = await _context.Users
+            .Where(u => u.DistributorId == distributorId && !u.IsDeleted && u.FcmToken != null)
+            .Select(u => new { u.Id, Token = u.FcmToken! })
+            .AsNoTracking()
+            .ToListAsync(ct);
+        return rows.Select(r => (r.Id, r.Token)).ToList();
+    }
+
+    public async Task UpdateFcmTokenAsync(int userId, string? token, CancellationToken ct = default)
+        => await _context.Users
+            .Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(u => u.FcmToken, token)
+                .SetProperty(u => u.UpdatedAt, DateTime.UtcNow), ct);
+
+    public Task ClearFcmTokenAsync(int userId, CancellationToken ct = default)
+        => UpdateFcmTokenAsync(userId, null, ct);
 }

@@ -190,7 +190,7 @@ public class PurchaseOrdersApiTests
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
         body.GetProperty("success").GetBoolean().Should().BeTrue();
-        body.GetProperty("data").GetProperty("status").GetInt32().Should().Be(0); // Draft = 0
+        body.GetProperty("data").GetProperty("status").GetString().Should().Be("Draft"); // Draft = 0
         body.GetProperty("data").GetProperty("distributorId").GetInt32().Should().Be(distributorId);
     }
 
@@ -273,7 +273,7 @@ public class PurchaseOrdersApiTests
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
         body.GetProperty("success").GetBoolean().Should().BeTrue();
-        body.GetProperty("data").GetProperty("status").GetInt32().Should().Be(1); // PendingRepApproval = 1
+        body.GetProperty("data").GetProperty("status").GetString().Should().Be("PendingRepApproval"); // PendingRepApproval = 1
     }
 
     [Fact]
@@ -318,7 +318,7 @@ public class PurchaseOrdersApiTests
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
         body.GetProperty("success").GetBoolean().Should().BeTrue();
-        body.GetProperty("data").GetProperty("status").GetInt32().Should().Be(2); // PendingManagerApproval = 2
+        body.GetProperty("data").GetProperty("status").GetString().Should().Be("PendingManagerApproval"); // PendingManagerApproval = 2
     }
 
     [Fact]
@@ -332,7 +332,7 @@ public class PurchaseOrdersApiTests
         SetToken(AuthHelper.SalesRepToken);
         await _client.PostAsync($"{BaseUrl}/{orderId}/rep-approve", null);
         // Manager edits
-        SetToken(AuthHelper.ManagerToken);
+        SetToken(AuthHelper.SupervisorToken);
         var updatePayload = new
         {
             notes = "Manager edited notes",
@@ -360,14 +360,14 @@ public class PurchaseOrdersApiTests
         SetToken(AuthHelper.SalesRepToken);
         await _client.PostAsync($"{BaseUrl}/{orderId}/rep-approve", null);
         // Manager approves
-        SetToken(AuthHelper.ManagerToken);
+        SetToken(AuthHelper.SupervisorToken);
 
         var response = await _client.PostAsync($"{BaseUrl}/{orderId}/approve", null);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
         body.GetProperty("success").GetBoolean().Should().BeTrue();
-        body.GetProperty("data").GetProperty("status").GetInt32().Should().Be(3); // PendingDistributorFinalization = 3
+        body.GetProperty("data").GetProperty("status").GetString().Should().Be("PendingDistributorFinalization"); // PendingDistributorFinalization = 3
     }
 
     [Fact]
@@ -380,7 +380,7 @@ public class PurchaseOrdersApiTests
         await _client.PostAsync($"{BaseUrl}/{orderId}/submit", null);
         SetToken(AuthHelper.SalesRepToken);
         await _client.PostAsync($"{BaseUrl}/{orderId}/rep-approve", null);
-        SetToken(AuthHelper.ManagerToken);
+        SetToken(AuthHelper.SupervisorToken);
         await _client.PostAsync($"{BaseUrl}/{orderId}/approve", null);
         // Admin finalizes (Admin can finalize, same as Distributor role)
         SetToken(AuthHelper.AdminToken);
@@ -390,7 +390,7 @@ public class PurchaseOrdersApiTests
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
         body.GetProperty("success").GetBoolean().Should().BeTrue();
-        body.GetProperty("data").GetProperty("status").GetInt32().Should().Be(4); // Finalized = 4
+        body.GetProperty("data").GetProperty("status").GetString().Should().Be("Finalized"); // Finalized = 4
     }
 
     [Fact]
@@ -403,7 +403,7 @@ public class PurchaseOrdersApiTests
         await _client.PostAsync($"{BaseUrl}/{orderId}/submit", null);
         SetToken(AuthHelper.SalesRepToken);
         await _client.PostAsync($"{BaseUrl}/{orderId}/rep-approve", null);
-        SetToken(AuthHelper.ManagerToken);
+        SetToken(AuthHelper.SupervisorToken);
         await _client.PostAsync($"{BaseUrl}/{orderId}/approve", null);
         SetToken(AuthHelper.AdminToken);
         await _client.PostAsync($"{BaseUrl}/{orderId}/finalize", null);
@@ -444,7 +444,7 @@ public class PurchaseOrdersApiTests
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
         body.GetProperty("success").GetBoolean().Should().BeTrue();
-        body.GetProperty("data").GetProperty("status").GetInt32().Should().Be(6); // PendingDistributorAcknowledgement = 6
+        body.GetProperty("data").GetProperty("status").GetString().Should().Be("PendingDistributorAcknowledgement"); // PendingDistributorAcknowledgement = 6
     }
 
     [Fact]
@@ -465,7 +465,7 @@ public class PurchaseOrdersApiTests
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
         body.GetProperty("success").GetBoolean().Should().BeTrue();
-        body.GetProperty("data").GetProperty("status").GetInt32().Should().Be(5); // Cancelled = 5
+        body.GetProperty("data").GetProperty("status").GetString().Should().Be("Cancelled"); // Cancelled = 5
         body.GetProperty("data").GetProperty("acknowledgedBy").ValueKind.Should().NotBe(JsonValueKind.Null);
     }
 
@@ -505,7 +505,7 @@ public class PurchaseOrdersApiTests
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
         body.GetProperty("success").GetBoolean().Should().BeTrue();
-        body.GetProperty("data").GetProperty("status").GetInt32().Should().Be(5); // Cancelled = 5
+        body.GetProperty("data").GetProperty("status").GetString().Should().Be("Cancelled"); // Cancelled = 5
     }
 
     // ─────────────────────────────────────────────────
@@ -531,7 +531,7 @@ public class PurchaseOrdersApiTests
         var orders = body.GetProperty("data").GetProperty("purchaseOrders");
         orders.ValueKind.Should().Be(JsonValueKind.Array);
         foreach (var order in orders.EnumerateArray())
-            order.GetProperty("status").GetInt32().Should().Be(1);
+            order.GetProperty("status").GetString().Should().Be("PendingRepApproval");
     }
 
     [Fact]
@@ -575,7 +575,7 @@ public class PurchaseOrdersApiTests
         body.GetProperty("success").GetBoolean().Should().BeTrue();
         // The DTO does not expose History in the SalesOrderDto record — only audit fields are exposed.
         // Assert that order data is correct and includes the submitted state.
-        body.GetProperty("data").GetProperty("status").GetInt32().Should().Be(1); // PendingRepApproval
+        body.GetProperty("data").GetProperty("status").GetString().Should().Be("PendingRepApproval"); // PendingRepApproval
         body.GetProperty("data").GetProperty("submittedBy").ValueKind.Should().NotBe(JsonValueKind.Null);
     }
 }

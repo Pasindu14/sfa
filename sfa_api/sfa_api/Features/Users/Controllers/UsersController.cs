@@ -173,4 +173,31 @@ public class UsersController(
         await _userService.ActivateUserAsync(id, callerId, ct);
         return NoContent();
     }
+
+    /// <summary>
+    /// PATCH /api/v1/users/me/fcm-token
+    /// Any authenticated user — registers or updates their FCM push notification token (last-write-wins).
+    /// Call this after login and on token refresh.
+    /// </summary>
+    [HttpPatch("me/fcm-token")]
+    [Authorize]
+    public async Task<IActionResult> UpdateFcmToken([FromBody] UpdateFcmTokenRequest request, CancellationToken ct)
+    {
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId);
+        await _userService.UpdateFcmTokenAsync(userId, request.FcmToken, ct);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// DELETE /api/v1/users/me/fcm-token
+    /// Any authenticated user — clears the FCM token on logout so no stale notifications are sent.
+    /// </summary>
+    [HttpDelete("me/fcm-token")]
+    [Authorize]
+    public async Task<IActionResult> ClearFcmToken(CancellationToken ct)
+    {
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId);
+        await _userService.ClearFcmTokenAsync(userId, ct);
+        return NoContent();
+    }
 }

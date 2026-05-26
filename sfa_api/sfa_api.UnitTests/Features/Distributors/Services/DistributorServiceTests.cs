@@ -29,6 +29,9 @@ public class DistributorServiceTests
         _fleetRepoMock     = new Mock<IFleetRepository>();
         _cacheMock         = new Mock<ICacheService>();
         _lockServiceMock   = new Mock<IDistributedLockService>();
+        _lockServiceMock
+            .Setup(l => l.AcquireAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Mock<IAsyncDisposable>().Object);
         _sut = new DistributorService(
             _repoMock.Object,
             _territoryRepoMock.Object,

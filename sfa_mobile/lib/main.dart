@@ -19,6 +19,8 @@ import 'package:uswatte/features/auth/domain/usecases/login_usecase.dart';
 import 'package:uswatte/features/auth/domain/usecases/logout_usecase.dart';
 import 'package:uswatte/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:uswatte/core/notifications/fcm_service.dart';
 import 'package:uswatte/firebase_options.dart';
 import 'package:workmanager/workmanager.dart';
 
@@ -63,6 +65,7 @@ void main() async {
     logoutUseCase: getIt<LogoutUseCase>(),
     getCurrentAuthUseCase: getIt<GetCurrentAuthUseCase>(),
     deviceIdService: getIt<DeviceIdService>(),
+    fcmService: getIt<FcmService>(),
   )..add(const AppStarted());
 
   runApp(SfaApp(authBloc: authBloc));
@@ -80,6 +83,8 @@ class SfaApp extends StatefulWidget {
 class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
   StreamSubscription<void>? _sessionExpiredSub;
   StreamSubscription<void>? _connectivityStockSub;
+  StreamSubscription<RemoteMessage>? _fcmForegroundSub;
+  StreamSubscription<RemoteMessage>? _fcmTapSub;
   // Built once. Recreating GoRouter on every build (e.g. inside MaterialApp.router)
   // tears down its listenables mid-frame and produces "markNeedsBuild during build"
   // errors during route transitions.
@@ -99,12 +104,67 @@ class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
         .listen((_) => unawaited(
               getIt<SyncDistributorStockUseCase>()().catchError((_) {}),
             ));
+    _setupNotificationHandlers();
+  }
+
+  void _setupNotificationHandlers() {
+    // App was fully terminated and opened by tapping a notification
+    FirebaseMessaging.instance.getInitialMessage().then((message) {
+      if (message != null) _navigateFromNotification(message.data);
+    });
+
+    // App was in background and notification was tapped
+    _fcmTapSub = FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      _navigateFromNotification(message.data);
+    });
+
+    // App is in foreground — show an in-app banner
+    _fcmForegroundSub = FirebaseMessaging.onMessage.listen((message) {
+      if (!mounted) return;
+      final notification = message.notification;
+      if (notification == null) return;
+      final ctx = _router.routerDelegate.navigatorKey.currentContext;
+      if (ctx == null) return;
+      // ignore: use_build_context_synchronously
+      ScaffoldMessenger.maybeOf(ctx)?.showSnackBar(
+        SnackBar(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                notification.title ?? '',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              if (notification.body != null) Text(notification.body!),
+            ],
+          ),
+          duration: const Duration(seconds: 5),
+          action: SnackBarAction(
+            label: 'View',
+            onPressed: () => _navigateFromNotification(message.data),
+          ),
+        ),
+      );
+    });
+  }
+
+  void _navigateFromNotification(Map<String, dynamic> data) {
+    final type = data['type'] as String?;
+    if (type == null) return;
+    // Navigate to bills list so the rep can see the updated status.
+    // The router guards will ensure the user is authenticated before proceeding.
+    if (type == 'BILL_APPROVED' || type == 'BILL_REJECTED') {
+      _router.goNamed('bills');
+    }
   }
 
   @override
   void dispose() {
     _sessionExpiredSub?.cancel();
     _connectivityStockSub?.cancel();
+    _fcmForegroundSub?.cancel();
+    _fcmTapSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

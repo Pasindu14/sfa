@@ -5,9 +5,11 @@ using Moq;
 using sfa_api.Common.Errors;
 using sfa_api.Features.PurchaseOrders.Entities;
 using sfa_api.Features.PurchaseOrders.Enums;
+using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.PurchaseOrders.Repositories;
 using sfa_api.Features.PurchaseOrders.Requests;
 using sfa_api.Features.PurchaseOrders.Services;
+using sfa_api.Features.UserGeoAssignments.Repositories;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Features.Users.Repositories;
 using sfa_api.Infrastructure.Locking;
@@ -19,6 +21,8 @@ public class PurchaseOrderServiceTests
 {
     private readonly Mock<IPurchaseOrderRepository> _repoMock;
     private readonly Mock<IUserRepository> _userRepoMock;
+    private readonly Mock<IUserGeoAssignmentRepository> _geoRepoMock;
+    private readonly Mock<IDistributorRepository> _distributorRepoMock;
     private readonly Mock<IDistributedLockService> _lockMock;
     private readonly AppDbContext _dbContext;
     private readonly PurchaseOrderService _sut;
@@ -27,6 +31,8 @@ public class PurchaseOrderServiceTests
     {
         _repoMock = new Mock<IPurchaseOrderRepository>();
         _userRepoMock = new Mock<IUserRepository>();
+        _geoRepoMock = new Mock<IUserGeoAssignmentRepository>();
+        _distributorRepoMock = new Mock<IDistributorRepository>();
 
         // Always grant the lock — unit tests don't test locking behaviour
         _lockMock = new Mock<IDistributedLockService>();
@@ -46,6 +52,8 @@ public class PurchaseOrderServiceTests
         _sut = new PurchaseOrderService(
             _repoMock.Object,
             _userRepoMock.Object,
+            _geoRepoMock.Object,
+            _distributorRepoMock.Object,
             _dbContext,
             _lockMock.Object,
             NullLogger<PurchaseOrderService>.Instance);

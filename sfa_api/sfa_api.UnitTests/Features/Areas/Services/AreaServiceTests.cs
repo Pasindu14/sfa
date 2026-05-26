@@ -251,7 +251,7 @@ public class AreaServiceTests
                  .Callback<Area, CancellationToken>((a, _) => captured = a)
                  .Returns(Task.CompletedTask);
 
-        await _sut.CreateAsync(request, callerId: 0);
+        await _sut.CreateAsync(request, callerId: null);
 
         captured!.CreatedBy.Should().BeNull();
         captured.UpdatedBy.Should().BeNull();

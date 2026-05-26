@@ -24,10 +24,10 @@ public sealed class TestPurchaseOrderRepository(IPurchaseOrderRepository inner) 
 
     public Task<(IEnumerable<PurchaseOrder> PurchaseOrders, int TotalCount)> GetAllAsync(
         int skip, int take, string? search = null,
-        PurchaseOrderStatus? status = null, int? distributorId = null,
+        PurchaseOrderStatus? status = null, IEnumerable<int>? distributorIds = null,
         DateOnly? fromDate = null, DateOnly? toDate = null,
         CancellationToken ct = default)
-        => inner.GetAllAsync(skip, take, search, status, distributorId, fromDate, toDate, ct);
+        => inner.GetAllAsync(skip, take, search, status, distributorIds, fromDate, toDate, ct);
 
     public Task CreateAsync(PurchaseOrder order, CancellationToken ct = default)
         => inner.CreateAsync(order, ct);

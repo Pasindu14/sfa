@@ -23,8 +23,8 @@ public sealed class TestGrnRepository(IGrnRepository inner) : IGrnRepository
         => inner.GetSalesInvoiceWithItemsAsync(salesInvoiceId, ct);
 
     public Task<(List<GRN> Items, int TotalCount)> GetListAsync(
-        int page, int pageSize, string? status, int? distributorId, DateOnly? dateFrom = null, DateOnly? dateTo = null, CancellationToken ct = default)
-        => inner.GetListAsync(page, pageSize, status, distributorId, dateFrom, dateTo, ct);
+        int page, int pageSize, string? status, int? distributorId, DateOnly? dateFrom = null, DateOnly? dateTo = null, string? search = null, CancellationToken ct = default)
+        => inner.GetListAsync(page, pageSize, status, distributorId, dateFrom, dateTo, search, ct);
 
     public Task<GRN?> GetGrnWithItemsAsync(int grnId, CancellationToken ct = default)
         => inner.GetGrnWithItemsAsync(grnId, ct);

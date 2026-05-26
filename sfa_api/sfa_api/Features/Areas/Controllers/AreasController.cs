@@ -21,11 +21,8 @@ public class AreasController(
     private readonly IValidator<CreateAreaRequest> _createValidator = createValidator;
     private readonly IValidator<UpdateAreaRequest> _updateValidator = updateValidator;
 
-    private int GetCallerId()
-    {
-        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
-        return callerId;
-    }
+    private int? GetCallerId()
+        => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) && id > 0 ? id : null;
 
     /// <summary>
     /// GET /api/v1/areas/{id}

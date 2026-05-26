@@ -134,6 +134,7 @@ import 'package:uswatte/features/purchase_orders/domain/usecases/manager_approve
 import 'package:uswatte/features/purchase_orders/domain/usecases/reject_purchase_order_usecase.dart';
 import 'package:uswatte/features/purchase_orders/domain/usecases/update_purchase_order_usecase.dart';
 import 'package:uswatte/features/purchase_orders/domain/usecases/get_products_for_distributor_usecase.dart';
+import 'package:uswatte/core/notifications/fcm_service.dart';
 
 final getIt = GetIt.instance;
 
@@ -156,6 +157,7 @@ Future<void> configureDependencies() async {
         getIt<DeviceIdService>(),
         getIt<SessionExpiredNotifier>(),
       ));
+  getIt.registerLazySingleton(() => FcmService(getIt<Dio>()));
 
   // ── Auth datasources ─────────────────────────────────────────────────────────
   getIt.registerLazySingleton(

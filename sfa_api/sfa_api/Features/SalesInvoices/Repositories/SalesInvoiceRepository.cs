@@ -70,9 +70,13 @@ public class SalesInvoiceRepository(AppDbContext context) : ISalesInvoiceReposit
         if (!string.IsNullOrWhiteSpace(search))
         {
             var pattern = $"%{search}%";
-            query = query.Where(x => EF.Functions.ILike(x.VchBillNo, pattern) ||
-                                     EF.Functions.ILike(x.Distributor.Name, pattern) ||
-                                     (x.SfaPoNumber != null && EF.Functions.ILike(x.SfaPoNumber, pattern)));
+            query = _context.Database.ProviderName?.Contains("Npgsql") == true
+                ? query.Where(x => EF.Functions.ILike(x.VchBillNo, pattern) ||
+                                   EF.Functions.ILike(x.Distributor.Name, pattern) ||
+                                   (x.SfaPoNumber != null && EF.Functions.ILike(x.SfaPoNumber, pattern)))
+                : query.Where(x => EF.Functions.Like(x.VchBillNo, pattern) ||
+                                   EF.Functions.Like(x.Distributor.Name, pattern) ||
+                                   (x.SfaPoNumber != null && EF.Functions.Like(x.SfaPoNumber, pattern)));
         }
 
         if (!string.IsNullOrWhiteSpace(status) &&

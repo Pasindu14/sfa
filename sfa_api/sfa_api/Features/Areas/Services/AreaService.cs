@@ -58,7 +58,7 @@ public class AreaService(
         return result;
     }
 
-    public async Task<AreaDto> CreateAsync(CreateAreaRequest request, int callerId, CancellationToken ct = default)
+    public async Task<AreaDto> CreateAsync(CreateAreaRequest request, int? callerId, CancellationToken ct = default)
     {
         if (!await _repo.RegionExistsAsync(request.RegionId, ct))
             throw new NotFoundException("Region", request.RegionId);
@@ -72,8 +72,9 @@ public class AreaService(
             RegionId = request.RegionId,
             IsActive = true,
             CreatedBy = callerId,
-            UpdatedBy = callerId
-            // CreatedAt/UpdatedAt are set automatically by AuditInterceptor
+            UpdatedBy = callerId,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
 
         await _repo.CreateAsync(area, ct);
@@ -91,7 +92,7 @@ public class AreaService(
         return MapToDto(created);
     }
 
-    public async Task<AreaDto> UpdateAsync(int id, UpdateAreaRequest request, int callerId, CancellationToken ct = default)
+    public async Task<AreaDto> UpdateAsync(int id, UpdateAreaRequest request, int? callerId, CancellationToken ct = default)
     {
         // Use tracked fetch for mutation path
         var area = await _repo.GetByIdTrackedAsync(id, ct)
@@ -109,7 +110,7 @@ public class AreaService(
         area.Name = request.Name;
         area.RegionId = request.RegionId;
         area.UpdatedBy = callerId;
-        // UpdatedAt is set automatically by AuditInterceptor
+        area.UpdatedAt = DateTime.UtcNow;
 
         await _repo.UpdateAsync(area);
         await _repo.SaveChangesAsync(ct);
@@ -126,7 +127,7 @@ public class AreaService(
         return MapToDto(updated);
     }
 
-    public async Task ActivateAsync(int id, int callerId, CancellationToken ct = default)
+    public async Task ActivateAsync(int id, int? callerId, CancellationToken ct = default)
     {
         var area = await _repo.GetByIdTrackedAsync(id, ct)
             ?? throw new NotFoundException("Area", id);
@@ -134,6 +135,7 @@ public class AreaService(
         var wasActive = area.IsActive;
         area.IsActive = true;
         area.UpdatedBy = callerId;
+        area.UpdatedAt = DateTime.UtcNow;
 
         await _repo.UpdateAsync(area);
         await _repo.SaveChangesAsync(ct);
@@ -145,7 +147,7 @@ public class AreaService(
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
     }
 
-    public async Task DeactivateAsync(int id, int callerId, CancellationToken ct = default)
+    public async Task DeactivateAsync(int id, int? callerId, CancellationToken ct = default)
     {
         var area = await _repo.GetByIdTrackedAsync(id, ct)
             ?? throw new NotFoundException("Area", id);
@@ -153,6 +155,7 @@ public class AreaService(
         var wasActive = area.IsActive;
         area.IsActive = false;
         area.UpdatedBy = callerId;
+        area.UpdatedAt = DateTime.UtcNow;
 
         await _repo.UpdateAsync(area);
         await _repo.SaveChangesAsync(ct);
@@ -164,7 +167,7 @@ public class AreaService(
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
     }
 
-    public async Task DeleteAsync(int id, int callerId, CancellationToken ct = default)
+    public async Task DeleteAsync(int id, int? callerId, CancellationToken ct = default)
     {
         var area = await _repo.GetByIdTrackedAsync(id, ct)
             ?? throw new NotFoundException("Area", id);
@@ -172,6 +175,7 @@ public class AreaService(
         area.IsActive = false;
         area.IsDeleted = true;
         area.UpdatedBy = callerId;
+        area.UpdatedAt = DateTime.UtcNow;
 
         await _repo.UpdateAsync(area);
         await _repo.SaveChangesAsync(ct);

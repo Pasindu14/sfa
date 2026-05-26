@@ -202,6 +202,12 @@ public class UserService(
         _logger.LogInformation("User {UserId} activated", userId);
     }
 
+    public Task UpdateFcmTokenAsync(int userId, string token, CancellationToken ct = default)
+        => _repo.UpdateFcmTokenAsync(userId, token, ct);
+
+    public Task ClearFcmTokenAsync(int userId, CancellationToken ct = default)
+        => _repo.ClearFcmTokenAsync(userId, ct);
+
     private static UserDto MapToDto(User user) => new(
         Id: user.Id,
         Name: user.Name,

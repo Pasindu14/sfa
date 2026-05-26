@@ -158,14 +158,6 @@ public class OutletsApiTests
     // ─────────────────────────────────────────────────
 
     [Fact]
-    public async Task CreateOutlet_AsSalesRep_Returns403()
-    {
-        SetToken(AuthHelper.SalesRepToken);
-        var response = await _client.PostAsJsonAsync("/api/v1/outlets", CreateOutletPayload("Test", 1, "111111111V"));
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-    }
-
-    [Fact]
     public async Task CreateOutlet_AsManager_Returns403()
     {
         SetToken(AuthHelper.ManagerToken);

@@ -14,6 +14,7 @@ using sfa_api.Features.UserReportingLines.Repositories;
 using sfa_api.Features.Users.Repositories;
 using sfa_api.Infrastructure.Caching;
 using sfa_api.Infrastructure.Locking;
+using sfa_api.Infrastructure.Notifications;
 using sfa_api.Infrastructure.Persistence;
 
 namespace sfa_api.Features.Billings.Services;
@@ -28,6 +29,7 @@ public class BillingService(
     IDistributedLockService lockService,
     ICacheService cache,
     IUserRepository userRepository,
+    INotificationService notificationService,
     AppDbContext db) : IBillingService
 {
     private readonly IBillingRepository _billingRepository = billingRepository;
@@ -39,6 +41,7 @@ public class BillingService(
     private readonly IDistributedLockService _lockService = lockService;
     private readonly ICacheService _cache = cache;
     private readonly IUserRepository _userRepository = userRepository;
+    private readonly INotificationService _notificationService = notificationService;
     private readonly AppDbContext _db = db;
 
     private static readonly TimeSpan SalesCacheTtl = TimeSpan.FromMinutes(5);
@@ -322,6 +325,18 @@ public class BillingService(
         var created = await _billingRepository.GetByIdAsync(billing.Id, ct)
             ?? throw new DatabaseUnavailableException();
 
+        // Notify distributor users — fire-and-forget, failure never fails the billing
+        await _notificationService.SendToDistributorUsersAsync(
+            billing.DistributorId,
+            "New Bill Pending Approval",
+            $"Bill {created.BillingNumber} from {created.SalesRep?.Name ?? "Sales Rep"} needs your approval.",
+            new Dictionary<string, string>
+            {
+                ["type"] = "BILL_PENDING",
+                ["billingId"] = billing.Id.ToString(),
+                ["billingNumber"] = billing.BillingNumber
+            }, ct);
+
         return ProjectToDto(created);
     }
 
@@ -511,6 +526,18 @@ public class BillingService(
 
         var result = await _billingRepository.GetByIdAsync(billingId, ct)
             ?? throw new DatabaseUnavailableException();
+
+        await _notificationService.SendToUserAsync(
+            billing.SalesRepId,
+            "Bill Approved",
+            $"Bill {result.BillingNumber} has been approved by the distributor.",
+            new Dictionary<string, string>
+            {
+                ["type"] = "BILL_APPROVED",
+                ["billingId"] = billing.Id.ToString(),
+                ["billingNumber"] = result.BillingNumber
+            }, ct);
+
         return ProjectToDto(result);
     }
 
@@ -543,6 +570,22 @@ public class BillingService(
 
         var result = await _billingRepository.GetByIdAsync(billingId, ct)
             ?? throw new DatabaseUnavailableException();
+
+        var rejectionMessage = string.IsNullOrWhiteSpace(reason)
+            ? $"Bill {result.BillingNumber} has been rejected by the distributor."
+            : $"Bill {result.BillingNumber} rejected: {reason}";
+
+        await _notificationService.SendToUserAsync(
+            billing.SalesRepId,
+            "Bill Rejected",
+            rejectionMessage,
+            new Dictionary<string, string>
+            {
+                ["type"] = "BILL_REJECTED",
+                ["billingId"] = billing.Id.ToString(),
+                ["billingNumber"] = result.BillingNumber
+            }, ct);
+
         return ProjectToDto(result);
     }
 

@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uswatte/core/device/device_id_service.dart';
 import 'package:uswatte/core/errors/app_exception.dart';
+import 'package:uswatte/core/notifications/fcm_service.dart';
 import 'package:uswatte/features/auth/domain/entities/user_role.dart';
 import 'package:uswatte/features/auth/domain/usecases/get_current_auth_usecase.dart';
 import 'package:uswatte/features/auth/domain/usecases/login_usecase.dart';
@@ -16,16 +19,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LogoutUseCase _logoutUseCase;
   final GetCurrentAuthUseCase _getCurrentAuthUseCase;
   final DeviceIdService _deviceIdService;
+  final FcmService _fcmService;
 
   AuthBloc({
     required LoginUseCase loginUseCase,
     required LogoutUseCase logoutUseCase,
     required GetCurrentAuthUseCase getCurrentAuthUseCase,
     required DeviceIdService deviceIdService,
+    required FcmService fcmService,
   })  : _loginUseCase = loginUseCase,
         _logoutUseCase = logoutUseCase,
         _getCurrentAuthUseCase = getCurrentAuthUseCase,
         _deviceIdService = deviceIdService,
+        _fcmService = fcmService,
         super(const AuthInitial()) {
     on<AppStarted>(_onAppStarted);
     on<LoginSubmitted>(_onLoginSubmitted);
@@ -65,6 +71,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         deviceId: deviceId,
       );
       emit(AuthAuthenticated(role: token.role, name: token.name));
+      // Fire-and-forget — FCM failure never blocks login
+      unawaited(_fcmService.registerToken());
     } on AppException catch (e) {
       emit(AuthFailure(e.message));
     } catch (e, stack) {
@@ -80,6 +88,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     try {
+      // Clear FCM token first while auth token is still valid
+      await _fcmService.clearToken();
       await _logoutUseCase();
     } catch (_) {
       // Swallow — navigating to login is the priority

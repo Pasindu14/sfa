@@ -62,10 +62,15 @@ public class SalesTargetRepository(AppDbContext context) : ISalesTargetRepositor
         if (!string.IsNullOrWhiteSpace(search))
         {
             var pattern = $"%{search}%";
-            query = query.Where(t =>
-                EF.Functions.ILike(t.SalesRep!.Name, pattern) ||
-                EF.Functions.ILike(t.Product!.Code, pattern) ||
-                EF.Functions.ILike(t.Product.ItemDescription, pattern));
+            query = _context.Database.ProviderName?.Contains("Npgsql") == true
+                ? query.Where(t =>
+                    EF.Functions.ILike(t.SalesRep!.Name, pattern) ||
+                    EF.Functions.ILike(t.Product!.Code, pattern) ||
+                    EF.Functions.ILike(t.Product.ItemDescription, pattern))
+                : query.Where(t =>
+                    EF.Functions.Like(t.SalesRep!.Name, pattern) ||
+                    EF.Functions.Like(t.Product!.Code, pattern) ||
+                    EF.Functions.Like(t.Product.ItemDescription, pattern));
         }
 
         var total = await query.CountAsync(ct);

@@ -557,8 +557,9 @@ public class AreasApiTests
         var createResponse = await _client.PostAsJsonAsync("/api/v1/areas", CreateAreaPayload("Before Update Area", regionId));
         var createBody = await createResponse.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
         var id = createBody.GetProperty("data").GetProperty("id").GetInt32();
+        var rowVersion = createBody.GetProperty("data").GetProperty("rowVersion").GetUInt32();
 
-        var updatePayload = new { name = "After Update Area", regionId };
+        var updatePayload = new { name = "After Update Area", regionId, rowVersion };
         var updateResponse = await _client.PutAsJsonAsync($"/api/v1/areas/{id}", updatePayload);
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -573,7 +574,7 @@ public class AreasApiTests
     {
         var regionId = await CreateRegionAsync("Region For Update NonExistent Area Test");
 
-        var response = await _client.PutAsJsonAsync("/api/v1/areas/99999", new { name = "Ghost Area", regionId });
+        var response = await _client.PutAsJsonAsync("/api/v1/areas/99999", new { name = "Ghost Area", regionId, rowVersion = 1u });
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -603,11 +604,12 @@ public class AreasApiTests
 
         await _client.PostAsJsonAsync("/api/v1/areas", CreateAreaPayload("Conflict Area A", regionId));
         var secondResp = await _client.PostAsJsonAsync("/api/v1/areas", CreateAreaPayload("Conflict Area B", regionId));
-        var secondId = (await secondResp.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
-            .GetProperty("data").GetProperty("id").GetInt32();
+        var secondData = (await secondResp.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts)).GetProperty("data");
+        var secondId = secondData.GetProperty("id").GetInt32();
+        var secondRowVersion = secondData.GetProperty("rowVersion").GetUInt32();
 
         // Try to rename second area to the first area's name in the same region
-        var updatePayload = new { name = "Conflict Area A", regionId };
+        var updatePayload = new { name = "Conflict Area A", regionId, rowVersion = secondRowVersion };
         var response = await _client.PutAsJsonAsync($"/api/v1/areas/{secondId}", updatePayload);
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
@@ -625,8 +627,9 @@ public class AreasApiTests
         var createResponse = await _client.PostAsJsonAsync("/api/v1/areas", CreateAreaPayload("Idempotent Area", regionId));
         var createBody = await createResponse.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
         var id = createBody.GetProperty("data").GetProperty("id").GetInt32();
+        var rowVersion = createBody.GetProperty("data").GetProperty("rowVersion").GetUInt32();
 
-        var updatePayload = new { name = "Idempotent Area", regionId };
+        var updatePayload = new { name = "Idempotent Area", regionId, rowVersion };
         var response = await _client.PutAsJsonAsync($"/api/v1/areas/{id}", updatePayload);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);

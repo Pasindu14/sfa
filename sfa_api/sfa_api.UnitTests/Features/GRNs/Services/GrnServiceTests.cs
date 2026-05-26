@@ -152,6 +152,10 @@ public class GrnServiceTests
         _repoMock
             .Setup(r => r.GetGrnWithItemsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(PendingGrn());
+
+        _repoMock
+            .Setup(r => r.GetGrnWithItemsReadOnlyAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(PendingGrn());
     }
 
     [Fact]
@@ -321,18 +325,14 @@ public class GrnServiceTests
 
     private void SetupConfirmReloadAfterCommit(GRN grn)
     {
-        // After the transaction completes, GetGrnWithItemsAsync is called again to reload the DTO.
-        // We use a sequence: first call returns the pending grn (before update), second returns confirmed.
-        int callCount = 0;
-        var confirmedSnapshot = ConfirmedGrnSnapshot();
+        // Step 2 (inside transaction): GetGrnWithItemsAsync returns the mutable tracked entity.
+        // Step 7 (post-commit reload): GetGrnWithItemsReadOnlyAsync returns the confirmed snapshot.
         _repoMock
             .Setup(r => r.GetGrnWithItemsAsync(grn.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() =>
-            {
-                callCount++;
-                // First call: inside ConfirmAsync to load grn; second call: reload after commit
-                return callCount == 1 ? grn : confirmedSnapshot;
-            });
+            .ReturnsAsync(grn);
+        _repoMock
+            .Setup(r => r.GetGrnWithItemsReadOnlyAsync(grn.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ConfirmedGrnSnapshot());
     }
 
     [Fact]
@@ -592,7 +592,7 @@ public class GrnServiceTests
     {
         var grn = PendingGrn();
         _repoMock
-            .Setup(r => r.GetGrnWithItemsAsync(GrnId, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetGrnWithItemsReadOnlyAsync(GrnId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(grn);
 
         var result = await _sut.GetByIdAsync(GrnId);
@@ -605,7 +605,7 @@ public class GrnServiceTests
     public async Task GetByIdAsync_GrnNotFound_ThrowsNotFoundException()
     {
         _repoMock
-            .Setup(r => r.GetGrnWithItemsAsync(GrnId, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetGrnWithItemsReadOnlyAsync(GrnId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((GRN?)null);
 
         var act = () => _sut.GetByIdAsync(GrnId);

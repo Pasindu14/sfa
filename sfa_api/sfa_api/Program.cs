@@ -34,10 +34,13 @@ using sfa_api.Features.DailyRouteAssignments;
 using sfa_api.Features.UserGeoAssignments;
 using sfa_api.Features.UserReportingLines;
 using sfa_api.Features.Users;
+using FirebaseAdmin;
+using Google.Apis.Auth.OAuth2;
 using sfa_api.Infrastructure.Audit;
 using sfa_api.Infrastructure.Caching;
 using sfa_api.Infrastructure.Locking;
 using sfa_api.Infrastructure.Logging;
+using sfa_api.Infrastructure.Notifications;
 using sfa_api.Infrastructure.Persistence;
 
 // Bootstrap logger
@@ -160,6 +163,17 @@ try
         {
             Timeout = TimeSpan.FromSeconds(30)
         });
+
+    // ── Firebase Push Notifications ───────────────────────────────────────
+    var firebaseJson = builder.Configuration["FIREBASE_SERVICE_ACCOUNT_JSON"];
+    if (!string.IsNullOrWhiteSpace(firebaseJson))
+    {
+        FirebaseApp.Create(new AppOptions
+        {
+            Credential = GoogleCredential.FromJson(firebaseJson)
+        });
+    }
+    builder.Services.AddScoped<INotificationService, FirebaseNotificationService>();
 
     // ── Features ──────────────────────────────────────────────────────────
     builder.Services.AddAuthFeature();
