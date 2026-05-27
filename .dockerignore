@@ -1,9 +1,27 @@
-**/.classpath
-**/.dockerignore
+# Exclude other monorepo projects — only sfa_api is needed for this image
+sfa_web/
+sfa_mobile/
+
+# Git & editor noise
 **/.git
 **/.gitignore
 **/.vs
 **/.vscode
+**/.classpath
+
+# Build artifacts
 **/bin
 **/obj
 **/*.user
+
+# JS / Node
+**/node_modules
+**/.next
+**/.turbo
+
+# Dart / Flutter
+**/.dart_tool
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.pub-cache
+**/build
