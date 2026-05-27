@@ -13,7 +13,9 @@ class OutletBillDetailModel {
   final double billDiscountRate;
   final double billDiscountAmount;
   final double totalAmount;
-  final String status;
+  final String repStatus;
+  final String distributorStatus;
+  final String? rejectionReason;
   final String? notes;
   final String createdAt;
   final List<OutletBillItemModel> items;
@@ -30,7 +32,9 @@ class OutletBillDetailModel {
     required this.billDiscountRate,
     required this.billDiscountAmount,
     required this.totalAmount,
-    required this.status,
+    required this.repStatus,
+    required this.distributorStatus,
+    this.rejectionReason,
     this.notes,
     required this.createdAt,
     required this.items,
@@ -49,7 +53,9 @@ class OutletBillDetailModel {
         billDiscountRate: (json['billDiscountRate'] as num).toDouble(),
         billDiscountAmount: (json['billDiscountAmount'] as num).toDouble(),
         totalAmount: (json['totalAmount'] as num).toDouble(),
-        status: json['status'] as String,
+        repStatus: json['repStatus'] as String,
+        distributorStatus: json['distributorStatus'] as String,
+        rejectionReason: json['rejectionReason'] as String?,
         notes: json['notes'] as String?,
         createdAt: json['createdAt'] as String,
         items: (json['items'] as List<dynamic>)
@@ -69,7 +75,9 @@ class OutletBillDetailModel {
         billDiscountRate: billDiscountRate,
         billDiscountAmount: billDiscountAmount,
         totalAmount: totalAmount,
-        status: status,
+        repStatus: repStatus,
+        distributorStatus: distributorStatus,
+        rejectionReason: rejectionReason,
         notes: notes,
         createdAt: DateTime.parse(createdAt),
         items: items.map((e) => e.toEntity()).toList(),

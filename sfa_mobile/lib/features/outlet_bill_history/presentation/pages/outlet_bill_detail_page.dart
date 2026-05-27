@@ -137,84 +137,162 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = switch (bill.status.toLowerCase()) {
-      'confirmed' || 'finalized' => AppColors.success,
-      'draft' => AppColors.warning,
+    final repColor = switch (bill.repStatus.toLowerCase()) {
+      'approved' => AppColors.success,
+      'submitted' => AppColors.primary,
+      'rejected' || 'cancelled' => AppColors.error,
+      _ => AppColors.foregroundMuted,
+    };
+    final distColor = switch (bill.distributorStatus.toLowerCase()) {
+      'approved' => AppColors.success,
+      'rejected' => AppColors.error,
       'cancelled' => AppColors.error,
       _ => AppColors.foregroundMuted,
     };
+    final isRejected = bill.distributorStatus.toLowerCase() == 'rejected';
 
-    return Container(
-      padding: EdgeInsets.all(16.r),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: AppColors.surfaceVariant),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Rejection banner ──────────────────────────────────────────────────
+        if (isRejected)
+          Container(
+            margin: EdgeInsets.only(bottom: 10.h),
+            padding: EdgeInsets.all(12.r),
+            decoration: BoxDecoration(
+              color: AppColors.error.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(10.r),
+              border: Border.all(color: AppColors.error.withValues(alpha: 0.30)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.cancel_rounded,
+                    size: 16.r, color: AppColors.error),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Rejected by Distributor',
+                        style: GoogleFonts.barlowCondensed(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.error,
+                        ),
+                      ),
+                      if (bill.rejectionReason != null &&
+                          bill.rejectionReason!.isNotEmpty) ...[
+                        SizedBox(height: 3.h),
+                        Text(
+                          bill.rejectionReason!,
+                          style: GoogleFonts.barlow(
+                            fontSize: 12.sp,
+                            color: AppColors.error.withValues(alpha: 0.85),
+                          ),
+                        ),
+                      ] else ...[
+                        SizedBox(height: 3.h),
+                        Text(
+                          'No reason provided.',
+                          style: GoogleFonts.barlow(
+                            fontSize: 12.sp,
+                            color: AppColors.foregroundMuted,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  bill.billingNumber,
-                  style: GoogleFonts.barlowCondensed(
-                    fontSize: 22.sp,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.3,
-                    color: AppColors.foreground,
-                  ),
-                ),
-              ),
-              Container(
-                padding:
-                    EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                      color: statusColor.withValues(alpha: 0.35)),
-                ),
-                child: Text(
-                  bill.status,
-                  style: GoogleFonts.barlow(
-                    fontSize: 11.sp,
-                    fontWeight: FontWeight.w600,
-                    color: statusColor,
-                  ),
-                ),
+
+        // ── Main info card ────────────────────────────────────────────────────
+        Container(
+          padding: EdgeInsets.all(16.r),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12.r),
+            border: Border.all(color: AppColors.surfaceVariant),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
-          SizedBox(height: 10.h),
-          Divider(height: 1, color: AppColors.surfaceVariant),
-          SizedBox(height: 10.h),
-          _infoRow(Icons.storefront_rounded, 'Outlet', bill.outletName),
-          SizedBox(height: 6.h),
-          _infoRow(Icons.person_rounded, 'Sales Rep', bill.salesRepName),
-          SizedBox(height: 6.h),
-          _infoRow(Icons.local_shipping_rounded, 'Distributor',
-              bill.distributorName),
-          SizedBox(height: 6.h),
-          _infoRow(Icons.calendar_today_rounded, 'Billing Date',
-              _formatDate(bill.billingDate)),
-          SizedBox(height: 6.h),
-          _infoRow(Icons.access_time_rounded, 'Created',
-              _formatDate(bill.createdAt)),
-          if (bill.notes != null && bill.notes!.isNotEmpty) ...[
-            SizedBox(height: 6.h),
-            _infoRow(Icons.notes_rounded, 'Notes', bill.notes!),
-          ],
-        ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      bill.billingNumber,
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 22.sp,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
+                        color: AppColors.foreground,
+                      ),
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      _statusChip(bill.repStatus, repColor),
+                      SizedBox(height: 4.h),
+                      _statusChip('Dist: ${bill.distributorStatus}', distColor),
+                    ],
+                  ),
+                ],
+              ),
+              SizedBox(height: 10.h),
+              Divider(height: 1, color: AppColors.surfaceVariant),
+              SizedBox(height: 10.h),
+              _infoRow(Icons.storefront_rounded, 'Outlet', bill.outletName),
+              SizedBox(height: 6.h),
+              _infoRow(Icons.person_rounded, 'Sales Rep', bill.salesRepName),
+              SizedBox(height: 6.h),
+              _infoRow(Icons.local_shipping_rounded, 'Distributor',
+                  bill.distributorName),
+              SizedBox(height: 6.h),
+              _infoRow(Icons.calendar_today_rounded, 'Billing Date',
+                  _formatDate(bill.billingDate)),
+              SizedBox(height: 6.h),
+              _infoRow(Icons.access_time_rounded, 'Created',
+                  _formatDate(bill.createdAt)),
+              if (bill.notes != null && bill.notes!.isNotEmpty) ...[
+                SizedBox(height: 6.h),
+                _infoRow(Icons.notes_rounded, 'Notes', bill.notes!),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _statusChip(String label, Color color) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.barlow(
+          fontSize: 10.sp,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
       ),
     );
   }

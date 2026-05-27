@@ -33,6 +33,7 @@ public interface IBillingRepository
         DateOnly? dateFrom, DateOnly? dateTo,
         PaymentType? paymentType = null,
         bool? isCashCollected = null,
+        string? billNo = null,
         CancellationToken ct = default);
 
     Task<List<OutletBillingSummaryRawRow>> GetOutletSummaryRawAsync(
@@ -53,4 +54,7 @@ public interface IBillingRepository
 
     /// <summary>Returns a tracked entity for mutation (cancel, update).</summary>
     Task<Billing?> GetTrackedByIdAsync(int id, CancellationToken ct = default);
+
+    /// <summary>Returns a tracked entity with Items loaded — required for stock reversal on cancel/reject.</summary>
+    Task<Billing?> GetTrackedByIdWithItemsAsync(int id, CancellationToken ct = default);
 }

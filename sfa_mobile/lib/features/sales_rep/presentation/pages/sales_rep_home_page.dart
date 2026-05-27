@@ -1346,11 +1346,11 @@ class _ActionsGrid extends StatelessWidget {
               SizedBox(width: 10.w),
               Expanded(
                 child: _TileActionCard(
-                  icon: Icons.bar_chart_rounded,
-                  title: 'BILLING\nREPORT',
-                  subtitle: 'Outlet-wise summary',
+                  icon: Icons.manage_search_rounded,
+                  title: 'INVOICE HISTORY',
+                  subtitle: 'Search by date or bill no',
                   color: AppColors.primary,
-                  onTap: () => context.push('/sales-rep/outlet-billings'),
+                  onTap: () => context.push('/sales-rep/my-bills'),
                 ),
               ),
             ],
@@ -1416,7 +1416,15 @@ class _ActionsGrid extends StatelessWidget {
                 ),
               ),
               SizedBox(width: 10.w),
-              const Expanded(child: SizedBox()),
+              Expanded(
+                child: _TileActionCard(
+                  icon: Icons.bar_chart_rounded,
+                  title: 'BILLING\nREPORT',
+                  subtitle: 'Outlet-wise summary',
+                  color: AppColors.primary,
+                  onTap: () => context.push('/sales-rep/outlet-billings'),
+                ),
+              ),
             ],
           ),
           SizedBox(height: 10.h),

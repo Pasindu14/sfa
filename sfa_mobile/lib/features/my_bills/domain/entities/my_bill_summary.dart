@@ -1,41 +1,25 @@
-import 'package:uswatte/features/outlet_bill_history/domain/entities/outlet_bill_item.dart';
-
-class OutletBillDetail {
+class MyBillSummary {
   final int id;
   final String billingNumber;
   final DateTime billingDate;
   final int outletId;
   final String outletName;
-  final String salesRepName;
   final String distributorName;
-  final double subTotalAmount;
-  final double billDiscountRate;
-  final double billDiscountAmount;
   final double totalAmount;
   final String repStatus;
   final String distributorStatus;
-  final String? rejectionReason;
-  final String? notes;
   final DateTime createdAt;
-  final List<OutletBillItem> items;
 
-  const OutletBillDetail({
+  const MyBillSummary({
     required this.id,
     required this.billingNumber,
     required this.billingDate,
     required this.outletId,
     required this.outletName,
-    required this.salesRepName,
     required this.distributorName,
-    required this.subTotalAmount,
-    required this.billDiscountRate,
-    required this.billDiscountAmount,
     required this.totalAmount,
     required this.repStatus,
     required this.distributorStatus,
-    this.rejectionReason,
-    this.notes,
     required this.createdAt,
-    required this.items,
   });
 }

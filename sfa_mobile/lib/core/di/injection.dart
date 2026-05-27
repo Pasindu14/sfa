@@ -73,6 +73,7 @@ import 'package:uswatte/features/create_outlet/data/repositories/create_outlet_r
 import 'package:uswatte/features/create_outlet/domain/repositories/create_outlet_repository.dart';
 import 'package:uswatte/features/create_outlet/domain/usecases/create_outlet_usecase.dart';
 import 'package:uswatte/features/outlet_bill_history/data/datasources/outlet_bill_history_remote_datasource.dart';
+import 'package:uswatte/features/my_bills/data/datasources/my_bills_remote_datasource.dart';
 import 'package:uswatte/core/sync/not_billing_sync_service.dart';
 import 'package:uswatte/features/not_billings/data/datasources/not_billings_local_datasource.dart';
 import 'package:uswatte/features/not_billings/data/datasources/not_billings_remote_datasource.dart';
@@ -355,6 +356,10 @@ Future<void> configureDependencies() async {
   // ── Outlet bill history ───────────────────────────────────────────────────────
   getIt.registerLazySingleton(
       () => OutletBillHistoryRemoteDatasource(getIt<Dio>()));
+
+  // ── My bills (online search) ──────────────────────────────────────────────────
+  getIt.registerLazySingleton(
+      () => MyBillsRemoteDatasource(getIt<Dio>()));
 
   // ── Rep assignment ────────────────────────────────────────────────────────────
   getIt.registerLazySingleton(

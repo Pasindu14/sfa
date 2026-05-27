@@ -1,54 +1,54 @@
-import 'package:uswatte/features/outlet_bill_history/domain/entities/outlet_bill_summary.dart';
+import 'package:uswatte/features/my_bills/domain/entities/my_bill_summary.dart';
 
-class OutletBillSummaryModel {
+class MyBillSummaryModel {
   final int id;
   final String billingNumber;
   final String billingDate;
   final int outletId;
   final String outletName;
-  final String salesRepName;
   final String distributorName;
   final double totalAmount;
-  final String status;
+  final String repStatus;
+  final String distributorStatus;
   final String createdAt;
 
-  const OutletBillSummaryModel({
+  const MyBillSummaryModel({
     required this.id,
     required this.billingNumber,
     required this.billingDate,
     required this.outletId,
     required this.outletName,
-    required this.salesRepName,
     required this.distributorName,
     required this.totalAmount,
-    required this.status,
+    required this.repStatus,
+    required this.distributorStatus,
     required this.createdAt,
   });
 
-  factory OutletBillSummaryModel.fromJson(Map<String, dynamic> json) =>
-      OutletBillSummaryModel(
+  factory MyBillSummaryModel.fromJson(Map<String, dynamic> json) =>
+      MyBillSummaryModel(
         id: json['id'] as int,
         billingNumber: json['billingNumber'] as String,
         billingDate: json['billingDate'] as String,
         outletId: json['outletId'] as int,
         outletName: json['outletName'] as String,
-        salesRepName: json['salesRepName'] as String,
         distributorName: json['distributorName'] as String,
         totalAmount: (json['totalAmount'] as num).toDouble(),
-        status: json['repStatus'] as String,
+        repStatus: json['repStatus'] as String,
+        distributorStatus: json['distributorStatus'] as String,
         createdAt: json['createdAt'] as String,
       );
 
-  OutletBillSummary toEntity() => OutletBillSummary(
+  MyBillSummary toEntity() => MyBillSummary(
         id: id,
         billingNumber: billingNumber,
         billingDate: DateTime.parse(billingDate),
         outletId: outletId,
         outletName: outletName,
-        salesRepName: salesRepName,
         distributorName: distributorName,
         totalAmount: totalAmount,
-        status: status,
+        repStatus: repStatus,
+        distributorStatus: distributorStatus,
         createdAt: DateTime.parse(createdAt),
       );
 }

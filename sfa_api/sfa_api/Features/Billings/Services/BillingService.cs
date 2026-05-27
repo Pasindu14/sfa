@@ -354,11 +354,64 @@ public class BillingService(
         DateOnly? dateFrom, DateOnly? dateTo,
         PaymentType? paymentType = null,
         bool? isCashCollected = null,
+        string? billNo = null,
         CancellationToken ct = default)
         => _billingRepository.GetListAsync(
             page, pageSize, repStatus, distributorStatus,
             outletId, distributorId, salesRepId,
-            dateFrom, dateTo, paymentType, isCashCollected, ct);
+            dateFrom, dateTo, paymentType, isCashCollected, billNo, ct);
+
+    // ── Stock reversal ────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Mirrors the stock movements made at bill creation — must be called inside an open transaction.
+    /// Sale + Distributor FOC: credits Normal stock back.
+    /// Company FOC: credits FreeIssue stock back.
+    /// MarketResell return: deducts Normal stock (reverses the credit that was issued at creation).
+    /// Damage/Expire returns had no stock movement, so nothing to reverse.
+    /// </summary>
+    private async Task ReverseStockForBillingAsync(Billing billing, int actorId, string notes, CancellationToken ct)
+    {
+        foreach (var item in billing.Items)
+        {
+            switch (item.BillingItemType)
+            {
+                case BillingItemType.Sale:
+                    await _stockRepository.GetStockForUpdateAsync(billing.DistributorId, item.ProductId, StockType.Normal, ct);
+                    await _stockRepository.CreditStockAsync(
+                        billing.DistributorId, item.ProductId, item.Quantity,
+                        StockType.Normal, StockTransactionType.BillingReversal,
+                        "Billing", billing.Id, actorId, notes: notes, ct: ct);
+                    break;
+
+                case BillingItemType.FreeIssue when item.FreeIssueSource == FreeIssueSource.Distributor:
+                    await _stockRepository.GetStockForUpdateAsync(billing.DistributorId, item.ProductId, StockType.Normal, ct);
+                    await _stockRepository.CreditStockAsync(
+                        billing.DistributorId, item.ProductId, item.Quantity,
+                        StockType.Normal, StockTransactionType.BillingReversal,
+                        "Billing", billing.Id, actorId, notes: notes, ct: ct);
+                    break;
+
+                case BillingItemType.FreeIssue:
+                    await _stockRepository.GetStockForUpdateAsync(billing.DistributorId, item.ProductId, StockType.FreeIssue, ct);
+                    await _stockRepository.CreditStockAsync(
+                        billing.DistributorId, item.ProductId, item.Quantity,
+                        StockType.FreeIssue, StockTransactionType.BillingReversal,
+                        "Billing", billing.Id, actorId, notes: notes, ct: ct);
+                    break;
+
+                case BillingItemType.Return when item.ReturnType == Enums.ReturnType.MarketResell:
+                    await _stockRepository.GetStockForUpdateAsync(billing.DistributorId, item.ProductId, StockType.Normal, ct);
+                    await _stockRepository.DeductStockAsync(
+                        billing.DistributorId, item.ProductId, item.Quantity,
+                        StockType.Normal, StockTransactionType.BillingReversal,
+                        "Billing", billing.Id, actorId, notes: notes, ct: ct);
+                    break;
+
+                // BillingItemType.Return (Damage / Expire): no stock movement at creation → nothing to reverse
+            }
+        }
+    }
 
     // ── Projection ────────────────────────────────────────────────────────
 
@@ -476,7 +529,7 @@ public class BillingService(
 
     public async Task<BillingDto> CancelAsync(int billingId, int salesRepId, CancellationToken ct = default)
     {
-        var billing = await _billingRepository.GetTrackedByIdAsync(billingId, ct)
+        var billing = await _billingRepository.GetTrackedByIdWithItemsAsync(billingId, ct)
             ?? throw new NotFoundException("Billing", billingId);
 
         if (billing.SalesRepId != salesRepId)
@@ -491,7 +544,23 @@ public class BillingService(
         billing.UpdatedAt = DateTime.UtcNow;
         billing.UpdatedBy = salesRepId;
 
-        await _billingRepository.SaveChangesAsync(ct);
+        var strategy = _db.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var tx = await _billingRepository.BeginTransactionAsync(ct);
+            try
+            {
+                await _billingRepository.SaveChangesAsync(ct);
+                await ReverseStockForBillingAsync(billing, salesRepId, "Stock reversed — bill cancelled by rep", ct);
+                await _billingRepository.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+            }
+            catch
+            {
+                await tx.RollbackAsync(ct);
+                throw;
+            }
+        });
 
         var updated = await _billingRepository.GetByIdAsync(billingId, ct)
             ?? throw new DatabaseUnavailableException();
@@ -543,7 +612,7 @@ public class BillingService(
 
     public async Task<BillingDto> RejectAsync(int billingId, int userId, string? reason, CancellationToken ct = default)
     {
-        var billing = await _billingRepository.GetTrackedByIdAsync(billingId, ct)
+        var billing = await _billingRepository.GetTrackedByIdWithItemsAsync(billingId, ct)
             ?? throw new NotFoundException("Billing", billingId);
 
         var user = await _userRepository.GetUserByIdAsync(userId, ct);
@@ -566,7 +635,23 @@ public class BillingService(
         billing.UpdatedAt         = DateTime.UtcNow;
         billing.UpdatedBy         = userId;
 
-        await _billingRepository.SaveChangesAsync(ct);
+        var strategy = _db.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var tx = await _billingRepository.BeginTransactionAsync(ct);
+            try
+            {
+                await _billingRepository.SaveChangesAsync(ct);
+                await ReverseStockForBillingAsync(billing, userId, "Stock reversed — bill rejected by distributor", ct);
+                await _billingRepository.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+            }
+            catch
+            {
+                await tx.RollbackAsync(ct);
+                throw;
+            }
+        });
 
         var result = await _billingRepository.GetByIdAsync(billingId, ct)
             ?? throw new DatabaseUnavailableException();

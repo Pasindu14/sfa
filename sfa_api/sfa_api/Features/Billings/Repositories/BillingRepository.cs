@@ -56,6 +56,11 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
         => _db.Billings
               .FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted, ct);
 
+    public Task<Billing?> GetTrackedByIdWithItemsAsync(int id, CancellationToken ct = default)
+        => _db.Billings
+              .Include(x => x.Items)
+              .FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted, ct);
+
     public Task<Billing?> GetByIdAsync(int id, CancellationToken ct = default)
         => _db.Billings
               .AsNoTracking()
@@ -78,6 +83,7 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
         DateOnly? dateFrom, DateOnly? dateTo,
         PaymentType? paymentType = null,
         bool? isCashCollected = null,
+        string? billNo = null,
         CancellationToken ct = default)
     {
         pageSize = Math.Clamp(pageSize, 1, 200);
@@ -112,6 +118,9 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
 
         if (isCashCollected.HasValue)
             query = query.Where(x => x.IsCashCollected == isCashCollected.Value);
+
+        if (billNo is not null)
+            query = query.Where(x => x.BillingNumber == billNo);
 
         var total = await query.CountAsync(ct);
         var items = await query

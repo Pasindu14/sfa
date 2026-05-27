@@ -59,7 +59,7 @@ public class BillingsController(
         var (items, total) = await _billingService.GetListAsync(
             page, pageSize, parsedRepStatus, parsedDistributorStatus,
             outletId, distributorId, salesRepId,
-            parsedDateFrom, parsedDateTo, parsedPaymentType, isCashCollected, ct);
+            parsedDateFrom, parsedDateTo, parsedPaymentType, isCashCollected, ct: ct);
 
         return Ok(ResponseHelper.Paged(items, page, pageSize, total, correlationId));
     }
@@ -149,7 +149,7 @@ public class BillingsController(
         var (items, total) = await _billingService.GetListAsync(
             page, pageSize, parsedRepStatus, parsedDistributorStatus,
             null, user.DistributorId.Value, null, parsedFrom, parsedTo,
-            parsedPaymentType, isCashCollected, ct);
+            parsedPaymentType, isCashCollected, ct: ct);
         return Ok(ResponseHelper.Paged(items, page, pageSize, total, correlationId));
     }
 

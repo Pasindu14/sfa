@@ -76,6 +76,10 @@ import 'package:uswatte/features/not_billings/presentation/pages/not_billing_det
 import 'package:uswatte/features/not_billings/presentation/pages/not_billings_list_page.dart';
 import 'package:uswatte/features/outlet_bill_history/data/datasources/outlet_bill_history_remote_datasource.dart';
 import 'package:uswatte/features/outlet_bill_history/data/repositories/outlet_bill_history_repository_impl.dart';
+import 'package:uswatte/features/my_bills/data/datasources/my_bills_remote_datasource.dart';
+import 'package:uswatte/features/my_bills/data/repositories/my_bills_repository_impl.dart';
+import 'package:uswatte/features/my_bills/presentation/cubit/my_bills_cubit.dart';
+import 'package:uswatte/features/my_bills/presentation/pages/my_bills_page.dart';
 import 'package:uswatte/features/outlet_bill_history/presentation/cubit/outlet_bill_detail_cubit.dart';
 import 'package:uswatte/features/outlet_bill_history/presentation/cubit/outlet_bill_history_cubit.dart';
 import 'package:uswatte/features/outlet_bill_history/presentation/pages/outlet_bill_detail_page.dart';
@@ -498,6 +502,16 @@ class AppRouter {
               path: 'outlet-billings',
               name: 'outletBillings',
               builder: (_, __) => const OutletBillingsPage(),
+            ),
+            GoRoute(
+              path: 'my-bills',
+              name: 'myBills',
+              builder: (_, __) => BlocProvider(
+                create: (_) => MyBillsCubit(
+                  MyBillsRepositoryImpl(getIt<MyBillsRemoteDatasource>()),
+                ),
+                child: const MyBillsPage(),
+              ),
             ),
             GoRoute(
               path: 'stock',

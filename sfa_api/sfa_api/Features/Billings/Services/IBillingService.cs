@@ -16,6 +16,7 @@ public interface IBillingService
         DateOnly? dateFrom, DateOnly? dateTo,
         PaymentType? paymentType = null,
         bool? isCashCollected = null,
+        string? billNo = null,
         CancellationToken ct = default);
 
     Task<OutletBillingSummaryResponseDto> GetOutletSummaryAsync(
