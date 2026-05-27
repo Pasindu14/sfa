@@ -224,6 +224,14 @@ class AppRouter {
                     create: (_) => RepDailySalesCubit(getIt<GetRepDailySalesUseCase>())
                       ..load(DateTime.now()),
                   ),
+                  BlocProvider(
+                    create: (_) => NotificationsBloc(
+                      getNotifications: getIt<GetNotificationsUseCase>(),
+                      getUnreadCount: getIt<GetUnreadCountUseCase>(),
+                      markRead: getIt<MarkNotificationReadUseCase>(),
+                      markAllRead: getIt<MarkAllReadUseCase>(),
+                    )..add(const LoadNotifications()),
+                  ),
                 ],
                 child: const SalesRepHomePage(),
               ),
@@ -569,9 +577,21 @@ class AppRouter {
             GoRoute(
               path: 'home',
               name: 'supervisorHome',
-              builder: (_, __) => BlocProvider(
-                create: (_) => SupervisorSummaryCubit(
-                    getIt<GetSupervisorSummaryUseCase>()),
+              builder: (_, __) => MultiBlocProvider(
+                providers: [
+                  BlocProvider(
+                    create: (_) => SupervisorSummaryCubit(
+                        getIt<GetSupervisorSummaryUseCase>()),
+                  ),
+                  BlocProvider(
+                    create: (_) => NotificationsBloc(
+                      getNotifications: getIt<GetNotificationsUseCase>(),
+                      getUnreadCount: getIt<GetUnreadCountUseCase>(),
+                      markRead: getIt<MarkNotificationReadUseCase>(),
+                      markAllRead: getIt<MarkAllReadUseCase>(),
+                    )..add(const LoadNotifications()),
+                  ),
+                ],
                 child: const SupervisorHomePage(),
               ),
             ),

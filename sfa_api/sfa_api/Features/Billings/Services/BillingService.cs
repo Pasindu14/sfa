@@ -575,16 +575,32 @@ public class BillingService(
             ? $"Bill {result.BillingNumber} has been rejected by the distributor."
             : $"Bill {result.BillingNumber} rejected: {reason}";
 
+        var notificationData = new Dictionary<string, string>
+        {
+            ["type"] = "BILL_REJECTED",
+            ["billingId"] = billing.Id.ToString(),
+            ["billingNumber"] = result.BillingNumber
+        };
+
+        // Notify the sales rep who created the bill
         await _notificationService.SendToUserAsync(
             billing.SalesRepId,
             "Bill Rejected",
             rejectionMessage,
-            new Dictionary<string, string>
-            {
-                ["type"] = "BILL_REJECTED",
-                ["billingId"] = billing.Id.ToString(),
-                ["billingNumber"] = result.BillingNumber
-            }, ct);
+            notificationData,
+            ct);
+
+        // Notify all ancestor levels (Supervisor → ASM → RSM), excluding NSM
+        foreach (var ancestorId in new[] { billing.SupervisorUserId, billing.AsmUserId, billing.RsmUserId }
+            .Where(id => id.HasValue).Select(id => id!.Value))
+        {
+            await _notificationService.SendToUserAsync(
+                ancestorId,
+                "Bill Rejected",
+                rejectionMessage,
+                notificationData,
+                ct);
+        }
 
         return ProjectToDto(result);
     }

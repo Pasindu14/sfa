@@ -20,6 +20,7 @@ import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_daily_
 import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_daily_sales_state.dart';
 import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_monthly_sales_cubit.dart';
 import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_monthly_sales_state.dart';
+import 'package:uswatte/features/notifications/presentation/bloc/notifications_bloc.dart';
 
 class SalesRepHomePage extends StatefulWidget {
   const SalesRepHomePage({super.key});
@@ -380,9 +381,46 @@ class _TopBar extends StatelessWidget {
                       color: AppColors.foregroundMuted,
                     )),
                 SizedBox(width: 12.w),
-                _NavIconBtn(
-                  icon: Icons.notifications_outlined,
-                  onTap: () => context.push('/sales-rep/notifications'),
+                BlocBuilder<NotificationsBloc, NotificationsState>(
+                  builder: (context, state) {
+                    final unread =
+                        state is NotificationsLoaded ? state.unreadCount : 0;
+                    return Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        _NavIconBtn(
+                          icon: unread > 0
+                              ? Icons.notifications_rounded
+                              : Icons.notifications_outlined,
+                          onTap: () async {
+                            await context.push('/sales-rep/notifications');
+                            if (context.mounted) {
+                              context
+                                  .read<NotificationsBloc>()
+                                  .add(const LoadNotifications());
+                            }
+                          },
+                        ),
+                        if (unread > 0)
+                          Positioned(
+                            top: -1.r,
+                            right: -1.r,
+                            child: Container(
+                              width: 9.r,
+                              height: 9.r,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.background,
+                                  width: 1.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
                 ),
                 SizedBox(width: 6.w),
                 _NavIconBtn(
