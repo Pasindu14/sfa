@@ -97,10 +97,18 @@ try
     // ── JWT Revocation ────────────────────────────────────────────────────
     builder.Services.AddScoped<ITokenRevocationService, PostgresTokenRevocationService>();
 
-    // ── Distributed Locking (Redis / Upstash Redlock) ─────────────────────
-    builder.Services.AddSingleton<RedLockNet.IDistributedLockFactory>(
-        _ => RedisDistributedLockService.CreateFactory(builder.Configuration));
-    builder.Services.AddSingleton<IDistributedLockService, RedisDistributedLockService>();
+    // ── Distributed Locking (Redis / Upstash Redlock, fallback to Postgres advisory locks) ──
+    var upstashUrl = builder.Configuration["UPSTASH_REDIS_REST_URL"];
+    if (!string.IsNullOrWhiteSpace(upstashUrl))
+    {
+        builder.Services.AddSingleton<RedLockNet.IDistributedLockFactory>(
+            _ => RedisDistributedLockService.CreateFactory(builder.Configuration));
+        builder.Services.AddSingleton<IDistributedLockService, RedisDistributedLockService>();
+    }
+    else
+    {
+        builder.Services.AddSingleton<IDistributedLockService, PostgresAdvisoryLockService>();
+    }
 
     // ── OpenTelemetry ─────────────────────────────────────────────────────
     builder.Services.AddOpenTelemetry()
@@ -235,11 +243,8 @@ try
     app.MapSFAHealthChecks();
 
     // ── Swagger ───────────────────────────────────────────────────────────
-    if (app.Environment.IsDevelopment())
-    {
-        app.UseSwagger();
-        app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "SFA API v1"));
-    }
+    app.UseSwagger();
+    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "SFA API v1"));
 
     app.Run();
 }
