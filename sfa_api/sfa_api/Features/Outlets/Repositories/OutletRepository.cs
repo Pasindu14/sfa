@@ -57,6 +57,45 @@ public class OutletRepository(AppDbContext context) : IOutletRepository
         return (items, totalCount);
     }
 
+    public async Task<(IEnumerable<Outlet> Outlets, int TotalCount)> GetAllByTerritoryAsync(
+        int territoryId, int skip, int take,
+        bool? isActive = null, string? search = null,
+        CancellationToken ct = default)
+    {
+        take = Math.Clamp(take, 1, 200);
+        var query = _context.Outlets
+            .IgnoreQueryFilters()
+            .Where(x => !x.IsDeleted && x.TerritoryId == territoryId)
+            .AsQueryable();
+
+        if (isActive.HasValue) query = query.Where(o => o.IsActive == isActive.Value);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var pattern = $"%{search}%";
+            query = _context.Database.ProviderName?.Contains("Npgsql") == true
+                ? query.Where(o => EF.Functions.ILike(o.Name, pattern))
+                : query.Where(o => EF.Functions.Like(o.Name, pattern));
+        }
+
+        var totalCount = await query.CountAsync(ct);
+        var items = await query
+            .Include(o => o.Route)
+                .ThenInclude(r => r!.Division)
+            .Include(o => o.Route)
+                .ThenInclude(r => r!.Territory)
+            .Include(o => o.Route)
+                .ThenInclude(r => r!.Area)
+            .Include(o => o.Route)
+                .ThenInclude(r => r!.Region)
+            .AsNoTracking()
+            .OrderBy(o => o.Name)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(ct);
+
+        return (items, totalCount);
+    }
+
     public async Task<IEnumerable<Outlet>> GetAllActiveAsync(CancellationToken ct = default)
         => await _context.Outlets
             .Where(o => o.IsActive)

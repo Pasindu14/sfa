@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using sfa_api.Common.Errors;
 using sfa_api.Features.Distributors.Services;
+using sfa_api.Features.Outlets.Services;
 using sfa_api.Features.Users.Repositories;
 
 namespace sfa_api.Features.Distributors.Controllers;
@@ -12,10 +13,12 @@ namespace sfa_api.Features.Distributors.Controllers;
 [Authorize(Roles = "Distributor")]
 public class DistributorPortalController(
     IDistributorService distributorService,
-    IUserRepository userRepo) : ControllerBase
+    IUserRepository userRepo,
+    IOutletService outletService) : ControllerBase
 {
     private readonly IDistributorService _distributorService = distributorService;
     private readonly IUserRepository _userRepo = userRepo;
+    private readonly IOutletService _outletService = outletService;
 
     /// <summary>
     /// GET /api/v1/distributors/portal/profile
@@ -33,5 +36,44 @@ public class DistributorPortalController(
                 "Your account is not linked to a distributor.");
         var distributor = await _distributorService.GetByIdAsync(user.DistributorId.Value, ct);
         return Ok(ResponseHelper.Ok(distributor, correlationId));
+    }
+
+    /// <summary>
+    /// GET /api/v1/distributors/portal/outlets
+    /// Distributor only — returns paginated outlets in the distributor's territory.
+    /// TerritoryId resolved from the user's linked distributor record.
+    /// </summary>
+    [HttpGet("portal/outlets")]
+    public async Task<IActionResult> GetMyOutlets(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? status = null,
+        [FromQuery] string? search = null,
+        CancellationToken ct = default)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId);
+
+        var user = await _userRepo.GetUserByIdAsync(userId, ct);
+        if (user?.DistributorId == null)
+            throw new BusinessRuleException("NO_DISTRIBUTOR_LINKED",
+                "Your account is not linked to a distributor.");
+
+        var distributor = await _distributorService.GetByIdAsync(user.DistributorId.Value, ct);
+        if (distributor.TerritoryId == null)
+            throw new BusinessRuleException("NO_TERRITORY_ASSIGNED",
+                "Your distributor account has no territory assigned.");
+
+        var isActive = status?.ToLower() switch
+        {
+            "active" => (bool?)true,
+            "inactive" => (bool?)false,
+            _ => null
+        };
+
+        var result = await _outletService.GetAllByTerritoryAsync(
+            distributor.TerritoryId.Value, page, pageSize, isActive, search, ct);
+
+        return Ok(ResponseHelper.Ok(result, correlationId));
     }
 }

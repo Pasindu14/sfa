@@ -87,3 +87,13 @@ export const deactivateOutletAction = createAction(
     revalidatePath('/outlets')
   }
 )
+
+export const getMyOutletsAction = createAction(
+  { name: 'getMyOutletsAction', requireAuth: true },
+  async (page: number = 1, pageSize: number = 10, search?: string, status?: string) => {
+    const res = await client.get('/api/v1/distributors/portal/outlets', {
+      params: { page, pageSize, search: search || undefined, status: status || undefined },
+    })
+    return res.data.data as OutletsListResponse
+  }
+)

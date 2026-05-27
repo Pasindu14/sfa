@@ -7,6 +7,7 @@ public interface IOutletService
 {
     Task<OutletDto> GetByIdAsync(int id, CancellationToken ct = default);
     Task<OutletListDto> GetAllAsync(int page, int pageSize, bool? isActive = null, string? search = null, CancellationToken ct = default);
+    Task<OutletListDto> GetAllByTerritoryAsync(int territoryId, int page, int pageSize, bool? isActive = null, string? search = null, CancellationToken ct = default);
     Task<IEnumerable<OutletDto>> GetAllActiveAsync(CancellationToken ct = default);
     Task<IEnumerable<OutletMapPointDto>> GetMapPointsAsync(CancellationToken ct = default);
     Task<IEnumerable<OutletDto>> GetByRouteIdAsync(int routeId, CancellationToken ct = default);

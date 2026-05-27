@@ -38,6 +38,21 @@ public class OutletService(
         );
     }
 
+    public async Task<OutletListDto> GetAllByTerritoryAsync(
+        int territoryId, int page, int pageSize,
+        bool? isActive = null, string? search = null,
+        CancellationToken ct = default)
+    {
+        var skip = (page - 1) * pageSize;
+        var (outlets, totalCount) = await _repo.GetAllByTerritoryAsync(territoryId, skip, pageSize, isActive, search, ct);
+        return new OutletListDto(
+            Outlets: outlets.Select(MapToDto),
+            TotalCount: totalCount,
+            Page: page,
+            PageSize: pageSize
+        );
+    }
+
     public async Task<IEnumerable<OutletDto>> GetAllActiveAsync(CancellationToken ct = default)
     {
         var outlets = await _repo.GetAllActiveAsync(ct);

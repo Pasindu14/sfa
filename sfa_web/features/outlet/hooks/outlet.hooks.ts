@@ -13,6 +13,7 @@ import {
   deleteOutletAction,
   activateOutletAction,
   deactivateOutletAction,
+  getMyOutletsAction,
 } from '../actions/outlet.actions'
 import {
   useCreateDialog,
@@ -124,6 +125,42 @@ export function useOutletDataTable(
 }
 
 ;(useOutletDataTable as unknown as Record<string, unknown>).isQueryHook = true
+
+// --- Portal DataTable hook (Distributor role — read-only, scoped to own territory) ---
+
+export function useMyOutletDataTable(
+  page: number,
+  pageSize: number,
+  search: string,
+  _dateRange?: { from_date: string; to_date: string },
+  _sortBy?: string,
+  _sortOrder?: string,
+  _caseConfig?: unknown,
+  customFilters?: Record<string, unknown>,
+) {
+  return useQuery({
+    queryKey: outletKeys.list({ portal: true, page, pageSize, search, customFilters }),
+    queryFn: async () => {
+      const status = customFilters?.status as string | undefined
+      const result = await getMyOutletsAction(page, pageSize, search || undefined, status || undefined)
+      if (!result.success) throw new Error(result.error)
+      const { outlets, totalCount, page: p, pageSize: ps } = result.data
+      return {
+        success: true as const,
+        data: outlets,
+        pagination: {
+          page: p,
+          limit: ps,
+          total_pages: Math.ceil(totalCount / ps),
+          total_items: totalCount,
+        },
+      }
+    },
+    placeholderData: keepPreviousData,
+  })
+}
+
+;(useMyOutletDataTable as unknown as Record<string, unknown>).isQueryHook = true
 
 // --- Mutation hooks ---
 

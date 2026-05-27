@@ -5,6 +5,7 @@ import {
   Map,
   Package,
   ShoppingCart,
+  Store,
   UserCheck,
   type LucideIcon,
 } from "lucide-react";
@@ -116,6 +117,16 @@ const navConfig: NavGroup[] = [
       { title: "Bills", url: "/distributor-billings" },
       { title: "GRNs", url: "/distributor-grns" },
       { title: "Purchase Orders", url: "/distributor-purchase-orders" },
+    ],
+  },
+  {
+    title: "Network",
+    url: "#",
+    icon: Store,
+    isActive: false,
+    roles: ["Distributor"],
+    items: [
+      { title: "My Outlets", url: "/portal/outlets" },
     ],
   },
 ];
