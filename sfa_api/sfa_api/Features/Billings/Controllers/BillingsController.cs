@@ -127,6 +127,8 @@ public class BillingsController(
     public async Task<IActionResult> GetPortalBillings(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
+        [FromQuery] int? outletId = null,
+        [FromQuery] string? search = null,
         [FromQuery] string? repStatus = null,
         [FromQuery] string? distributorStatus = null,
         [FromQuery] string? dateFrom = null,
@@ -148,8 +150,8 @@ public class BillingsController(
         PaymentType? parsedPaymentType                    = Enum.TryParse<PaymentType>(paymentType, true, out var pt) ? pt : null;
         var (items, total) = await _billingService.GetListAsync(
             page, pageSize, parsedRepStatus, parsedDistributorStatus,
-            null, user.DistributorId.Value, null, parsedFrom, parsedTo,
-            parsedPaymentType, isCashCollected, ct: ct);
+            outletId, user.DistributorId.Value, null, parsedFrom, parsedTo,
+            parsedPaymentType, isCashCollected, search, ct);
         return Ok(ResponseHelper.Paged(items, page, pageSize, total, correlationId));
     }
 

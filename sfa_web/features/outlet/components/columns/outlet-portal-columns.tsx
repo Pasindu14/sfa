@@ -1,7 +1,10 @@
 'use client'
 
+import Link from 'next/link'
 import type { ColumnDef } from '@tanstack/react-table'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Receipt } from 'lucide-react'
 import type { OutletDto } from '../types/outlet.types'
 
 export function getOutletPortalColumns(): ColumnDef<OutletDto>[] {
@@ -86,6 +89,21 @@ export function getOutletPortalColumns(): ColumnDef<OutletDto>[] {
           {row.original.isActive ? 'Active' : 'Inactive'}
         </Badge>
       ),
+    },
+    {
+      id: 'bills',
+      header: '',
+      cell: ({ row }) => {
+        const { id, name } = row.original
+        return (
+          <Link href={`/portal/outlets/${id}/bills?name=${encodeURIComponent(name)}`}>
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8">
+              <Receipt className="h-3.5 w-3.5" />
+              Bills
+            </Button>
+          </Link>
+        )
+      },
     },
   ]
 }

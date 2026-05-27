@@ -1,6 +1,6 @@
 'use client'
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   getMyBillingsAction,
@@ -35,7 +35,7 @@ export function useMyBillingsDataTable(
   _sortBy?: string,
   _sortOrder?: string,
   _caseConfig?: unknown,
-  customFilters?: { repStatus?: string; distributorStatus?: string; dateFrom?: string; dateTo?: string; paymentType?: string; isCashCollected?: string },
+  customFilters?: { repStatus?: string; distributorStatus?: string; dateFrom?: string; dateTo?: string; paymentType?: string; isCashCollected?: string; outletId?: number },
 ) {
   const repStatus = customFilters?.repStatus
   const distributorStatus = customFilters?.distributorStatus
@@ -43,15 +43,17 @@ export function useMyBillingsDataTable(
   const dateTo = customFilters?.dateTo
   const paymentType = customFilters?.paymentType
   const isCashCollected = customFilters?.isCashCollected
+  const outletId = customFilters?.outletId as number | undefined
 
   return useQuery({
-    queryKey: myBillingKeys.list({ page, pageSize, search, repStatus, distributorStatus, dateFrom, dateTo, paymentType, isCashCollected }),
+    queryKey: myBillingKeys.list({ page, pageSize, search, repStatus, distributorStatus, dateFrom, dateTo, paymentType, isCashCollected, outletId }),
     queryFn: async () => {
       const result = await getMyBillingsAction(
         page, pageSize, search || undefined,
         repStatus || undefined, distributorStatus || undefined,
         dateFrom || undefined, dateTo || undefined,
         paymentType || undefined, isCashCollected || undefined,
+        outletId,
       )
       if (!result.success) throw new Error(result.error)
       const { billings, totalCount, page: p, pageSize: ps } = result.data
@@ -66,6 +68,7 @@ export function useMyBillingsDataTable(
         },
       }
     },
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -90,6 +93,7 @@ export function useMyBillingsTodaySummary() {
     staleTime: 60_000,
   })
 }
+
 
 export function useMyBillingDetail(id: number | null) {
   return useQuery({

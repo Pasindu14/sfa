@@ -16,12 +16,14 @@ export const getMyBillingsAction = createAction(
     dateTo?: string,
     paymentType?: string,
     isCashCollected?: string,
+    outletId?: number,
   ) => {
     const res = await client.get('/api/v1/billings/portal', {
       params: {
         page,
         pageSize,
         search: search || undefined,
+        outletId: outletId || undefined,
         repStatus: repStatus || undefined,
         distributorStatus: distributorStatus || undefined,
         dateFrom: dateFrom || undefined,
