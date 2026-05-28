@@ -1033,7 +1033,7 @@ class _DailyPaceRow extends StatelessWidget {
                       ),
                       Container(
                           width: 1,
-                          height: 36.h,
+                          height: 52.h,
                           color: AppColors.surfaceVariant),
                       _DailyStat(
                         label: 'DAILY SALES',
@@ -1043,15 +1043,12 @@ class _DailyPaceRow extends StatelessWidget {
                       ),
                       Container(
                           width: 1,
-                          height: 36.h,
+                          height: 52.h,
                           color: AppColors.surfaceVariant),
-                      _DailyStat(
-                        label: 'DAILY %',
-                        value: dailyPct != null
-                            ? '${dailyPct.toStringAsFixed(0)}%'
-                            : (isLoading ? '...' : '—'),
-                        unit: 'ACHIEVED',
-                        color: accent,
+                      _DailyPctRing(
+                        pct: dailyPct,
+                        isLoading: isLoading,
+                        accent: accent,
                       ),
                     ],
                   ),
@@ -1060,6 +1057,71 @@ class _DailyPaceRow extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _DailyPctRing extends StatelessWidget {
+  final double? pct;
+  final bool isLoading;
+  final Color accent;
+
+  const _DailyPctRing({
+    required this.pct,
+    required this.isLoading,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final progressVal = pct != null ? (pct! / 100).clamp(0.0, 1.0) : 0.0;
+    final label = isLoading
+        ? '...'
+        : pct != null
+            ? '${pct!.toStringAsFixed(0)}%'
+            : '—';
+
+    return Expanded(
+      child: Column(
+        children: [
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: 46.r,
+                height: 46.r,
+                child: CircularProgressIndicator(
+                  value: progressVal,
+                  strokeWidth: 4.r,
+                  backgroundColor: accent.withValues(alpha: 0.12),
+                  valueColor: AlwaysStoppedAnimation<Color>(accent),
+                  strokeCap: StrokeCap.round,
+                ),
+              ),
+              Text(
+                label,
+                style: GoogleFonts.barlowCondensed(
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w900,
+                  height: 1.0,
+                  letterSpacing: -0.3,
+                  color: accent,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 3.h),
+          Text(
+            'DAILY %',
+            style: GoogleFonts.barlowCondensed(
+              fontSize: 8.sp,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.8,
+              color: AppColors.foregroundMuted.withValues(alpha: 0.60),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1339,7 +1401,7 @@ class _ActionsGrid extends StatelessWidget {
                   icon: Icons.receipt_long_rounded,
                   title: 'MY ORDERS',
                   subtitle: 'View & sync status',
-                  color: AppColors.primary,
+                  color: const Color(0xFF2563EB),
                   onTap: () => context.push('/sales-rep/bills'),
                 ),
               ),
@@ -1349,7 +1411,7 @@ class _ActionsGrid extends StatelessWidget {
                   icon: Icons.manage_search_rounded,
                   title: 'INVOICE HISTORY',
                   subtitle: 'Search by date or bill no',
-                  color: AppColors.primary,
+                  color: const Color(0xFF7C3AED),
                   onTap: () => context.push('/sales-rep/my-bills'),
                 ),
               ),
@@ -1363,7 +1425,7 @@ class _ActionsGrid extends StatelessWidget {
                   icon: Icons.report_problem_outlined,
                   title: 'NOT BILLING',
                   subtitle: 'Record outlet visit',
-                  color: AppColors.primary,
+                  color: const Color(0xFFDC2626),
                   onTap: () => context.push('/sales-rep/not-billings'),
                 ),
               ),
@@ -1371,9 +1433,9 @@ class _ActionsGrid extends StatelessWidget {
               Expanded(
                 child: _TileActionCard(
                   icon: Icons.map_rounded,
-                  title: "TODAY'S\nMAP",
+                  title: "TODAY'S MAP",
                   subtitle: 'View route on map',
-                  color: AppColors.primary,
+                  color: const Color(0xFF16A34A),
                   onTap: () => context.push('/sales-rep/todays-route-map'),
                 ),
               ),
@@ -1387,7 +1449,7 @@ class _ActionsGrid extends StatelessWidget {
                   icon: Icons.storefront_rounded,
                   title: 'ADD OUTLET',
                   subtitle: 'Register new outlet',
-                  color: AppColors.primary,
+                  color: const Color(0xFF0D9488),
                   onTap: () => context.push('/sales-rep/outlets/create'),
                 ),
               ),
@@ -1397,7 +1459,7 @@ class _ActionsGrid extends StatelessWidget {
                   icon: Icons.sync_rounded,
                   title: 'SYNC DATA',
                   subtitle: 'Keep device updated',
-                  color: AppColors.primary,
+                  color: const Color(0xFF0284C7),
                   onTap: () => context.push('/sales-rep/sync'),
                 ),
               ),
@@ -1409,9 +1471,9 @@ class _ActionsGrid extends StatelessWidget {
               Expanded(
                 child: _TileActionCard(
                   icon: Icons.assignment_turned_in_rounded,
-                  title: 'PURCHASE\nORDERS',
+                  title: 'PURCHASE ORDERS',
                   subtitle: 'Approve pending orders',
-                  color: AppColors.primary,
+                  color: const Color(0xFFEA580C),
                   onTap: () => context.push('/sales-rep/purchase-orders'),
                 ),
               ),
@@ -1419,9 +1481,9 @@ class _ActionsGrid extends StatelessWidget {
               Expanded(
                 child: _TileActionCard(
                   icon: Icons.bar_chart_rounded,
-                  title: 'BILLING\nREPORT',
+                  title: 'BILLING REPORT',
                   subtitle: 'Outlet-wise summary',
-                  color: AppColors.primary,
+                  color: const Color(0xFFCA8A04),
                   onTap: () => context.push('/sales-rep/outlet-billings'),
                 ),
               ),
@@ -1476,82 +1538,79 @@ class _TileActionCard extends StatelessWidget {
   final Color color;
   final VoidCallback? onTap;
 
+  Color _darken(Color c) {
+    final hsl = HSLColor.fromColor(c);
+    return hsl.withLightness((hsl.lightness - 0.18).clamp(0.0, 1.0)).toColor();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
+      borderRadius: BorderRadius.circular(16.r),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14.r),
+        borderRadius: BorderRadius.circular(16.r),
+        splashColor: Colors.white.withValues(alpha: 0.12),
+        highlightColor: Colors.white.withValues(alpha: 0.06),
         child: Ink(
+          height: 108.h,
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14.r),
-            border: Border.all(color: color.withValues(alpha: 0.14)),
+            borderRadius: BorderRadius.circular(16.r),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [color, _darken(color)],
+            ),
             boxShadow: [
               BoxShadow(
-                color: color.withValues(alpha: 0.09),
-                blurRadius: 14,
+                color: color.withValues(alpha: 0.38),
+                blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                height: 64.h,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.09),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(14.r),
-                    topRight: Radius.circular(14.r),
+          child: Padding(
+            padding: EdgeInsets.all(14.r),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  width: 40.r,
+                  height: 40.r,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(11.r),
                   ),
+                  child: Icon(icon, color: Colors.white, size: 20.r),
                 ),
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 36.r,
-                        height: 36.r,
-                        decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(10.r),
-                        ),
-                        child: Icon(icon, color: color, size: 18.r),
-                      ),
-                      Icon(Icons.arrow_outward_rounded,
-                          color: color.withValues(alpha: 0.40), size: 14.r),
-                    ],
-                  ),
-                ),
-              ),
-              Padding(
-                padding: EdgeInsets.fromLTRB(14.w, 10.h, 14.w, 14.h),
-                child: Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title,
-                        style: GoogleFonts.barlowCondensed(
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.6,
-                          height: 1.0,
-                          color: AppColors.foreground,
-                        )),
-                    SizedBox(height: 3.h),
-                    Text(subtitle,
-                        style: GoogleFonts.barlow(
-                          fontSize: 10.sp,
-                          color: AppColors.foregroundMuted,
-                        )),
+                    Text(
+                      title,
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.4,
+                        height: 1.1,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.barlow(
+                        fontSize: 9.sp,
+                        height: 1.2,
+                        color: Colors.white.withValues(alpha: 0.72),
+                      ),
+                    ),
                   ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
