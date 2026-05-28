@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/todays_route_map/domain/enums/route_outlet_status.dart';
 import 'package:uswatte/features/todays_route_map/presentation/bloc/todays_route_map_bloc.dart';
 import 'package:uswatte/features/todays_route_map/presentation/bloc/todays_route_map_event.dart';
@@ -55,7 +56,7 @@ class TodaysRouteMapPage extends StatelessWidget {
 
   Widget _buildBody(BuildContext context, TodaysRouteMapState state) {
     if (state is TodaysRouteMapLoading || state is TodaysRouteMapInitial) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: AppSpinner());
     }
 
     if (state is TodaysRouteMapError) {
@@ -186,12 +187,7 @@ class _MapHeader extends StatelessWidget {
               GestureDetector(
                 onTap: isLoading ? null : onRefresh,
                 child: isLoading
-                    ? SizedBox(
-                        width: 20.r,
-                        height: 20.r,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 1.5, color: Colors.white),
-                      )
+                    ? const AppSpinner.small(color: Colors.white)
                     : Icon(Icons.sync_rounded,
                         size: 20.r, color: Colors.white),
               ),

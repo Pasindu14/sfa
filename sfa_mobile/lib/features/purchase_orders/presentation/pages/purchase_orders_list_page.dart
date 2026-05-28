@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/purchase_orders/domain/entities/purchase_order_summary.dart';
 import 'package:uswatte/features/purchase_orders/presentation/bloc/purchase_orders_bloc.dart';
 import 'package:uswatte/features/purchase_orders/presentation/bloc/purchase_orders_event.dart';
@@ -140,108 +141,79 @@ class _Header extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF7C2D12), AppColors.primaryDark, AppColors.primary],
+          colors: [AppColors.primaryDark, AppColors.primary],
         ),
       ),
-      child: Stack(
-        children: [
-          // Decorative circles
-          Positioned(
-            right: -20.w,
-            top: -20.h,
-            child: Container(
-              width: 130.r,
-              height: 130.r,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.05),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(8.w, 4.h, 16.w, 18.h),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Back button
+              GestureDetector(
+                onTap: () => context.canPop()
+                    ? context.pop()
+                    : context.goNamed(homeRouteName),
+                child: Container(
+                  width: 40.r,
+                  height: 40.r,
+                  margin: EdgeInsets.all(4.r),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10.r),
+                    border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.25)),
+                  ),
+                  child: Icon(Icons.arrow_back_ios_new_rounded,
+                      size: 15.r, color: Colors.white),
+                ),
               ),
-            ),
-          ),
-          Positioned(
-            right: 60.w,
-            bottom: -10.h,
-            child: Container(
-              width: 60.r,
-              height: 60.r,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.04),
-              ),
-            ),
-          ),
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(8.w, 4.h, 16.w, 18.h),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Back button
-                  GestureDetector(
-                    onTap: () => context.canPop()
-                        ? context.pop()
-                        : context.goNamed(homeRouteName),
-                    child: Container(
-                      width: 40.r,
-                      height: 40.r,
-                      margin: EdgeInsets.all(4.r),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(10.r),
-                        border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.25)),
+              SizedBox(width: 6.w),
+              // Title block
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      label,
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 18.sp,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.5,
+                        height: 1.0,
+                        color: Colors.white,
                       ),
-                      child: Icon(Icons.arrow_back_ios_new_rounded,
-                          size: 15.r, color: Colors.white),
                     ),
-                  ),
-                  SizedBox(width: 6.w),
-                  // Title block
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          label,
-                          style: GoogleFonts.barlowCondensed(
-                            fontSize: 22.sp,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1.5,
-                            height: 1.0,
-                            color: Colors.white,
-                          ),
-                        ),
-                        SizedBox(height: 2.h),
-                        Text(
-                          subtitle,
-                          style: GoogleFonts.barlow(
-                            fontSize: 11.sp,
-                            color: Colors.white.withValues(alpha: 0.65),
-                          ),
-                        ),
-                      ],
+                    SizedBox(height: 2.h),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.barlow(
+                        fontSize: 11.sp,
+                        color: Colors.white.withValues(alpha: 0.70),
+                      ),
                     ),
-                  ),
-                  // Icon badge
-                  Container(
-                    width: 40.r,
-                    height: 40.r,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10.r),
-                      border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.2)),
-                    ),
-                    child: Icon(Icons.assignment_outlined,
-                        size: 20.r, color: Colors.white),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+              // Icon badge
+              Container(
+                width: 40.r,
+                height: 40.r,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10.r),
+                  border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.25)),
+                ),
+                child: Icon(Icons.assignment_outlined,
+                    size: 20.r, color: Colors.white),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -539,20 +511,7 @@ class _LoadingView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
-            width: 44.r,
-            height: 44.r,
-            child: CircularProgressIndicator(
-              color: AppColors.primary,
-              strokeWidth: 2.5,
-            ),
-          ),
-          SizedBox(height: 16.h),
-          Text(
-            'Loading orders...',
-            style: GoogleFonts.barlow(
-                fontSize: 13.sp, color: AppColors.foregroundMuted),
-          ),
+          const AppSpinner(),
         ],
       ),
     );

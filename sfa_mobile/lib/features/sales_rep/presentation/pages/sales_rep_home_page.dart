@@ -1508,42 +1508,25 @@ class _TileActionCard extends StatelessWidget {
                     topRight: Radius.circular(14.r),
                   ),
                 ),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Positioned(
-                      right: -10.w,
-                      top: -10.h,
-                      child: Container(
-                        width: 54.r,
-                        height: 54.r,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 36.r,
+                        height: 36.r,
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: color.withValues(alpha: 0.07),
+                          color: color.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(10.r),
                         ),
+                        child: Icon(icon, color: color, size: 18.r),
                       ),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 36.r,
-                            height: 36.r,
-                            decoration: BoxDecoration(
-                              color: color.withValues(alpha: 0.16),
-                              borderRadius: BorderRadius.circular(10.r),
-                            ),
-                            child: Icon(icon, color: color, size: 18.r),
-                          ),
-                          Icon(Icons.arrow_outward_rounded,
-                              color: color.withValues(alpha: 0.40), size: 14.r),
-                        ],
-                      ),
-                    ),
-                  ],
+                      Icon(Icons.arrow_outward_rounded,
+                          color: color.withValues(alpha: 0.40), size: 14.r),
+                    ],
+                  ),
                 ),
               ),
               Padding(

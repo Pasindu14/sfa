@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/notifications/domain/entities/notification_entity.dart';
 import '../bloc/notifications_bloc.dart';
 
@@ -64,10 +65,7 @@ class _NotificationsPageState extends State<NotificationsPage>
             child: BlocBuilder<NotificationsBloc, NotificationsState>(
               builder: (context, state) {
                 if (state is NotificationsLoading) {
-                  return Center(
-                    child: CircularProgressIndicator(
-                        color: AppColors.primary, strokeWidth: 2),
-                  );
+                  return const Center(child: AppSpinner());
                 }
 
                 if (state is NotificationsError) {
@@ -258,15 +256,7 @@ class _NotificationsPageState extends State<NotificationsPage>
                           SliverToBoxAdapter(
                             child: Padding(
                               padding: EdgeInsets.all(20.r),
-                              child: Center(
-                                child: SizedBox(
-                                  width: 20.r,
-                                  height: 20.r,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: AppColors.primary),
-                                ),
-                              ),
+                              child: const Center(child: AppSpinner.small()),
                             ),
                           ),
                         SliverToBoxAdapter(child: SizedBox(height: 24.h)),

@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/di/injection.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/bills/data/datasources/bills_local_datasource.dart';
 import 'package:uswatte/features/bills/domain/usecases/search_products_for_bill_usecase.dart';
 import 'package:uswatte/features/bills/presentation/widgets/quantity_dialog.dart';
@@ -355,14 +356,7 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        SizedBox(
-                          width: 28.r,
-                          height: 28.r,
-                          child: const CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: AppColors.primary,
-                          ),
-                        ),
+                        const AppSpinner(),
                         SizedBox(height: 12.h),
                         Text(
                           'Loading products…',

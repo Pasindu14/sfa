@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/outlets/domain/entities/outlet.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_bloc.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_event.dart';
@@ -58,10 +59,8 @@ class OutletsPage extends StatelessWidget {
                   child: _NoAssignmentBanner(lastSyncedAt: state.lastSyncedAt),
                 ),
               if (state is OutletsLoading)
-                SliverFillRemaining(
-                  child: Center(
-                    child: CircularProgressIndicator(color: AppColors.primary),
-                  ),
+                const SliverFillRemaining(
+                  child: Center(child: AppSpinner()),
                 )
               else if (state is OutletsError)
                 SliverFillRemaining(
@@ -258,12 +257,7 @@ class _OutletsAppBar extends StatelessWidget {
                 GestureDetector(
                   onTap: isSyncing ? null : onRefresh,
                   child: isSyncing
-                      ? SizedBox(
-                          width: 20.r,
-                          height: 20.r,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 1.5, color: Colors.white),
-                        )
+                      ? const AppSpinner.small(color: Colors.white)
                       : Icon(Icons.sync_rounded,
                           size: 20.r, color: Colors.white),
                 ),

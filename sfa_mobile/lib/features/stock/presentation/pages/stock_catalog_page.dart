@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/di/injection.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/stock/data/datasources/distributor_stock_local_datasource.dart';
 import 'package:uswatte/features/stock/domain/usecases/sync_distributor_stock_usecase.dart';
 
@@ -99,7 +100,7 @@ class _StockCatalogPageState extends State<StockCatalogPage> {
           ),
           if (_loading)
             const SliverFillRemaining(
-              child: Center(child: CircularProgressIndicator(color: _kAccent)),
+              child: Center(child: AppSpinner()),
             )
           else if (_items.isEmpty)
             SliverFillRemaining(child: _EmptyView(onSync: _sync))
@@ -219,13 +220,8 @@ class _AppBar extends StatelessWidget {
                           color: Colors.white.withValues(alpha: 0.25)),
                     ),
                     child: isSyncing
-                        ? Padding(
-                            padding: EdgeInsets.all(10.r),
-                            child: const CircularProgressIndicator(
-                              strokeWidth: 1.5,
-                              color: Colors.white,
-                            ),
-                          )
+                        ? const Center(
+                            child: AppSpinner.small(color: Colors.white))
                         : Icon(Icons.sync_rounded,
                             size: 16.r, color: Colors.white),
                   ),

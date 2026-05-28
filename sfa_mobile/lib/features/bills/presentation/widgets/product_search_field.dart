@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/bills/data/datasources/bills_local_datasource.dart';
 import 'package:uswatte/features/bills/domain/usecases/search_products_for_bill_usecase.dart';
 
@@ -124,12 +125,7 @@ class _ProductSearchFieldState extends State<ProductSearchField> {
               suffixIcon: _searching
                   ? Padding(
                       padding: EdgeInsets.all(12.r),
-                      child: SizedBox(
-                        width: 14.r,
-                        height: 14.r,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: AppColors.primary),
-                      ),
+                      child: const AppSpinner.small(),
                     )
                   : null,
             ),

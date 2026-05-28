@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/outlet_bill_history/domain/entities/outlet_bill_summary.dart';
 import 'package:uswatte/features/outlet_bill_history/presentation/cubit/outlet_bill_history_cubit.dart';
 import 'package:uswatte/features/outlet_bill_history/presentation/cubit/outlet_bill_history_state.dart';
@@ -114,12 +115,7 @@ class _OutletBillHistoryPageState extends State<OutletBillHistoryPage> {
                 return switch (state) {
                   OutletBillHistoryInitial() ||
                   OutletBillHistoryLoading() =>
-                    const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.primary,
-                        strokeWidth: 2,
-                      ),
-                    ),
+                    const Center(child: AppSpinner()),
                   OutletBillHistoryError(:final message) => _ErrorView(
                       message: message,
                       onRetry: _load,
@@ -141,10 +137,7 @@ class _OutletBillHistoryPageState extends State<OutletBillHistoryPage> {
                                 padding: EdgeInsets.symmetric(vertical: 16.h),
                                 child: Center(
                                   child: isLoadingMore
-                                      ? const CircularProgressIndicator(
-                                          color: AppColors.primary,
-                                          strokeWidth: 2,
-                                        )
+                                      ? const AppSpinner.small()
                                       : const SizedBox.shrink(),
                                 ),
                               );

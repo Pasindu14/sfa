@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/not_billings/presentation/bloc/create_not_billing_bloc.dart';
 import 'package:uswatte/features/not_billings/presentation/bloc/create_not_billing_event.dart';
 import 'package:uswatte/features/not_billings/presentation/bloc/create_not_billing_state.dart';
@@ -272,14 +273,7 @@ class _CreateNotBillingPageState extends State<CreateNotBillingPage> {
                     elevation: 0,
                   ),
                   child: state.submitting
-                      ? SizedBox(
-                          width: 20.r,
-                          height: 20.r,
-                          child: const CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
+                      ? const AppSpinner.button()
                       : Text(
                           'SUBMIT',
                           style: GoogleFonts.barlowCondensed(

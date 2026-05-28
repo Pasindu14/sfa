@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:uswatte/features/supervisor_summary/presentation/cubit/supervisor_summary_cubit.dart';
 import 'package:uswatte/features/supervisor_summary/presentation/cubit/supervisor_summary_state.dart';
@@ -534,12 +535,7 @@ class _SalesTile extends StatelessWidget {
             ),
           ),
           loading
-              ? SizedBox(
-                  width: 16.r,
-                  height: 16.r,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 1.5, color: color),
-                )
+              ? AppSpinner.small(color: color)
               : Text(
                   value,
                   style: GoogleFonts.barlowCondensed(

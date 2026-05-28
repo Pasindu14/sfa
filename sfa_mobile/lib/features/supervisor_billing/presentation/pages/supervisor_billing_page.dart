@@ -6,6 +6,7 @@ import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/route_assignment/domain/entities/rep_summary.dart';
 import 'package:uswatte/features/route_assignment/domain/usecases/get_my_reps_usecase.dart';
 import 'package:uswatte/features/supervisor_billing/domain/entities/billing_summary.dart';
@@ -175,23 +176,7 @@ class _LoadingBody extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 56.r,
-            height: 56.r,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              shape: BoxShape.circle,
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(14.r),
-              child: CircularProgressIndicator(
-                  color: AppColors.primary, strokeWidth: 2.5),
-            ),
-          ),
-          SizedBox(height: 16.h),
-          Text('Loading reps...',
-              style: GoogleFonts.barlow(
-                  fontSize: 14.sp, color: AppColors.foregroundMuted)),
+          const AppSpinner(),
         ],
       ),
     );
@@ -1115,12 +1100,7 @@ class _GetBillsButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (isLoading)
-              SizedBox(
-                width: 18.r,
-                height: 18.r,
-                child: const CircularProgressIndicator(
-                    color: Colors.white, strokeWidth: 2.5),
-              )
+              const AppSpinner.button()
             else
               Icon(
                 Icons.search_rounded,
@@ -1129,7 +1109,7 @@ class _GetBillsButton extends StatelessWidget {
               ),
             SizedBox(width: 10.w),
             Text(
-              isLoading ? 'LOADING...' : 'GET BILLS',
+              'GET BILLS',
               style: GoogleFonts.barlowCondensed(
                 fontSize: 16.sp,
                 fontWeight: FontWeight.w800,

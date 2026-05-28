@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/bills/domain/entities/sync_status.dart';
 import 'package:uswatte/features/not_billings/domain/entities/not_billing.dart';
 import 'package:uswatte/features/not_billings/presentation/bloc/not_billings_list_bloc.dart';
@@ -85,23 +86,35 @@ class NotBillingsListPage extends StatelessWidget {
                         ),
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () => context
-                          .read<NotBillingsListBloc>()
-                          .add(const FlushAllNotBillingsRequested()),
-                      child: Container(
-                        width: 40.r,
-                        height: 40.r,
-                        margin: EdgeInsets.all(4.r),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10.r),
-                          border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.25)),
-                        ),
-                        child: Icon(Icons.sync_rounded,
-                            size: 18.r, color: Colors.white),
-                      ),
+                    BlocBuilder<NotBillingsListBloc, NotBillingsListState>(
+                      builder: (context, state) {
+                        final isSyncing = state is NotBillingsListLoading;
+                        return GestureDetector(
+                          onTap: isSyncing
+                              ? null
+                              : () => context
+                                  .read<NotBillingsListBloc>()
+                                  .add(const FlushAllNotBillingsRequested()),
+                          child: Container(
+                            width: 40.r,
+                            height: 40.r,
+                            margin: EdgeInsets.all(4.r),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10.r),
+                              border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.25)),
+                            ),
+                            child: Center(
+                              child: isSyncing
+                                  ? const AppSpinner.small(
+                                      color: Colors.white)
+                                  : Icon(Icons.sync_rounded,
+                                      size: 18.r, color: Colors.white),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -115,7 +128,7 @@ class NotBillingsListPage extends StatelessWidget {
               builder: (context, state) {
                 if (state is NotBillingsListLoading ||
                     state is NotBillingsListInitial) {
-                  return Center(child: CircularProgressIndicator(color: AppColors.primary));
+                  return const Center(child: AppSpinner());
                 }
 
                 if (state is NotBillingsListError) {

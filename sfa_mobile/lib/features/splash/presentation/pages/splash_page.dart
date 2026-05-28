@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 
 /// Shown during [AuthInitial] — the brief window while the app checks
 /// secure storage for a saved token. Prevents the login-page flash
@@ -33,14 +34,7 @@ class SplashPage extends StatelessWidget {
               ),
             ),
             SizedBox(height: 48.h),
-            SizedBox(
-              width: 20.r,
-              height: 20.r,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: AppColors.primary,
-              ),
-            ),
+            const AppSpinner(),
           ],
         ),
       ),

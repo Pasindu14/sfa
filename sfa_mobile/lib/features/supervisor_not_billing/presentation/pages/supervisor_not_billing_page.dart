@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/route_assignment/domain/entities/rep_summary.dart';
 import 'package:uswatte/features/supervisor_not_billing/domain/entities/not_billing_reason.dart';
 import 'package:uswatte/features/supervisor_not_billing/domain/entities/not_billing_summary.dart';
@@ -160,23 +161,7 @@ class _LoadingBody extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 56.r,
-            height: 56.r,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              shape: BoxShape.circle,
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(14.r),
-              child: CircularProgressIndicator(
-                  color: AppColors.primary, strokeWidth: 2.5),
-            ),
-          ),
-          SizedBox(height: 16.h),
-          Text('Loading reps...',
-              style: GoogleFonts.barlow(
-                  fontSize: 14.sp, color: AppColors.foregroundMuted)),
+          const AppSpinner(),
         ],
       ),
     );
@@ -1097,20 +1082,14 @@ class _GetNotBillingsButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (isLoading)
-              SizedBox(
-                width: 18.r,
-                height: 18.r,
-                child: const CircularProgressIndicator(
-                    color: Colors.white, strokeWidth: 2.5),
-              )
+              const AppSpinner.button()
             else
               Icon(Icons.search_rounded,
                   size: 18.r,
-                  color:
-                      canLoad ? Colors.white : AppColors.foregroundMuted),
+                  color: canLoad ? Colors.white : AppColors.foregroundMuted),
             SizedBox(width: 10.w),
             Text(
-              isLoading ? 'LOADING...' : 'GET NON-BILLINGS',
+              'GET NON-BILLINGS',
               style: GoogleFonts.barlowCondensed(
                 fontSize: 16.sp,
                 fontWeight: FontWeight.w800,

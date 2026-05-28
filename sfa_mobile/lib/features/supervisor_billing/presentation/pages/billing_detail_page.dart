@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/supervisor_billing/domain/entities/billing_detail.dart';
 import 'package:uswatte/features/supervisor_billing/domain/entities/billing_item.dart';
 import 'package:uswatte/features/supervisor_billing/domain/entities/billing_summary.dart';
@@ -181,23 +182,7 @@ class _LoadingBody extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 56.r,
-            height: 56.r,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              shape: BoxShape.circle,
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(14.r),
-              child: CircularProgressIndicator(
-                  color: AppColors.primary, strokeWidth: 2.5),
-            ),
-          ),
-          SizedBox(height: 16.h),
-          Text('Loading bill...',
-              style: GoogleFonts.barlow(
-                  fontSize: 14.sp, color: AppColors.foregroundMuted)),
+          const AppSpinner(),
         ],
       ),
     );

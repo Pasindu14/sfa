@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/auth/presentation/bloc/auth_bloc.dart';
 
 class LoginPage extends StatefulWidget {
@@ -352,14 +353,7 @@ class _GradientButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(10.r)),
           padding: EdgeInsets.zero,
           child: isLoading
-              ? SizedBox(
-                  height: 22.r,
-                  width: 22.r,
-                  child: const CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: Colors.white,
-                  ),
-                )
+              ? const AppSpinner.button()
               : Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

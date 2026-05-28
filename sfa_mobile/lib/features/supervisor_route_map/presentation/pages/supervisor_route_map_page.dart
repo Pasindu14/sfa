@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/route_assignment/domain/entities/rep_summary.dart';
 import 'package:uswatte/features/supervisor_route_map/presentation/bloc/supervisor_route_map_bloc.dart';
 import 'package:uswatte/features/supervisor_route_map/presentation/bloc/supervisor_route_map_event.dart';
@@ -67,7 +68,7 @@ class SupervisorRouteMapPage extends StatelessWidget {
   Widget _buildBody(BuildContext context, SupervisorRouteMapState state) {
     if (state is SupervisorRouteMapInitial ||
         state is SupervisorRouteMapLoadingReps) {
-      return Center(child: CircularProgressIndicator(color: AppColors.primary));
+      return const Center(child: AppSpinner());
     }
 
     if (state is SupervisorRouteMapRepsError) {
@@ -177,12 +178,7 @@ class _MapHeader extends StatelessWidget {
                 GestureDetector(
                   onTap: isLoading ? null : onRefresh,
                   child: isLoading
-                      ? SizedBox(
-                          width: 20.r,
-                          height: 20.r,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 1.5, color: Colors.white),
-                        )
+                      ? const AppSpinner.small(color: Colors.white)
                       : Icon(Icons.sync_rounded,
                           size: 20.r, color: Colors.white),
                 ),
@@ -905,12 +901,7 @@ class _ViewMapButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (isLoading)
-              SizedBox(
-                width: 18.r,
-                height: 18.r,
-                child: const CircularProgressIndicator(
-                    color: Colors.white, strokeWidth: 2.5),
-              )
+              const AppSpinner.button()
             else
               Icon(
                 Icons.map_rounded,
@@ -919,7 +910,7 @@ class _ViewMapButton extends StatelessWidget {
               ),
             SizedBox(width: 10.w),
             Text(
-              isLoading ? 'LOADING...' : 'VIEW MAP',
+              'VIEW MAP',
               style: GoogleFonts.barlowCondensed(
                 fontSize: 16.sp,
                 fontWeight: FontWeight.w800,

@@ -7,6 +7,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/purchase_orders/domain/entities/purchase_order_detail.dart';
 import 'package:uswatte/features/purchase_orders/presentation/bloc/purchase_orders_bloc.dart';
 import 'package:uswatte/features/purchase_orders/presentation/bloc/purchase_orders_event.dart';
@@ -103,9 +104,7 @@ class PurchaseOrderDetailPage extends StatelessWidget {
         if (order == null) {
           return const Scaffold(
             backgroundColor: Color(0xFFF8F7F5),
-            body: Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            ),
+            body: Center(child: AppSpinner()),
           );
         }
 
@@ -200,49 +199,16 @@ class _SliverHeader extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF7C2D12),
-                AppColors.primaryDark,
-                AppColors.primary,
-              ],
+              colors: [AppColors.primaryDark, AppColors.primary],
             ),
           ),
-          child: Stack(
-            children: [
-              // Decorative circle
-              Positioned(
-                right: -30.w,
-                top: -30.h,
-                child: Container(
-                  width: 180.r,
-                  height: 180.r,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.05),
-                  ),
-                ),
-              ),
-              Positioned(
-                right: 50.w,
-                bottom: 10.h,
-                child: Container(
-                  width: 80.r,
-                  height: 80.r,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.04),
-                  ),
-                ),
-              ),
-              // Content
-              SafeArea(
-                child: Padding(
-                  padding:
-                      EdgeInsets.fromLTRB(20.w, 48.h, 20.w, 20.h),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
+          child: SafeArea(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(20.w, 48.h, 20.w, 20.h),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
                       // Status chip
                       Container(
                         padding: EdgeInsets.symmetric(
@@ -295,11 +261,9 @@ class _SliverHeader extends StatelessWidget {
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -1492,14 +1456,7 @@ class _ActionButton extends StatelessWidget {
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
       ),
       child: isLoading
-          ? SizedBox(
-              height: 18.r,
-              width: 18.r,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.5,
-                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
-            )
+          ? const AppSpinner.button()
           : Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

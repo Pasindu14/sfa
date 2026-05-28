@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/constants/sl_geo.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/create_outlet/presentation/bloc/create_outlet_bloc.dart';
 import 'package:uswatte/features/create_outlet/presentation/bloc/create_outlet_event.dart';
 import 'package:uswatte/features/create_outlet/presentation/bloc/create_outlet_state.dart';
@@ -258,13 +259,8 @@ class _CreateOutletPageState extends State<CreateOutletPage> {
                                           BorderRadius.circular(10.r)),
                                 ),
                                 icon: state.isLocating
-                                    ? SizedBox(
-                                        width: 16.r,
-                                        height: 16.r,
-                                        child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: AppColors.primary),
-                                      )
+                                    ? AppSpinner.small(
+                                        color: AppColors.primary)
                                     : Icon(Icons.my_location_rounded,
                                         size: 16.r),
                                 label: Text(
@@ -931,12 +927,7 @@ class _SubmitBar extends StatelessWidget {
             elevation: 0,
           ),
           child: state.isSubmitting
-              ? SizedBox(
-                  width: 20.r,
-                  height: 20.r,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white),
-                )
+              ? const AppSpinner.button()
               : Text(
                   'REGISTER OUTLET',
                   style: GoogleFonts.barlowCondensed(

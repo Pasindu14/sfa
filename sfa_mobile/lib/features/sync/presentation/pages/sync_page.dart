@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/di/injection.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_bloc.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_event.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_state.dart';
@@ -463,12 +464,7 @@ class _StatusBanner extends StatelessWidget {
       child: Row(
         children: [
           isAnySyncing
-              ? SizedBox(
-                  width: 16.r,
-                  height: 16.r,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 1.5, color: color),
-                )
+              ? AppSpinner.small(color: color)
               : Icon(icon, size: 16.r, color: color),
           SizedBox(width: 10.w),
           Text(
@@ -656,11 +652,7 @@ class _CategoryCard extends StatelessWidget {
                         color: accentColor.withValues(alpha: 0.20)),
                   ),
                   child: isSyncing
-                      ? Padding(
-                          padding: EdgeInsets.all(9.r),
-                          child: CircularProgressIndicator(
-                              strokeWidth: 1.5, color: accentColor),
-                        )
+                      ? Center(child: AppSpinner.small(color: accentColor))
                       : Icon(Icons.sync_rounded,
                           size: 15.r, color: accentColor),
                 ),
@@ -732,12 +724,7 @@ class _CategoryCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     isSyncing
-                        ? SizedBox(
-                            width: 10.r,
-                            height: 10.r,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 1.2, color: statusColor),
-                          )
+                        ? AppSpinner.small(color: statusColor)
                         : Icon(_statusIcon(),
                             size: 11.r, color: statusColor),
                     SizedBox(width: 5.w),
@@ -823,12 +810,7 @@ class _SyncAllButton extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               isSyncing
-                  ? SizedBox(
-                      width: 16.r,
-                      height: 16.r,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 1.8, color: Colors.white),
-                    )
+                  ? const AppSpinner.button()
                   : Icon(Icons.sync_rounded,
                       size: 18.r, color: Colors.white),
               SizedBox(width: 10.w),

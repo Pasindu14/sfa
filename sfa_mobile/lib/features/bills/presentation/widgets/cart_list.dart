@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/bills/presentation/bloc/create_bill_bloc.dart';
 import 'package:uswatte/features/bills/presentation/bloc/create_bill_event.dart';
 import 'package:uswatte/features/bills/presentation/bloc/create_bill_state.dart';
@@ -483,12 +484,7 @@ class _CtaButton extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (state.submitting)
-                SizedBox(
-                  width: 16.r,
-                  height: 16.r,
-                  child: const CircularProgressIndicator(
-                      strokeWidth: 1.8, color: Colors.white),
-                )
+                const AppSpinner.button()
               else
                 Icon(Icons.check_circle_outline_rounded,
                     size: compact ? 15.r : 18.r, color: Colors.white),

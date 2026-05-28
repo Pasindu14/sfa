@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/pricing/domain/entities/pricing_structure.dart';
 import 'package:uswatte/features/pricing/presentation/bloc/pricing_bloc.dart';
 import 'package:uswatte/features/pricing/presentation/bloc/pricing_event.dart';
@@ -34,10 +35,8 @@ class PricingPage extends StatelessWidget {
                     .add(const SyncPricingRequested()),
               ),
               if (state is PricingLoading)
-                SliverFillRemaining(
-                  child: Center(
-                    child: CircularProgressIndicator(color: AppColors.primary),
-                  ),
+                const SliverFillRemaining(
+                  child: Center(child: AppSpinner()),
                 )
               else if (state is PricingError)
                 SliverFillRemaining(
@@ -195,12 +194,7 @@ class _PricingAppBar extends StatelessWidget {
                 GestureDetector(
                   onTap: isSyncing ? null : onRefresh,
                   child: isSyncing
-                      ? SizedBox(
-                          width: 20.r,
-                          height: 20.r,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 1.5, color: Colors.white),
-                        )
+                      ? const AppSpinner.small(color: Colors.white)
                       : Icon(Icons.sync_rounded,
                           size: 20.r, color: Colors.white),
                 ),

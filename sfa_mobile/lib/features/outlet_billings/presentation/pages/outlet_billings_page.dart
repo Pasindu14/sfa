@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/di/injection.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/outlet_billings/presentation/cubit/outlet_billings_cubit.dart';
 import 'package:uswatte/features/outlet_billings/presentation/cubit/outlet_billings_state.dart';
 import 'package:uswatte/features/outlet_billings/presentation/widgets/month_filter_chips.dart';
@@ -97,10 +98,7 @@ class _OutletBillingsView extends StatelessWidget {
             child: BlocBuilder<OutletBillingsCubit, OutletBillingsState>(
               builder: (context, state) {
                 if (state is OutletBillingsRoutesLoading) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                        color: AppColors.primary, strokeWidth: 2),
-                  );
+                  return const Center(child: AppSpinner());
                 }
 
                 if (state is OutletBillingsError) {
@@ -254,10 +252,7 @@ class _OutletBillingsView extends StatelessWidget {
                         const SliverToBoxAdapter(
                           child: Padding(
                             padding: EdgeInsets.symmetric(vertical: 32),
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                  color: AppColors.primary, strokeWidth: 2),
-                            ),
+                            child: Center(child: AppSpinner()),
                           ),
                         )
                       else if (state.outletSummaries.isEmpty)

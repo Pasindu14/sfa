@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/bills/domain/entities/bill.dart';
 import 'package:uswatte/features/bills/domain/entities/sync_status.dart';
 import 'package:uswatte/features/bills/presentation/bloc/bills_list_bloc.dart';
@@ -88,23 +89,35 @@ class BillsListPage extends StatelessWidget {
                       ),
                     ),
                     // Sync button
-                    GestureDetector(
-                      onTap: () => context
-                          .read<BillsListBloc>()
-                          .add(const FlushAllRequested()),
-                      child: Container(
-                        width: 40.r,
-                        height: 40.r,
-                        margin: EdgeInsets.all(4.r),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10.r),
-                          border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.25)),
-                        ),
-                        child: Icon(Icons.cloud_sync_rounded,
-                            size: 16.r, color: Colors.white),
-                      ),
+                    BlocBuilder<BillsListBloc, BillsListState>(
+                      builder: (context, state) {
+                        final isSyncing = state is BillsListLoading;
+                        return GestureDetector(
+                          onTap: isSyncing
+                              ? null
+                              : () => context
+                                  .read<BillsListBloc>()
+                                  .add(const FlushAllRequested()),
+                          child: Container(
+                            width: 40.r,
+                            height: 40.r,
+                            margin: EdgeInsets.all(4.r),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10.r),
+                              border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.25)),
+                            ),
+                            child: Center(
+                              child: isSyncing
+                                  ? const AppSpinner.small(
+                                      color: Colors.white)
+                                  : Icon(Icons.cloud_sync_rounded,
+                                      size: 16.r, color: Colors.white),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -117,9 +130,7 @@ class BillsListPage extends StatelessWidget {
             child: BlocBuilder<BillsListBloc, BillsListState>(
               builder: (ctx, state) {
                 if (state is BillsListLoading || state is BillsListInitial) {
-                  return const Center(
-                      child: CircularProgressIndicator(
-                          color: AppColors.primary, strokeWidth: 2));
+                  return const Center(child: AppSpinner());
                 }
                 if (state is BillsListError) {
                   return Center(child: Text(state.message));

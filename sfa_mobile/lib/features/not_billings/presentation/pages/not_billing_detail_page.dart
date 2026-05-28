@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/bills/domain/entities/sync_status.dart';
 import 'package:uswatte/features/not_billings/domain/entities/not_billing.dart';
 import 'package:uswatte/features/not_billings/presentation/bloc/not_billings_list_bloc.dart';
@@ -87,7 +88,7 @@ class NotBillingDetailPage extends StatelessWidget {
               ),
               Expanded(
                 child: record == null
-                    ? Center(child: CircularProgressIndicator(color: AppColors.primary))
+                    ? const Center(child: AppSpinner())
                     : _DetailBody(record: record),
               ),
             ],

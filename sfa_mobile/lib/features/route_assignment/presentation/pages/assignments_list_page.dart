@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/di/injection.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/route_assignment/domain/entities/daily_route_assignment.dart';
 import 'package:uswatte/features/route_assignment/domain/usecases/delete_assignment_usecase.dart';
 import 'package:uswatte/features/route_assignment/domain/usecases/get_assignments_usecase.dart';
@@ -69,10 +70,7 @@ class _AssignmentsView extends StatelessWidget {
               },
               builder: (context, state) {
                 if (state is AssignmentsLoading) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                        color: AppColors.primary, strokeWidth: 2),
-                  );
+                  return const Center(child: AppSpinner());
                 }
                 if (state is AssignmentsError) {
                   return _ErrorBody(
@@ -736,14 +734,8 @@ class _AssignmentCard extends StatelessWidget {
                         if (isRequesting)
                           Padding(
                             padding: EdgeInsets.all(8.r),
-                            child: SizedBox(
-                              width: 18.r,
-                              height: 18.r,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.primary,
-                              ),
-                            ),
+                            child: const AppSpinner.button(
+                                color: AppColors.primary),
                           )
                         else if (assignment.deletionStatus ==
                             DeletionStatus.pendingApproval)

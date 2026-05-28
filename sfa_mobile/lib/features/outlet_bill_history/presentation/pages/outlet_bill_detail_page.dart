@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/outlet_bill_history/domain/entities/outlet_bill_detail.dart';
 import 'package:uswatte/features/outlet_bill_history/domain/entities/outlet_bill_item.dart';
 import 'package:uswatte/features/outlet_bill_history/presentation/cubit/outlet_bill_detail_cubit.dart';
@@ -94,12 +95,7 @@ class _OutletBillDetailPageState extends State<OutletBillDetailPage> {
                 return switch (state) {
                   OutletBillDetailInitial() ||
                   OutletBillDetailLoading() =>
-                    const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.primary,
-                        strokeWidth: 2,
-                      ),
-                    ),
+                    const Center(child: AppSpinner()),
                   OutletBillDetailError(:final message) => _ErrorView(
                       message: message,
                       onRetry: () => ctx

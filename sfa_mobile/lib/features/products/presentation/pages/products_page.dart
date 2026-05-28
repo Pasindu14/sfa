@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/products/domain/entities/product.dart';
 import 'package:uswatte/features/products/presentation/bloc/products_bloc.dart';
 import 'package:uswatte/features/products/presentation/bloc/products_event.dart';
@@ -174,13 +175,8 @@ class _AppBar extends StatelessWidget {
                           color: Colors.white.withValues(alpha: 0.25)),
                     ),
                     child: isSyncing
-                        ? Padding(
-                            padding: EdgeInsets.all(10.r),
-                            child: CircularProgressIndicator(
-                              strokeWidth: 1.5,
-                              color: Colors.white,
-                            ),
-                          )
+                        ? const Center(
+                            child: AppSpinner.small(color: Colors.white))
                         : Icon(Icons.sync_rounded,
                             size: 16.r, color: Colors.white),
                   ),
@@ -390,12 +386,7 @@ class _LoadingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: CircularProgressIndicator(
-        color: AppColors.primary,
-        strokeWidth: 2,
-      ),
-    );
+    return const Center(child: AppSpinner());
   }
 }
 

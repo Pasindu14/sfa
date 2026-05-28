@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/item_wise_achievement/domain/entities/item_wise_achievement.dart';
 import 'package:uswatte/features/item_wise_achievement/presentation/cubit/item_wise_achievement_cubit.dart';
 import 'package:uswatte/features/item_wise_achievement/presentation/cubit/item_wise_achievement_state.dart';
@@ -45,12 +46,7 @@ class ItemWiseAchievementPage extends StatelessWidget {
                 return switch (state) {
                   ItemWiseAchievementInitial() ||
                   ItemWiseAchievementLoading() =>
-                    const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.primary,
-                        strokeWidth: 2,
-                      ),
-                    ),
+                    const Center(child: AppSpinner()),
                   ItemWiseAchievementErrorState(:final message) => _ErrorView(
                       message: message,
                       onRetry: () => ctx

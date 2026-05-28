@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/item_wise_achievement/domain/entities/item_wise_achievement.dart';
 import 'package:uswatte/features/route_assignment/domain/entities/rep_summary.dart';
 import 'package:uswatte/features/supervisor_achievement/presentation/cubit/supervisor_achievement_cubit.dart';
@@ -163,23 +164,7 @@ class _LoadingReps extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 56.r,
-            height: 56.r,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              shape: BoxShape.circle,
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(14.r),
-              child: CircularProgressIndicator(
-                  color: AppColors.primary, strokeWidth: 2.5),
-            ),
-          ),
-          SizedBox(height: 16.h),
-          Text('Loading reps...',
-              style: GoogleFonts.barlow(
-                  fontSize: 14.sp, color: AppColors.foregroundMuted)),
+          const AppSpinner(),
         ],
       ),
     );
@@ -1130,18 +1115,7 @@ class _DataLoading extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
-            width: 32.r,
-            height: 32.r,
-            child: CircularProgressIndicator(
-              color: AppColors.primary,
-              strokeWidth: 2.5,
-            ),
-          ),
-          SizedBox(height: 14.h),
-          Text('Loading achievement...',
-              style: GoogleFonts.barlow(
-                  fontSize: 13.sp, color: AppColors.foregroundMuted)),
+          const AppSpinner(),
         ],
       ),
     );

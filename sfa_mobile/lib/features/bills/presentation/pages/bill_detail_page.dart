@@ -9,6 +9,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/di/injection.dart';
 import 'package:uswatte/core/sync/bill_sync_service.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/bills/domain/entities/bill.dart';
 import 'package:uswatte/features/bills/domain/entities/bill_item.dart';
 import 'package:uswatte/features/bills/domain/entities/sync_status.dart';
@@ -75,14 +76,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
             duration: const Duration(minutes: 5),
             content: Row(
               children: [
-                SizedBox(
-                  width: 16.r,
-                  height: 16.r,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                ),
+                const AppSpinner.small(color: Colors.white),
                 SizedBox(width: 10.w),
                 Text(
                   'Syncing order to server…',
@@ -214,10 +208,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
               future: _future,
               builder: (ctx, snap) {
                 if (!snap.hasData) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                        color: AppColors.primary, strokeWidth: 2),
-                  );
+                  return const Center(child: AppSpinner());
                 }
                 final bill = snap.data;
                 if (bill == null) {

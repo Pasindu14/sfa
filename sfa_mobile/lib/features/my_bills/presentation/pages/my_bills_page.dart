@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/my_bills/domain/entities/my_bill_summary.dart';
 import 'package:uswatte/features/my_bills/presentation/cubit/my_bills_cubit.dart';
 import 'package:uswatte/features/my_bills/presentation/cubit/my_bills_state.dart';
@@ -127,9 +128,12 @@ class _MyBillsPageState extends State<MyBillsPage> {
               onPickTo: _pickTo,
             )
           else
-            _BillNumberBar(
-              controller: _billNoController,
-              onSearch: _searchBillNo,
+            BlocBuilder<MyBillsCubit, MyBillsState>(
+              builder: (ctx, state) => _BillNumberBar(
+                controller: _billNoController,
+                onSearch: _searchBillNo,
+                isLoading: state is MyBillsLoading,
+              ),
             ),
           Expanded(
             child: BlocBuilder<MyBillsCubit, MyBillsState>(
@@ -137,12 +141,7 @@ class _MyBillsPageState extends State<MyBillsPage> {
                 return switch (state) {
                   MyBillsInitial() ||
                   MyBillsLoading() =>
-                    const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.primary,
-                        strokeWidth: 2,
-                      ),
-                    ),
+                    const Center(child: AppSpinner()),
                   MyBillsError(:final message) => _ErrorView(
                       message: message,
                       onRetry: _mode == _FilterMode.dateRange
@@ -163,10 +162,7 @@ class _MyBillsPageState extends State<MyBillsPage> {
                                 padding: EdgeInsets.symmetric(vertical: 16.h),
                                 child: Center(
                                   child: isLoadingMore
-                                      ? const CircularProgressIndicator(
-                                          color: AppColors.primary,
-                                          strokeWidth: 2,
-                                        )
+                                      ? const AppSpinner.small()
                                       : const SizedBox.shrink(),
                                 ),
                               );
@@ -475,8 +471,13 @@ class _DateChip extends StatelessWidget {
 class _BillNumberBar extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onSearch;
+  final bool isLoading;
 
-  const _BillNumberBar({required this.controller, required this.onSearch});
+  const _BillNumberBar({
+    required this.controller,
+    required this.onSearch,
+    this.isLoading = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -519,7 +520,7 @@ class _BillNumberBar extends StatelessWidget {
           ),
           SizedBox(width: 8.w),
           GestureDetector(
-            onTap: onSearch,
+            onTap: isLoading ? null : onSearch,
             child: Container(
               height: 40.h,
               width: 40.h,
@@ -527,8 +528,12 @@ class _BillNumberBar extends StatelessWidget {
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(8.r),
               ),
-              child: Icon(Icons.search_rounded,
-                  size: 18.r, color: Colors.white),
+              child: Center(
+                child: isLoading
+                    ? const AppSpinner.small(color: Colors.white)
+                    : Icon(Icons.search_rounded,
+                        size: 18.r, color: Colors.white),
+              ),
             ),
           ),
         ],

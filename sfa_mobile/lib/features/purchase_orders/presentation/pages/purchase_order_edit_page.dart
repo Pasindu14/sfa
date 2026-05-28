@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/purchase_orders/domain/entities/editable_order_item.dart';
 import 'package:uswatte/features/purchase_orders/domain/entities/product_with_price.dart';
 import 'package:uswatte/features/purchase_orders/domain/entities/purchase_order_detail.dart';
@@ -198,9 +199,7 @@ class _PurchaseOrderEditPageState extends State<PurchaseOrderEditPage> {
       slivers: [
         _buildSliverHeader(),
         const SliverFillRemaining(
-          child: Center(
-            child: CircularProgressIndicator(color: AppColors.primary),
-          ),
+          child: Center(child: AppSpinner()),
         ),
       ],
     );
@@ -320,44 +319,12 @@ class _PurchaseOrderEditPageState extends State<PurchaseOrderEditPage> {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF7C2D12),
-                AppColors.primaryDark,
-                AppColors.primary,
-              ],
+              colors: [AppColors.primaryDark, AppColors.primary],
             ),
           ),
-          child: Stack(
-            children: [
-              // Decorative circles — same positions as detail page
-              Positioned(
-                right: -30.w,
-                top: -30.h,
-                child: Container(
-                  width: 180.r,
-                  height: 180.r,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.05),
-                  ),
-                ),
-              ),
-              Positioned(
-                right: 50.w,
-                bottom: 10.h,
-                child: Container(
-                  width: 80.r,
-                  height: 80.r,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.04),
-                  ),
-                ),
-              ),
-              // Content
-              SafeArea(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(20.w, 48.h, 20.w, 20.h),
+          child: SafeArea(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(20.w, 48.h, 20.w, 20.h),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.end,
@@ -431,11 +398,9 @@ class _PurchaseOrderEditPageState extends State<PurchaseOrderEditPage> {
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -675,12 +640,7 @@ class _PurchaseOrderEditPageState extends State<PurchaseOrderEditPage> {
                     borderRadius: BorderRadius.circular(12.r)),
               ),
               child: _isSaving
-                  ? SizedBox(
-                      width: 18.r,
-                      height: 18.r,
-                      child: const CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2.5),
-                    )
+                  ? const AppSpinner.button()
                   : Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
