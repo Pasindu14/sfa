@@ -50,7 +50,12 @@ class CreateBillPage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8.r)),
             duration: const Duration(seconds: 2),
           ));
-          ctx.goNamed('bills');
+          // Pop back to the existing bills list instead of goNamed('bills').
+          // goNamed rebuilds the stack as [/sales-rep shell, bills] and discards the
+          // SalesRepHome page underneath — so backing out of the list later lands on the
+          // empty /sales-rep shell (a black screen). Popping preserves [home, bills, ...].
+          // The list reloads itself on return (see BillsListPage's New Order handler).
+          ctx.pop();
         } else if (state.errorMessage != null) {
           ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
             content: Text(

@@ -43,6 +43,8 @@ public class Billing
     public decimal FreeIssueValueCompany { get; set; }     // Σ item.TotalPrice for FreeIssue lines funded by the company (drawn from FOC stock pool)
     public decimal FreeIssueValueDistributor { get; set; } // Σ item.TotalPrice for FreeIssue lines funded by the distributor (drawn from Normal stock pool)
     public decimal ReturnValue { get; set; }               // Σ item.TotalPrice for MarketResell return lines — deducted from TotalAmount
+    public decimal ItemWiseTotalDiscount { get; set; }     // Σ item.DiscountAmount for Sale lines only — discount granted at the line level
+    public decimal TotalDiscount { get; set; }             // ItemWiseTotalDiscount + BillDiscountAmount — full discount the customer received
 
     public RepBillingStatus RepStatus { get; set; } = RepBillingStatus.Submitted;
     public DistributorBillingStatus DistributorStatus { get; set; } = DistributorBillingStatus.Pending;

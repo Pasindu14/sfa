@@ -152,6 +152,7 @@ public class BillingService(
         decimal freeIssueValueCompany     = 0m;
         decimal freeIssueValueDistributor = 0m;
         decimal returnValue               = 0m;
+        decimal itemWiseTotalDiscount     = 0m;   // Σ discountAmount for Sale lines only
         var lineItems = request.Items.Select((item, idx) =>
         {
             decimal discountAmount;
@@ -170,7 +171,8 @@ public class BillingService(
                 case BillingItemType.Sale:
                     discountAmount = Math.Round(item.Quantity * item.UnitPrice * item.DiscountRate / 100m, 2);
                     totalPrice     = Math.Round(item.Quantity * item.UnitPrice - discountAmount, 2);
-                    subTotal      += totalPrice;
+                    subTotal              += totalPrice;
+                    itemWiseTotalDiscount += discountAmount;   // Sale-line discounts only
                     break;
                 default: // Return
                     discountAmount = Math.Round(item.Quantity * item.UnitPrice * item.DiscountRate / 100m, 2);
@@ -200,6 +202,7 @@ public class BillingService(
 
         var billDiscountAmount = Math.Round(subTotal * billDiscountRate / 100m, 2);
         var totalAmount        = subTotal - billDiscountAmount - returnValue;
+        var totalDiscount      = itemWiseTotalDiscount + billDiscountAmount;
 
         // ⑧ Acquire advisory lock scoped to sales rep (BillingId not yet known)
         await using var advisoryLock = await _lockService.AcquireAsync($"billing:create:{salesRepId}", ct)
@@ -231,6 +234,8 @@ public class BillingService(
             BillDiscountRate  = billDiscountRate,
             BillDiscountAmount = billDiscountAmount,
             TotalAmount       = totalAmount,
+            ItemWiseTotalDiscount     = itemWiseTotalDiscount,
+            TotalDiscount             = totalDiscount,
             ReturnValue               = returnValue,
             FreeIssueValue            = freeIssueValue,
             FreeIssueValueCompany     = freeIssueValueCompany,
@@ -446,6 +451,8 @@ public class BillingService(
         b.FreeIssueValue,
         b.FreeIssueValueCompany,
         b.FreeIssueValueDistributor,
+        b.ItemWiseTotalDiscount,
+        b.TotalDiscount,
         b.RepStatus,
         b.DistributorStatus,
         b.RejectionReason,

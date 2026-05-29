@@ -762,6 +762,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.TotalAmount).HasColumnType("decimal(18,2)");
             e.Property(x => x.FreeIssueValueCompany).HasColumnType("decimal(18,2)").HasDefaultValue(0m);
             e.Property(x => x.FreeIssueValueDistributor).HasColumnType("decimal(18,2)").HasDefaultValue(0m);
+            e.Property(x => x.ItemWiseTotalDiscount).HasColumnType("decimal(18,2)").HasDefaultValue(0m);
+            e.Property(x => x.TotalDiscount).HasColumnType("decimal(18,2)").HasDefaultValue(0m);
 
             // Report indexes — every org/geo level paired with BillingDate for range queries
             e.HasIndex(x => new { x.SalesRepId,       x.BillingDate });

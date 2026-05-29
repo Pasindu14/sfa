@@ -873,7 +873,10 @@ class _ActionRow extends StatelessWidget {
           context
               .read<BillsListBloc>()
               .add(DeleteBillRequested(bill.clientBillId));
-          context.goNamed('bills');
+          // Pop back to the existing list (which reloads on return) rather than
+          // goNamed('bills'), which would discard the SalesRepHome page underneath
+          // and leave the empty /sales-rep shell (black screen) on the next back.
+          context.pop();
         },
       ),
     );

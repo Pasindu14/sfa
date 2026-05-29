@@ -10,9 +10,11 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using System.Threading.RateLimiting;
+using sfa_api.Features.Billings.Repositories;
 using sfa_api.Features.GRNs.Repositories;
 using sfa_api.Features.PurchaseOrders.Repositories;
 using sfa_api.Features.SalesInvoices.Repositories;
+using sfa_api.Features.Stock.Repositories;
 using sfa_api.Infrastructure.Locking;
 using sfa_api.Infrastructure.Persistence;
 
@@ -131,6 +133,24 @@ public class SfaWebApplicationFactory : WebApplicationFactory<Program>
             {
                 var db = sp.GetRequiredService<AppDbContext>();
                 return new TestGrnRepository(new GrnRepository(db));
+            });
+
+            // Billing creation calls nextval('billing_number_seq') (PostgreSQL-only) — wrap
+            // with an atomic counter, delegating all other calls to the real repository.
+            services.RemoveAll<IBillingRepository>();
+            services.AddScoped<IBillingRepository>(sp =>
+            {
+                var db = sp.GetRequiredService<AppDbContext>();
+                return new TestBillingRepository(new BillingRepository(db));
+            });
+
+            // StockRepository.GetStockForUpdateAsync uses "SELECT … FOR UPDATE" (PostgreSQL-only).
+            // Wrap with a no-op for that method; all balance mutations delegate to the real repo.
+            services.RemoveAll<IStockRepository>();
+            services.AddScoped<IStockRepository>(sp =>
+            {
+                var db = sp.GetRequiredService<AppDbContext>();
+                return new TestStockRepository(new StockRepository(db));
             });
 
             // Replace PostgresAdvisoryLockService with a no-op implementation.

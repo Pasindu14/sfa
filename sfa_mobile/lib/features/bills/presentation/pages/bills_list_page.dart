@@ -34,7 +34,13 @@ class BillsListPage extends StatelessWidget {
               fontSize: 15.sp,
               letterSpacing: 0.5,
             )),
-        onPressed: () => context.pushNamed('createBill'),
+        onPressed: () async {
+          await context.pushNamed('createBill');
+          // Refresh the list so a just-created bill appears (create pops back here).
+          if (context.mounted) {
+            context.read<BillsListBloc>().add(const LoadBillsRequested());
+          }
+        },
       ),
       body: Column(
         children: [
@@ -164,8 +170,14 @@ class _BillTile extends StatelessWidget {
         : '#${bill.clientBillId.substring(0, 6).toUpperCase()}';
 
     return InkWell(
-      onTap: () => context.pushNamed('billDetail',
-          pathParameters: {'id': bill.clientBillId}),
+      onTap: () async {
+        await context.pushNamed('billDetail',
+            pathParameters: {'id': bill.clientBillId});
+        // Refresh on return so a delete done from the detail page is reflected.
+        if (context.mounted) {
+          context.read<BillsListBloc>().add(const LoadBillsRequested());
+        }
+      },
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
         child: Row(

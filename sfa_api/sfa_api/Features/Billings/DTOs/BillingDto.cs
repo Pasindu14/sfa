@@ -41,6 +41,8 @@ public record BillingDto(
     decimal FreeIssueValue,
     decimal FreeIssueValueCompany,
     decimal FreeIssueValueDistributor,
+    decimal ItemWiseTotalDiscount,
+    decimal TotalDiscount,
 
     RepBillingStatus RepStatus,
     DistributorBillingStatus DistributorStatus,
