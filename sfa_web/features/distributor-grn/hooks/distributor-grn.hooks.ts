@@ -56,6 +56,18 @@ export function useMyGrnsDataTable(
 
 ;(useMyGrnsDataTable as unknown as Record<string, unknown>).isQueryHook = true
 
+export function useMyGrnPendingCount() {
+  return useQuery({
+    queryKey: [...myGrnKeys.all, 'pending-count'] as const,
+    queryFn: async () => {
+      const result = await getMyGrnsAction(1, 1, 'Pending')
+      if (!result.success) throw new Error(result.error)
+      return result.data.totalCount
+    },
+    staleTime: 60_000,
+  })
+}
+
 export function useMyGrnDetail(id: number | null) {
   return useQuery({
     queryKey: myGrnKeys.detail(id!),

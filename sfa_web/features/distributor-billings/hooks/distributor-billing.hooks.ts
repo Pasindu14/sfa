@@ -95,6 +95,60 @@ export function useMyBillingsTodaySummary() {
 }
 
 
+export function useMyBillingWeeklyTrend() {
+  return useQuery({
+    queryKey: [...myBillingKeys.all, 'weekly-trend'] as const,
+    queryFn: async () => {
+      const days: Date[] = []
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date()
+        d.setDate(d.getDate() - i)
+        days.push(d)
+      }
+      const dateFrom = toLocalDateStr(days[0])
+      const dateTo = toLocalDateStr(days[6])
+
+      const result = await getMyBillingsAction(1, 500, undefined, undefined, undefined, dateFrom, dateTo)
+      if (!result.success) throw new Error(result.error)
+
+      const byDate: Record<string, { approved: number; pending: number }> = {}
+      for (const d of days) {
+        byDate[toLocalDateStr(d)] = { approved: 0, pending: 0 }
+      }
+      for (const b of result.data.billings) {
+        const key = b.billingDate.slice(0, 10)
+        if (!byDate[key]) continue
+        if (b.distributorStatus === 'Approved') byDate[key].approved += b.totalAmount
+        else if (b.distributorStatus === 'Pending') byDate[key].pending += b.totalAmount
+      }
+
+      const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+      return days.map((d) => {
+        const key = toLocalDateStr(d)
+        return {
+          date: key,
+          day: DAY_LABELS[d.getDay()],
+          approved: byDate[key].approved,
+          pending: byDate[key].pending,
+        }
+      })
+    },
+    staleTime: 60_000,
+  })
+}
+
+export function useMyPendingBillingCount() {
+  return useQuery({
+    queryKey: [...myBillingKeys.all, 'pending-count'] as const,
+    queryFn: async () => {
+      const result = await getMyBillingsAction(1, 1, undefined, undefined, 'Pending')
+      if (!result.success) throw new Error(result.error)
+      return result.data.totalCount
+    },
+    staleTime: 60_000,
+  })
+}
+
 export function useMyBillingDetail(id: number | null) {
   return useQuery({
     queryKey: myBillingKeys.detail(id!),

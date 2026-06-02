@@ -59,3 +59,36 @@ export function useMyStockDataTable(
 }
 
 ;(useMyStockDataTable as unknown as Record<string, unknown>).isQueryHook = true
+
+export function useMyStockSummary() {
+  return useQuery({
+    queryKey: [...myStockKeys.all, 'summary'] as const,
+    queryFn: async () => {
+      const result = await getMyDistributorStockAction()
+      if (!result.success) throw new Error(result.error)
+      const items = result.data
+
+      const normalItems = items.filter((i) => i.stockType === 'Normal')
+      const freeItems = items.filter((i) => i.stockType === 'FreeIssue')
+      const totalQoH = normalItems.reduce((s, i) => s + i.quantityOnHand, 0)
+
+      const lowStockItems = [...normalItems]
+        .sort((a, b) => a.quantityOnHand - b.quantityOnHand)
+        .slice(0, 5)
+        .map((i) => ({
+          productCode: i.productCode,
+          productDescription: i.productDescription,
+          quantityOnHand: i.quantityOnHand,
+        }))
+
+      return {
+        totalSkus: items.length,
+        totalQoH,
+        normalCount: normalItems.length,
+        freeIssueCount: freeItems.length,
+        lowStockItems,
+      }
+    },
+    staleTime: 2 * 60_000,
+  })
+}
