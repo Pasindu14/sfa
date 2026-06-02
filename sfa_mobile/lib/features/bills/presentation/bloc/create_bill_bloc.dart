@@ -25,6 +25,8 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
         super(const CreateBillState()) {
     on<PricingStructuresLoaded>(_onStructuresLoaded);
     on<BillLocationCaptured>(_onLocationCaptured);
+    on<BillLocationStatusChanged>(_onLocationStatusChanged);
+    on<LocationCheckRetried>(_onLocationCheckRetried);
     on<OutletSelected>(_onOutletSelected);
     on<PricingStructureSelected>(_onStructureSelected);
     on<ProductAdded>(_onProductAdded);
@@ -45,7 +47,10 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
   Future<void> _captureLocation() async {
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) return;
+      if (!serviceEnabled) {
+        add(const BillLocationStatusChanged(LocationCheckStatus.serviceDisabled));
+        return;
+      }
 
       var permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
@@ -53,6 +58,7 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
       }
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
+        add(const BillLocationStatusChanged(LocationCheckStatus.permissionDenied));
         return;
       }
 
@@ -61,9 +67,10 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
           accuracy: LocationAccuracy.high,
         ),
       );
+      add(const BillLocationStatusChanged(LocationCheckStatus.ready));
       add(BillLocationCaptured(position.latitude, position.longitude));
     } catch (_) {
-      // Silent — billing continues without location
+      add(const BillLocationStatusChanged(LocationCheckStatus.serviceDisabled));
     }
   }
 
@@ -72,6 +79,17 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     if (e.latitude != null && e.longitude != null) {
       emit(state.copyWith(latitude: e.latitude, longitude: e.longitude));
     }
+  }
+
+  void _onLocationStatusChanged(
+      BillLocationStatusChanged e, Emitter<CreateBillState> emit) {
+    emit(state.copyWith(locationStatus: e.status));
+  }
+
+  void _onLocationCheckRetried(
+      LocationCheckRetried e, Emitter<CreateBillState> emit) {
+    emit(state.copyWith(locationStatus: LocationCheckStatus.checking));
+    _captureLocation();
   }
 
   Future<void> _loadPricingStructures() async {

@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:uswatte/features/bills/data/datasources/bills_local_datasource.dart';
+import 'package:uswatte/features/bills/presentation/bloc/create_bill_state.dart';
 import 'package:uswatte/features/outlets/domain/entities/outlet.dart';
 import 'package:uswatte/features/pricing/domain/entities/pricing_structure.dart';
 
@@ -145,4 +146,17 @@ final class BillLocationCaptured extends CreateBillEvent {
   const BillLocationCaptured(this.latitude, this.longitude);
   @override
   List<Object?> get props => [latitude, longitude];
+}
+
+/// Internal event — fired when the GPS check determines the location status.
+final class BillLocationStatusChanged extends CreateBillEvent {
+  final LocationCheckStatus status;
+  const BillLocationStatusChanged(this.status);
+  @override
+  List<Object?> get props => [status];
+}
+
+/// Fired by the UI when the user taps "Retry" after fixing location settings.
+final class LocationCheckRetried extends CreateBillEvent {
+  const LocationCheckRetried();
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/di/injection.dart';
@@ -79,137 +80,283 @@ class CreateBillPage extends StatelessWidget {
             // ── Orange gradient app bar ──────────────────────────────────
             _OrderAppBar(onBack: () => context.pop()),
 
-            // ── Scrollable body ──────────────────────────────────────────
+            // ── Body — gated by location status ─────────────────────────
             Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 16.h),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // ── Step 1: Outlet ───────────────────────────────────
-                    _SectionLabel(
-                      label: 'SELECT OUTLET',
-                      icon: Icons.storefront_rounded,
-                      step: '1',
-                    ),
-                    SizedBox(height: 10.h),
-                    BlocBuilder<CreateBillBloc, CreateBillState>(
-                      buildWhen: (p, c) => p.outlet != c.outlet,
-                      builder: (ctx, state) =>
-                          BlocBuilder<OutletsBloc, OutletsState>(
-                        builder: (oCtx, oState) {
-                          final outlets = oState is OutletsLoaded
-                              ? oState.outlets
-                              : const [];
-                          final hasAssignment = oState is OutletsLoaded
-                              ? oState.hasActiveAssignment
-                              : true;
-                          return Column(
+              child: BlocBuilder<CreateBillBloc, CreateBillState>(
+                buildWhen: (p, c) => p.locationStatus != c.locationStatus,
+                builder: (ctx, state) {
+                  if (state.locationStatus == LocationCheckStatus.checking) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (state.locationStatus != LocationCheckStatus.ready) {
+                    return _LocationBlockedView(status: state.locationStatus);
+                  }
+                  // ── Location is ready — show full form ───────────────
+                  return Column(
+                    children: [
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 16.h),
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              OutletPicker(
-                                selected: state.outlet,
-                                outlets: outlets.cast(),
-                                onSelected: (o) =>
-                                    ctx.read<CreateBillBloc>().add(OutletSelected(o)),
-                                hasActiveAssignment: hasAssignment,
+                              // ── Step 1: Outlet ───────────────────────
+                              _SectionLabel(
+                                label: 'SELECT OUTLET',
+                                icon: Icons.storefront_rounded,
+                                step: '1',
                               ),
-                              if (state.outlet != null) ...[
-                                SizedBox(height: 8.h),
-                                _HistoryButton(
-                                  outletId: state.outlet!.id,
-                                  outletName: state.outlet!.name,
+                              SizedBox(height: 10.h),
+                              BlocBuilder<CreateBillBloc, CreateBillState>(
+                                buildWhen: (p, c) => p.outlet != c.outlet,
+                                builder: (ctx, state) =>
+                                    BlocBuilder<OutletsBloc, OutletsState>(
+                                  builder: (oCtx, oState) {
+                                    final outlets = oState is OutletsLoaded
+                                        ? oState.outlets
+                                        : const [];
+                                    final hasAssignment =
+                                        oState is OutletsLoaded
+                                            ? oState.hasActiveAssignment
+                                            : true;
+                                    return Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        OutletPicker(
+                                          selected: state.outlet,
+                                          outlets: outlets.cast(),
+                                          onSelected: (o) => ctx
+                                              .read<CreateBillBloc>()
+                                              .add(OutletSelected(o)),
+                                          hasActiveAssignment: hasAssignment,
+                                        ),
+                                        if (state.outlet != null) ...[
+                                          SizedBox(height: 8.h),
+                                          _HistoryButton(
+                                            outletId: state.outlet!.id,
+                                            outletName: state.outlet!.name,
+                                          ),
+                                        ],
+                                      ],
+                                    );
+                                  },
                                 ),
-                              ],
-                            ],
-                          );
-                        },
-                      ),
-                    ),
-
-                    SizedBox(height: 20.h),
-
-                    // ── Step 2: Pricing Structure ────────────────────────
-                    _SectionLabel(
-                      label: 'PRICING STRUCTURE',
-                      icon: Icons.price_change_rounded,
-                      step: '2',
-                    ),
-                    SizedBox(height: 10.h),
-                    BlocBuilder<CreateBillBloc, CreateBillState>(
-                      buildWhen: (p, c) =>
-                          p.selectedPricingStructure !=
-                              c.selectedPricingStructure ||
-                          p.pricingStructures != c.pricingStructures,
-                      builder: (ctx, state) => PricingStructurePicker(
-                        selected: state.selectedPricingStructure,
-                        structures: state.pricingStructures,
-                        onSelected: (s) => ctx
-                            .read<CreateBillBloc>()
-                            .add(PricingStructureSelected(s)),
-                      ),
-                    ),
-
-                    SizedBox(height: 20.h),
-
-                    // ── Step 3: Products ─────────────────────────────────
-                    BlocBuilder<CreateBillBloc, CreateBillState>(
-                      buildWhen: (p, c) =>
-                          p.outlet != c.outlet ||
-                          p.selectedPricingStructure !=
-                              c.selectedPricingStructure ||
-                          p.cart.length != c.cart.length,
-                      builder: (ctx, state) {
-                        final ready = state.outlet != null &&
-                            state.selectedPricingStructure != null;
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _SectionLabel(
-                              label: 'ADD PRODUCTS',
-                              icon: Icons.inventory_2_rounded,
-                              step: '3',
-                              dimmed: !ready,
-                            ),
-                            SizedBox(height: 10.h),
-                            _AddProductsButton(
-                              enabled: ready,
-                              cartCount: state.cart.length,
-                              onTap: () => showProductSearch(
-                                ctx,
-                                searchUseCase:
-                                    getIt<SearchProductsForBillUseCase>(),
-                                pricingStructureId:
-                                    state.selectedPricingStructure?.id,
-                                onProductAdded: (product, qty, unitPrice, discountRate, billingItemType, returnType, freeIssueSource, expireDate) => ctx
-                                    .read<CreateBillBloc>()
-                                    .add(ProductAdded(product, qty,
-                                      unitPrice: unitPrice,
-                                      discountRate: discountRate,
-                                      billingItemType: billingItemType,
-                                      returnType: returnType,
-                                      freeIssueSource: freeIssueSource,
-                                      expireDate: expireDate,
-                                    )),
                               ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
 
-                    SizedBox(height: 16.h),
-                  ],
-                ),
+                              SizedBox(height: 20.h),
+
+                              // ── Step 2: Pricing Structure ────────────
+                              _SectionLabel(
+                                label: 'PRICING STRUCTURE',
+                                icon: Icons.price_change_rounded,
+                                step: '2',
+                              ),
+                              SizedBox(height: 10.h),
+                              BlocBuilder<CreateBillBloc, CreateBillState>(
+                                buildWhen: (p, c) =>
+                                    p.selectedPricingStructure !=
+                                        c.selectedPricingStructure ||
+                                    p.pricingStructures != c.pricingStructures,
+                                builder: (ctx, state) =>
+                                    PricingStructurePicker(
+                                  selected: state.selectedPricingStructure,
+                                  structures: state.pricingStructures,
+                                  onSelected: (s) => ctx
+                                      .read<CreateBillBloc>()
+                                      .add(PricingStructureSelected(s)),
+                                ),
+                              ),
+
+                              SizedBox(height: 20.h),
+
+                              // ── Step 3: Products ─────────────────────
+                              BlocBuilder<CreateBillBloc, CreateBillState>(
+                                buildWhen: (p, c) =>
+                                    p.outlet != c.outlet ||
+                                    p.selectedPricingStructure !=
+                                        c.selectedPricingStructure ||
+                                    p.cart.length != c.cart.length,
+                                builder: (ctx, state) {
+                                  final ready = state.outlet != null &&
+                                      state.selectedPricingStructure != null;
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      _SectionLabel(
+                                        label: 'ADD PRODUCTS',
+                                        icon: Icons.inventory_2_rounded,
+                                        step: '3',
+                                        dimmed: !ready,
+                                      ),
+                                      SizedBox(height: 10.h),
+                                      _AddProductsButton(
+                                        enabled: ready,
+                                        cartCount: state.cart.length,
+                                        onTap: () => showProductSearch(
+                                          ctx,
+                                          searchUseCase:
+                                              getIt<SearchProductsForBillUseCase>(),
+                                          pricingStructureId:
+                                              state.selectedPricingStructure
+                                                  ?.id,
+                                          onProductAdded: (product, qty,
+                                                  unitPrice,
+                                                  discountRate,
+                                                  billingItemType,
+                                                  returnType,
+                                                  freeIssueSource,
+                                                  expireDate) =>
+                                              ctx.read<CreateBillBloc>().add(
+                                                    ProductAdded(
+                                                      product,
+                                                      qty,
+                                                      unitPrice: unitPrice,
+                                                      discountRate:
+                                                          discountRate,
+                                                      billingItemType:
+                                                          billingItemType,
+                                                      returnType: returnType,
+                                                      freeIssueSource:
+                                                          freeIssueSource,
+                                                      expireDate: expireDate,
+                                                    ),
+                                                  ),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+
+                              SizedBox(height: 16.h),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // ── Sticky dark cart panel ───────────────────────
+                      BlocBuilder<CreateBillBloc, CreateBillState>(
+                        builder: (_, state) => CartList(state: state),
+                      ),
+                    ],
+                  );
+                },
               ),
-            ),
-
-            // ── Sticky dark cart panel ───────────────────────────────────
-            BlocBuilder<CreateBillBloc, CreateBillState>(
-              builder: (_, state) => CartList(state: state),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Location blocked view ─────────────────────────────────────────────────────
+
+class _LocationBlockedView extends StatelessWidget {
+  const _LocationBlockedView({required this.status});
+  final LocationCheckStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final isServiceOff = status == LocationCheckStatus.serviceDisabled;
+    return Padding(
+      padding: EdgeInsets.all(24.r),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 72.r,
+            height: 72.r,
+            decoration: BoxDecoration(
+              color: AppColors.error.withValues(alpha: 0.10),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.location_off_rounded,
+              size: 36.r,
+              color: AppColors.error,
+            ),
+          ),
+          SizedBox(height: 20.h),
+          Text(
+            'Location Required',
+            style: GoogleFonts.barlowCondensed(
+              fontSize: 22.sp,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.5,
+              color: AppColors.foreground,
+            ),
+          ),
+          SizedBox(height: 8.h),
+          Text(
+            isServiceOff
+                ? 'GPS is turned off on your device. Please enable Location Services to create a bill.'
+                : 'Location permission was denied. Please allow location access for this app to continue.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.barlow(
+              fontSize: 14.sp,
+              color: AppColors.foregroundMuted,
+              height: 1.5,
+            ),
+          ),
+          SizedBox(height: 28.h),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                if (isServiceOff) {
+                  await Geolocator.openLocationSettings();
+                } else {
+                  await Geolocator.openAppSettings();
+                }
+              },
+              icon: Icon(Icons.settings_rounded, size: 18.r),
+              label: Text(
+                isServiceOff ? 'Open Location Settings' : 'Open App Settings',
+                style: GoogleFonts.barlowCondensed(
+                  fontSize: 15.sp,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: 14.h),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(height: 12.h),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () =>
+                  context.read<CreateBillBloc>().add(const LocationCheckRetried()),
+              icon: Icon(Icons.refresh_rounded, size: 18.r),
+              label: Text(
+                'Retry',
+                style: GoogleFonts.barlowCondensed(
+                  fontSize: 15.sp,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: BorderSide(color: AppColors.primary.withValues(alpha: 0.40)),
+                padding: EdgeInsets.symmetric(vertical: 14.h),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

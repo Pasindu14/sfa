@@ -3,6 +3,8 @@ import 'package:uswatte/features/bills/data/datasources/bills_local_datasource.d
 import 'package:uswatte/features/outlets/domain/entities/outlet.dart';
 import 'package:uswatte/features/pricing/domain/entities/pricing_structure.dart';
 
+enum LocationCheckStatus { checking, ready, serviceDisabled, permissionDenied }
+
 /// In-memory cart line during Create Bill editing.
 ///
 /// `billingItemType` is the single source of truth for line kind:
@@ -99,6 +101,7 @@ class CreateBillState extends Equatable {
   final String? submittedClientBillId;
   final double? latitude;
   final double? longitude;
+  final LocationCheckStatus locationStatus;
 
   const CreateBillState({
     this.outlet,
@@ -111,6 +114,7 @@ class CreateBillState extends Equatable {
     this.submittedClientBillId,
     this.latitude,
     this.longitude,
+    this.locationStatus = LocationCheckStatus.checking,
   });
 
   // Aggregates — each line type contributes to its own bucket only.
@@ -131,6 +135,7 @@ class CreateBillState extends Equatable {
   bool get hasFreeIssues => cart.any((l) => l.isFreeIssue);
 
   bool get canSubmit =>
+      locationStatus == LocationCheckStatus.ready &&
       outlet != null &&
       selectedPricingStructure != null &&
       cart.isNotEmpty &&
@@ -151,6 +156,7 @@ class CreateBillState extends Equatable {
     bool clearError = false,
     double? latitude,
     double? longitude,
+    LocationCheckStatus? locationStatus,
   }) =>
       CreateBillState(
         outlet: outlet ?? this.outlet,
@@ -166,6 +172,7 @@ class CreateBillState extends Equatable {
             submittedClientBillId ?? this.submittedClientBillId,
         latitude: latitude ?? this.latitude,
         longitude: longitude ?? this.longitude,
+        locationStatus: locationStatus ?? this.locationStatus,
       );
 
   @override
@@ -180,5 +187,6 @@ class CreateBillState extends Equatable {
         submittedClientBillId,
         latitude,
         longitude,
+        locationStatus,
       ];
 }
