@@ -24,6 +24,7 @@ export default function LoginPage() {
             height={130}
             className="drop-shadow-2xl"
             priority
+            unoptimized
           />
 
           <div className="space-y-3 max-w-xs">
@@ -55,6 +56,7 @@ export default function LoginPage() {
               width={150}
               height={90}
               priority
+              unoptimized
             />
           </div>
 
