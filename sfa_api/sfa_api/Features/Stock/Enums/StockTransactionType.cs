@@ -8,5 +8,6 @@ public enum StockTransactionType
     Return          = 3,
     Damage          = 4,
     Opening         = 5,
-    BillingReversal = 6
+    BillingReversal      = 6,
+    StockTakingAdjustment = 7
 }

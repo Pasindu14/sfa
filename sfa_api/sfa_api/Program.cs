@@ -27,6 +27,7 @@ using sfa_api.Features.SalesInvoices;
 using sfa_api.Features.SalesTargets;
 using sfa_api.Features.Notifications;
 using sfa_api.Features.Stock;
+using sfa_api.Features.StockTaking;
 using sfa_api.Features.Fleets;
 using sfa_api.Features.Regions;
 using sfa_api.Features.Routes;
@@ -209,6 +210,7 @@ try
     builder.Services.AddBillingsFeature();
     builder.Services.AddNotBillingsFeature();
     builder.Services.AddStockFeature();
+    builder.Services.AddStockTakingFeature();
     builder.Services.AddMobileSyncFeature();
     builder.Services.AddSupervisorFeature();
     builder.Services.AddNotificationsFeature();

@@ -30,6 +30,8 @@ using sfa_api.Features.UserReportingLines.Entities;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Features.SalesTargets.Entities;
 using sfa_api.Features.Notifications.Entities;
+using sfa_api.Features.StockTaking.Entities;
+using sfa_api.Features.StockTaking.Enums;
 using RouteEntity = sfa_api.Features.Routes.Entities.Route;
 
 namespace sfa_api.Infrastructure.Persistence;
@@ -76,6 +78,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<SalesTarget> SalesTargets => Set<SalesTarget>();
     public DbSet<SalesTargetImportBatch> SalesTargetImportBatches => Set<SalesTargetImportBatch>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<StockTakingPeriod>     StockTakingPeriods     => Set<StockTakingPeriod>();
+    public DbSet<StockTakingSubmission> StockTakingSubmissions => Set<StockTakingSubmission>();
+    public DbSet<StockTakingLine>       StockTakingLines       => Set<StockTakingLine>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -1068,6 +1073,92 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .WithMany()
              .HasForeignKey(x => x.UserId)
              .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ── StockTakingPeriod ─────────────────────────────────────────────────
+        modelBuilder.Entity<StockTakingPeriod>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.Property(x => x.Status)
+             .HasConversion<string>()
+             .HasMaxLength(10)
+             .HasDefaultValue(StockTakingPeriodStatus.Open);
+            // One open/locked period per month+year (soft-delete aware)
+            e.HasIndex(x => new { x.Month, x.Year })
+             .IsUnique()
+             .HasFilter("\"IsDeleted\" = false");
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.IsDeleted);
+            e.HasOne(x => x.LockedByUser)
+             .WithMany()
+             .HasForeignKey(x => x.LockedBy)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── StockTakingSubmission ─────────────────────────────────────────────
+        modelBuilder.Entity<StockTakingSubmission>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.Property(x => x.Status)
+             .HasConversion<string>()
+             .HasMaxLength(10)
+             .HasDefaultValue(StockTakingSubmissionStatus.Draft);
+            // One submission per distributor per period
+            e.HasIndex(x => new { x.StockTakingPeriodId, x.DistributorId })
+             .IsUnique()
+             .HasFilter("\"IsDeleted\" = false");
+            e.HasIndex(x => x.DistributorId);
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.IsDeleted);
+            e.HasOne(x => x.Period)
+             .WithMany(p => p.Submissions)
+             .HasForeignKey(x => x.StockTakingPeriodId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Distributor)
+             .WithMany()
+             .HasForeignKey(x => x.DistributorId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.SubmittedByUser)
+             .WithMany()
+             .HasForeignKey(x => x.SubmittedBy)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── StockTakingLine ───────────────────────────────────────────────────
+        modelBuilder.Entity<StockTakingLine>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.Property(x => x.StockType)
+             .HasConversion<string>()
+             .HasMaxLength(10)
+             .HasDefaultValue(StockType.Normal);
+            e.Property(x => x.CountedQuantity).HasColumnType("decimal(18,4)");
+            e.Property(x => x.SystemQuantity).HasColumnType("decimal(18,4)");
+            e.Property(x => x.Variance).HasColumnType("decimal(18,4)");
+            e.Property(x => x.AdjustedQuantity).HasColumnType("decimal(18,4)");
+            // One line per product+stockType per submission
+            e.HasIndex(x => new { x.StockTakingSubmissionId, x.ProductId, x.StockType })
+             .IsUnique();
+            e.HasIndex(x => x.StockTakingSubmissionId);
+            e.HasIndex(x => x.ProductId);
+            e.HasOne(x => x.Submission)
+             .WithMany(s => s.Lines)
+             .HasForeignKey(x => x.StockTakingSubmissionId)
+             .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Product)
+             .WithMany()
+             .HasForeignKey(x => x.ProductId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.AdjustedByUser)
+             .WithMany()
+             .HasForeignKey(x => x.AdjustedBy)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);

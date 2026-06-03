@@ -79,6 +79,7 @@ const navConfig: NavGroup[] = [
       { title: "Sales Targets", url: "/sales-targets" },
       { title: "GRNs", url: "/grns" },
       { title: "Stock", url: "/stock" },
+      { title: "Stock Taking", url: "/stock-taking" },
     ],
   },
   {
@@ -114,6 +115,7 @@ const navConfig: NavGroup[] = [
     roles: ["Distributor"],
     items: [
       { title: "Stock Balance", url: "/distributor-stock" },
+      { title: "Stock Taking", url: "/distributor-stock-taking" },
       { title: "Bills", url: "/distributor-billings" },
       { title: "GRNs", url: "/distributor-grns" },
       { title: "Purchase Orders", url: "/distributor-purchase-orders" },
