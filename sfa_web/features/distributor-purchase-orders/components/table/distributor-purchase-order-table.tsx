@@ -63,6 +63,8 @@ export function DistributorPurchaseOrderTable() {
           itemCount: 'Items',
           createdAt: 'Created',
         },
+        columnWidths: [{ wch: 18 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 20 }],
+        headers: ['Order #', 'Status', 'Total Amount', 'Items', 'Created'],
       }}
       idField="id"
       renderToolbarContent={() => (
