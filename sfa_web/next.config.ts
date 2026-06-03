@@ -17,11 +17,12 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline'", // unsafe-eval needed for Next.js dev
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob:",
-              "font-src 'self'",
-              `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL ?? ""}`,
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live",
+              "style-src 'self' 'unsafe-inline' https://vercel.live",
+              "img-src 'self' data: blob: https:",
+              "font-src 'self' data:",
+              `connect-src 'self' https: ${process.env.SFA_API_DOMAIN ?? ""}`,
+              "frame-src 'self' https://vercel.live",
               "frame-ancestors 'none'",
             ].join("; "),
           },
