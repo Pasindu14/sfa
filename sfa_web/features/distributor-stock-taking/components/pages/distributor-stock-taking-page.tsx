@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useForm, useFieldArray, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
-  ClipboardList, Plus, Trash2, Save, Send, Lock,
+  Plus, Trash2, Save, Send, Lock,
   CheckCircle2, PackageSearch,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -105,9 +105,6 @@ export function DistributorStockTakingPage() {
     return (
       <div className="flex flex-col gap-6 p-6">
         <div className="flex items-center gap-4 bg-muted/90 p-10 rounded-lg">
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <ClipboardList className="h-7 w-7" />
-          </div>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Stock Taking</h1>
             <p className="text-muted-foreground">Count your physical inventory</p>
@@ -126,9 +123,6 @@ export function DistributorStockTakingPage() {
       {/* ── Header ───────────────────────────────────────────────── */}
       <div className="flex items-center justify-between bg-muted/90 p-10 rounded-lg">
         <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <ClipboardList className="h-7 w-7" />
-          </div>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Stock Taking</h1>
             <p className="text-muted-foreground">
