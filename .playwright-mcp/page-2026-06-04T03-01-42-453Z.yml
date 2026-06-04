@@ -1,0 +1,24 @@
+- generic [active] [ref=e1]:
+  - region "Notifications alt+T"
+  - generic [ref=e2]:
+    - generic [ref=e8]:
+      - img "Uswatte Biscuits" [ref=e9]
+      - generic [ref=e10]:
+        - heading "Sales Force Automation" [level=1] [ref=e11]
+        - paragraph [ref=e12]: Streamline your field operations, track your team, and grow your sales with confidence.
+      - paragraph [ref=e13]: Uswatte Biscuits — Internal Portal
+    - generic [ref=e15]:
+      - generic [ref=e16]:
+        - heading "Welcome back" [level=2] [ref=e17]
+        - paragraph [ref=e18]: Sign in to your account to continue
+      - generic [ref=e19]:
+        - generic [ref=e20]:
+          - generic [ref=e21]: Username
+          - textbox "Username" [ref=e22]:
+            - /placeholder: Enter your username
+        - generic [ref=e23]:
+          - generic [ref=e24]: Password
+          - textbox "Password" [ref=e25]:
+            - /placeholder: ••••••••
+        - button "Sign in" [ref=e26]
+      - paragraph [ref=e27]: © 2026 Uswatte Biscuits. All rights reserved.
