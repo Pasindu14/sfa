@@ -13,6 +13,9 @@ public record ProductDto(
     int? CategoryId,
     string? CategoryName,
     bool IsActive,
+    decimal DealerPackPrice,
+    decimal DealerCasePrice,
+    decimal Mrp,
     DateTime CreatedAt,
     DateTime UpdatedAt
 );

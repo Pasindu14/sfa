@@ -56,6 +56,33 @@ export function getProductColumns(actions: ProductColumnActions): ColumnDef<Prod
       ),
     },
     {
+      accessorKey: 'dealerPackPrice',
+      header: 'Pack Price',
+      cell: ({ row }) => (
+        <span className="text-sm tabular-nums">
+          {(row.original.dealerPackPrice ?? 0).toFixed(2)}
+        </span>
+      ),
+    },
+    {
+      accessorKey: 'dealerCasePrice',
+      header: 'Case Price',
+      cell: ({ row }) => (
+        <span className="text-sm tabular-nums">
+          {(row.original.dealerCasePrice ?? 0).toFixed(2)}
+        </span>
+      ),
+    },
+    {
+      accessorKey: 'mrp',
+      header: 'MRP',
+      cell: ({ row }) => (
+        <span className="text-sm tabular-nums">
+          {(row.original.mrp ?? 0).toFixed(2)}
+        </span>
+      ),
+    },
+    {
       accessorKey: 'isActive',
       header: 'Status',
       cell: ({ row }) => (

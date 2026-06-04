@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -52,7 +53,7 @@ function CreateProductDialog() {
         }
       }}
     >
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Product</DialogTitle>
           <DialogDescription>Add a new product to the catalogue.</DialogDescription>
@@ -72,8 +73,28 @@ function CreateProductDialog() {
 
 function EditProductDialog() {
   const { isOpen, selectedId, close } = useEditDialog()
-  const { data: product, isLoading: isLoadingProduct } = useProduct(selectedId)
+  const { data: product, isFetching: isLoadingProduct } = useProduct(selectedId)
   const { mutate, isPending, fieldErrors, clearFieldErrors } = useUpdateProduct()
+
+  const defaultValues = useMemo(
+    () =>
+      product
+        ? {
+            code: product.code,
+            itemDescription: product.itemDescription,
+            printDescription: product.printDescription ?? '',
+            piecesPerPack: product.piecesPerPack,
+            imageUrl: product.imageUrl ?? '',
+            remarks: product.remarks ?? '',
+            fleetId: product.fleetId ?? undefined,
+            categoryId: product.categoryId ?? undefined,
+            dealerPackPrice: product.dealerPackPrice ?? 0,
+            dealerCasePrice: product.dealerCasePrice ?? 0,
+            mrp: product.mrp ?? 0,
+          }
+        : undefined,
+    [product]
+  )
 
   return (
     <Dialog
@@ -85,7 +106,7 @@ function EditProductDialog() {
         }
       }}
     >
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Product</DialogTitle>
           <DialogDescription>Update product information.</DialogDescription>
@@ -96,21 +117,9 @@ function EditProductDialog() {
           </div>
         ) : (
           <ProductForm
+            key={selectedId ?? 0}
             mode="edit"
-            defaultValues={
-              product
-                ? {
-                    code: product.code,
-                    itemDescription: product.itemDescription,
-                    printDescription: product.printDescription ?? '',
-                    piecesPerPack: product.piecesPerPack,
-                    imageUrl: product.imageUrl ?? '',
-                    remarks: product.remarks ?? '',
-                    fleetId: product.fleetId ?? undefined,
-                    categoryId: product.categoryId ?? undefined,
-                  }
-                : undefined
-            }
+            defaultValues={defaultValues}
             onSubmit={(data) => {
               if (!selectedId) return
               mutate({ id: selectedId, data: data as UpdateProductInput })

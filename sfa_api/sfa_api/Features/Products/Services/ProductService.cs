@@ -72,6 +72,9 @@ public class ProductService(
             Remarks = request.Remarks,
             FleetId = request.FleetId,
             CategoryId = request.CategoryId,
+            DealerPackPrice = request.DealerPackPrice,
+            DealerCasePrice = request.DealerCasePrice,
+            Mrp = request.Mrp,
             IsActive = true,
             CreatedBy = callerId,
             UpdatedBy = callerId,
@@ -110,6 +113,9 @@ public class ProductService(
         product.Remarks = request.Remarks;
         product.FleetId = request.FleetId;
         product.CategoryId = request.CategoryId;
+        product.DealerPackPrice = request.DealerPackPrice;
+        product.DealerCasePrice = request.DealerCasePrice;
+        product.Mrp = request.Mrp;
         product.UpdatedBy = callerId;
         product.UpdatedAt = DateTime.UtcNow;
 
@@ -174,6 +180,9 @@ public class ProductService(
         CategoryId: product.CategoryId,
         CategoryName: product.Category?.Name,
         IsActive: product.IsActive,
+        DealerPackPrice: product.DealerPackPrice,
+        DealerCasePrice: product.DealerCasePrice,
+        Mrp: product.Mrp,
         CreatedAt: product.CreatedAt,
         UpdatedAt: product.UpdatedAt
     );

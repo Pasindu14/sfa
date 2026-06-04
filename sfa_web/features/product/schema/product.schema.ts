@@ -24,6 +24,9 @@ export const createProductSchema = z.object({
   remarks: z.string().optional().or(z.literal('')),
   fleetId: z.number().int().positive('Must select a valid fleet').optional(),
   categoryId: z.number().int().positive('Must select a valid category').optional(),
+  dealerPackPrice: z.number().min(0, 'Dealer pack price must be 0 or greater'),
+  dealerCasePrice: z.number().min(0, 'Dealer case price must be 0 or greater'),
+  mrp: z.number().min(0, 'MRP must be 0 or greater'),
 })
 
 // Update schema (same shape as create)
@@ -55,6 +58,9 @@ export type ProductDto = {
   categoryId: number | null
   categoryName: string | null
   isActive: boolean
+  dealerPackPrice: number
+  dealerCasePrice: number
+  mrp: number
   createdAt: string
   updatedAt: string
 }

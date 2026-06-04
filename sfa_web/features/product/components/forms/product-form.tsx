@@ -54,11 +54,33 @@ export function ProductForm({
       remarks: '',
       fleetId: undefined,
       categoryId: undefined,
+      dealerPackPrice: 0,
+      dealerCasePrice: 0,
+      mrp: 0,
       ...defaultValues,
     },
   })
 
-  const { setError } = form
+  const { setError, reset } = form
+
+  useEffect(() => {
+    if (defaultValues) {
+      reset({
+        code: '',
+        itemDescription: '',
+        printDescription: '',
+        piecesPerPack: 0,
+        imageUrl: '',
+        remarks: '',
+        fleetId: undefined,
+        categoryId: undefined,
+        dealerPackPrice: 0,
+        dealerCasePrice: 0,
+        mrp: 0,
+        ...defaultValues,
+      })
+    }
+  }, [defaultValues, reset])
 
   useEffect(() => {
     if (fieldErrors) {
@@ -177,6 +199,80 @@ export function ProductForm({
             </FormItem>
           )}
         />
+
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-muted-foreground">Pricing</p>
+          <div className="grid grid-cols-3 gap-4">
+            <FormField
+              control={form.control}
+              name="dealerPackPrice"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Dealer Pack Price</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      {...field}
+                      onChange={(e) =>
+                        field.onChange(e.target.value !== '' ? parseFloat(e.target.value) : 0)
+                      }
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="dealerCasePrice"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Dealer Case Price</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      {...field}
+                      onChange={(e) =>
+                        field.onChange(e.target.value !== '' ? parseFloat(e.target.value) : 0)
+                      }
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="mrp"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>MRP</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      {...field}
+                      onChange={(e) =>
+                        field.onChange(e.target.value !== '' ? parseFloat(e.target.value) : 0)
+                      }
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
 
         <div className="grid grid-cols-2 gap-4">
           <FormField

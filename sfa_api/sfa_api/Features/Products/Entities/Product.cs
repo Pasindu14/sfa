@@ -14,6 +14,9 @@ public class Product
     public string? Remarks { get; set; }
     public int? FleetId { get; set; }
     public int? CategoryId { get; set; }
+    public decimal DealerPackPrice { get; set; } = 0;
+    public decimal DealerCasePrice { get; set; } = 0;
+    public decimal Mrp { get; set; } = 0;
     public bool IsActive { get; set; } = true;
     public bool IsDeleted { get; set; } = false;
 
