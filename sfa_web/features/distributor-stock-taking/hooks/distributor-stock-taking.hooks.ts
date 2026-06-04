@@ -7,6 +7,7 @@ import {
   getMySubmissionAction,
   upsertDraftAction,
   submitStockTakingAction,
+  upsertAndSubmitAction,
 } from '../actions/distributor-stock-taking.actions'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { ActionFailure } from '@/lib/types/actions'
@@ -68,6 +69,26 @@ export function useSubmitStockTaking(onSuccess?: () => void) {
   return useMutation({
     mutationFn: async (periodId: number) => {
       const result = await submitStockTakingAction(periodId)
+      if (!result.success) throw result
+      return result.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: distributorStockTakingKeys.all })
+      toast.success('Stock count submitted successfully')
+      onSuccess?.()
+    },
+    onError: (error: ActionFailure) => {
+      handleErrorToast(error, 'submission', 'submit')
+    },
+  })
+}
+
+export function useUpsertAndSubmit(onSuccess?: () => void) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (data: UpsertDraftInput) => {
+      const result = await upsertAndSubmitAction(data)
       if (!result.success) throw result
       return result.data
     },

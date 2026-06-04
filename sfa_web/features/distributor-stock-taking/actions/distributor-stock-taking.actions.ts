@@ -44,6 +44,16 @@ export const submitStockTakingAction = createAction(
   }
 )
 
+export const upsertAndSubmitAction = createAction(
+  { name: 'upsertAndSubmitAction', requireAuth: true, requiredRole: 'Distributor' },
+  async (data: UpsertDraftInput) => {
+    await client.post('/api/v1/stock-taking/portal/submissions', data)
+    const res = await client.post(`/api/v1/stock-taking/portal/submissions/${data.periodId}/submit`)
+    revalidatePath('/distributor-stock-taking')
+    return res.data.data as DistributorStockTakingSubmissionDto
+  }
+)
+
 export const searchProductsForDistributorAction = createAction(
   { name: 'searchProductsForDistributorAction', requireAuth: true, requiredRole: 'Distributor' },
   async (search?: string) => {
