@@ -10,7 +10,6 @@ import type {
   PurchaseOrderDto,
   PurchaseOrderListDto,
 } from '../schema/purchase-order.schema'
-import type { PricingStructureDetailDto } from '@/features/pricing-structure/schema/pricing-structure.schema'
 
 // ── Read ───────────────────────────────────────────────────────────────────
 
@@ -43,14 +42,6 @@ export const getPurchaseOrderByIdAction = createAction(
   async (id: number) => {
     const res = await client.get(`/api/v1/purchase-orders/${id}`)
     return res.data.data as PurchaseOrderDto
-  }
-)
-
-export const getDefaultPricingStructureAction = createAction(
-  { name: 'getDefaultPricingStructureAction', requireAuth: true },
-  async () => {
-    const res = await client.get('/api/v1/pricing-structures/default')
-    return res.data.data as PricingStructureDetailDto
   }
 )
 

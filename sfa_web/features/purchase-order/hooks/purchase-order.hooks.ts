@@ -8,7 +8,6 @@ import {
   getPurchaseOrdersAction,
   getPurchaseOrderByIdAction,
   getPurchaseOrderStatsAction,
-  getDefaultPricingStructureAction,
   createPurchaseOrderAction,
   updatePurchaseOrderAction,
   submitPurchaseOrderAction,
@@ -44,7 +43,6 @@ export const purchaseOrderKeys = {
   details: () => [...purchaseOrderKeys.all, 'detail'] as const,
   detail: (id: number) => [...purchaseOrderKeys.details(), id] as const,
   stats: ['purchaseOrders', 'stats'] as const,
-  defaultPricing: ['defaultPricingStructure'] as const,
 }
 
 // ── Query hooks ────────────────────────────────────────────────────────────
@@ -58,18 +56,6 @@ export function usePurchaseOrder(id: number) {
       return result.data
     },
     enabled: id > 0,
-  })
-}
-
-export function useDefaultPricingStructure() {
-  return useQuery({
-    queryKey: purchaseOrderKeys.defaultPricing,
-    queryFn: async () => {
-      const result = await getDefaultPricingStructureAction()
-      if (!result.success) throw new Error(result.error)
-      return result.data
-    },
-    staleTime: 5 * 60 * 1000,
   })
 }
 

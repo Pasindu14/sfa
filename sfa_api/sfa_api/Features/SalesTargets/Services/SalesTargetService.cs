@@ -1,4 +1,3 @@
-using sfa_api.Features.PricingStructures.Services;
 using sfa_api.Features.SalesTargets.DTOs;
 using sfa_api.Features.SalesTargets.Repositories;
 using sfa_api.Features.SalesTargets.Entities;
@@ -9,7 +8,6 @@ namespace sfa_api.Features.SalesTargets.Services;
 public class SalesTargetService(
     ISalesTargetRepository targetRepo,
     ISalesTargetImportBatchRepository batchRepo,
-    IPricingStructureService pricingService,
     ICacheService cache) : ISalesTargetService
 {
     private static readonly TimeSpan TargetCacheTtl = TimeSpan.FromMinutes(5);
@@ -124,13 +122,8 @@ public class SalesTargetService(
 
         var targets = await targetRepo.GetByRepAndMonthAsync(salesRepId, year, month, ct);
 
-        decimal total = 0m;
-        if (targets.Count > 0)
-        {
-            var pricing = await pricingService.GetDefaultAsync(ct);
-            var priceMap = pricing.Items.ToDictionary(i => i.ProductId, i => i.DealerCasePrice ?? 0m);
-            total = targets.Sum(t => t.TargetQuantity * priceMap.GetValueOrDefault(t.ProductId, 0m));
-        }
+        // Value each target by the product's own dealer case price (PricingStructures removed).
+        decimal total = targets.Sum(t => t.TargetQuantity * (t.Product?.DealerCasePrice ?? 0m));
 
         var result = new RepMonthlyTargetDto(year, month, total);
         await cache.SetAsync(cacheKey, result, TargetCacheTtl, ct);

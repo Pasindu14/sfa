@@ -24,7 +24,6 @@ void showProductSearch(
     String? freeIssueSource,
     DateTime? expireDate,
   ) onProductAdded,
-  int? pricingStructureId,
 }) {
   Navigator.of(context).push(
     PageRouteBuilder<void>(
@@ -34,7 +33,6 @@ void showProductSearch(
       pageBuilder: (_, __, ___) => _ProductSearchPage(
         searchUseCase: searchUseCase,
         onProductAdded: onProductAdded,
-        pricingStructureId: pricingStructureId,
       ),
       transitionsBuilder: (_, animation, __, child) =>
           FadeTransition(opacity: animation, child: child),
@@ -63,7 +61,6 @@ final class _Product extends _ListItem {
 
 class _ProductSearchPage extends StatefulWidget {
   final SearchProductsForBillUseCase searchUseCase;
-  final int? pricingStructureId;
   final void Function(
     ProductWithPrice product,
     double qty,
@@ -78,7 +75,6 @@ class _ProductSearchPage extends StatefulWidget {
   const _ProductSearchPage({
     required this.searchUseCase,
     required this.onProductAdded,
-    this.pricingStructureId,
   });
 
   @override
@@ -114,10 +110,8 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
     super.dispose();
   }
 
-  Future<List<ProductWithPrice>> _search(String q) => widget.searchUseCase(
-        q,
-        pricingStructureId: widget.pricingStructureId,
-      );
+  Future<List<ProductWithPrice>> _search(String q) =>
+      widget.searchUseCase(q);
 
   void _onQueryChanged(String value) {
     final trimmed = value.trim();

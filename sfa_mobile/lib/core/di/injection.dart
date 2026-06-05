@@ -46,12 +46,6 @@ import 'package:uswatte/features/outlets/domain/usecases/get_outlets_usecase.dar
 import 'package:uswatte/features/outlets/domain/usecases/get_current_route_id_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_outlets_last_synced_at_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/sync_outlets_usecase.dart';
-import 'package:uswatte/features/pricing/data/datasources/pricing_local_datasource.dart';
-import 'package:uswatte/features/pricing/data/datasources/pricing_remote_datasource.dart';
-import 'package:uswatte/features/pricing/data/repositories/pricing_repository_impl.dart';
-import 'package:uswatte/features/pricing/domain/repositories/pricing_repository.dart';
-import 'package:uswatte/features/pricing/domain/usecases/get_pricing_usecase.dart';
-import 'package:uswatte/features/pricing/domain/usecases/sync_pricing_usecase.dart';
 import 'package:uswatte/core/connectivity/connectivity_service.dart';
 import 'package:uswatte/core/sync/bill_sync_service.dart';
 import 'package:uswatte/features/bills/data/datasources/bills_local_datasource.dart';
@@ -261,22 +255,6 @@ Future<void> configureDependencies() async {
       () => GetCurrentRouteIdUseCase(getIt<OutletsRepository>()));
   getIt.registerLazySingleton(
       () => GetOutletsLastSyncedAtUseCase(getIt<OutletsRepository>()));
-
-  // ── Pricing ──────────────────────────────────────────────────────────────────
-  getIt.registerLazySingleton(
-      () => PricingLocalDatasource(getIt<DatabaseHelper>()));
-  getIt.registerLazySingleton(
-      () => PricingRemoteDatasource(getIt<Dio>()));
-  getIt.registerLazySingleton<PricingRepository>(
-    () => PricingRepositoryImpl(
-      getIt<PricingRemoteDatasource>(),
-      getIt<PricingLocalDatasource>(),
-    ),
-  );
-  getIt.registerLazySingleton(
-      () => GetPricingUseCase(getIt<PricingRepository>()));
-  getIt.registerLazySingleton(
-      () => SyncPricingUseCase(getIt<PricingRepository>()));
 
   // ── Connectivity ─────────────────────────────────────────────────────────────
   getIt.registerLazySingleton<ConnectivityService>(() => ConnectivityService());
@@ -525,7 +503,6 @@ Future<void> configureDependencies() async {
     () => BackgroundSyncService(
       syncProducts: getIt<SyncProductsUseCase>(),
       syncCategories: getIt<SyncProductCategoriesUseCase>(),
-      syncPricing: getIt<SyncPricingUseCase>(),
       syncOutlets: getIt<SyncOutletsUseCase>(),
       syncStock: getIt<SyncDistributorStockUseCase>(),
       billSync: getIt<BillSyncService>(),

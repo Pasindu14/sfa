@@ -47,9 +47,8 @@ sfa_web/
 | Auth | Users | Distributors | Regions | Areas |
 |------|-------|--------------|---------|-------|
 | Territories | Divisions | Outlets | Products | ProductCategories |
-| ProductCategoryPricings | PricingStructures | PurchaseOrders | SalesInvoices | GRNs |
-| Routes | RouteCancellations | Stock | Fleets | UserGeoAssignments |
-| UserReportingLines | | | | |
+| ProductCategoryPricings | PurchaseOrders | SalesInvoices | GRNs | Routes |
+| RouteCancellations | Stock | Fleets | UserGeoAssignments | UserReportingLines |
 
 ---
 

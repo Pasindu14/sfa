@@ -27,10 +27,9 @@ abstract class BillsRepository {
 
   /// Product search for the Create Bill picker.
   /// Results are grouped by category (uncategorized last) in the returned list.
-  /// Pass [pricingStructureId] to price results against a specific structure.
+  /// Prices come from the product's own columns.
   Future<List<ProductWithPrice>> searchProducts(
     String query, {
     int limit = 200,
-    int? pricingStructureId,
   });
 }

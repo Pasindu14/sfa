@@ -1407,7 +1407,7 @@ export function DataTable<TData extends ExportableData, TValue>({
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <TableHead
-                    className="px-2 py-2 relative text-left group/th"
+                    className="px-2 py-2 relative text-left group/th bg-muted [&:not(:last-child)]:border-r"
                     key={header.id}
                     colSpan={header.colSpan}
                     scope="col"
@@ -1704,7 +1704,7 @@ export function DataTable<TData extends ExportableData, TValue>({
                   >
                     {row.getVisibleCells().map((cell, cellIndex) => (
                       <TableCell
-                        className="px-4 py-2 truncate max-w-0 text-left"
+                        className="px-4 py-2 truncate max-w-0 text-left [&:not(:last-child)]:border-r"
                         key={cell.id}
                         id={`cell-${rowIndex}-${cellIndex}`}
                         data-cell-index={cellIndex}

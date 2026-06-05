@@ -94,7 +94,6 @@ class BillsRepositoryImpl implements BillsRepository {
   Future<List<ProductWithPrice>> searchProducts(
     String query, {
     int limit = 200,
-    int? pricingStructureId,
   }) =>
-      _local.searchProducts(query, limit: limit, pricingStructureId: pricingStructureId);
+      _local.searchProducts(query, limit: limit);
 }

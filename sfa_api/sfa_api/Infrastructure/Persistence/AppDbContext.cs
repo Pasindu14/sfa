@@ -10,7 +10,6 @@ using sfa_api.Features.Regions.Entities;
 using sfa_api.Features.Territories.Entities;
 using sfa_api.Features.ProductCategories.Entities;
 using sfa_api.Features.ProductCategoryPricings.Entities;
-using sfa_api.Features.PricingStructures.Entities;
 using sfa_api.Features.Products.Entities;
 using sfa_api.Features.PurchaseOrders.Entities;
 using sfa_api.Features.Billings.Entities;
@@ -57,8 +56,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Product> Products => Set<Product>();
     public DbSet<ProductCategory> ProductCategories => Set<ProductCategory>();
     public DbSet<ProductCategoryPrice> ProductCategoryPrices => Set<ProductCategoryPrice>();
-    public DbSet<PricingStructure> PricingStructures => Set<PricingStructure>();
-    public DbSet<PricingStructureItem> PricingStructureItems => Set<PricingStructureItem>();
     public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
     public DbSet<PurchaseOrderItem> PurchaseOrderItems => Set<PurchaseOrderItem>();
     public DbSet<PurchaseOrderHistory> PurchaseOrderHistories => Set<PurchaseOrderHistory>();
@@ -420,34 +417,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .WithMany()
              .HasForeignKey(x => x.ProductId)
              .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        // PricingStructure
-        modelBuilder.Entity<PricingStructure>(e => {
-            e.HasKey(x => x.Id);
-            e.Property(x => x.Id).UseIdentityColumn();
-            e.HasIndex(x => x.Name).IsUnique();
-            e.HasIndex(x => x.IsActive);
-            e.HasIndex(x => x.IsDeleted);
-            e.HasIndex(x => x.IsDefault);
-            // Composite for the common "get default active structure" lookup
-            e.HasIndex(x => new { x.IsDefault, x.IsActive })
-             .HasFilter("\"IsActive\" = true AND \"IsDefault\" = true");
-            // NOTE: No HasQueryFilter (IsActive or IsDeleted) — repositories use IgnoreQueryFilters() throughout and
-            // filter IsActive and IsDeleted explicitly. A global filter here causes EF warnings because
-            // PricingStructureItem has a required FK to PricingStructure.
-        });
-
-        // PricingStructureItem
-        modelBuilder.Entity<PricingStructureItem>(e => {
-            e.HasKey(x => x.Id);
-            e.Property(x => x.Id).UseIdentityColumn();
-            e.Property(x => x.DealerPackPrice).HasColumnType("decimal(18,2)");
-            e.Property(x => x.DealerCasePrice).HasColumnType("decimal(18,2)");
-            e.Property(x => x.PromotionalPrice).HasColumnType("decimal(18,2)");
-            e.HasOne(x => x.PricingStructure).WithMany(p => p.Items).HasForeignKey(x => x.PricingStructureId).OnDelete(DeleteBehavior.Cascade);
-            e.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
-            e.HasIndex(x => new { x.PricingStructureId, x.ProductId }).IsUnique();
         });
 
         // PurchaseOrder sequence (used to generate order numbers)

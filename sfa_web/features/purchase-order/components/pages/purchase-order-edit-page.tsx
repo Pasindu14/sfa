@@ -29,7 +29,6 @@ import {
 import { useAllActiveProducts } from '@/features/product/hooks/product.hooks'
 import {
   usePurchaseOrder,
-  useDefaultPricingStructure,
   useUpdatePurchaseOrder,
 } from '../../hooks/purchase-order.hooks'
 import {
@@ -48,7 +47,6 @@ interface PurchaseOrderEditPageProps {
 export function PurchaseOrderEditPage({ orderId }: PurchaseOrderEditPageProps) {
   const { data: order, isLoading: isLoadingOrder } = usePurchaseOrder(orderId)
   const { data: products, isLoading: isLoadingProducts } = useAllActiveProducts()
-  const { data: pricing, isLoading: isLoadingPricing } = useDefaultPricingStructure()
   const { mutate: updateOrder, isPending, fieldErrors } = useUpdatePurchaseOrder(orderId)
 
   const form = useForm<UpdatePurchaseOrderInput>({
@@ -79,22 +77,20 @@ export function PurchaseOrderEditPage({ orderId }: PurchaseOrderEditPageProps) {
     }
   }, [order, form])
 
-  const isLoading = isLoadingOrder || isLoadingProducts || isLoadingPricing
+  const isLoading = isLoadingOrder || isLoadingProducts
 
-  const getPricingEntry = useCallback(
-    (productId: number) => {
-      if (!pricing?.items || !productId) return null
-      return pricing.items.find((i) => i.productId === productId) ?? null
-    },
-    [pricing]
+  // Prices live on the product itself (PricingStructures removed) — prefer case, then pack.
+  const getProduct = useCallback(
+    (productId: number) => products?.find((p) => p.id === productId) ?? null,
+    [products]
   )
 
   const getUnitPrice = useCallback(
     (productId: number): number => {
-      const entry = getPricingEntry(productId)
-      return entry?.dealerCasePrice ?? entry?.dealerPackPrice ?? 0
+      const product = getProduct(productId)
+      return product?.dealerCasePrice || product?.dealerPackPrice || 0
     },
-    [getPricingEntry]
+    [getProduct]
   )
 
   const handleProductChange = useCallback((index: number, productId: number) => {
@@ -275,18 +271,22 @@ export function PurchaseOrderEditPage({ orderId }: PurchaseOrderEditPageProps) {
                             )}
                           />
 
-                          {/* Unit Price — read-only, from pricing structure */}
+                          {/* Unit Price — read-only, from the product's own price */}
                           {(() => {
                             const pid = watchedItems[index]?.productId
-                            const entry = getPricingEntry(pid)
-                            const hasCasePrice = entry?.dealerCasePrice != null
-                            const hasPackPrice = entry?.dealerPackPrice != null
-                            const price = entry?.dealerCasePrice ?? entry?.dealerPackPrice ?? null
+                            const product = getProduct(pid)
+                            const hasCasePrice = (product?.dealerCasePrice ?? 0) > 0
+                            const hasPackPrice = (product?.dealerPackPrice ?? 0) > 0
+                            const price = hasCasePrice
+                              ? product!.dealerCasePrice
+                              : hasPackPrice
+                                ? product!.dealerPackPrice
+                                : null
                             const priceLabel = hasCasePrice ? 'Case price' : hasPackPrice ? 'Pack price' : null
 
                             return (
                               <div className="flex flex-col items-end gap-0.5">
-                                {pid && !entry ? (
+                                {pid && price == null ? (
                                   <span className="text-xs text-amber-600 font-medium">No pricing</span>
                                 ) : price != null ? (
                                   <>
@@ -368,7 +368,7 @@ export function PurchaseOrderEditPage({ orderId }: PurchaseOrderEditPageProps) {
                   </div>
                   <Separator />
                   <p className="text-xs text-muted-foreground">
-                    Prices are auto-filled from the default price list and cannot be edited.
+                    Prices are auto-filled from the product&apos;s price and cannot be edited.
                   </p>
                 </CardContent>
               </Card>

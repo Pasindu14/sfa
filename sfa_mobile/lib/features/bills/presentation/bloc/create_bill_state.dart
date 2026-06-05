@@ -1,7 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:uswatte/features/bills/data/datasources/bills_local_datasource.dart';
 import 'package:uswatte/features/outlets/domain/entities/outlet.dart';
-import 'package:uswatte/features/pricing/domain/entities/pricing_structure.dart';
 
 enum LocationCheckStatus { checking, ready, serviceDisabled, permissionDenied }
 
@@ -92,8 +91,6 @@ class CartLine extends Equatable {
 
 class CreateBillState extends Equatable {
   final Outlet? outlet;
-  final List<PricingStructure> pricingStructures;
-  final PricingStructure? selectedPricingStructure;
   final List<CartLine> cart;
   final double billDiscountRate;
   final bool submitting;
@@ -105,8 +102,6 @@ class CreateBillState extends Equatable {
 
   const CreateBillState({
     this.outlet,
-    this.pricingStructures = const [],
-    this.selectedPricingStructure,
     this.cart = const [],
     this.billDiscountRate = 0,
     this.submitting = false,
@@ -137,7 +132,6 @@ class CreateBillState extends Equatable {
   bool get canSubmit =>
       locationStatus == LocationCheckStatus.ready &&
       outlet != null &&
-      selectedPricingStructure != null &&
       cart.isNotEmpty &&
       cart.every((l) => !l.isReturn || l.returnType != null) &&
       cart.every((l) => !l.isFreeIssue || l.freeIssueSource != null) &&
@@ -145,9 +139,6 @@ class CreateBillState extends Equatable {
 
   CreateBillState copyWith({
     Outlet? outlet,
-    List<PricingStructure>? pricingStructures,
-    PricingStructure? selectedPricingStructure,
-    bool clearSelectedStructure = false,
     List<CartLine>? cart,
     double? billDiscountRate,
     bool? submitting,
@@ -160,10 +151,6 @@ class CreateBillState extends Equatable {
   }) =>
       CreateBillState(
         outlet: outlet ?? this.outlet,
-        pricingStructures: pricingStructures ?? this.pricingStructures,
-        selectedPricingStructure: clearSelectedStructure
-            ? null
-            : (selectedPricingStructure ?? this.selectedPricingStructure),
         cart: cart ?? this.cart,
         billDiscountRate: billDiscountRate ?? this.billDiscountRate,
         submitting: submitting ?? this.submitting,
@@ -178,8 +165,6 @@ class CreateBillState extends Equatable {
   @override
   List<Object?> get props => [
         outlet?.id,
-        pricingStructures,
-        selectedPricingStructure?.id,
         cart,
         billDiscountRate,
         submitting,

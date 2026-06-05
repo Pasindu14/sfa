@@ -13,14 +13,12 @@ class ProductSearchField extends StatefulWidget {
   final bool enabled;
   final SearchProductsForBillUseCase searchUseCase;
   final ValueChanged<ProductWithPrice> onProductChosen;
-  final int? pricingStructureId;
 
   const ProductSearchField({
     super.key,
     required this.enabled,
     required this.searchUseCase,
     required this.onProductChosen,
-    this.pricingStructureId,
   });
 
   @override
@@ -49,10 +47,7 @@ class _ProductSearchFieldState extends State<ProductSearchField> {
     _debounce = Timer(const Duration(milliseconds: 300), () async {
       setState(() => _searching = true);
       try {
-        final results = await widget.searchUseCase(
-          value,
-          pricingStructureId: widget.pricingStructureId,
-        );
+        final results = await widget.searchUseCase(value);
         if (mounted) setState(() => _results = results);
       } finally {
         if (mounted) setState(() => _searching = false);

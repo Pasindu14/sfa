@@ -8,6 +8,9 @@ class ProductModel {
   final int piecesPerPack;
   final String? imageUrl;
   final int? categoryId;
+  final double dealerPackPrice;
+  final double dealerCasePrice;
+  final double mrp;
 
   const ProductModel({
     required this.id,
@@ -17,6 +20,9 @@ class ProductModel {
     required this.piecesPerPack,
     this.imageUrl,
     this.categoryId,
+    this.dealerPackPrice = 0,
+    this.dealerCasePrice = 0,
+    this.mrp = 0,
   });
 
   /// Deserializes from the SFA API JSON (camelCase keys).
@@ -28,6 +34,9 @@ class ProductModel {
         piecesPerPack: json['piecesPerPack'] as int,
         imageUrl: json['imageUrl'] as String?,
         categoryId: json['categoryId'] as int?,
+        dealerPackPrice: (json['dealerPackPrice'] as num?)?.toDouble() ?? 0,
+        dealerCasePrice: (json['dealerCasePrice'] as num?)?.toDouble() ?? 0,
+        mrp: (json['mrp'] as num?)?.toDouble() ?? 0,
       );
 
   /// Deserializes from a SQLite row map (snake_case keys).
@@ -39,6 +48,9 @@ class ProductModel {
         piecesPerPack: map['pieces_per_pack'] as int,
         imageUrl: map['image_url'] as String?,
         categoryId: map['category_id'] as int?,
+        dealerPackPrice: (map['dealer_pack_price'] as num?)?.toDouble() ?? 0,
+        dealerCasePrice: (map['dealer_case_price'] as num?)?.toDouble() ?? 0,
+        mrp: (map['mrp'] as num?)?.toDouble() ?? 0,
       );
 
   /// Serializes to a SQLite row map for insert/replace.
@@ -50,6 +62,9 @@ class ProductModel {
         'pieces_per_pack': piecesPerPack,
         'image_url': imageUrl,
         'category_id': categoryId,
+        'dealer_pack_price': dealerPackPrice,
+        'dealer_case_price': dealerCasePrice,
+        'mrp': mrp,
       };
 
   Product toEntity() => Product(
@@ -60,6 +75,9 @@ class ProductModel {
         piecesPerPack: piecesPerPack,
         imageUrl: imageUrl,
         categoryId: categoryId,
+        dealerPackPrice: dealerPackPrice,
+        dealerCasePrice: dealerCasePrice,
+        mrp: mrp,
       );
 }
 

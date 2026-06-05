@@ -14,13 +14,6 @@ import 'package:uswatte/features/outlets/domain/usecases/sync_outlets_usecase.da
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_bloc.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_event.dart';
 import 'package:uswatte/features/outlets/presentation/pages/outlets_page.dart';
-import 'package:uswatte/features/pricing/domain/usecases/get_pricing_usecase.dart';
-import 'package:uswatte/features/pricing/domain/usecases/sync_pricing_usecase.dart';
-import 'package:uswatte/features/pricing/presentation/bloc/pricing_bloc.dart';
-import 'package:uswatte/features/pricing/presentation/bloc/pricing_event.dart';
-import 'package:uswatte/features/pricing/domain/entities/pricing_structure.dart';
-import 'package:uswatte/features/pricing/presentation/pages/pricing_page.dart';
-import 'package:uswatte/features/pricing/presentation/pages/pricing_structure_detail_page.dart';
 import 'package:uswatte/features/route_assignment/domain/usecases/delete_assignment_usecase.dart';
 import 'package:uswatte/features/route_assignment/domain/usecases/get_assignments_usecase.dart';
 import 'package:uswatte/features/route_assignment/presentation/bloc/assignments_bloc.dart';
@@ -53,7 +46,6 @@ import 'package:uswatte/features/debug/presentation/pages/debug_page.dart';
 import 'package:uswatte/features/supervisor/presentation/pages/supervisor_home_page.dart';
 import 'package:uswatte/core/sync/bill_sync_service.dart';
 import 'package:uswatte/features/bills/domain/usecases/create_bill_usecase.dart';
-import 'package:uswatte/features/pricing/data/datasources/pricing_local_datasource.dart';
 import 'package:uswatte/features/bills/domain/usecases/delete_bill_usecase.dart';
 import 'package:uswatte/features/bills/domain/usecases/get_bills_usecase.dart';
 import 'package:uswatte/features/bills/domain/usecases/retry_sync_usecase.dart';
@@ -280,12 +272,6 @@ class AppRouter {
                           getIt<GetOutletsLastSyncedAtUseCase>(),
                     )..add(const LoadOutletsRequested()),
                   ),
-                  BlocProvider(
-                    create: (_) => PricingBloc(
-                      getPricingUseCase: getIt<GetPricingUseCase>(),
-                      syncPricingUseCase: getIt<SyncPricingUseCase>(),
-                    )..add(const LoadPricingRequested()),
-                  ),
                 ],
                 child: const SyncPage(),
               ),
@@ -330,26 +316,6 @@ class AppRouter {
               ),
             ),
             GoRoute(
-              path: 'pricing',
-              name: 'pricing',
-              builder: (_, __) => BlocProvider(
-                create: (_) => PricingBloc(
-                  getPricingUseCase: getIt<GetPricingUseCase>(),
-                  syncPricingUseCase: getIt<SyncPricingUseCase>(),
-                )..add(const LoadPricingRequested()),
-                child: const PricingPage(),
-              ),
-              routes: [
-                GoRoute(
-                  path: 'detail',
-                  name: 'pricingDetail',
-                  builder: (_, state) => PricingStructureDetailPage(
-                    structure: state.extra as PricingStructure,
-                  ),
-                ),
-              ],
-            ),
-            GoRoute(
               path: 'bills',
               name: 'bills',
               builder: (_, __) => BlocProvider(
@@ -370,7 +336,6 @@ class AppRouter {
                       BlocProvider(
                         create: (_) => CreateBillBloc(
                           createBillUseCase: getIt<CreateBillUseCase>(),
-                          pricingLocalDatasource: getIt<PricingLocalDatasource>(),
                         ),
                       ),
                       BlocProvider(

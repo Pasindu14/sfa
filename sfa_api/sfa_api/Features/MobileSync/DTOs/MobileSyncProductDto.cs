@@ -8,7 +8,10 @@ public record MobileSyncProductDto(
     int PiecesPerPack,
     string? ImageUrl,
     int? CategoryId,
-    string? CategoryName
+    string? CategoryName,
+    decimal DealerPackPrice,
+    decimal DealerCasePrice,
+    decimal Mrp
 );
 
 public record MobileProductListDto(

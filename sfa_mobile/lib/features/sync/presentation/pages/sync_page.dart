@@ -10,9 +10,6 @@ import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_bloc.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_event.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_state.dart';
-import 'package:uswatte/features/pricing/presentation/bloc/pricing_bloc.dart';
-import 'package:uswatte/features/pricing/presentation/bloc/pricing_event.dart';
-import 'package:uswatte/features/pricing/presentation/bloc/pricing_state.dart';
 import 'package:uswatte/features/products/presentation/bloc/products_bloc.dart';
 import 'package:uswatte/features/products/presentation/bloc/products_event.dart';
 import 'package:uswatte/features/products/presentation/bloc/products_state.dart';
@@ -88,16 +85,11 @@ class _SyncPageState extends State<SyncPage> {
               ));
         }
       },
-      child: BlocBuilder<PricingBloc, PricingState>(
-        builder: (context, pricingState) {
-          return BlocBuilder<OutletsBloc, OutletsState>(
-            builder: (context, outletsState) {
-              return BlocBuilder<ProductsBloc, ProductsState>(
-                builder: (context, productsState) {
-                  return _buildBody(
-                      context, productsState, outletsState, pricingState);
-                },
-              );
+      child: BlocBuilder<OutletsBloc, OutletsState>(
+        builder: (context, outletsState) {
+          return BlocBuilder<ProductsBloc, ProductsState>(
+            builder: (context, productsState) {
+              return _buildBody(context, productsState, outletsState);
             },
           );
         },
@@ -109,10 +101,9 @@ class _SyncPageState extends State<SyncPage> {
     BuildContext context,
     ProductsState productsState,
     OutletsState outletsState,
-    PricingState pricingState,
   ) {
-    final isAnySyncing = _isAnySyncing(productsState, outletsState, pricingState) || _stockSyncing;
-    final allSynced = _isAllSynced(productsState, outletsState, pricingState) &&
+    final isAnySyncing = _isAnySyncing(productsState, outletsState) || _stockSyncing;
+    final allSynced = _isAllSynced(productsState, outletsState) &&
         _stockLastSyncedAt != null &&
         !_stockSyncing;
 
@@ -180,13 +171,6 @@ class _SyncPageState extends State<SyncPage> {
                       onSync: () => _syncOutlets(context),
                       onView: () => context.push('/sales-rep/outlets'),
                     ),
-                    _PricingCategoryCard(
-                      state: pricingState,
-                      onSync: () => context
-                          .read<PricingBloc>()
-                          .add(const SyncPricingRequested()),
-                      onView: () => context.push('/sales-rep/pricing'),
-                    ),
                     _CategoryCard(
                       icon: Icons.warehouse_rounded,
                       label: 'DISTRIBUTOR STOCK',
@@ -222,9 +206,6 @@ class _SyncPageState extends State<SyncPage> {
                                   .read<ProductsBloc>()
                                   .add(const SyncProductsRequested());
                               _syncOutlets(context);
-                              context
-                                  .read<PricingBloc>()
-                                  .add(const SyncPricingRequested());
                               _syncStock();
                             },
                     ),
@@ -248,66 +229,21 @@ class _SyncPageState extends State<SyncPage> {
         .add(LoadAssignmentsRequested(date: DateTime.now()));
   }
 
-  bool _isAnySyncing(ProductsState ps, OutletsState os, PricingState prs) {
+  bool _isAnySyncing(ProductsState ps, OutletsState os) {
     final productsSyncing =
         ps is ProductsLoading || (ps is ProductsLoaded && ps.isSyncing);
     final outletsSyncing =
         os is OutletsLoading || (os is OutletsLoaded && os.isSyncing);
-    final pricingSyncing =
-        prs is PricingLoading || (prs is PricingLoaded && prs.isSyncing);
-    return productsSyncing || outletsSyncing || pricingSyncing;
+    return productsSyncing || outletsSyncing;
   }
 
-  bool _isAllSynced(ProductsState ps, OutletsState os, PricingState prs) =>
+  bool _isAllSynced(ProductsState ps, OutletsState os) =>
       ps is ProductsLoaded &&
       ps.lastSyncedAt != null &&
       !ps.isSyncing &&
       os is OutletsLoaded &&
       os.lastSyncedAt != null &&
-      !os.isSyncing &&
-      prs is PricingLoaded &&
-      prs.lastSyncedAt != null &&
-      !prs.isSyncing;
-}
-
-// ── Pricing category card ─────────────────────────────────────────────────────
-
-class _PricingCategoryCard extends StatelessWidget {
-  const _PricingCategoryCard({
-    required this.state,
-    required this.onSync,
-    required this.onView,
-  });
-
-  final PricingState state;
-  final VoidCallback onSync;
-  final VoidCallback onView;
-
-  @override
-  Widget build(BuildContext context) {
-    final int? count =
-        state is PricingLoaded ? (state as PricingLoaded).totalItemCount : null;
-    final DateTime? lastSyncedAt =
-        state is PricingLoaded ? (state as PricingLoaded).lastSyncedAt : null;
-    final bool isSyncing = state is PricingLoading ||
-        (state is PricingLoaded && (state as PricingLoaded).isSyncing);
-    final bool hasError = state is PricingError;
-
-    return _CategoryCard(
-      icon: Icons.price_change_rounded,
-      label: 'PRICING STRUCTURE',
-      subtitle: 'Default product price list',
-      accentColor: AppColors.success,
-      itemCount: count,
-      itemUnit: 'prices',
-      lastSyncedAt: lastSyncedAt,
-      isSyncing: isSyncing,
-      hasError: hasError,
-      errorMessage: hasError ? (state as PricingError).message : null,
-      onSync: onSync,
-      onView: onView,
-    );
-  }
+      !os.isSyncing;
 }
 
 // ── Outlets category card ─────────────────────────────────────────────────────

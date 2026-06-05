@@ -5,8 +5,8 @@ import 'package:uswatte/features/bills/data/models/bill_model.dart';
 import 'package:uswatte/features/bills/domain/entities/sync_status.dart';
 
 /// A product row shaped for the Create Bill product picker — joined with the
-/// selected pricing structure and product category so the UI can group and
-/// price results without additional queries.
+/// product category so the UI can group and price results without additional
+/// queries. Prices come from the product's own columns.
 class ProductWithPrice {
   final int id;
   final String code;
@@ -279,35 +279,27 @@ class BillsLocalDatasource {
 
   // ── Product search for the Create Bill picker ─────────────────────────────
 
-  /// Searches `products` by code OR description, joined with the selected
-  /// pricing structure and product categories. Results are sorted by category
+  /// Searches `products` by code OR description, joined with product categories.
+  /// Prices come from the product's own columns. Results are sorted by category
   /// name (named categories first, uncategorized last) then by product code.
   /// Capped at [limit] rows.
   Future<List<ProductWithPrice>> searchProducts(
     String query, {
     int limit = 200,
-    int? pricingStructureId,
   }) async {
     final db = await _dbHelper.database;
     final q = '%${query.trim()}%';
-
-    final structureClause = pricingStructureId != null
-        ? 'pi.pricing_structure_id = $pricingStructureId'
-        : 'pi.pricing_structure_id = (SELECT id FROM pricing_structures WHERE is_default = 1 LIMIT 1)';
 
     final rows = await db.rawQuery(
       '''
       SELECT p.id, p.code, p.item_description,
              p.pieces_per_pack        AS packs_per_case,
-             pi.dealer_pack_price     AS dealer_pack_price,
-             pi.dealer_case_price     AS dealer_case_price,
+             p.dealer_pack_price      AS dealer_pack_price,
+             p.dealer_case_price      AS dealer_case_price,
              p.category_id,
              pc.name                  AS category_name,
              ds.quantity_on_hand      AS normal_stock
       FROM products p
-      LEFT JOIN pricing_items pi
-        ON pi.product_id = p.id
-       AND $structureClause
       LEFT JOIN product_categories pc
         ON pc.id = p.category_id
       LEFT JOIN distributor_stocks ds

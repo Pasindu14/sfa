@@ -2,7 +2,6 @@ import 'package:equatable/equatable.dart';
 import 'package:uswatte/features/bills/data/datasources/bills_local_datasource.dart';
 import 'package:uswatte/features/bills/presentation/bloc/create_bill_state.dart';
 import 'package:uswatte/features/outlets/domain/entities/outlet.dart';
-import 'package:uswatte/features/pricing/domain/entities/pricing_structure.dart';
 
 sealed class CreateBillEvent extends Equatable {
   const CreateBillEvent();
@@ -118,21 +117,6 @@ final class BillDiscountChanged extends CreateBillEvent {
   const BillDiscountChanged(this.rate);
   @override
   List<Object?> get props => [rate];
-}
-
-final class PricingStructureSelected extends CreateBillEvent {
-  final PricingStructure structure;
-  const PricingStructureSelected(this.structure);
-  @override
-  List<Object?> get props => [structure];
-}
-
-/// Internal event — fired by the bloc itself on init, not by the UI.
-final class PricingStructuresLoaded extends CreateBillEvent {
-  final List<PricingStructure> structures;
-  const PricingStructuresLoaded(this.structures);
-  @override
-  List<Object?> get props => [structures];
 }
 
 final class SubmitPressed extends CreateBillEvent {

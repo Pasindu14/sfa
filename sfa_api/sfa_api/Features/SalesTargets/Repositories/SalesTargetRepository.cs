@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using sfa_api.Features.Products.Entities;
 using sfa_api.Features.SalesTargets.Entities;
 using sfa_api.Infrastructure.Persistence;
 
@@ -99,7 +100,13 @@ public class SalesTargetRepository(AppDbContext context) : ISalesTargetRepositor
                      && t.Month      == month
                      && t.IsActive
                      && !t.IsDeleted)
-            .Select(t => new SalesTarget { ProductId = t.ProductId, TargetQuantity = t.TargetQuantity })
+            .Select(t => new SalesTarget
+            {
+                ProductId      = t.ProductId,
+                TargetQuantity = t.TargetQuantity,
+                // Price now lives on the product itself (PricingStructures removed).
+                Product = t.Product == null ? null : new Product { DealerCasePrice = t.Product.DealerCasePrice }
+            })
             .ToListAsync(ct);
 
     public Task SaveChangesAsync(CancellationToken ct = default)

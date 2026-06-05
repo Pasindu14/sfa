@@ -6,7 +6,7 @@ import 'package:sqflite/sqflite.dart';
 /// [onUpgrade] when schema changes.
 class DatabaseHelper {
   static const _dbName = 'sfa_local.db';
-  static const _dbVersion = 15;
+  static const _dbVersion = 16;
 
   DatabaseHelper._private();
   static final DatabaseHelper instance = DatabaseHelper._private();
@@ -47,7 +47,10 @@ class DatabaseHelper {
         print_description TEXT,
         pieces_per_pack  INTEGER NOT NULL,
         image_url        TEXT,
-        category_id      INTEGER
+        category_id      INTEGER,
+        dealer_pack_price REAL   NOT NULL DEFAULT 0,
+        dealer_case_price REAL   NOT NULL DEFAULT 0,
+        mrp              REAL    NOT NULL DEFAULT 0
       )
     ''');
 
@@ -60,8 +63,6 @@ class DatabaseHelper {
     ''');
 
     await _createDailyOutletsTable(db);
-    await _createPricingStructuresTable(db);
-    await _createPricingItemsTable(db);
     await _createBillsTables(db);
     await _createNotBillingsTable(db);
     await _createDistributorStocksTable(db);
@@ -69,8 +70,8 @@ class DatabaseHelper {
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) await _createDailyOutletsTable(db);
-    if (oldVersion < 3) await _createPricingItemsTable(db);
-    if (oldVersion < 4) await _createPricingStructuresTable(db);
+    // v3/v4 created the now-removed pricing tables; v16 tears them down anyway,
+    // so we skip creating them on the way up from very old installs.
     if (oldVersion < 5) await _createBillsTables(db);
     if (oldVersion < 6) await _migrateBillItemsV6(db);
     if (oldVersion < 7) await _createNotBillingsTable(db);
@@ -82,6 +83,23 @@ class DatabaseHelper {
     if (oldVersion < 13) await _migrateBillItemsV13(db);
     if (oldVersion < 14) await _createDistributorStocksTable(db);
     if (oldVersion < 15) await _migrateOutletsV15(db);
+    if (oldVersion < 16) await _migrateProductPricesAndDropPricingV16(db);
+  }
+
+  /// Prices moved onto the product itself — add the columns — and the
+  /// PricingStructures feature was removed, so drop its cache tables and the
+  /// sync marker. DROP ... IF EXISTS keeps this safe for installs that never
+  /// created the pricing tables.
+  Future<void> _migrateProductPricesAndDropPricingV16(Database db) async {
+    await db.execute(
+        'ALTER TABLE products ADD COLUMN dealer_pack_price REAL NOT NULL DEFAULT 0');
+    await db.execute(
+        'ALTER TABLE products ADD COLUMN dealer_case_price REAL NOT NULL DEFAULT 0');
+    await db.execute(
+        'ALTER TABLE products ADD COLUMN mrp REAL NOT NULL DEFAULT 0');
+    await db.execute('DROP TABLE IF EXISTS pricing_items');
+    await db.execute('DROP TABLE IF EXISTS pricing_structures');
+    await db.execute("DELETE FROM metadata WHERE key = 'pricing_last_synced_at'");
   }
 
   /// Adds free_issue_source to bill_items so the rep can flag whether each
@@ -109,31 +127,6 @@ class DatabaseHelper {
          SET billing_item_type = 'FreeIssue'
        WHERE is_free_issue = 1
          AND billing_item_type = 'Sale'
-    ''');
-  }
-
-  Future<void> _createPricingStructuresTable(Database db) async {
-    await db.execute('''
-      CREATE TABLE pricing_structures (
-        id         INTEGER PRIMARY KEY,
-        name       TEXT    NOT NULL,
-        is_default INTEGER NOT NULL DEFAULT 0
-      )
-    ''');
-  }
-
-  Future<void> _createPricingItemsTable(Database db) async {
-    await db.execute('''
-      CREATE TABLE pricing_items (
-        id                       INTEGER PRIMARY KEY,
-        pricing_structure_id     INTEGER NOT NULL,
-        product_id               INTEGER NOT NULL,
-        product_code             TEXT    NOT NULL,
-        product_item_description TEXT    NOT NULL,
-        dealer_pack_price        REAL,
-        dealer_case_price        REAL,
-        promotional_price        REAL
-      )
     ''');
   }
 

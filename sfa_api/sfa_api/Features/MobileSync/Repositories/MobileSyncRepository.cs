@@ -21,7 +21,10 @@ public class MobileSyncRepository(AppDbContext db) : IMobileSyncRepository
                 p.PiecesPerPack,
                 p.ImageUrl,
                 p.CategoryId,
-                p.Category != null ? p.Category.Name : null))
+                p.Category != null ? p.Category.Name : null,
+                p.DealerPackPrice,
+                p.DealerCasePrice,
+                p.Mrp))
             .ToListAsync(ct);
 
     public Task<List<MobileProductCategoryDto>> GetActiveProductCategoriesAsync(CancellationToken ct = default)

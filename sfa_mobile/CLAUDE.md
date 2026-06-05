@@ -56,8 +56,7 @@ sfa_mobile/lib/
 | auth | Login, secure token storage, session management |
 | splash | Splash screen + auth check on launch |
 | outlets | Outlet list and detail view |
-| products | Product catalog |
-| pricing | Pricing structure lookup |
+| products | Product catalog (prices live on the product) |
 | bills | Bill creation and management |
 | not_billings | Not-billing reason recording |
 | outlet_bill_history | Bill history per outlet |

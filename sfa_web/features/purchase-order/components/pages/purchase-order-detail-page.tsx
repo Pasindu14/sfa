@@ -54,7 +54,6 @@ import {
   useFinalizePurchaseOrder,
   useCancelPurchaseOrder,
   useUpdatePurchaseOrder,
-  useDefaultPricingStructure,
 } from "../../hooks/purchase-order.hooks";
 import { useSubmitDialog, useRepApproveDialog, useApproveDialog, useAcknowledgeDialog, useFinalizeDialog } from '../../store'
 import {
@@ -538,7 +537,6 @@ interface AdminItemsEditorProps {
 
 function AdminItemsEditor({ order, onClose }: AdminItemsEditorProps) {
   const { data: products } = useAllActiveProducts()
-  const { data: pricing } = useDefaultPricingStructure()
   const { mutate: updateOrder, isPending } = useUpdatePurchaseOrder(order.id)
 
   const form = useForm<UpdatePurchaseOrderInput>({
@@ -557,33 +555,32 @@ function AdminItemsEditor({ order, onClose }: AdminItemsEditorProps) {
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'items' })
   const watchedItems = useWatch({ control: form.control, name: 'items' })
 
-  // When pricing loads, back-fill unit prices for all existing items.
-  // We intentionally only re-run when pricing changes — form and order.items
-  // are stable references that don't need to trigger a re-sync.
-  const pricingItems = pricing?.items
+  // When products load, back-fill unit prices for all existing items from the
+  // product's own price (PricingStructures removed). We intentionally only re-run
+  // when products change — form and order.items are stable references.
   useEffect(() => {
-    if (!pricingItems) return
+    if (!products) return
     order.items.forEach((item, index) => {
-      const entry = pricingItems.find((p) => p.productId === item.productId)
-      const price = entry?.dealerCasePrice ?? entry?.dealerPackPrice ?? item.unitPrice
+      const product = products.find((p) => p.id === item.productId)
+      const price = product
+        ? product.dealerCasePrice || product.dealerPackPrice || item.unitPrice
+        : item.unitPrice
       form.setValue(`items.${index}.unitPrice`, price)
     })
-  }, [pricingItems, form, order.items])
+  }, [products, form, order.items])
 
-  const getPricingEntry = useCallback(
-    (productId: number | undefined) => {
-      if (!pricing?.items || !productId) return null
-      return pricing.items.find((i) => i.productId === productId) ?? null
-    },
-    [pricing]
+  const getProduct = useCallback(
+    (productId: number | undefined) =>
+      productId ? products?.find((p) => p.id === productId) ?? null : null,
+    [products]
   )
 
   const getUnitPrice = useCallback(
     (productId: number | undefined): number => {
-      const entry = getPricingEntry(productId)
-      return entry?.dealerCasePrice ?? entry?.dealerPackPrice ?? 0
+      const product = getProduct(productId)
+      return product?.dealerCasePrice || product?.dealerPackPrice || 0
     },
-    [getPricingEntry]
+    [getProduct]
   )
 
   const handleProductChange = useCallback((index: number, productId: number) => {
@@ -620,10 +617,14 @@ function AdminItemsEditor({ order, onClose }: AdminItemsEditorProps) {
           {fields.map((field, index) => {
             const watchedItem = watchedItems[index]
             const pid = watchedItem?.productId
-            const entry = getPricingEntry(pid)
-            const hasCasePrice = entry?.dealerCasePrice != null
-            const hasPackPrice = entry?.dealerPackPrice != null
-            const price = entry?.dealerCasePrice ?? entry?.dealerPackPrice ?? null
+            const product = getProduct(pid)
+            const hasCasePrice = (product?.dealerCasePrice ?? 0) > 0
+            const hasPackPrice = (product?.dealerPackPrice ?? 0) > 0
+            const price = hasCasePrice
+              ? product!.dealerCasePrice
+              : hasPackPrice
+                ? product!.dealerPackPrice
+                : null
             const priceLabel = hasCasePrice ? 'Case' : hasPackPrice ? 'Pack' : null
             const lineTotal =
               (watchedItem?.unitPrice ?? 0) *
@@ -671,9 +672,9 @@ function AdminItemsEditor({ order, onClose }: AdminItemsEditorProps) {
                   )}
                 />
 
-                {/* Unit Price — read-only, auto-filled from pricing structure */}
+                {/* Unit Price — read-only, auto-filled from the product's own price */}
                 <div className="flex flex-col items-end gap-0.5">
-                  {pid && !entry ? (
+                  {pid && price == null ? (
                     <span className="text-xs text-amber-600 font-medium">No pricing</span>
                   ) : price != null ? (
                     <>

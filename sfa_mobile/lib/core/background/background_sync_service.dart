@@ -2,7 +2,6 @@ import 'package:uswatte/core/sync/bill_sync_service.dart';
 import 'package:uswatte/core/sync/not_billing_sync_service.dart';
 import 'package:uswatte/features/outlets/data/datasources/outlets_local_datasource.dart';
 import 'package:uswatte/features/outlets/domain/usecases/sync_outlets_usecase.dart';
-import 'package:uswatte/features/pricing/domain/usecases/sync_pricing_usecase.dart';
 import 'package:uswatte/features/products/domain/usecases/sync_product_categories_usecase.dart';
 import 'package:uswatte/features/products/domain/usecases/sync_products_usecase.dart';
 import 'package:uswatte/features/stock/domain/usecases/sync_distributor_stock_usecase.dart';
@@ -10,7 +9,6 @@ import 'package:uswatte/features/stock/domain/usecases/sync_distributor_stock_us
 class BackgroundSyncService {
   final SyncProductsUseCase _syncProducts;
   final SyncProductCategoriesUseCase _syncCategories;
-  final SyncPricingUseCase _syncPricing;
   final SyncOutletsUseCase _syncOutlets;
   final SyncDistributorStockUseCase _syncStock;
   final BillSyncService _billSync;
@@ -20,7 +18,6 @@ class BackgroundSyncService {
   const BackgroundSyncService({
     required SyncProductsUseCase syncProducts,
     required SyncProductCategoriesUseCase syncCategories,
-    required SyncPricingUseCase syncPricing,
     required SyncOutletsUseCase syncOutlets,
     required SyncDistributorStockUseCase syncStock,
     required BillSyncService billSync,
@@ -28,7 +25,6 @@ class BackgroundSyncService {
     required OutletsLocalDatasource outletsLocal,
   })  : _syncProducts = syncProducts,
         _syncCategories = syncCategories,
-        _syncPricing = syncPricing,
         _syncOutlets = syncOutlets,
         _syncStock = syncStock,
         _billSync = billSync,
@@ -46,10 +42,6 @@ class BackgroundSyncService {
 
     try {
       await _syncCategories();
-    } catch (_) {}
-
-    try {
-      await _syncPricing();
     } catch (_) {}
 
     try {

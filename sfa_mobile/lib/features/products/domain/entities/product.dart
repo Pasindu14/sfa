@@ -8,6 +8,9 @@ class Product extends Equatable {
   final int piecesPerPack;
   final String? imageUrl;
   final int? categoryId;
+  final double dealerPackPrice;
+  final double dealerCasePrice;
+  final double mrp;
 
   const Product({
     required this.id,
@@ -17,6 +20,9 @@ class Product extends Equatable {
     required this.piecesPerPack,
     this.imageUrl,
     this.categoryId,
+    this.dealerPackPrice = 0,
+    this.dealerCasePrice = 0,
+    this.mrp = 0,
   });
 
   @override
@@ -28,5 +34,8 @@ class Product extends Equatable {
         piecesPerPack,
         imageUrl,
         categoryId,
+        dealerPackPrice,
+        dealerCasePrice,
+        mrp,
       ];
 }

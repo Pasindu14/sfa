@@ -49,9 +49,9 @@ Test: sfa_api.UnitTests/ | sfa_api.IntegrationTests/
 | Auth | Users | Distributors | Regions | Areas |
 |------|-------|--------------|---------|-------|
 | Territories | Divisions | Outlets | Products | Categories |
-| ProductCategories | ProductCategoryPricings | PricingStructures | PurchaseOrders | SalesInvoices |
-| GRNs | Billings | NotBillings | Routes | DailyRouteAssignments |
-| Stock | Fleets | UserGeoAssignments | UserReportingLines | MobileSync |
+| ProductCategories | ProductCategoryPricings | PurchaseOrders | SalesInvoices | GRNs |
+| Billings | NotBillings | Routes | DailyRouteAssignments | Stock |
+| Fleets | UserGeoAssignments | UserReportingLines | MobileSync | SalesTargets |
 
 **Geographic Hierarchy:** `Region → Area → Territory → Division`
 Each level stores all ancestor IDs (denormalized) — join-free queries.
