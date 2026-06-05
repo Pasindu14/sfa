@@ -34,10 +34,19 @@ class _CartListState extends State<CartList> {
     }
   }
 
+  static int _groupCount(List<CartLine> cart) {
+    final seen = <String>{};
+    for (final l in cart) {
+      seen.add('${l.product.id}:${l.billingItemType}');
+    }
+    return seen.length;
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = widget.state;
     final hasItems = state.cart.isNotEmpty;
+    final visibleItems = _groupCount(state.cart);
     final keyboardUp = MediaQuery.viewInsetsOf(context).bottom > 100;
 
     return AnimatedSize(
@@ -68,7 +77,7 @@ class _CartListState extends State<CartList> {
                 top: false,
                 child: _expanded
                     ? _buildExpanded(context, state)
-                    : _buildCollapsed(context, state, hasItems),
+                    : _buildCollapsed(context, state, hasItems, visibleItems),
               ),
             ),
     );
@@ -77,7 +86,7 @@ class _CartListState extends State<CartList> {
   // ── Collapsed: single summary bar ─────────────────────────────────────────
 
   Widget _buildCollapsed(
-      BuildContext context, CreateBillState state, bool hasItems) {
+      BuildContext context, CreateBillState state, bool hasItems, int visibleItems) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: hasItems ? () => setState(() => _expanded = true) : null,
@@ -118,7 +127,7 @@ class _CartListState extends State<CartList> {
                       ),
                       alignment: Alignment.center,
                       child: Text(
-                        '${state.cart.length}',
+                        '$visibleItems',
                         style: GoogleFonts.barlowCondensed(
                           fontSize: 8.sp,
                           fontWeight: FontWeight.w900,
@@ -139,7 +148,7 @@ class _CartListState extends State<CartList> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          '${state.cart.length} item${state.cart.length == 1 ? '' : 's'}  ·  tap to review',
+                          '$visibleItems item${visibleItems == 1 ? '' : 's'}  ·  tap to review',
                           style: GoogleFonts.barlow(
                             fontSize: 11.sp,
                             color: AppColors.foregroundMuted,
@@ -193,6 +202,19 @@ class _CartListState extends State<CartList> {
   // ── Expanded: full cart panel ──────────────────────────────────────────────
 
   Widget _buildExpanded(BuildContext context, CreateBillState state) {
+    final rawCart = state.cart;
+    final groupOrder = <String>[];
+    final groups = <String, Map<String, CartLine>>{};
+    for (final line in rawCart) {
+      final key = '${line.product.id}:${line.billingItemType}';
+      if (!groups.containsKey(key)) {
+        groupOrder.add(key);
+        groups[key] = {};
+      }
+      groups[key]![line.priceType] = line;
+    }
+    final groupList = groupOrder.map((k) => groups[k]!).toList();
+
     return Padding(
       padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 12.h),
       child: Column(
@@ -236,7 +258,7 @@ class _CartListState extends State<CartList> {
                     borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Text(
-                    '${state.cart.length}',
+                    '${groupList.length}',
                     style: GoogleFonts.barlowCondensed(
                       fontSize: 11.sp,
                       fontWeight: FontWeight.w800,
@@ -299,36 +321,55 @@ class _CartListState extends State<CartList> {
             child: ListView.separated(
               shrinkWrap: true,
               padding: EdgeInsets.symmetric(vertical: 2.h),
-              itemCount: state.cart.length,
+              itemCount: groupList.length,
               separatorBuilder: (_, __) => SizedBox(height: 4.h),
               itemBuilder: (ctx, i) {
-                final line = state.cart[i];
+                final group = groupList[i];
+                final caseLine = group['Case'];
+                final packetLine = group['Packet'];
                 return CartRow(
-                  line: line,
-                  onChanged: (q) => ctx
-                      .read<CreateBillBloc>()
-                      .add(CartItemQtyChanged(line.lineNumber, q)),
-                  onDiscountChanged: (d) => ctx
-                      .read<CreateBillBloc>()
-                      .add(CartItemDiscountChanged(line.lineNumber, d)),
-                  onRemoved: () => ctx
-                      .read<CreateBillBloc>()
-                      .add(CartItemRemoved(line.lineNumber)),
-                  onTypeChanged: (t) => ctx
-                      .read<CreateBillBloc>()
-                      .add(CartItemTypeChanged(line.lineNumber, t)),
-                  onReturnTypeChanged: (rt) => ctx
-                      .read<CreateBillBloc>()
-                      .add(CartItemReturnTypeChanged(line.lineNumber, rt)),
-                  onFreeIssueSourceChanged: (s) => ctx
-                      .read<CreateBillBloc>()
-                      .add(CartItemFreeIssueSourceChanged(line.lineNumber, s)),
-                  onExpireDateChanged: (d) => ctx
-                      .read<CreateBillBloc>()
-                      .add(CartItemExpireDateChanged(line.lineNumber, d)),
-                  onPriceChanged: (p) => ctx
-                      .read<CreateBillBloc>()
-                      .add(CartItemPriceChanged(line.lineNumber, p)),
+                  caseLine: caseLine,
+                  packetLine: packetLine,
+                  onCaseQtyChanged: caseLine != null
+                      ? (q) => ctx.read<CreateBillBloc>().add(CartItemQtyChanged(caseLine.lineNumber, q))
+                      : null,
+                  onPacketQtyChanged: packetLine != null
+                      ? (q) => ctx.read<CreateBillBloc>().add(CartItemQtyChanged(packetLine.lineNumber, q))
+                      : null,
+                  onDiscountChanged: (d) {
+                    final bloc = ctx.read<CreateBillBloc>();
+                    if (caseLine != null) bloc.add(CartItemDiscountChanged(caseLine.lineNumber, d));
+                    if (packetLine != null) bloc.add(CartItemDiscountChanged(packetLine.lineNumber, d));
+                  },
+                  onRemoved: () {
+                    final bloc = ctx.read<CreateBillBloc>();
+                    if (caseLine != null) bloc.add(CartItemRemoved(caseLine.lineNumber));
+                    if (packetLine != null) bloc.add(CartItemRemoved(packetLine.lineNumber));
+                  },
+                  onTypeChanged: (t) {
+                    final bloc = ctx.read<CreateBillBloc>();
+                    if (caseLine != null) bloc.add(CartItemTypeChanged(caseLine.lineNumber, t));
+                    if (packetLine != null) bloc.add(CartItemTypeChanged(packetLine.lineNumber, t));
+                  },
+                  onReturnTypeChanged: (rt) {
+                    final bloc = ctx.read<CreateBillBloc>();
+                    if (caseLine != null) bloc.add(CartItemReturnTypeChanged(caseLine.lineNumber, rt));
+                    if (packetLine != null) bloc.add(CartItemReturnTypeChanged(packetLine.lineNumber, rt));
+                  },
+                  onFreeIssueSourceChanged: (s) {
+                    final bloc = ctx.read<CreateBillBloc>();
+                    if (caseLine != null) bloc.add(CartItemFreeIssueSourceChanged(caseLine.lineNumber, s));
+                    if (packetLine != null) bloc.add(CartItemFreeIssueSourceChanged(packetLine.lineNumber, s));
+                  },
+                  onExpireDateChanged: (d) {
+                    final bloc = ctx.read<CreateBillBloc>();
+                    if (caseLine != null) bloc.add(CartItemExpireDateChanged(caseLine.lineNumber, d));
+                    if (packetLine != null) bloc.add(CartItemExpireDateChanged(packetLine.lineNumber, d));
+                  },
+                  onPriceChanged: (p) {
+                    final primary = caseLine ?? packetLine!;
+                    ctx.read<CreateBillBloc>().add(CartItemPriceChanged(primary.lineNumber, p));
+                  },
                 );
               },
             ),

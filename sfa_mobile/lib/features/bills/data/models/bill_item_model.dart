@@ -13,6 +13,7 @@ class BillItemModel {
   final String? freeIssueSource; // 'Company' | 'Distributor' — null unless FOC
   final DateTime? expireDate;
   final int lineNumber;
+  final String priceType;
 
   const BillItemModel({
     this.id,
@@ -27,6 +28,7 @@ class BillItemModel {
     this.freeIssueSource,
     this.expireDate,
     required this.lineNumber,
+    this.priceType = 'Packet',
   });
 
   factory BillItemModel.fromMap(Map<String, dynamic> map) {
@@ -51,6 +53,7 @@ class BillItemModel {
           ? DateTime.tryParse(map['expire_date'] as String)
           : null,
       lineNumber: map['line_number'] as int,
+      priceType: map['price_type'] as String? ?? 'Packet',
     );
   }
 
@@ -66,6 +69,7 @@ class BillItemModel {
         'free_issue_source': freeIssueSource,
         'expire_date': expireDate != null ? _dateOnly(expireDate!) : null,
         'line_number': lineNumber,
+        'price_type': priceType,
       };
 
   Map<String, dynamic> toCreateRequestJson() => {
@@ -92,6 +96,7 @@ class BillItemModel {
         freeIssueSource: freeIssueSource,
         expireDate: expireDate,
         lineNumber: lineNumber,
+        priceType: priceType,
       );
 
   static String _dateOnly(DateTime d) =>

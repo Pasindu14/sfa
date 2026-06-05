@@ -44,7 +44,6 @@ const navConfig: NavGroup[] = [
     isActive: true,
     roles: ["Admin"],
     items: [
-      { title: "Dashboard", url: "/dashboard" },
       { title: "Users", url: "/users" },
       { title: "Distributors", url: "/distributors" },
       { title: "Products", url: "/products" },

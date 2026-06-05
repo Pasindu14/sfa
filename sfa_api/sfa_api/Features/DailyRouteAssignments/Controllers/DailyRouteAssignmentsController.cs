@@ -33,12 +33,13 @@ public class DailyRouteAssignmentsController(
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
         var callerRole = User.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
-        if (callerRole == "SalesRep")
+        var isSalesRep = callerRole == "SalesRep";
+        if (isSalesRep)
         {
             int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
             userId = callerId;
         }
-        var result = await _service.GetAllAsync(page, pageSize, userId, routeId, date, ct);
+        var result = await _service.GetAllAsync(page, pageSize, userId, routeId, date, excludePendingDeletion: isSalesRep, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 

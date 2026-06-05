@@ -13,6 +13,7 @@ class BillItem extends Equatable {
   final String? freeIssueSource; // 'Company' | 'Distributor' — only set when billingItemType == 'FreeIssue'
   final DateTime? expireDate;   // Only when returnType == 'Expire'
   final int lineNumber;
+  final String priceType;
 
   const BillItem({
     this.id,
@@ -27,6 +28,7 @@ class BillItem extends Equatable {
     this.freeIssueSource,
     this.expireDate,
     required this.lineNumber,
+    this.priceType = 'Packet',
   });
 
   bool get isFreeIssue => billingItemType == 'FreeIssue';
@@ -47,5 +49,6 @@ class BillItem extends Equatable {
         freeIssueSource,
         expireDate,
         lineNumber,
+        priceType,
       ];
 }

@@ -13,6 +13,7 @@ public interface IDailyRouteAssignmentService
         int? userId = null,
         int? routeId = null,
         DateOnly? date = null,
+        bool excludePendingDeletion = false,
         CancellationToken ct = default);
 
     /// <summary>Returns sales reps who have an active reporting line to the current supervisor.</summary>

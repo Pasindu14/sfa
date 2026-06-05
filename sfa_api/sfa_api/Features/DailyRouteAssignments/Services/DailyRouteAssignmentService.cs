@@ -33,10 +33,11 @@ public class DailyRouteAssignmentService(
         int? userId = null,
         int? routeId = null,
         DateOnly? date = null,
+        bool excludePendingDeletion = false,
         CancellationToken ct = default)
     {
         var skip = (page - 1) * pageSize;
-        var (items, totalCount) = await _repo.GetAllAsync(skip, pageSize, userId, routeId, date, ct);
+        var (items, totalCount) = await _repo.GetAllAsync(skip, pageSize, userId, routeId, date, excludePendingDeletion, ct);
         return new DailyRouteAssignmentListDto(
             Assignments: items.Select(MapToDto),
             TotalCount: totalCount,

@@ -26,6 +26,7 @@ final class ProductAdded extends CreateBillEvent {
   final String? returnType;
   final String? freeIssueSource;
   final DateTime? expireDate;
+  final String priceType;
   const ProductAdded(
     this.product,
     this.quantity, {
@@ -35,6 +36,7 @@ final class ProductAdded extends CreateBillEvent {
     this.returnType,
     this.freeIssueSource,
     this.expireDate,
+    this.priceType = 'Packet',
   });
   @override
   List<Object?> get props => [
@@ -46,6 +48,7 @@ final class ProductAdded extends CreateBillEvent {
         returnType,
         freeIssueSource,
         expireDate,
+        priceType,
       ];
 }
 
@@ -82,7 +85,7 @@ final class CartItemPriceChanged extends CreateBillEvent {
 
 final class CartItemTypeChanged extends CreateBillEvent {
   final int lineNumber;
-  final String billingItemType; // 'Sale' | 'FreeIssue' | 'Return'
+  final String billingItemType;
   const CartItemTypeChanged(this.lineNumber, this.billingItemType);
   @override
   List<Object?> get props => [lineNumber, billingItemType];
@@ -90,7 +93,7 @@ final class CartItemTypeChanged extends CreateBillEvent {
 
 final class CartItemReturnTypeChanged extends CreateBillEvent {
   final int lineNumber;
-  final String returnType; // 'Damage' | 'Expire' | 'MarketResell'
+  final String returnType;
   const CartItemReturnTypeChanged(this.lineNumber, this.returnType);
   @override
   List<Object?> get props => [lineNumber, returnType];
@@ -98,7 +101,7 @@ final class CartItemReturnTypeChanged extends CreateBillEvent {
 
 final class CartItemFreeIssueSourceChanged extends CreateBillEvent {
   final int lineNumber;
-  final String source; // 'Company' | 'Distributor'
+  final String source;
   const CartItemFreeIssueSourceChanged(this.lineNumber, this.source);
   @override
   List<Object?> get props => [lineNumber, source];
@@ -123,7 +126,6 @@ final class SubmitPressed extends CreateBillEvent {
   const SubmitPressed();
 }
 
-/// Internal event — fired by the bloc itself after GPS resolves on init.
 final class BillLocationCaptured extends CreateBillEvent {
   final double? latitude;
   final double? longitude;
@@ -132,7 +134,6 @@ final class BillLocationCaptured extends CreateBillEvent {
   List<Object?> get props => [latitude, longitude];
 }
 
-/// Internal event — fired when the GPS check determines the location status.
 final class BillLocationStatusChanged extends CreateBillEvent {
   final LocationCheckStatus status;
   const BillLocationStatusChanged(this.status);
@@ -140,7 +141,6 @@ final class BillLocationStatusChanged extends CreateBillEvent {
   List<Object?> get props => [status];
 }
 
-/// Fired by the UI when the user taps "Retry" after fixing location settings.
 final class LocationCheckRetried extends CreateBillEvent {
   const LocationCheckRetried();
 }

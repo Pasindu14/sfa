@@ -14,6 +14,7 @@ public interface IDailyRouteAssignmentRepository
         int? userId = null,
         int? routeId = null,
         DateOnly? date = null,
+        bool excludePendingDeletion = false,
         CancellationToken ct = default);
 
     /// <summary>Returns reps (SalesRep role) who have an active reporting line to the given supervisor.</summary>

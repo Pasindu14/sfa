@@ -176,7 +176,8 @@ class CreateBillPage extends StatelessWidget {
                                                   billingItemType,
                                                   returnType,
                                                   freeIssueSource,
-                                                  expireDate) =>
+                                                  expireDate,
+                                                  priceType) =>
                                               ctx.read<CreateBillBloc>().add(
                                                     ProductAdded(
                                                       product,
@@ -190,6 +191,7 @@ class CreateBillPage extends StatelessWidget {
                                                       freeIssueSource:
                                                           freeIssueSource,
                                                       expireDate: expireDate,
+                                                      priceType: priceType,
                                                     ),
                                                   ),
                                         ),

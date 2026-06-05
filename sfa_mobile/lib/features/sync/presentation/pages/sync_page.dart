@@ -89,7 +89,8 @@ class _SyncPageState extends State<SyncPage> {
         builder: (context, outletsState) {
           return BlocBuilder<ProductsBloc, ProductsState>(
             builder: (context, productsState) {
-              return _buildBody(context, productsState, outletsState);
+              return _buildBody(context, productsState, outletsState,
+              outletsState is OutletsLoaded && outletsState.hasActiveAssignment);
             },
           );
         },
@@ -101,9 +102,10 @@ class _SyncPageState extends State<SyncPage> {
     BuildContext context,
     ProductsState productsState,
     OutletsState outletsState,
+    bool hasActiveAssignment,
   ) {
-    final isAnySyncing = _isAnySyncing(productsState, outletsState) || _stockSyncing;
-    final allSynced = _isAllSynced(productsState, outletsState) &&
+    final isAnySyncing = _isAnySyncing(productsState, outletsState, hasActiveAssignment) || _stockSyncing;
+    final allSynced = _isAllSynced(productsState, outletsState, hasActiveAssignment) &&
         _stockLastSyncedAt != null &&
         !_stockSyncing;
 
@@ -166,11 +168,13 @@ class _SyncPageState extends State<SyncPage> {
                           .add(const SyncProductsRequested()),
                       onView: () => context.push('/sales-rep/products'),
                     ),
-                    _OutletsCategoryCard(
-                      state: outletsState,
-                      onSync: () => _syncOutlets(context),
-                      onView: () => context.push('/sales-rep/outlets'),
-                    ),
+                    if (outletsState is! OutletsLoaded ||
+                        outletsState.hasActiveAssignment)
+                      _OutletsCategoryCard(
+                        state: outletsState,
+                        onSync: () => _syncOutlets(context),
+                        onView: () => context.push('/sales-rep/outlets'),
+                      ),
                     _CategoryCard(
                       icon: Icons.warehouse_rounded,
                       label: 'DISTRIBUTOR STOCK',
@@ -229,21 +233,22 @@ class _SyncPageState extends State<SyncPage> {
         .add(LoadAssignmentsRequested(date: DateTime.now()));
   }
 
-  bool _isAnySyncing(ProductsState ps, OutletsState os) {
+  bool _isAnySyncing(ProductsState ps, OutletsState os, bool hasActiveAssignment) {
     final productsSyncing =
         ps is ProductsLoading || (ps is ProductsLoaded && ps.isSyncing);
-    final outletsSyncing =
-        os is OutletsLoading || (os is OutletsLoaded && os.isSyncing);
+    final outletsSyncing = hasActiveAssignment &&
+        (os is OutletsLoading || (os is OutletsLoaded && os.isSyncing));
     return productsSyncing || outletsSyncing;
   }
 
-  bool _isAllSynced(ProductsState ps, OutletsState os) =>
-      ps is ProductsLoaded &&
-      ps.lastSyncedAt != null &&
-      !ps.isSyncing &&
-      os is OutletsLoaded &&
-      os.lastSyncedAt != null &&
-      !os.isSyncing;
+  bool _isAllSynced(ProductsState ps, OutletsState os, bool hasActiveAssignment) {
+    final outletsSynced = !hasActiveAssignment ||
+        (os is OutletsLoaded && os.lastSyncedAt != null && !os.isSyncing);
+    return ps is ProductsLoaded &&
+        ps.lastSyncedAt != null &&
+        !ps.isSyncing &&
+        outletsSynced;
+  }
 }
 
 // ── Outlets category card ─────────────────────────────────────────────────────

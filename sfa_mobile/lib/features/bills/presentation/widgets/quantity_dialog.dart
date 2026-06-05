@@ -11,8 +11,9 @@ class QuantityDialogResult {
   final double discountRate;
   final String billingItemType;
   final String? returnType;
-  final String? freeIssueSource; // 'Company' | 'Distributor' — only set when FOC
+  final String? freeIssueSource;
   final DateTime? expireDate;
+  final String priceType;
 
   const QuantityDialogResult({
     required this.quantity,
@@ -22,10 +23,9 @@ class QuantityDialogResult {
     this.returnType,
     this.freeIssueSource,
     this.expireDate,
+    this.priceType = 'Packet',
   });
 }
-
-enum _UnitType { cases, packets }
 
 enum _Mode { sale, freeIssue, returnItem }
 
@@ -37,11 +37,11 @@ String _modeToBillingItemType(_Mode m) {
   }
 }
 
-Future<QuantityDialogResult?> showQuantityDialog(
+Future<List<QuantityDialogResult>?> showQuantityDialog(
   BuildContext context, {
   required ProductWithPrice product,
 }) {
-  return showModalBottomSheet<QuantityDialogResult>(
+  return showModalBottomSheet<List<QuantityDialogResult>>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
@@ -58,16 +58,14 @@ class _QuantitySheet extends StatefulWidget {
 }
 
 class _QuantitySheetState extends State<_QuantitySheet> {
-  _UnitType _unitType = _UnitType.packets;
   _Mode _mode = _Mode.sale;
   String? _returnType;
-  String _freeIssueSource = 'Company'; // default to Company-funded FOC
+  String _freeIssueSource = 'Company';
   DateTime? _expireDate;
 
-  final TextEditingController _qtyController =
-      TextEditingController(text: '1');
-  final TextEditingController _discController =
-      TextEditingController(text: '0');
+  late final TextEditingController _casesController;
+  late final TextEditingController _packetsController;
+  final TextEditingController _discController = TextEditingController(text: '0');
   late final TextEditingController _priceController;
 
   String? _qtyError;
@@ -78,6 +76,8 @@ class _QuantitySheetState extends State<_QuantitySheet> {
   @override
   void initState() {
     super.initState();
+    _casesController = TextEditingController(text: '0');
+    _packetsController = TextEditingController(text: '1');
     _priceController = TextEditingController(
       text: (widget.product.dealerPackPrice ?? 0).toStringAsFixed(0),
     );
@@ -85,7 +85,8 @@ class _QuantitySheetState extends State<_QuantitySheet> {
 
   @override
   void dispose() {
-    _qtyController.dispose();
+    _casesController.dispose();
+    _packetsController.dispose();
     _discController.dispose();
     _priceController.dispose();
     super.dispose();
@@ -103,22 +104,23 @@ class _QuantitySheetState extends State<_QuantitySheet> {
   }
 
   double get _packPrice => widget.product.dealerPackPrice ?? 0.0;
-  double get _returnPrice =>
-      double.tryParse(_priceController.text.trim()) ?? 0;
+  double get _casePrice => widget.product.dealerCasePrice ?? (_packPrice * _packsPerCase);
+  double get _returnPrice => double.tryParse(_priceController.text.trim()) ?? 0;
   int get _packsPerCase => widget.product.packsPerCase;
 
-  double get _enteredQty =>
-      double.tryParse(_qtyController.text.trim()) ?? 0;
-  double get _enteredDisc =>
-      double.tryParse(_discController.text.trim()) ?? 0;
-
-  double get _qtyInPacks =>
-      _unitType == _UnitType.cases ? _enteredQty * _packsPerCase : _enteredQty;
+  double get _enteredCases => double.tryParse(_casesController.text.trim()) ?? 0;
+  double get _enteredPackets => double.tryParse(_packetsController.text.trim()) ?? 0;
+  double get _enteredDisc => double.tryParse(_discController.text.trim()) ?? 0;
 
   double get _lineTotal {
-    if (_isReturn)    return _qtyInPacks * _returnPrice;
-    if (_isFreeIssue) return _qtyInPacks * _packPrice;
-    final gross = _qtyInPacks * _packPrice;
+    if (_isReturn) {
+      final totalPacks = (_enteredCases * _packsPerCase) + _enteredPackets;
+      return totalPacks * _returnPrice;
+    }
+    final grossCases = _enteredCases * _casePrice;
+    final grossPackets = _enteredPackets * _packPrice;
+    final gross = grossCases + grossPackets;
+    if (_isFreeIssue) return gross;
     return gross * (1 - _enteredDisc / 100);
   }
 
@@ -170,15 +172,16 @@ class _QuantitySheetState extends State<_QuantitySheet> {
   void _submit() {
     bool hasError = false;
 
-    final qty = double.tryParse(_qtyController.text.trim());
-    if (qty == null || qty <= 0) {
-      setState(() => _qtyError = 'Enter a quantity greater than zero.');
+    final cases = double.tryParse(_casesController.text.trim()) ?? 0;
+    final packets = double.tryParse(_packetsController.text.trim()) ?? 0;
+
+    if (cases < 0 || packets < 0 || (cases == 0 && packets == 0)) {
+      setState(() => _qtyError = 'Enter at least one quantity greater than zero.');
       hasError = true;
     } else {
       setState(() => _qtyError = null);
     }
 
-    // Discount only applies to Sale lines (Return uses return price; FreeIssue is free)
     if (_mode == _Mode.sale) {
       final disc = double.tryParse(_discController.text.trim());
       if (disc == null || disc < 0 || disc > 100) {
@@ -204,54 +207,57 @@ class _QuantitySheetState extends State<_QuantitySheet> {
       final msg = _qtyError ?? _returnTypeError ?? _expireDateError ?? _discError;
       if (msg != null) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-            msg,
-            style: GoogleFonts.barlow(
-                color: Colors.white, fontWeight: FontWeight.w500),
-          ),
+          content: Text(msg, style: GoogleFonts.barlow(color: Colors.white, fontWeight: FontWeight.w500)),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           margin: EdgeInsets.all(16.w),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8.r)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
           duration: const Duration(seconds: 3),
         ));
       }
       return;
     }
 
-    final finalQty =
-        _unitType == _UnitType.cases ? qty! * _packsPerCase : qty!;
     final disc = double.tryParse(_discController.text.trim()) ?? 0;
+    final String billingType = _modeToBillingItemType(_mode);
+    final String? source = _isFreeIssue ? _freeIssueSource : null;
 
-    final double resolvedUnitPrice;
-    final double resolvedDiscount;
-    switch (_mode) {
-      case _Mode.returnItem:
+    final List<QuantityDialogResult> results = [];
+
+    if (cases > 0 && _hasCasesOption) {
+      final double resolvedUnitPrice;
+      if (_isReturn) {
         resolvedUnitPrice = _returnPrice;
-        resolvedDiscount  = 0;
-        break;
-      case _Mode.freeIssue:
-        // FI lines carry the real selling price — the line-type marks them free,
-        // not a zero. The API uses this to compute FreeIssueValue for reports.
-        resolvedUnitPrice = _packPrice;
-        resolvedDiscount  = 0;
-        break;
-      case _Mode.sale:
-        resolvedUnitPrice = _packPrice;
-        resolvedDiscount  = disc;
-        break;
+      } else {
+        resolvedUnitPrice = _casePrice / _packsPerCase;
+      }
+      results.add(QuantityDialogResult(
+        quantity: cases * _packsPerCase,
+        unitPrice: resolvedUnitPrice,
+        discountRate: _isReturn ? 0 : (_isFreeIssue ? 0 : disc),
+        billingItemType: billingType,
+        returnType: _returnType,
+        freeIssueSource: source,
+        expireDate: _expireDate,
+        priceType: 'Case',
+      ));
     }
 
-    Navigator.of(context).pop(QuantityDialogResult(
-      quantity: finalQty,
-      unitPrice: resolvedUnitPrice,
-      discountRate: resolvedDiscount,
-      billingItemType: _modeToBillingItemType(_mode),
-      returnType: _returnType,
-      freeIssueSource: _isFreeIssue ? _freeIssueSource : null,
-      expireDate: _expireDate,
-    ));
+    if (packets > 0) {
+      final double resolvedUnitPrice = _isReturn ? _returnPrice : _packPrice;
+      results.add(QuantityDialogResult(
+        quantity: packets,
+        unitPrice: resolvedUnitPrice,
+        discountRate: _isReturn ? 0 : (_isFreeIssue ? 0 : disc),
+        billingItemType: billingType,
+        returnType: _returnType,
+        freeIssueSource: source,
+        expireDate: _expireDate,
+        priceType: 'Packet',
+      ));
+    }
+
+    Navigator.of(context).pop(results);
   }
 
   @override
@@ -269,7 +275,6 @@ class _QuantitySheetState extends State<_QuantitySheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ── Drag handle + mode accent bar ────────────────────────────────
           Padding(
             padding: EdgeInsets.only(top: 10.h),
             child: Column(
@@ -297,7 +302,6 @@ class _QuantitySheetState extends State<_QuantitySheet> {
             ),
           ),
 
-          // ── Scrollable body ──────────────────────────────────────────────
           Flexible(
             child: SingleChildScrollView(
               physics: const ClampingScrollPhysics(),
@@ -308,7 +312,6 @@ class _QuantitySheetState extends State<_QuantitySheet> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── Product header ────────────────────────────────────────
                   Text(
                     widget.product.itemDescription,
                     maxLines: 2,
@@ -354,7 +357,6 @@ class _QuantitySheetState extends State<_QuantitySheet> {
                   _Divider(),
                   SizedBox(height: 16.h),
 
-                  // ── Item type toggle ──────────────────────────────────────
                   _sectionLabel('ITEM TYPE'),
                   SizedBox(height: 8.h),
                   _SegmentedTrack(
@@ -378,7 +380,6 @@ class _QuantitySheetState extends State<_QuantitySheet> {
                     ),
                   ),
 
-                  // ── Free issue source (animated) ──────────────────────────
                   AnimatedSize(
                     duration: const Duration(milliseconds: 220),
                     curve: Curves.easeInOut,
@@ -415,7 +416,6 @@ class _QuantitySheetState extends State<_QuantitySheet> {
                         : const SizedBox.shrink(),
                   ),
 
-                  // ── Return type (animated) ────────────────────────────────
                   AnimatedSize(
                     duration: const Duration(milliseconds: 220),
                     curve: Curves.easeInOut,
@@ -467,7 +467,6 @@ class _QuantitySheetState extends State<_QuantitySheet> {
                                 ],
                               ),
 
-                              // ── Expire date ───────────────────────────────
                               AnimatedSize(
                                 duration: const Duration(milliseconds: 200),
                                 curve: Curves.easeInOut,
@@ -590,27 +589,6 @@ class _QuantitySheetState extends State<_QuantitySheet> {
                   _Divider(),
                   SizedBox(height: 16.h),
 
-                  // ── Unit type (Cases / Packets) ───────────────────────────
-                  if (_hasCasesOption) ...[
-                    _sectionLabel('UNIT TYPE'),
-                    SizedBox(height: 8.h),
-                    _SegmentedTrack(
-                      segments: const [
-                        _Segment('Cases', Icons.inventory_2_rounded),
-                        _Segment('Packets', Icons.local_mall_rounded),
-                      ],
-                      selectedIndex:
-                          _unitType == _UnitType.cases ? 0 : 1,
-                      activeColor: AppColors.primary,
-                      onChanged: (i) => setState(() =>
-                          _unitType = i == 0
-                              ? _UnitType.cases
-                              : _UnitType.packets),
-                    ),
-                    SizedBox(height: 16.h),
-                  ],
-
-                  // ── Price ─────────────────────────────────────────────────
                   if (_isReturn) ...[
                     _sectionLabel('RETURN PRICE'),
                     SizedBox(height: 8.h),
@@ -641,121 +619,122 @@ class _QuantitySheetState extends State<_QuantitySheet> {
                       onChanged: (_) => setState(() {}),
                     ),
                   ] else ...[
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        Text(
-                          'Rs.',
-                          style: GoogleFonts.barlow(
-                            fontSize: 14.sp,
-                            color: AppColors.foregroundMuted,
-                          ),
-                        ),
-                        SizedBox(width: 4.w),
-                        Text(
-                          _packPrice.toStringAsFixed(2),
-                          style: GoogleFonts.barlowCondensed(
-                            fontSize: 26.sp,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.5,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        SizedBox(width: 4.w),
-                        Text(
-                          '/ pack',
-                          style: GoogleFonts.barlow(
-                            fontSize: 12.sp,
-                            color: AppColors.foregroundMuted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  if (_unitType == _UnitType.cases && _hasCasesOption) ...[
-                    SizedBox(height: 4.h),
-                    Text(
-                      '1 case = $_packsPerCase packs',
-                      style: GoogleFonts.barlow(
-                        fontSize: 11.sp,
-                        color: AppColors.foregroundMuted,
+                    if (_hasCasesOption) ...[
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Text('Rs.', style: GoogleFonts.barlow(fontSize: 13.sp, color: AppColors.foregroundMuted)),
+                          SizedBox(width: 4.w),
+                          Text(_casePrice.toStringAsFixed(2), style: GoogleFonts.barlowCondensed(fontSize: 22.sp, fontWeight: FontWeight.w800, letterSpacing: -0.5, color: AppColors.primary)),
+                          SizedBox(width: 4.w),
+                          Text('/ case', style: GoogleFonts.barlow(fontSize: 11.sp, color: AppColors.foregroundMuted)),
+                          SizedBox(width: 16.w),
+                          Text('Rs.', style: GoogleFonts.barlow(fontSize: 13.sp, color: AppColors.foregroundMuted)),
+                          SizedBox(width: 4.w),
+                          Text(_packPrice.toStringAsFixed(2), style: GoogleFonts.barlowCondensed(fontSize: 22.sp, fontWeight: FontWeight.w800, letterSpacing: -0.5, color: AppColors.foreground.withValues(alpha: 0.60))),
+                          SizedBox(width: 4.w),
+                          Text('/ pack', style: GoogleFonts.barlow(fontSize: 11.sp, color: AppColors.foregroundMuted)),
+                        ],
                       ),
-                    ),
+                    ] else ...[
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Text('Rs.', style: GoogleFonts.barlow(fontSize: 14.sp, color: AppColors.foregroundMuted)),
+                          SizedBox(width: 4.w),
+                          Text(_packPrice.toStringAsFixed(2), style: GoogleFonts.barlowCondensed(fontSize: 26.sp, fontWeight: FontWeight.w800, letterSpacing: -0.5, color: AppColors.primary)),
+                          SizedBox(width: 4.w),
+                          Text('/ pack', style: GoogleFonts.barlow(fontSize: 12.sp, color: AppColors.foregroundMuted)),
+                        ],
+                      ),
+                    ],
                   ],
 
                   SizedBox(height: 18.h),
 
-                  // ── Quantity + Discount ───────────────────────────────────
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: _isReturn ? 1 : 3,
-                        child: TextField(
-                          controller: _qtyController,
-                          autofocus: !_isReturn,
-                          keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true),
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                                RegExp(r'[0-9.]')),
-                          ],
-                          decoration: InputDecoration(
-                            labelText: 'Quantity',
-                            hintText: _unitType == _UnitType.cases
-                                ? '# cases'
-                                : '# packs',
-                            errorText: _qtyError,
-                          ),
-                          onChanged: (_) => setState(() {}),
-                          onSubmitted: (_) => _submit(),
-                        ),
-                      ),
-                      // Discount only applies to Sale lines.
-                      // Return uses an editable return price (above), Free Issue is fully free.
-                      if (_mode == _Mode.sale) ...[
-                        SizedBox(width: 12.w),
+                  if (_hasCasesOption && !_isReturn) ...[
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Expanded(
-                          flex: 2,
                           child: TextField(
-                            controller: _discController,
-                            keyboardType:
-                                const TextInputType.numberWithOptions(
-                                    decimal: true),
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(
-                                  RegExp(r'[0-9.]')),
-                            ],
+                            controller: _casesController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                            decoration: const InputDecoration(labelText: 'Cases', hintText: '0'),
+                            onChanged: (_) => setState(() {}),
+                            onSubmitted: (_) => _submit(),
+                          ),
+                        ),
+                        SizedBox(width: 10.w),
+                        Expanded(
+                          child: TextField(
+                            controller: _packetsController,
+                            autofocus: true,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                            decoration: InputDecoration(labelText: 'Packets', hintText: '0', errorText: _qtyError),
+                            onChanged: (_) => setState(() {}),
+                            onSubmitted: (_) => _submit(),
+                          ),
+                        ),
+                        if (_mode == _Mode.sale) ...[
+                          SizedBox(width: 10.w),
+                          Expanded(
+                            child: TextField(
+                              controller: _discController,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                              decoration: InputDecoration(labelText: 'Discount', hintText: '0', suffixText: '%', errorText: _discError),
+                              onChanged: (_) => setState(() {}),
+                              onSubmitted: (_) => _submit(),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ] else ...[
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: _isReturn ? 1 : 3,
+                          child: TextField(
+                            controller: _packetsController,
+                            autofocus: !_isReturn,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
                             decoration: InputDecoration(
-                              labelText: 'Discount',
-                              hintText: '0',
-                              suffixText: '%',
-                              errorText: _discError,
+                              labelText: 'Quantity',
+                              hintText: '# packs',
+                              errorText: _qtyError,
                             ),
                             onChanged: (_) => setState(() {}),
                             onSubmitted: (_) => _submit(),
                           ),
                         ),
+                        if (_mode == _Mode.sale) ...[
+                          SizedBox(width: 12.w),
+                          Expanded(
+                            flex: 2,
+                            child: TextField(
+                              controller: _discController,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                              decoration: InputDecoration(labelText: 'Discount', hintText: '0', suffixText: '%', errorText: _discError),
+                              onChanged: (_) => setState(() {}),
+                              onSubmitted: (_) => _submit(),
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
-                  ),
-                  if (_unitType == _UnitType.cases &&
-                      _enteredQty > 0 &&
-                      _hasCasesOption) ...[
-                    SizedBox(height: 5.h),
-                    Text(
-                      '= ${(_enteredQty * _packsPerCase).toStringAsFixed(0)} packs total',
-                      style: GoogleFonts.barlow(
-                        fontSize: 11.sp,
-                        color: AppColors.foregroundMuted,
-                      ),
                     ),
                   ],
 
                   SizedBox(height: 18.h),
 
-                  // ── Line total — dark premium card ────────────────────────
                   Container(
                     width: double.infinity,
                     padding: EdgeInsets.symmetric(
@@ -818,7 +797,6 @@ class _QuantitySheetState extends State<_QuantitySheet> {
 
                   SizedBox(height: 16.h),
 
-                  // ── Action buttons ────────────────────────────────────────
                   Row(
                     children: [
                       SizedBox(

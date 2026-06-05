@@ -20,6 +20,7 @@ class CartLine extends Equatable {
   final String? returnType;     // 'Damage' | 'Expire' | 'MarketResell'
   final String? freeIssueSource; // 'Company' | 'Distributor' — only set when isFreeIssue
   final DateTime? expireDate;   // Only when returnType == 'Expire'
+  final String priceType; // 'Case' | 'Packet'
 
   const CartLine({
     required this.lineNumber,
@@ -31,6 +32,7 @@ class CartLine extends Equatable {
     this.returnType,
     this.freeIssueSource,
     this.expireDate,
+    this.priceType = 'Packet',
   });
 
   bool get isFreeIssue => billingItemType == 'FreeIssue';
@@ -60,6 +62,7 @@ class CartLine extends Equatable {
     bool clearFreeIssueSource = false,
     DateTime? expireDate,
     bool clearExpireDate = false,
+    String? priceType,
   }) =>
       CartLine(
         lineNumber: lineNumber,
@@ -73,6 +76,7 @@ class CartLine extends Equatable {
             ? null
             : (freeIssueSource ?? this.freeIssueSource),
         expireDate: clearExpireDate ? null : (expireDate ?? this.expireDate),
+        priceType: priceType ?? this.priceType,
       );
 
   @override
@@ -86,6 +90,7 @@ class CartLine extends Equatable {
         returnType,
         freeIssueSource,
         expireDate,
+        priceType,
       ];
 }
 

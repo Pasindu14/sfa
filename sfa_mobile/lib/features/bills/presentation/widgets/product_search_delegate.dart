@@ -23,6 +23,7 @@ void showProductSearch(
     String? returnType,
     String? freeIssueSource,
     DateTime? expireDate,
+    String priceType,
   ) onProductAdded,
 }) {
   Navigator.of(context).push(
@@ -70,6 +71,7 @@ class _ProductSearchPage extends StatefulWidget {
     String? returnType,
     String? freeIssueSource,
     DateTime? expireDate,
+    String priceType,
   ) onProductAdded;
 
   const _ProductSearchPage({
@@ -128,8 +130,9 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
   }
 
   Future<void> _pickProduct(ProductWithPrice product) async {
-    final result = await showQuantityDialog(context, product: product);
-    if (result != null && result.quantity > 0 && mounted) {
+    final results = await showQuantityDialog(context, product: product);
+    if (results == null || results.isEmpty || !mounted) return;
+    for (final result in results) {
       widget.onProductAdded(
         product,
         result.quantity,
@@ -139,14 +142,15 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
         result.returnType,
         result.freeIssueSource,
         result.expireDate,
+        result.priceType,
       );
-      _controller.clear();
-      setState(() {
-        _query = '';
-        _searchFuture = _search('');
-        _expandedCategories.remove('__auto_expand__');
-      });
     }
+    _controller.clear();
+    setState(() {
+      _query = '';
+      _searchFuture = _search('');
+      _expandedCategories.remove('__auto_expand__');
+    });
   }
 
   void _toggleCategory(String label) {

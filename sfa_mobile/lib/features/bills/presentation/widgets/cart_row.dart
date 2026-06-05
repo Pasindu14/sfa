@@ -14,8 +14,10 @@ typedef ExpireDateChanged = void Function(DateTime? date);
 typedef PriceChanged = void Function(double price);
 
 class CartRow extends StatelessWidget {
-  final CartLine line;
-  final QtyChanged onChanged;
+  final CartLine? caseLine;
+  final CartLine? packetLine;
+  final QtyChanged? onCaseQtyChanged;
+  final QtyChanged? onPacketQtyChanged;
   final DiscountChanged onDiscountChanged;
   final VoidCallback onRemoved;
   final TypeChanged onTypeChanged;
@@ -26,8 +28,10 @@ class CartRow extends StatelessWidget {
 
   const CartRow({
     super.key,
-    required this.line,
-    required this.onChanged,
+    this.caseLine,
+    this.packetLine,
+    this.onCaseQtyChanged,
+    this.onPacketQtyChanged,
     required this.onDiscountChanged,
     required this.onRemoved,
     required this.onTypeChanged,
@@ -35,29 +39,38 @@ class CartRow extends StatelessWidget {
     required this.onFreeIssueSourceChanged,
     required this.onExpireDateChanged,
     required this.onPriceChanged,
-  });
+  }) : assert(caseLine != null || packetLine != null);
 
-  double get _gross => line.quantity * line.unitPrice;
-  double get _discountAmount => _gross * line.discountRate / 100;
+  CartLine get _primary => caseLine ?? packetLine!;
 
-  // Left border + badge accent
+  double get _combinedGross =>
+      (caseLine != null ? caseLine!.quantity * caseLine!.unitPrice : 0) +
+      (packetLine != null ? packetLine!.quantity * packetLine!.unitPrice : 0);
+
+  double get _combinedTotal {
+    if (_primary.isReturn) return _combinedGross;
+    if (_primary.isFreeIssue) return _combinedGross;
+    return _combinedGross * (1 - _primary.discountRate / 100);
+  }
+
+  double get _combinedDiscount => _combinedGross - _combinedTotal;
+
   Color get _accentColor {
-    if (line.isReturn) return AppColors.error;
-    if (line.isFreeIssue) return AppColors.primary;
+    if (_primary.isReturn) return AppColors.error;
+    if (_primary.isFreeIssue) return AppColors.primary;
     return AppColors.success;
   }
 
-  // Line total amount color
   Color get _totalColor {
-    if (line.isReturn) return AppColors.error;
-    if (line.isFreeIssue) return AppColors.primary;
+    if (_primary.isReturn) return AppColors.error;
+    if (_primary.isFreeIssue) return AppColors.primary;
     return AppColors.success;
   }
 
   @override
   Widget build(BuildContext context) {
     return Dismissible(
-      key: ValueKey('cart-line-${line.lineNumber}'),
+      key: ValueKey('cart-group-${_primary.product.id}-${_primary.billingItemType}'),
       direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,
@@ -95,238 +108,263 @@ class CartRow extends StatelessWidget {
                     padding: EdgeInsets.fromLTRB(10.w, 10.h, 8.w, 10.h),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-            // ── Row 1: name · net total · delete ──────────────────────────
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    line.product.itemDescription,
-                    style: GoogleFonts.barlowCondensed(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.2,
-                      color: const Color(0xFF1A1A11),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                SizedBox(width: 8.w),
-                if (line.discountRate > 0) ...[
-                  Text(
-                    'Rs. ${_gross.toStringAsFixed(0)}',
-                    style: GoogleFonts.barlowCondensed(
-                      fontSize: 11.sp,
-                      color: const Color(0xFF7A7260),
-                      decoration: TextDecoration.lineThrough,
-                      decorationColor: const Color(0xFF7A7260),
-                    ),
-                  ),
-                  SizedBox(width: 4.w),
-                ],
-                Text(
-                  line.isReturn
-                      ? '−Rs. ${line.lineTotal.toStringAsFixed(0)}'
-                      : line.isFreeIssue
-                          ? 'FOC · Rs. ${line.lineTotal.toStringAsFixed(0)}'
-                          : 'Rs. ${line.lineTotal.toStringAsFixed(0)}',
-                  style: GoogleFonts.barlowCondensed(
-                    fontSize: 15.sp,
-                    fontWeight: FontWeight.w800,
-                    color: _totalColor,
-                  ),
-                ),
-                SizedBox(width: 6.w),
-                GestureDetector(
-                  onTap: onRemoved,
-                  child: Container(
-                    width: 22.r,
-                    height: 22.r,
-                    decoration: BoxDecoration(
-                      color: AppColors.error.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(5.r),
-                      border: Border.all(
-                        color: AppColors.error.withValues(alpha: 0.25),
-                      ),
-                    ),
-                    child: Icon(Icons.close_rounded,
-                      size: 11.r,
-                      color: AppColors.error,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            SizedBox(height: 7.h),
-
-            // ── Row 2: code·price · qty stepper · disc stepper ────────────
-            Row(
-              children: [
-                GestureDetector(
-                  onTap: line.isReturn ? () => _showPriceDialog(context) : null,
-                  child: Container(
-                    padding: line.isReturn
-                        ? EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h)
-                        : EdgeInsets.zero,
-                    decoration: line.isReturn
-                        ? BoxDecoration(
-                            color: AppColors.warning.withValues(alpha: 0.10),
-                            border: Border.all(
-                              color: AppColors.warning.withValues(alpha: 0.40),
-                            ),
-                            borderRadius: BorderRadius.circular(4.r),
-                          )
-                        : null,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          '${line.product.code} · Rs.${line.unitPrice.toStringAsFixed(0)}',
-                          style: GoogleFonts.barlow(
-                            fontSize: 10.sp,
-                            fontWeight: FontWeight.w500,
-                            color: line.isReturn
-                                ? AppColors.warning
-                                : const Color(0xFF7A7260),
-                          ),
-                        ),
-                        if (line.isReturn) ...[
-                          SizedBox(width: 3.w),
-                          Icon(Icons.edit_rounded,
-                            size: 9.r,
-                            color: AppColors.warning,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                _label('Qty'),
-                SizedBox(width: 4.w),
-                _Stepper(
-                  value: line.quantity,
-                  displayText: line.quantity.toStringAsFixed(
-                    line.quantity.truncateToDouble() == line.quantity ? 0 : 1,
-                  ),
-                  canDecrement: line.quantity > 1,
-                  onDecrement: () => onChanged(line.quantity - 1),
-                  onIncrement: () => onChanged(line.quantity + 1),
-                  valueColor: const Color(0xFF1A1A11),
-                ),
-                if (line.isSale) ...[
-                  SizedBox(width: 8.w),
-                  _label('Disc'),
-                  SizedBox(width: 4.w),
-                  _Stepper(
-                    value: line.discountRate,
-                    displayText:
-                        '${line.discountRate.toStringAsFixed(line.discountRate.truncateToDouble() == line.discountRate ? 0 : 1)}%',
-                    canDecrement: line.discountRate > 0,
-                    onDecrement: () => onDiscountChanged(
-                      (line.discountRate - 1).clamp(0, 100),
-                    ),
-                    onIncrement: () => onDiscountChanged(
-                      (line.discountRate + 1).clamp(0, 100),
-                    ),
-                    valueColor: line.discountRate > 0
-                        ? AppColors.warning
-                        : const Color(0xFF7A7260),
-                  ),
-                  if (line.discountRate > 0) ...[
-                    SizedBox(width: 6.w),
-                    Text(
-                      '−Rs.${_discountAmount.toStringAsFixed(0)}',
-                      style: GoogleFonts.barlowCondensed(
-                        fontSize: 11.sp,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.error,
-                      ),
-                    ),
-                  ],
-                ],
-              ],
-            ),
-
-            SizedBox(height: 7.h),
-
-            // ── Row 3: type toggle · return chips · FOC source chips ──────
-            Row(
-              children: [
-                _TypeToggle(
-                  current: line.billingItemType,
-                  onChanged: onTypeChanged,
-                ),
-                if (line.isFreeIssue) ...[
-                  SizedBox(width: 8.w),
-                  _FreeIssueSourceChip(
-                    label: 'Company',
-                    selected: line.freeIssueSource == 'Company',
-                    onTap: () => onFreeIssueSourceChanged('Company'),
-                  ),
-                  SizedBox(width: 4.w),
-                  _FreeIssueSourceChip(
-                    label: 'Distributor',
-                    selected: line.freeIssueSource == 'Distributor',
-                    onTap: () => onFreeIssueSourceChanged('Distributor'),
-                  ),
-                ],
-                if (line.isReturn) ...[
-                  SizedBox(width: 8.w),
-                  _ReturnTypeChip(
-                    label: 'Damage',
-                    selected: line.returnType == 'Damage',
-                    onTap: () => onReturnTypeChanged('Damage'),
-                  ),
-                  SizedBox(width: 4.w),
-                  _ReturnTypeChip(
-                    label: 'Expire',
-                    selected: line.returnType == 'Expire',
-                    onTap: () => onReturnTypeChanged('Expire'),
-                  ),
-                  if (line.returnType == 'Expire') ...[
-                    SizedBox(width: 4.w),
-                    GestureDetector(
-                      onTap: () => _showExpireDatePicker(context),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 7.w, vertical: 3.h),
-                        decoration: BoxDecoration(
-                          color: AppColors.error.withValues(alpha: 0.10),
-                          borderRadius: BorderRadius.circular(5.r),
-                          border: Border.all(
-                            color: AppColors.error.withValues(alpha: 0.35),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
+                        // ── Row 1: name · net total · delete ──────────────
+                        Row(
                           children: [
-                            Icon(Icons.calendar_today_rounded,
-                              size: 9.r,
-                              color: AppColors.error,
+                            Expanded(
+                              child: Text(
+                                _primary.product.itemDescription,
+                                style: GoogleFonts.barlowCondensed(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.2,
+                                  color: const Color(0xFF1A1A11),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            SizedBox(width: 3.w),
+                            SizedBox(width: 8.w),
+                            if (_primary.discountRate > 0) ...[
+                              Text(
+                                'Rs. ${_combinedGross.toStringAsFixed(0)}',
+                                style: GoogleFonts.barlowCondensed(
+                                  fontSize: 11.sp,
+                                  color: const Color(0xFF7A7260),
+                                  decoration: TextDecoration.lineThrough,
+                                  decorationColor: const Color(0xFF7A7260),
+                                ),
+                              ),
+                              SizedBox(width: 4.w),
+                            ],
                             Text(
-                              line.expireDate != null
-                                  ? _formatDate(line.expireDate!)
-                                  : 'Pick date',
-                              style: GoogleFonts.barlow(
-                                fontSize: 9.sp,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.error,
+                              _primary.isReturn
+                                  ? '−Rs. ${_combinedTotal.toStringAsFixed(0)}'
+                                  : _primary.isFreeIssue
+                                      ? 'FOC · Rs. ${_combinedTotal.toStringAsFixed(0)}'
+                                      : 'Rs. ${_combinedTotal.toStringAsFixed(0)}',
+                              style: GoogleFonts.barlowCondensed(
+                                fontSize: 15.sp,
+                                fontWeight: FontWeight.w800,
+                                color: _totalColor,
+                              ),
+                            ),
+                            SizedBox(width: 6.w),
+                            GestureDetector(
+                              onTap: onRemoved,
+                              child: Container(
+                                width: 22.r,
+                                height: 22.r,
+                                decoration: BoxDecoration(
+                                  color: AppColors.error.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(5.r),
+                                  border: Border.all(
+                                    color: AppColors.error.withValues(alpha: 0.25),
+                                  ),
+                                ),
+                                child: Icon(Icons.close_rounded,
+                                  size: 11.r,
+                                  color: AppColors.error,
+                                ),
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ),
-                  ],
-                ],
-              ],
-            ),
-          ],
+
+                        SizedBox(height: 7.h),
+
+                        // ── Row 2: code·price · qty steppers · disc stepper ──
+                        Row(
+                          children: [
+                            GestureDetector(
+                              onTap: _primary.isReturn ? () => _showPriceDialog(context) : null,
+                              child: Container(
+                                padding: _primary.isReturn
+                                    ? EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h)
+                                    : EdgeInsets.zero,
+                                decoration: _primary.isReturn
+                                    ? BoxDecoration(
+                                        color: AppColors.warning.withValues(alpha: 0.10),
+                                        border: Border.all(
+                                          color: AppColors.warning.withValues(alpha: 0.40),
+                                        ),
+                                        borderRadius: BorderRadius.circular(4.r),
+                                      )
+                                    : null,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      '${_primary.product.code} · Rs.${_primary.unitPrice.toStringAsFixed(0)}',
+                                      style: GoogleFonts.barlow(
+                                        fontSize: 10.sp,
+                                        fontWeight: FontWeight.w500,
+                                        color: _primary.isReturn
+                                            ? AppColors.warning
+                                            : const Color(0xFF7A7260),
+                                      ),
+                                    ),
+                                    if (_primary.isReturn) ...[
+                                      SizedBox(width: 3.w),
+                                      Icon(Icons.edit_rounded,
+                                        size: 9.r,
+                                        color: AppColors.warning,
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const Spacer(),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (caseLine != null) ...[
+                                  _label('Cases'),
+                                  SizedBox(width: 4.w),
+                                  Builder(builder: (_) {
+                                    final ppc = caseLine!.product.packsPerCase.toDouble();
+                                    final displayQty = caseLine!.quantity / ppc;
+                                    final qtyStr = displayQty.toStringAsFixed(
+                                      displayQty.truncateToDouble() == displayQty ? 0 : 1,
+                                    );
+                                    return _Stepper(
+                                      value: displayQty,
+                                      displayText: '$qtyStr cs',
+                                      canDecrement: caseLine!.quantity > ppc,
+                                      onDecrement: () => onCaseQtyChanged!(caseLine!.quantity - ppc),
+                                      onIncrement: () => onCaseQtyChanged!(caseLine!.quantity + ppc),
+                                      valueColor: AppColors.primary,
+                                    );
+                                  }),
+                                ],
+                                if (packetLine != null) ...[
+                                  if (caseLine != null) SizedBox(width: 8.w),
+                                  _label('Pkts'),
+                                  SizedBox(width: 4.w),
+                                  _Stepper(
+                                    value: packetLine!.quantity,
+                                    displayText: '${packetLine!.quantity.toStringAsFixed(packetLine!.quantity.truncateToDouble() == packetLine!.quantity ? 0 : 1)} pks',
+                                    canDecrement: packetLine!.quantity > 1,
+                                    onDecrement: () => onPacketQtyChanged!(packetLine!.quantity - 1),
+                                    onIncrement: () => onPacketQtyChanged!(packetLine!.quantity + 1),
+                                    valueColor: const Color(0xFF1A1A11),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+
+                        SizedBox(height: 7.h),
+
+                        // ── Row 3: type toggle · return chips · FOC source · disc ──
+                        Row(
+                          children: [
+                            _TypeToggle(
+                              current: _primary.billingItemType,
+                              onChanged: onTypeChanged,
+                            ),
+                            if (_primary.isFreeIssue) ...[
+                              SizedBox(width: 8.w),
+                              _FreeIssueSourceChip(
+                                label: 'Company',
+                                selected: _primary.freeIssueSource == 'Company',
+                                onTap: () => onFreeIssueSourceChanged('Company'),
+                              ),
+                              SizedBox(width: 4.w),
+                              _FreeIssueSourceChip(
+                                label: 'Distributor',
+                                selected: _primary.freeIssueSource == 'Distributor',
+                                onTap: () => onFreeIssueSourceChanged('Distributor'),
+                              ),
+                            ],
+                            if (_primary.isReturn) ...[
+                              SizedBox(width: 8.w),
+                              _ReturnTypeChip(
+                                label: 'Damage',
+                                selected: _primary.returnType == 'Damage',
+                                onTap: () => onReturnTypeChanged('Damage'),
+                              ),
+                              SizedBox(width: 4.w),
+                              _ReturnTypeChip(
+                                label: 'Expire',
+                                selected: _primary.returnType == 'Expire',
+                                onTap: () => onReturnTypeChanged('Expire'),
+                              ),
+                              if (_primary.returnType == 'Expire') ...[
+                                SizedBox(width: 4.w),
+                                GestureDetector(
+                                  onTap: () => _showExpireDatePicker(context),
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 7.w, vertical: 3.h),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.error.withValues(alpha: 0.10),
+                                      borderRadius: BorderRadius.circular(5.r),
+                                      border: Border.all(
+                                        color: AppColors.error.withValues(alpha: 0.35),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.calendar_today_rounded,
+                                          size: 9.r,
+                                          color: AppColors.error,
+                                        ),
+                                        SizedBox(width: 3.w),
+                                        Text(
+                                          _primary.expireDate != null
+                                              ? _formatDate(_primary.expireDate!)
+                                              : 'Pick date',
+                                          style: GoogleFonts.barlow(
+                                            fontSize: 9.sp,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.error,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                            if (_primary.isSale) ...[
+                            const Spacer(),
+                            _label('Disc'),
+                            SizedBox(width: 4.w),
+                            _Stepper(
+                              value: _primary.discountRate,
+                              displayText:
+                                  '${_primary.discountRate.toStringAsFixed(_primary.discountRate.truncateToDouble() == _primary.discountRate ? 0 : 1)}%',
+                              canDecrement: _primary.discountRate > 0,
+                              onDecrement: () => onDiscountChanged(
+                                (_primary.discountRate - 1).clamp(0, 100),
+                              ),
+                              onIncrement: () => onDiscountChanged(
+                                (_primary.discountRate + 1).clamp(0, 100),
+                              ),
+                              valueColor: _primary.discountRate > 0
+                                  ? AppColors.warning
+                                  : const Color(0xFF7A7260),
+                            ),
+                            if (_primary.discountRate > 0) ...[
+                              SizedBox(width: 6.w),
+                              Text(
+                                '−Rs.${_combinedDiscount.toStringAsFixed(0)}',
+                                style: GoogleFonts.barlowCondensed(
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.error,
+                                ),
+                              ),
+                            ],
+                          ],
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -340,7 +378,7 @@ class CartRow extends StatelessWidget {
 
   Future<void> _showExpireDatePicker(BuildContext context) async {
     final today = DateTime.now();
-    final initial = line.expireDate ?? today;
+    final initial = _primary.expireDate ?? today;
     final picked = await showDatePicker(
       context: context,
       initialDate: initial.isAfter(today) ? today : initial,
@@ -353,7 +391,7 @@ class CartRow extends StatelessWidget {
 
   Future<void> _showPriceDialog(BuildContext context) async {
     final controller =
-        TextEditingController(text: line.unitPrice.toStringAsFixed(0));
+        TextEditingController(text: _primary.unitPrice.toStringAsFixed(0));
     final result = await showDialog<double>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -429,7 +467,7 @@ class CartRow extends StatelessWidget {
           fontSize: 9.sp,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.5,
-      color: const Color(0xFF7A7260),
+          color: const Color(0xFF7A7260),
         ),
       );
 }
@@ -630,7 +668,7 @@ class _Stepper extends StatelessWidget {
             ),
           ),
           Container(
-            width: 32.w,
+            width: 44.w,
             alignment: Alignment.center,
             child: Text(
               displayText,

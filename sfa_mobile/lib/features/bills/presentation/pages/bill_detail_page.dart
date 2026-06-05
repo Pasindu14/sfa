@@ -508,6 +508,18 @@ class _ItemsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final groupOrder = <String>[];
+    final groups = <String, Map<String, BillItem>>{};
+    for (final item in items) {
+      final key = '${item.productId}:${item.billingItemType}';
+      if (!groups.containsKey(key)) {
+        groupOrder.add(key);
+        groups[key] = {};
+      }
+      groups[key]![item.priceType] = item;
+    }
+    final groupList = groupOrder.map((k) => groups[k]!).toList();
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -523,10 +535,13 @@ class _ItemsCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          for (var i = 0; i < items.length; i++) ...[
+          for (var i = 0; i < groupList.length; i++) ...[
             if (i > 0)
               Divider(height: 1, color: AppColors.surfaceVariant),
-            _ItemRow(item: items[i]),
+            _ItemRow(
+              caseItem: groupList[i]['Case'],
+              packetItem: groupList[i]['Packet'],
+            ),
           ],
         ],
       ),
@@ -535,25 +550,43 @@ class _ItemsCard extends StatelessWidget {
 }
 
 class _ItemRow extends StatelessWidget {
-  final BillItem item;
-  const _ItemRow({required this.item});
+  final BillItem? caseItem;
+  final BillItem? packetItem;
+  const _ItemRow({this.caseItem, this.packetItem})
+      : assert(caseItem != null || packetItem != null);
 
-  double get _gross => item.quantity * item.unitPrice;
-  double get _discountAmount => _gross * item.discountRate / 100;
-  double get _lineTotal => _gross - _discountAmount;
+  BillItem get _primary => caseItem ?? packetItem!;
+
+  double get _combinedGross =>
+      (caseItem != null ? caseItem!.quantity * caseItem!.unitPrice : 0) +
+      (packetItem != null ? packetItem!.quantity * packetItem!.unitPrice : 0);
+
+  double get _combinedTotal {
+    if (_primary.isReturn) return _combinedGross;
+    if (_primary.isFreeIssue) return _combinedGross;
+    return _combinedGross * (1 - _primary.discountRate / 100);
+  }
+
+  double get _combinedDiscount => _combinedGross - _combinedTotal;
+
+  String _fmtQty(double q) =>
+      q.toStringAsFixed(q.truncateToDouble() == q ? 0 : 1);
 
   @override
   Widget build(BuildContext context) {
-    final name = item.productName ?? 'Product #${item.productId}';
-    final qtyStr = item.quantity.toStringAsFixed(
-        item.quantity.truncateToDouble() == item.quantity ? 0 : 1);
+    final name = _primary.productName ?? 'Product #${_primary.productId}';
+    final totalColor = _primary.isReturn
+        ? AppColors.error
+        : _primary.isFreeIssue
+            ? AppColors.primary
+            : AppColors.amber;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(14.w, 12.h, 14.w, 12.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Row 1: name + line total
+          // Product name + combined total
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -573,9 +606,9 @@ class _ItemRow extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  if (item.discountRate > 0)
+                  if (_primary.discountRate > 0)
                     Text(
-                      'Rs. ${_gross.toStringAsFixed(2)}',
+                      'Rs. ${_combinedGross.toStringAsFixed(2)}',
                       style: GoogleFonts.barlowCondensed(
                         fontSize: 11.sp,
                         color: AppColors.foregroundMuted,
@@ -584,43 +617,79 @@ class _ItemRow extends StatelessWidget {
                       ),
                     ),
                   Text(
-                    'Rs. ${_lineTotal.toStringAsFixed(2)}',
+                    'Rs. ${_combinedTotal.toStringAsFixed(2)}',
                     style: GoogleFonts.barlowCondensed(
                       fontSize: 15.sp,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.amber,
+                      color: totalColor,
                     ),
                   ),
                 ],
               ),
             ],
           ),
-          SizedBox(height: 5.h),
-          // Row 2: qty · unit price · type badges
-          Row(
-            children: [
-              _chip(Icons.tag_rounded, 'Qty: $qtyStr'),
-              SizedBox(width: 8.w),
-              _chip(Icons.sell_rounded,
-                  'Rs. ${item.unitPrice.toStringAsFixed(2)} / pack'),
-              if (item.billingItemType == 'Return') ...[
-                SizedBox(width: 8.w),
-                _returnTypeChip(item.returnType ?? 'Return'),
-              ] else if (item.discountRate > 0) ...[
-                SizedBox(width: 8.w),
-                _discountChip(item.discountRate, _discountAmount),
+          SizedBox(height: 8.h),
+          // Sub-line per type
+          if (caseItem != null) _subLine(caseItem!, 'CASE', AppColors.primary),
+          if (caseItem != null && packetItem != null) SizedBox(height: 5.h),
+          if (packetItem != null) _subLine(packetItem!, 'PKT', AppColors.amber),
+          // Extra badges (return type, FOC source, discount)
+          if (_primary.isReturn || _primary.isFreeIssue || _primary.discountRate > 0) ...[
+            SizedBox(height: 6.h),
+            Row(
+              children: [
+                if (_primary.isReturn)
+                  _returnTypeChip(_primary.returnType ?? 'Return'),
+                if (_primary.isFreeIssue)
+                  _freeIssueChip(_primary.freeIssueSource),
+                if (_primary.discountRate > 0) ...[
+                  _discountChip(_primary.discountRate, _combinedDiscount),
+                ],
               ],
-              if (item.isFreeIssue) ...[
-                SizedBox(width: 8.w),
-                _freeIssueChip(item.freeIssueSource),
-              ],
-            ],
-          ),
+            ),
+          ],
         ],
       ),
     );
   }
 
+  Widget _subLine(BillItem item, String typeLabel, Color typeColor) {
+    final lineGross = item.quantity * item.unitPrice;
+    final lineTotal = item.isReturn || item.isFreeIssue
+        ? lineGross
+        : lineGross * (1 - item.discountRate / 100);
+
+    return Row(
+      children: [
+        _priceTypeChip(typeLabel, typeColor),
+        SizedBox(width: 6.w),
+        Icon(Icons.tag_rounded, size: 10.r, color: AppColors.foregroundMuted),
+        SizedBox(width: 2.w),
+        Text(
+          '${_fmtQty(item.quantity)} pks',
+          style: GoogleFonts.barlow(fontSize: 11.sp, color: AppColors.foregroundMuted),
+        ),
+        SizedBox(width: 8.w),
+        Icon(Icons.sell_rounded, size: 10.r, color: AppColors.foregroundMuted),
+        SizedBox(width: 2.w),
+        Text(
+          'Rs. ${item.unitPrice.toStringAsFixed(2)}/pk',
+          style: GoogleFonts.barlow(fontSize: 11.sp, color: AppColors.foregroundMuted),
+        ),
+        const Spacer(),
+        Text(
+          'Rs. ${lineTotal.toStringAsFixed(2)}',
+          style: GoogleFonts.barlowCondensed(
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w700,
+            color: item.isReturn ? AppColors.error : AppColors.foreground,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ignore: unused_element
   Widget _chip(IconData icon, String text) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -633,6 +702,26 @@ class _ItemRow extends StatelessWidget {
               fontSize: 11.sp, color: AppColors.foregroundMuted),
         ),
       ],
+    );
+  }
+
+  Widget _priceTypeChip(String label, Color color) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 2.h),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(4.r),
+        border: Border.all(color: color.withValues(alpha: 0.30)),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.barlowCondensed(
+          fontSize: 9.sp,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.5,
+          color: color,
+        ),
+      ),
     );
   }
 
@@ -689,7 +778,6 @@ class _ItemRow extends StatelessWidget {
   }
 
   Widget _freeIssueChip(String? source) {
-    // Source label uppercased for chip; older bills without a source show plain FREE.
     final suffix = source != null ? ' · ${source.toUpperCase()}' : '';
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),

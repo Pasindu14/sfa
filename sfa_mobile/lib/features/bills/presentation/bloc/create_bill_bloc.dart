@@ -94,7 +94,7 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     // Return items are always added as separate lines (different return type/price).
     if (e.billingItemType == 'Sale') {
       final existingIdx = state.cart.indexWhere(
-          (l) => l.product.id == e.product.id && !l.isReturn);
+          (l) => l.product.id == e.product.id && !l.isReturn && l.priceType == e.priceType);
       if (existingIdx >= 0) {
         final existing = state.cart[existingIdx];
         final updated = [...state.cart];
@@ -122,6 +122,7 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
         returnType: e.returnType,
         freeIssueSource: source,
         expireDate: e.expireDate,
+        priceType: e.priceType,
       ),
     ]));
   }
@@ -148,6 +149,7 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
               returnType: t.$2.returnType,
               freeIssueSource: t.$2.freeIssueSource,
               expireDate: t.$2.expireDate,
+              priceType: t.$2.priceType,
             ))
         .toList();
     emit(state.copyWith(cart: renumbered));
@@ -264,6 +266,7 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
               freeIssueSource: l.freeIssueSource,
               expireDate: l.expireDate,
               lineNumber: l.lineNumber,
+              priceType: l.priceType,
             ))
         .toList();
 

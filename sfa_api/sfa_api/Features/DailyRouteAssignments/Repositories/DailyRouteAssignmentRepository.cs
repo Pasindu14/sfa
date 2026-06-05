@@ -23,6 +23,7 @@ public class DailyRouteAssignmentRepository(AppDbContext context) : IDailyRouteA
         int? userId = null,
         int? routeId = null,
         DateOnly? date = null,
+        bool excludePendingDeletion = false,
         CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, 200);
@@ -30,8 +31,11 @@ public class DailyRouteAssignmentRepository(AppDbContext context) : IDailyRouteA
         var query = _context.DailyRouteAssignments
             .Include(a => a.User)
             .Include(a => a.Route)
-            .Where(a => a.IsActive)
+            .Where(a => a.IsActive && !a.IsDeleted)
             .AsQueryable();
+
+        if (excludePendingDeletion)
+            query = query.Where(a => a.DeletionStatus != DailyRouteAssignmentDeletionStatus.PendingApproval);
 
         if (userId.HasValue)
             query = query.Where(a => a.UserId == userId.Value);

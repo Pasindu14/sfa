@@ -6,7 +6,7 @@ import 'package:sqflite/sqflite.dart';
 /// [onUpgrade] when schema changes.
 class DatabaseHelper {
   static const _dbName = 'sfa_local.db';
-  static const _dbVersion = 16;
+  static const _dbVersion = 17;
 
   DatabaseHelper._private();
   static final DatabaseHelper instance = DatabaseHelper._private();
@@ -84,6 +84,12 @@ class DatabaseHelper {
     if (oldVersion < 14) await _createDistributorStocksTable(db);
     if (oldVersion < 15) await _migrateOutletsV15(db);
     if (oldVersion < 16) await _migrateProductPricesAndDropPricingV16(db);
+    if (oldVersion < 17) await _migrateBillItemsPriceTypeV17(db);
+  }
+
+  Future<void> _migrateBillItemsPriceTypeV17(Database db) async {
+    await db.execute(
+        "ALTER TABLE bill_items ADD COLUMN price_type TEXT NOT NULL DEFAULT 'Packet'");
   }
 
   /// Prices moved onto the product itself — add the columns — and the
@@ -182,6 +188,7 @@ class DatabaseHelper {
         free_issue_source TEXT,
         expire_date       TEXT,
         line_number       INTEGER NOT NULL,
+        price_type       TEXT    NOT NULL DEFAULT 'Packet',
         FOREIGN KEY(client_bill_id) REFERENCES bills(client_bill_id) ON DELETE CASCADE
       )
     ''');
