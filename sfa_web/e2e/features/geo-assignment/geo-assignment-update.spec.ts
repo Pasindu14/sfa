@@ -15,6 +15,8 @@ test.describe.serial('Update Geo Assignment', () => {
 
     await geoPage.openCreateDialog()
     createdUserName = await geoPage.selectUser('a')
+    // SalesRep users require a Division — walk the full geo cascade
+    await geoPage.selectFirstDivisionInCascade()
     await geoPage.fillEffectiveFrom(today)
     await geoPage.submitForm()
 

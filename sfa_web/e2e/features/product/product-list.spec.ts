@@ -50,18 +50,12 @@ test.describe('Product List', () => {
 
   test('should show empty state when searching for nonexistent product', async () => {
     await productPage.search('zzz_nonexistent_product_xyz_999')
-    await productPage.page.waitForTimeout(1000)
-
-    // Table should have no matching data rows
     const rows = productPage.table.locator('tbody tr')
-    const count = await rows.count()
-    // Confirm the table reflects absence of results (0 rows or a single "no results" row)
-    expect(count).toBeLessThanOrEqual(1)
+    await expect(rows).toHaveCount(1)
   })
 
   test('should restore table data after clearing search', async () => {
     await productPage.search('zzz_nonexistent_product_xyz_999')
-    await productPage.page.waitForTimeout(500)
     await productPage.clearSearch()
     await productPage.expectTableHasRows()
   })

@@ -46,10 +46,22 @@ export const getOutletMapPointsAction = createAction(
   }
 )
 
+function sanitiseOutletPayload(data: CreateOutletInput) {
+  return {
+    ...data,
+    email: data.email || null,
+    contactPerson: data.contactPerson || null,
+    vatNo: data.vatNo || null,
+    ownerDOB: data.ownerDOB || null,
+    remarks: data.remarks || null,
+    image: data.image || null,
+  }
+}
+
 export const createOutletAction = createAction(
   { name: 'createOutletAction', requireAuth: true, requiredRole: 'Admin' },
   async (data: CreateOutletInput) => {
-    const res = await client.post('/api/v1/outlets', data)
+    const res = await client.post('/api/v1/outlets', sanitiseOutletPayload(data))
     revalidatePath('/outlets')
     return res.data.data as OutletDto
   }
@@ -58,7 +70,7 @@ export const createOutletAction = createAction(
 export const updateOutletAction = createAction(
   { name: 'updateOutletAction', requireAuth: true, requiredRole: 'Admin' },
   async (id: number, data: UpdateOutletInput) => {
-    const res = await client.put(`/api/v1/outlets/${id}`, data)
+    const res = await client.put(`/api/v1/outlets/${id}`, sanitiseOutletPayload(data))
     revalidatePath('/outlets')
     return res.data.data as OutletDto
   }

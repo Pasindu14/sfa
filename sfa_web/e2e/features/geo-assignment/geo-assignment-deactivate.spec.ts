@@ -17,6 +17,8 @@ test.describe.serial('Deactivate & Activate Geo Assignment', () => {
     await geoPage.openCreateDialog()
     // Use a different search term from update spec to reduce chance of same user collision
     createdUserName = await geoPage.selectUser('a')
+    // SalesRep users require a Division — walk the full geo cascade
+    await geoPage.selectFirstDivisionInCascade()
     await geoPage.fillEffectiveFrom(today)
     await geoPage.submitForm()
 

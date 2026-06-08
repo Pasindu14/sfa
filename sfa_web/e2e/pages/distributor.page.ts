@@ -72,13 +72,15 @@ export class DistributorPage {
 
   async search(query: string) {
     await this.searchInput.fill(query)
-    // Debounce — wait for table to update
-    await this.page.waitForTimeout(500)
+    // Search fires on Enter (server-side), not on debounce
+    await this.searchInput.press('Enter')
+    await this.page.waitForLoadState('networkidle')
   }
 
   async clearSearch() {
     await this.searchInput.clear()
-    await this.page.waitForTimeout(500)
+    await this.searchInput.press('Enter')
+    await this.page.waitForLoadState('networkidle')
   }
 
   // ─── Row actions (dropdown menu) ──────────────────────

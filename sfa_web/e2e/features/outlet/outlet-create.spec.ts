@@ -158,21 +158,7 @@ test.describe('Create Outlet', () => {
     })
 
     await localPage.submitCreateForm()
-
-    // Capture whichever toast appears first (success or error) for diagnostics
-    const toastResult = await Promise.race([
-      page.locator('[data-sonner-toast][data-type="success"]').first().waitFor({ state: 'visible', timeout: 15_000 }).then(() => 'success' as const),
-      page.locator('[data-sonner-toast][data-type="error"]').first().waitFor({ state: 'visible', timeout: 15_000 }).then(() => 'error' as const),
-    ]).catch(() => 'timeout' as const)
-
-    if (toastResult === 'error') {
-      const errorText = await page.locator('[data-sonner-toast][data-type="error"]').first().textContent()
-      throw new Error(`[DEBUG] API error toast: ${errorText}`)
-    }
-    if (toastResult === 'timeout') {
-      throw new Error('[DEBUG] No toast appeared within 15 seconds — button may not have been clicked')
-    }
-
+    await localPage.expectSuccessToast()
     await localPage.expectDialogClosed()
 
     await localPage.search(testOutlet.name)

@@ -34,12 +34,14 @@ test.describe('Create Geo Assignment', () => {
     await geoPage.expectFieldError('User is required')
   })
 
-  test('should create a new geo assignment with only required fields', async () => {
+  test('should create a new geo assignment', async () => {
     await geoPage.openCreateDialog()
 
-    // Select first available assignable user (NSM/RSM/ASM/Supervisor/SalesRep)
-    // 'a' matches users like "Asanka", "Dhanushka" etc.
+    // Select first available assignable user ('a' matches names like "Asanka")
     await geoPage.selectUser('a')
+
+    // SalesRep users require a Division — walk Region→Area→Territory→Division cascade
+    await geoPage.selectFirstDivisionInCascade()
 
     // Ensure the effective date is set
     await geoPage.fillEffectiveFrom(today)

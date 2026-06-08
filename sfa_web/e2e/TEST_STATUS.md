@@ -9,18 +9,18 @@ Status legend: `✅ Passed` | `❌ Failed` | `⏳ Not Run` | `🚧 Not Created`
 ## Users
 | Spec | Status | Notes |
 |------|--------|-------|
-| `users/users-list.spec.ts` | ⏳ Not Run | |
-| `users/users-create.spec.ts` | ⏳ Not Run | |
-| `users/users-update.spec.ts` | ⏳ Not Run | |
-| `users/users-deactivate.spec.ts` | ⏳ Not Run | |
+| `users/users-list.spec.ts` | ✅ Passed | 5 tests passed |
+| `users/users-create.spec.ts` | ✅ Passed | 4 tests passed |
+| `users/users-update.spec.ts` | ✅ Passed | 4 tests passed |
+| `users/users-deactivate.spec.ts` | ✅ Passed | 6 tests passed |
 
 ## Distributors
 | Spec | Status | Notes |
 |------|--------|-------|
-| `distributor/distributor-list.spec.ts` | ⏳ Not Run | |
-| `distributor/distributor-create.spec.ts` | ⏳ Not Run | |
-| `distributor/distributor-update.spec.ts` | ⏳ Not Run | |
-| `distributor/distributor-deactivate.spec.ts` | ⏳ Not Run | |
+| `distributor/distributor-list.spec.ts` | ✅ Passed | 5 tests passed |
+| `distributor/distributor-create.spec.ts` | ✅ Passed | 6 tests passed |
+| `distributor/distributor-update.spec.ts` | ✅ Passed | 5 tests passed; fixed `search()` to press Enter + networkidle |
+| `distributor/distributor-deactivate.spec.ts` | ✅ Passed | 6 tests passed |
 
 ## Regions
 | Spec | Status | Notes |
@@ -65,36 +65,36 @@ Status legend: `✅ Passed` | `❌ Failed` | `⏳ Not Run` | `🚧 Not Created`
 ## Outlets
 | Spec | Status | Notes |
 |------|--------|-------|
-| `outlet/outlet-list.spec.ts` | ⏳ Not Run | |
-| `outlet/outlet-create.spec.ts` | ⏳ Not Run | |
-| `outlet/outlet-update.spec.ts` | ⏳ Not Run | |
-| `outlet/outlet-delete.spec.ts` | ⏳ Not Run | |
-| `outlet/outlet-deactivate.spec.ts` | ⏳ Not Run | |
+| `outlet/outlet-list.spec.ts` | ✅ Passed | 7 tests passed |
+| `outlet/outlet-create.spec.ts` | ✅ Passed | 11 tests passed; fixed `ownerDOB`/`email` empty-string→null in action |
+| `outlet/outlet-update.spec.ts` | ✅ Passed | 8 tests passed |
+| `outlet/outlet-delete.spec.ts` | ✅ Passed | 4 tests passed |
+| `outlet/outlet-deactivate.spec.ts` | ✅ Passed | 6 tests passed |
 
 ## Products
 | Spec | Status | Notes |
 |------|--------|-------|
-| `product/product-list.spec.ts` | ⏳ Not Run | |
-| `product/product-create.spec.ts` | ⏳ Not Run | |
-| `product/product-update.spec.ts` | ⏳ Not Run | |
-| `product/product-deactivate.spec.ts` | ⏳ Not Run | |
-| `product/product-activate.spec.ts` | ⏳ Not Run | |
+| `product/product-list.spec.ts` | ✅ Passed | 9 tests passed |
+| `product/product-create.spec.ts` | ✅ Passed | 8 tests passed |
+| `product/product-update.spec.ts` | ✅ Passed | 4 tests passed |
+| `product/product-deactivate.spec.ts` | ✅ Passed | 4 tests passed |
+| `product/product-activate.spec.ts` | ✅ Passed | 5 tests passed |
 
 ## Geo Assignments
 | Spec | Status | Notes |
 |------|--------|-------|
-| `geo-assignment/geo-assignment-list.spec.ts` | ⏳ Not Run | |
-| `geo-assignment/geo-assignment-create.spec.ts` | ⏳ Not Run | |
-| `geo-assignment/geo-assignment-update.spec.ts` | ⏳ Not Run | |
-| `geo-assignment/geo-assignment-deactivate.spec.ts` | ⏳ Not Run | |
+| `geo-assignment/geo-assignment-list.spec.ts` | ✅ Passed | 9 tests passed |
+| `geo-assignment/geo-assignment-create.spec.ts` | ✅ Passed | 4 tests passed; fixed `useSalesRepFetcher` → `useAssignableUserFetcher` (all assignable roles); added `selectFirstDivisionInCascade` via API-fetched chain |
+| `geo-assignment/geo-assignment-update.spec.ts` | ✅ Passed | 4 tests passed |
+| `geo-assignment/geo-assignment-deactivate.spec.ts` | ✅ Passed | 6 tests passed |
 
 ## Product Categories
 | Spec | Status | Notes |
 |------|--------|-------|
-| `product-categories/product-category-list.spec.ts` | 🚧 Not Created | |
-| `product-categories/product-category-create.spec.ts` | 🚧 Not Created | |
-| `product-categories/product-category-update.spec.ts` | 🚧 Not Created | |
-| `product-categories/product-category-status.spec.ts` | 🚧 Not Created | |
+| `product-categories/product-category-list.spec.ts` | ✅ Passed | 9 tests passed; fixed name extraction to `div.text-sm.font-medium` (column header is "Category") |
+| `product-categories/product-category-create.spec.ts` | ✅ Passed | 6 tests passed |
+| `product-categories/product-category-update.spec.ts` | ✅ Passed | 6 tests passed; removed `expectRowNotExists(ORIGINAL_NAME)` (updated name contains original as substring) |
+| `product-categories/product-category-status.spec.ts` | ✅ Passed | 8 tests passed |
 
 ## Product Category Pricings
 | Spec | Status | Notes |
@@ -177,17 +177,17 @@ Status legend: `✅ Passed` | `❌ Failed` | `⏳ Not Run` | `🚧 Not Created`
 
 | Feature | Specs | ✅ Passed | ❌ Failed | ⏳ Not Run | 🚧 Not Created |
 |---------|------:|--------:|--------:|----------:|-------------:|
-| Users | 4 | 0 | 0 | 4 | 0 |
-| Distributors | 4 | 0 | 0 | 4 | 0 |
+| Users | 4 | 4 | 0 | 0 | 0 |
+| Distributors | 4 | 4 | 0 | 0 | 0 |
 | Regions | 4 | 4 | 0 | 0 | 0 |
 | Areas | 4 | 4 | 0 | 0 | 0 |
 | Territories | 4 | 4 | 0 | 0 | 0 |
 | Divisions | 4 | 4 | 0 | 0 | 0 |
 | Routes | 4 | 4 | 0 | 0 | 0 |
-| Outlets | 5 | 0 | 0 | 5 | 0 |
-| Products | 5 | 0 | 0 | 5 | 0 |
-| Geo Assignments | 4 | 0 | 0 | 4 | 0 |
-| Product Categories | 4 | 0 | 0 | 0 | 4 |
+| Outlets | 5 | 5 | 0 | 0 | 0 |
+| Products | 5 | 5 | 0 | 0 | 0 |
+| Geo Assignments | 4 | 4 | 0 | 0 | 0 |
+| Product Categories | 4 | 4 | 0 | 0 | 0 |
 | Product Category Pricings | 4 | 0 | 0 | 0 | 4 |
 | Purchase Orders | 4 | 0 | 0 | 0 | 4 |
 | Sales Invoices | 4 | 0 | 0 | 0 | 4 |
@@ -198,4 +198,4 @@ Status legend: `✅ Passed` | `❌ Failed` | `⏳ Not Run` | `🚧 Not Created`
 | User Reporting Lines | 4 | 0 | 0 | 0 | 4 |
 | Sales Targets | 3 | 0 | 0 | 0 | 3 |
 | Stock Taking | 3 | 0 | 0 | 0 | 3 |
-| **Total** | **83** | **20** | **0** | **22** | **41** |
+| **Total** | **83** | **46** | **0** | **0** | **37** |

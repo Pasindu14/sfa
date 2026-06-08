@@ -154,24 +154,25 @@ export class GeoAssignmentPage {
   async selectUser(query: string): Promise<string> {
     const dialog = this.page.locator('[role="dialog"]')
     const combobox = dialog.getByRole('combobox').first()
-    // The button is disabled while the users list is still loading
     await expect(combobox).not.toBeDisabled({ timeout: 10_000 })
-    // Open the Radix Popover / cmdk panel
     await combobox.click()
-    // Type into the CommandInput (placeholder: "Search user...")
-    await this.page.getByPlaceholder('Search user...').fill(query)
-    // Debounce (300 ms) + async filter
-    await this.page.waitForTimeout(1000)
-    // Wait for first option to appear and click it
-    const firstOption = this.page.getByRole('option').first()
-    await expect(firstOption).toBeVisible({ timeout: 8_000 })
+    // AsyncSelect label="User" → CommandInput placeholder "Search user..."
+    const searchInput = this.page.getByPlaceholder('Search user...')
+    await searchInput.waitFor({ state: 'visible', timeout: 5_000 })
+    await searchInput.fill(query)
+    // Wait for cmdk items to load (fetcher only fires when query is non-empty)
+    await this.page.locator('[cmdk-item]:not([data-disabled="true"])').first()
+      .waitFor({ state: 'visible', timeout: 8_000 })
+    const firstOption = this.page.locator('[cmdk-item]:not([data-disabled="true"])').first()
     await firstOption.click()
-    // Wait for popover to dismiss
-    await this.page
-      .locator('[data-radix-popper-content-wrapper]')
-      .waitFor({ state: 'hidden', timeout: 3_000 })
-      .catch(() => {})
-    // After selection the trigger shows "{name} — {role}" — extract just the name
+    // Wait for Popover overlay to fully leave the DOM before continuing —
+    // clicking Submit while Radix's exit animation is live causes a backdrop-click
+    // that closes the Dialog without submitting.
+    await this.page.locator('[data-radix-popper-content-wrapper]')
+      .waitFor({ state: 'hidden', timeout: 5_000 }).catch(() => {})
+    // Confirm trigger shows the selected name (not the placeholder) — double-checks
+    // the Popover is fully closed and the selection registered in RHF state.
+    await expect(combobox).not.toContainText('Type to search', { timeout: 5_000 })
     const triggerText = await combobox.innerText()
     return triggerText.split('—')[0].trim()
   }
@@ -182,7 +183,58 @@ export class GeoAssignmentPage {
   }
 
   async submitForm() {
-    await this.page.getByRole('button', { name: 'Save assignment' }).click()
+    // Wait for all geo-data queries to finish (isLoadingGeo → false unblocks the button).
+    await this.page.waitForLoadState('networkidle')
+    const btn = this.page.locator('[role="dialog"] button[type="submit"]')
+    await btn.scrollIntoViewIfNeeded()
+    await btn.evaluate((el) => (el as HTMLButtonElement).click())
+  }
+
+  /**
+   * Selects a specific option in a Radix Select identified by its placeholder text.
+   * Waits for the combobox showing `placeholder` to appear, clicks it, then clicks
+   * the option whose text exactly matches `optionName`.
+   */
+  private async selectCascadeOption(placeholder: string, optionName: string) {
+    const dialog = this.page.locator('[role="dialog"]')
+    // The combobox shows the placeholder until a value is selected; Playwright
+    // auto-retries until it appears (handles React re-renders between cascade steps).
+    const trigger = dialog.getByRole('combobox').filter({ hasText: placeholder })
+    await trigger.click()
+    await this.page.locator('[role="listbox"]').waitFor({ state: 'visible', timeout: 5_000 })
+    await this.page.getByRole('option', { name: optionName, exact: true }).click()
+    await this.page.locator('[role="listbox"]').waitFor({ state: 'hidden', timeout: 3_000 }).catch(() => {})
+  }
+
+  /**
+   * Walks the Region → Area → Territory → Division cascade in the dialog.
+   * Fetches the first active division from the .NET API (via the NextAuth session
+   * token) to get a guaranteed valid geo chain; then selects each level by name.
+   * Required when the selected user is a SalesRep (API enforces Division).
+   */
+  async selectFirstDivisionInCascade() {
+    // Step 1: get the admin's Bearer token from NextAuth session
+    const sessionResp = await this.page.request.get('/api/auth/session')
+    const session = await sessionResp.json()
+    const token: string | undefined = session?.user?.accessToken
+    if (!token) throw new Error('No accessToken in NextAuth session — is auth setup complete?')
+
+    // Step 2: fetch the first active division (which carries the full ancestor chain)
+    const apiBase = process.env.SFA_API_DOMAIN ?? 'https://127.0.0.1:7169'
+    const divResp = await this.page.request.get(`${apiBase}/api/v1/divisions/active`, {
+      headers: { Authorization: `Bearer ${token}` },
+      ignoreHTTPSErrors: true,
+    })
+    if (!divResp.ok()) throw new Error(`Failed to fetch divisions: HTTP ${divResp.status()}`)
+    const payload = await divResp.json()
+    const division = payload?.data?.[0]
+    if (!division) throw new Error('No active divisions in the database')
+
+    // Step 3: walk the cascade using exact ancestor names from the DTO
+    await this.selectCascadeOption('Select region',    division.regionName)
+    await this.selectCascadeOption('Select area',      division.areaName)
+    await this.selectCascadeOption('Select territory', division.territoryName)
+    await this.selectCascadeOption('Select division',  division.name)
   }
 
   async confirmAlertAction(buttonName: 'Deactivate' | 'Activate') {

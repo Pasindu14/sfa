@@ -44,7 +44,7 @@ export class ProductPage {
 
   /** Assert a row with the given code exists in the table */
   async expectRowExists(code: string) {
-    await expect(this.getRowByCode(code)).toBeVisible({ timeout: 10_000 })
+    await expect(this.getRowByCode(code).first()).toBeVisible({ timeout: 10_000 })
   }
 
   /** Assert a row with the given code does NOT exist */
@@ -67,13 +67,14 @@ export class ProductPage {
 
   async search(query: string) {
     await this.searchInput.fill(query)
-    // Debounce — wait for table to update
-    await this.page.waitForTimeout(800)
+    await this.searchInput.press('Enter')
+    await this.page.waitForLoadState('networkidle')
   }
 
   async clearSearch() {
     await this.searchInput.clear()
-    await this.page.waitForTimeout(800)
+    await this.searchInput.press('Enter')
+    await this.page.waitForLoadState('networkidle')
   }
 
   // ─── Row actions (dropdown menu) ──────────────────────

@@ -159,15 +159,17 @@ function GeoStepper({ activeStep }: { activeStep: GeoStep }) {
   );
 }
 
-// ── Sales rep fetcher — live API, only fires when query is provided ───────────
+// ── Assignable user fetcher — searches all assignable roles ──────────────────
 
-function useSalesRepFetcher(cacheRef: ReturnType<typeof useRef<Map<number, UserDto>>>) {
+function useAssignableUserFetcher(cacheRef: ReturnType<typeof useRef<Map<number, UserDto>>>) {
   return useCallback(
     async (query?: string): Promise<UserDto[]> => {
       if (!query || query.trim().length === 0) return [];
-      const result = await getUsersAction(1, 50, query.trim(), "SalesRep");
+      const result = await getUsersAction(1, 50, query.trim());
       if (!result.success) return [];
-      const users = result.data.users;
+      const users = result.data.users.filter((u) =>
+        ASSIGNABLE_ROLES.includes(u.role),
+      );
       users.forEach((u) => cacheRef.current!.set(u.id, u));
       return users;
     },
@@ -464,7 +466,7 @@ function CreateForm({
   const [selectedTerritoryId, setSelectedTerritoryId] = useState(0);
 
   const userCacheRef = useRef<Map<number, UserDto>>(new Map());
-  const salesRepFetcher = useSalesRepFetcher(userCacheRef);
+  const assignableUserFetcher = useAssignableUserFetcher(userCacheRef);
   const selectedUser = userId > 0 ? (userCacheRef.current.get(userId) ?? null) : null;
 
   function handleRegionChange(id: number) {
@@ -517,10 +519,10 @@ function CreateForm({
             render={({ field, fieldState }) => (
               <div className="space-y-1">
                 <AsyncSelect<UserDto>
-                  fetcher={salesRepFetcher}
+                  fetcher={assignableUserFetcher}
                   preload={false}
-                  label="Sales Rep"
-                  placeholder="Type to search rep…"
+                  label="User"
+                  placeholder="Type to search user…"
                   value={field.value > 0 ? String(field.value) : ""}
                   onChange={(v) => field.onChange(v ? Number(v) : 0)}
                   getOptionValue={(u) => String(u.id)}
@@ -528,10 +530,10 @@ function CreateForm({
                     <span>{u.name}</span>
                   )}
                   renderOption={(u) => <UserOption user={u} />}
-                  noResultsMessage="No reps found"
+                  noResultsMessage="No users found"
                   notFound={
                     <p className="py-3 text-center text-sm text-muted-foreground">
-                      No sales reps found
+                      No assignable users found
                     </p>
                   }
                   disabled={isLoadingUsers}
