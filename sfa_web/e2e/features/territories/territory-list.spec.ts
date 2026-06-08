@@ -47,17 +47,11 @@ test.describe('Territory List', () => {
 
   test('should show empty state after searching for nonexistent territory', async () => {
     await territoryPage.search('zzz_nonexistent_territory_xyz_99999')
-    await territoryPage.page.waitForTimeout(500)
-
-    const rows = territoryPage.table.locator('tbody tr')
-    const count = await rows.count()
-    // All visible rows should either be 0 or a "no results" placeholder row
-    expect(count).toBeLessThanOrEqual(1)
+    await expect(territoryPage.table.locator('tbody tr')).toHaveCount(1)
   })
 
   test('should restore table data after clearing search', async () => {
     await territoryPage.search('zzz_nonexistent_xyz')
-    await territoryPage.page.waitForTimeout(500)
     await territoryPage.clearSearch()
     await territoryPage.expectTableHasRows()
   })

@@ -33,18 +33,13 @@ test.describe('Outlet List', () => {
 
   test('should show empty state after searching for nonexistent outlet', async () => {
     await outletPage.search('zzz_nonexistent_outlet_xyz_9999')
-    await outletPage.page.waitForTimeout(1000)
-
-    // After clearing, the table should repopulate (or remain empty if DB is empty)
-    await outletPage.clearSearch()
+    const rows = outletPage.table.locator('tbody tr')
+    await expect(rows).toHaveCount(1)
   })
 
   test('should restore table state after clearing search', async () => {
     await outletPage.search('zzz_nonexistent_xyz')
-    await outletPage.page.waitForTimeout(500)
     await outletPage.clearSearch()
-
-    // Table body should be present (may have 0 rows if DB is empty — just verify the DOM is intact)
-    await expect(outletPage.table).toBeVisible()
+    await outletPage.expectTableHasRows()
   })
 })

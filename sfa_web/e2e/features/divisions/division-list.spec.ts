@@ -49,17 +49,11 @@ test.describe('Division List', () => {
 
   test('should show empty state after searching for nonexistent division', async () => {
     await divisionPage.search('zzz_nonexistent_division_xyz_99999')
-    await divisionPage.page.waitForTimeout(500)
-
-    const rows = divisionPage.table.locator('tbody tr')
-    const count = await rows.count()
-    // All visible rows should either be 0 or a "no results" placeholder row
-    expect(count).toBeLessThanOrEqual(1)
+    await expect(divisionPage.table.locator('tbody tr')).toHaveCount(1)
   })
 
   test('should restore table data after clearing search', async () => {
     await divisionPage.search('zzz_nonexistent_xyz')
-    await divisionPage.page.waitForTimeout(500)
     await divisionPage.clearSearch()
     await divisionPage.expectTableHasRows()
   })

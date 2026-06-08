@@ -56,7 +56,7 @@ export class OutletPage {
 
   /** Assert a row with the given name exists in the table */
   async expectRowExists(name: string) {
-    await expect(this.getRowByName(name)).toBeVisible({ timeout: 10_000 })
+    await expect(this.getRowByName(name).first()).toBeVisible({ timeout: 10_000 })
   }
 
   /** Assert a row with the given name does NOT exist */
@@ -79,13 +79,14 @@ export class OutletPage {
 
   async search(query: string) {
     await this.searchInput.fill(query)
-    // Debounce — wait for table to update
-    await this.page.waitForTimeout(500)
+    await this.searchInput.press('Enter')
+    await this.page.waitForLoadState('networkidle')
   }
 
   async clearSearch() {
     await this.searchInput.clear()
-    await this.page.waitForTimeout(500)
+    await this.searchInput.press('Enter')
+    await this.page.waitForLoadState('networkidle')
   }
 
   // ─── Row actions (dropdown menu) ──────────────────────
@@ -220,12 +221,10 @@ export class OutletPage {
         .catch(() => {})
     }
     if (data.routeId !== undefined) {
-      await dialog.getByLabel('Route', { exact: true }).click()
+      await dialog.getByRole('combobox').filter({ hasText: 'Select a route' }).click()
+      await this.page.locator('[role="listbox"]').waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {})
       await this.page.getByRole('option', { name: data.routeId }).click()
-      await this.page
-        .locator('[data-radix-select-content]')
-        .waitFor({ state: 'hidden', timeout: 3_000 })
-        .catch(() => {})
+      await this.page.locator('[role="listbox"]').waitFor({ state: 'hidden', timeout: 3_000 }).catch(() => {})
     }
   }
 

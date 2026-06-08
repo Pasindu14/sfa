@@ -46,12 +46,8 @@ test.describe('Region List', () => {
 
   test('should show empty state after searching for nonexistent region', async () => {
     await regionPage.search('zzz_nonexistent_region_xyz_99999')
-    await regionPage.page.waitForTimeout(500)
-
     const rows = regionPage.table.locator('tbody tr')
-    const count = await rows.count()
-    // All visible rows should either be 0 or a "no results" placeholder row
-    expect(count).toBeLessThanOrEqual(1)
+    await expect(rows).toHaveCount(1) // "no results" placeholder row
   })
 
   test('should restore table data after clearing search', async () => {

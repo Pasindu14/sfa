@@ -18,6 +18,7 @@ test.describe.serial('Area Activate / Deactivate', () => {
     await areaPage.submitCreateForm()
     await areaPage.expectSuccessToast('Area created successfully')
     await areaPage.expectDialogClosed()
+    await areaPage.search(testData.name)
     await areaPage.expectRowExists(testData.name)
     await areaPage.expectRowStatus(testData.name, 'Active')
   })
@@ -25,6 +26,7 @@ test.describe.serial('Area Activate / Deactivate', () => {
   test('should open deactivate confirmation dialog', async ({ page }) => {
     areaPage = new AreaPage(page)
     await areaPage.goto()
+    await areaPage.search(testData.name)
     await areaPage.clickDeactivate(testData.name)
     await expect(areaPage.page.getByRole('alertdialog')).toBeVisible()
     await expect(areaPage.page.getByRole('heading', { name: 'Deactivate Area' })).toBeVisible()
@@ -33,6 +35,7 @@ test.describe.serial('Area Activate / Deactivate', () => {
   test('should cancel deactivation and keep Active status', async ({ page }) => {
     areaPage = new AreaPage(page)
     await areaPage.goto()
+    await areaPage.search(testData.name)
     await areaPage.clickDeactivate(testData.name)
     await areaPage.cancelAlert()
     await expect(areaPage.page.getByRole('alertdialog')).not.toBeAttached({ timeout: 10_000 })
@@ -42,6 +45,7 @@ test.describe.serial('Area Activate / Deactivate', () => {
   test('should deactivate area and show Inactive badge', async ({ page }) => {
     areaPage = new AreaPage(page)
     await areaPage.goto()
+    await areaPage.search(testData.name)
     await areaPage.clickDeactivate(testData.name)
     await areaPage.confirmAlertAction('Deactivate')
 
@@ -52,17 +56,18 @@ test.describe.serial('Area Activate / Deactivate', () => {
   test('should show Activate option in menu after deactivation', async ({ page }) => {
     areaPage = new AreaPage(page)
     await areaPage.goto()
+    await areaPage.search(testData.name)
     await areaPage.openRowActions(testData.name)
 
     await expect(areaPage.page.getByRole('menuitem', { name: 'Activate', exact: true })).toBeVisible()
     await expect(areaPage.page.getByRole('menuitem', { name: 'Deactivate', exact: true })).not.toBeVisible()
-    // Close the menu
     await areaPage.page.keyboard.press('Escape')
   })
 
   test('should open activate confirmation dialog', async ({ page }) => {
     areaPage = new AreaPage(page)
     await areaPage.goto()
+    await areaPage.search(testData.name)
     await areaPage.clickActivate(testData.name)
     await expect(areaPage.page.getByRole('alertdialog')).toBeVisible()
     await expect(areaPage.page.getByRole('heading', { name: 'Activate Area' })).toBeVisible()
@@ -71,6 +76,7 @@ test.describe.serial('Area Activate / Deactivate', () => {
   test('should activate area and show Active badge', async ({ page }) => {
     areaPage = new AreaPage(page)
     await areaPage.goto()
+    await areaPage.search(testData.name)
     await areaPage.clickActivate(testData.name)
     await areaPage.confirmAlertAction('Activate')
 
@@ -81,6 +87,7 @@ test.describe.serial('Area Activate / Deactivate', () => {
   test('should show Deactivate option in menu after activation', async ({ page }) => {
     areaPage = new AreaPage(page)
     await areaPage.goto()
+    await areaPage.search(testData.name)
     await areaPage.openRowActions(testData.name)
 
     await expect(areaPage.page.getByRole('menuitem', { name: 'Deactivate', exact: true })).toBeVisible()

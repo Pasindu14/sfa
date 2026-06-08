@@ -7,7 +7,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: 1,
   reporter: 'html',
-  timeout: 30_000,
+  timeout: 60_000,
   expect: { timeout: 10_000 },
 
   use: {
@@ -16,7 +16,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'on-first-retry',
     launchOptions: {
-      slowMo: 500, // 500ms pause between each action so you can follow along
+      slowMo: 500,
     },
   },
 

@@ -25,9 +25,15 @@ test.describe.serial('Update Outlet', () => {
 
     const dialog = page.locator('[role="dialog"]')
 
-    // Check for available routes
-    await dialog.getByLabel('Route', { exact: true }).click()
-    const options = page.getByRole('option')
+    // Open Route AsyncSelect and type 'a' to bypass the mount-time race condition
+    const routeCombobox = dialog.getByRole('combobox').filter({ hasText: 'Select a route' })
+    await routeCombobox.scrollIntoViewIfNeeded()
+    await routeCombobox.click()
+    const routeSearchInput = page.getByPlaceholder('Search route...')
+    await routeSearchInput.waitFor({ state: 'visible', timeout: 5_000 })
+    await routeSearchInput.fill('a')
+    await page.locator('[cmdk-item]:not([data-disabled="true"])').first().waitFor({ state: 'visible', timeout: 8_000 }).catch(() => {})
+    const options = page.locator('[cmdk-item]:not([data-disabled="true"])')
     const optionCount = await options.count()
 
     if (optionCount === 0) {
@@ -37,10 +43,7 @@ test.describe.serial('Update Outlet', () => {
     }
 
     await options.first().click()
-    await page
-      .locator('[data-radix-select-content]')
-      .waitFor({ state: 'hidden', timeout: 3_000 })
-      .catch(() => {})
+    await routeSearchInput.waitFor({ state: 'hidden', timeout: 3_000 }).catch(() => {})
 
     await outletPage.fillOutletForm({
       name: testOutlet.name,

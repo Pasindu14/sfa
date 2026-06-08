@@ -57,6 +57,7 @@ test.describe('Area Create', () => {
 
     await areaPage.expectSuccessToast('Area created successfully')
     await areaPage.expectDialogClosed()
+    await areaPage.search(testData.name)
     await areaPage.expectRowExists(testData.name)
   })
 
@@ -90,7 +91,7 @@ test.describe('Area Create', () => {
     await areaPage.submitCreateForm()
     await areaPage.expectSuccessToast()
     await areaPage.expectDialogClosed()
-
+    await areaPage.search(localName)
     await areaPage.expectRowStatus(localName, 'Active')
   })
 })

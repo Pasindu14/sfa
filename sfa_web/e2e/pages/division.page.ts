@@ -40,7 +40,7 @@ export class DivisionPage {
 
   /** Assert a row with the given name exists in the table */
   async expectRowExists(name: string) {
-    await expect(this.getRowByName(name)).toBeVisible({ timeout: 10_000 })
+    await expect(this.getRowByName(name).first()).toBeVisible({ timeout: 10_000 })
   }
 
   /** Assert a row with the given name does NOT exist */
@@ -63,12 +63,14 @@ export class DivisionPage {
 
   async search(query: string) {
     await this.searchInput.fill(query)
-    await this.page.waitForTimeout(500)
+    await this.searchInput.press('Enter')
+    await this.page.waitForLoadState('networkidle')
   }
 
   async clearSearch() {
     await this.searchInput.clear()
-    await this.page.waitForTimeout(500)
+    await this.searchInput.press('Enter')
+    await this.page.waitForLoadState('networkidle')
   }
 
   // ─── Row actions (dropdown menu) ───────────────────────────────────────────

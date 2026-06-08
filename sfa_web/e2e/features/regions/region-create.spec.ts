@@ -48,6 +48,7 @@ test.describe('Region Create', () => {
 
     await regionPage.expectSuccessToast('Region created successfully')
     await regionPage.expectDialogClosed()
+    await regionPage.search(testData.name)
     await regionPage.expectRowExists(testData.name)
   })
 
@@ -78,7 +79,7 @@ test.describe('Region Create', () => {
     await regionPage.submitCreateForm()
     await regionPage.expectSuccessToast()
     await regionPage.expectDialogClosed()
-
+    await regionPage.search(localName)
     await regionPage.expectRowStatus(localName, 'Active')
   })
 })

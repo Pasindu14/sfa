@@ -17,6 +17,7 @@ test.describe.serial('Region Activate / Deactivate', () => {
     await regionPage.submitCreateForm()
     await regionPage.expectSuccessToast('Region created successfully')
     await regionPage.expectDialogClosed()
+    await regionPage.search(testData.name)
     await regionPage.expectRowExists(testData.name)
     await regionPage.expectRowStatus(testData.name, 'Active')
   })

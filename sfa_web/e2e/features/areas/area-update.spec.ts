@@ -21,12 +21,14 @@ test.describe.serial('Area Update', () => {
     await areaPage.submitCreateForm()
     await areaPage.expectSuccessToast('Area created successfully')
     await areaPage.expectDialogClosed()
+    await areaPage.search(originalData.name)
     await areaPage.expectRowExists(originalData.name)
   })
 
   test('should open edit dialog with pre-filled name', async ({ page }) => {
     areaPage = new AreaPage(page)
     await areaPage.goto()
+    await areaPage.search(originalData.name)
     await areaPage.clickEdit(originalData.name)
 
     await expect(areaPage.page.getByRole('heading', { name: 'Edit Area' })).toBeVisible()
@@ -37,6 +39,7 @@ test.describe.serial('Area Update', () => {
   test('should show validation error when name is cleared in edit mode', async ({ page }) => {
     areaPage = new AreaPage(page)
     await areaPage.goto()
+    await areaPage.search(originalData.name)
     await areaPage.clickEdit(originalData.name)
 
     await areaPage.fillAreaForm({ name: '' })
@@ -48,6 +51,7 @@ test.describe.serial('Area Update', () => {
   test('should update area name successfully', async ({ page }) => {
     areaPage = new AreaPage(page)
     await areaPage.goto()
+    await areaPage.search(originalData.name)
     await areaPage.clickEdit(originalData.name)
 
     await areaPage.fillAreaForm({ name: updatedData.name })
@@ -55,6 +59,7 @@ test.describe.serial('Area Update', () => {
 
     await areaPage.expectSuccessToast('Area updated successfully')
     await areaPage.expectDialogClosed()
+    await areaPage.search(updatedData.name)
     await areaPage.expectRowExists(updatedData.name)
     await areaPage.expectRowNotExists(originalData.name)
   })

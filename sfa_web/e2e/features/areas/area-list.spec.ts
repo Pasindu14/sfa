@@ -47,17 +47,11 @@ test.describe('Area List', () => {
 
   test('should show empty state after searching for nonexistent area', async () => {
     await areaPage.search('zzz_nonexistent_area_xyz_99999')
-    await areaPage.page.waitForTimeout(500)
-
-    const rows = areaPage.table.locator('tbody tr')
-    const count = await rows.count()
-    // All visible rows should either be 0 or a "no results" placeholder row
-    expect(count).toBeLessThanOrEqual(1)
+    await expect(areaPage.table.locator('tbody tr')).toHaveCount(1)
   })
 
   test('should restore table data after clearing search', async () => {
     await areaPage.search('zzz_nonexistent_xyz')
-    await areaPage.page.waitForTimeout(500)
     await areaPage.clearSearch()
     await areaPage.expectTableHasRows()
   })

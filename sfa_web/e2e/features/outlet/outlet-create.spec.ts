@@ -120,25 +120,29 @@ test.describe('Create Outlet', () => {
 
     const dialog = page.locator('[role="dialog"]')
 
-    // Check if any route options are available in the route select
-    await dialog.getByLabel('Route', { exact: true }).click()
-    const options = page.getByRole('option')
+    // Open the Route AsyncSelect popover
+    const routeCombobox = dialog.getByRole('combobox').filter({ hasText: 'Select a route' })
+    await routeCombobox.scrollIntoViewIfNeeded()
+    await routeCombobox.click()
+    const routeSearchInput = page.getByPlaceholder('Search route...')
+    await routeSearchInput.waitFor({ state: 'visible', timeout: 5_000 })
+
+    // AsyncSelect race condition: on create mode (value="0"), the fetcher("0") call can
+    // complete after fetcher("") and overwrite options with []. Type a character to force
+    // a new clean debounced search that resolves after the mount-time race has settled.
+    await routeSearchInput.fill('a')
+    await page.locator('[cmdk-item]:not([data-disabled="true"])').first().waitFor({ state: 'visible', timeout: 8_000 }).catch(() => {})
+    const options = page.locator('[cmdk-item]:not([data-disabled="true"])')
     const optionCount = await options.count()
 
-    // Close select if no routes — skip the full create test
     if (optionCount === 0) {
       await page.keyboard.press('Escape')
       test.skip()
       return
     }
 
-    // Pick the first available route
-    const firstRouteName = await options.first().textContent()
     await options.first().click()
-    await page
-      .locator('[data-radix-select-content]')
-      .waitFor({ state: 'hidden', timeout: 3_000 })
-      .catch(() => {})
+    await routeSearchInput.waitFor({ state: 'hidden', timeout: 3_000 }).catch(() => {})
 
     // Fill remaining required fields
     await localPage.fillOutletForm({
@@ -155,13 +159,22 @@ test.describe('Create Outlet', () => {
 
     await localPage.submitCreateForm()
 
-    // Success toast confirms API completed
-    await localPage.expectSuccessToast()
+    // Capture whichever toast appears first (success or error) for diagnostics
+    const toastResult = await Promise.race([
+      page.locator('[data-sonner-toast][data-type="success"]').first().waitFor({ state: 'visible', timeout: 15_000 }).then(() => 'success' as const),
+      page.locator('[data-sonner-toast][data-type="error"]').first().waitFor({ state: 'visible', timeout: 15_000 }).then(() => 'error' as const),
+    ]).catch(() => 'timeout' as const)
 
-    // Dialog should close after mutation success
+    if (toastResult === 'error') {
+      const errorText = await page.locator('[data-sonner-toast][data-type="error"]').first().textContent()
+      throw new Error(`[DEBUG] API error toast: ${errorText}`)
+    }
+    if (toastResult === 'timeout') {
+      throw new Error('[DEBUG] No toast appeared within 15 seconds — button may not have been clicked')
+    }
+
     await localPage.expectDialogClosed()
 
-    // New outlet should appear in the table
     await localPage.search(testOutlet.name)
     await localPage.expectRowExists(testOutlet.name)
   })

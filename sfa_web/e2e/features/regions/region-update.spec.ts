@@ -20,6 +20,7 @@ test.describe.serial('Region Update', () => {
     await regionPage.submitCreateForm()
     await regionPage.expectSuccessToast('Region created successfully')
     await regionPage.expectDialogClosed()
+    await regionPage.search(originalData.name)
     await regionPage.expectRowExists(originalData.name)
   })
 

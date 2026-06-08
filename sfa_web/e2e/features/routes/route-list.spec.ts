@@ -49,16 +49,12 @@ test.describe('Route List', () => {
 
   test('should show empty state after searching for nonexistent route', async () => {
     await routePage.search('zzz_nonexistent_route_xyz_99999')
-    await routePage.page.waitForTimeout(500)
-
     const rows = routePage.table.locator('tbody tr')
-    const count = await rows.count()
-    expect(count).toBeLessThanOrEqual(1)
+    await expect(rows).toHaveCount(1)
   })
 
   test('should restore table data after clearing search', async () => {
     await routePage.search('zzz_nonexistent_xyz')
-    await routePage.page.waitForTimeout(500)
     await routePage.clearSearch()
     await routePage.expectTableHasRows()
   })

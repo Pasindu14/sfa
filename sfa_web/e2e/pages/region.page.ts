@@ -62,12 +62,14 @@ export class RegionPage {
 
   async search(query: string) {
     await this.searchInput.fill(query)
-    await this.page.waitForTimeout(500)
+    await this.searchInput.press('Enter')
+    await this.page.waitForLoadState('networkidle')
   }
 
   async clearSearch() {
     await this.searchInput.clear()
-    await this.page.waitForTimeout(500)
+    await this.searchInput.press('Enter')
+    await this.page.waitForLoadState('networkidle')
   }
 
   // ─── Row actions (dropdown menu) ──────────────────────
