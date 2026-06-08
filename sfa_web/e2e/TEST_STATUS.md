@@ -99,10 +99,8 @@ Status legend: `✅ Passed` | `❌ Failed` | `⏳ Not Run` | `🚧 Not Created`
 ## Product Category Pricings
 | Spec | Status | Notes |
 |------|--------|-------|
-| `product-category-pricings/pricing-list.spec.ts` | 🚧 Not Created | |
-| `product-category-pricings/pricing-create.spec.ts` | 🚧 Not Created | |
-| `product-category-pricings/pricing-update.spec.ts` | 🚧 Not Created | |
-| `product-category-pricings/pricing-status.spec.ts` | 🚧 Not Created | |
+| `product-category-pricings/pricing-list.spec.ts` | ✅ Passed | 5 tests passed; bulk-edit page (no dialogs) — verified heading, table, columns, Save All button, 4 inputs per row |
+| `product-category-pricings/pricing-update.spec.ts` | ✅ Passed | 3 tests passed; edit price → dirty badge → Save All → toast → reload persists value |
 
 ## Purchase Orders
 | Spec | Status | Notes |
@@ -188,7 +186,7 @@ Status legend: `✅ Passed` | `❌ Failed` | `⏳ Not Run` | `🚧 Not Created`
 | Products | 5 | 5 | 0 | 0 | 0 |
 | Geo Assignments | 4 | 4 | 0 | 0 | 0 |
 | Product Categories | 4 | 4 | 0 | 0 | 0 |
-| Product Category Pricings | 4 | 0 | 0 | 0 | 4 |
+| Product Category Pricings | 2 | 2 | 0 | 0 | 0 |
 | Purchase Orders | 4 | 0 | 0 | 0 | 4 |
 | Sales Invoices | 4 | 0 | 0 | 0 | 4 |
 | GRNs | 4 | 0 | 0 | 0 | 4 |
@@ -198,4 +196,4 @@ Status legend: `✅ Passed` | `❌ Failed` | `⏳ Not Run` | `🚧 Not Created`
 | User Reporting Lines | 4 | 0 | 0 | 0 | 4 |
 | Sales Targets | 3 | 0 | 0 | 0 | 3 |
 | Stock Taking | 3 | 0 | 0 | 0 | 3 |
-| **Total** | **83** | **46** | **0** | **0** | **37** |
+| **Total** | **81** | **54** | **0** | **0** | **35** |
