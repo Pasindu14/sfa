@@ -1493,6 +1493,22 @@ class _ActionsGrid extends StatelessWidget {
           Row(
             children: [
               Expanded(
+                child: _TileActionCard(
+                  icon: Icons.inventory_rounded,
+                  title: 'STOCK',
+                  subtitle: 'Check distributor stock',
+                  color: const Color(0xFF0F766E),
+                  onTap: () => context.push('/sales-rep/stock'),
+                ),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(child: SizedBox()),
+            ],
+          ),
+          SizedBox(height: 10.h),
+          Row(
+            children: [
+              Expanded(
                 child: _SecondaryAction(
                   icon: Icons.location_on_rounded,
                   label: 'Check In',

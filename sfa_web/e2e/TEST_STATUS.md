@@ -102,13 +102,17 @@ Status legend: `✅ Passed` | `❌ Failed` | `⏳ Not Run` | `🚧 Not Created`
 | `product-category-pricings/pricing-list.spec.ts` | ✅ Passed | 5 tests passed; bulk-edit page (no dialogs) — verified heading, table, columns, Save All button, 4 inputs per row |
 | `product-category-pricings/pricing-update.spec.ts` | ✅ Passed | 3 tests passed; edit price → dirty badge → Save All → toast → reload persists value |
 
-## Purchase Orders
+## Purchase Orders (Admin)
 | Spec | Status | Notes |
 |------|--------|-------|
-| `purchase-orders/purchase-order-list.spec.ts` | 🚧 Not Created | |
-| `purchase-orders/purchase-order-create.spec.ts` | 🚧 Not Created | |
-| `purchase-orders/purchase-order-update.spec.ts` | 🚧 Not Created | |
-| `purchase-orders/purchase-order-status.spec.ts` | 🚧 Not Created | |
+| `purchase-orders/purchase-order-list.spec.ts` | ✅ Passed | 6 tests passed; KPI cards, columns, status filter, New Order nav |
+| `purchase-orders/purchase-order-create.spec.ts` | ✅ Passed | 4 tests passed; Admin must select distributor (API-fetched); Save as Draft navigates to detail |
+| `purchase-orders/purchase-order-detail.spec.ts` | ✅ Passed | 3 tests passed; view via order # link, PO- heading, back link |
+
+## Purchase Orders (Distributor)
+| Spec | Status | Notes |
+|------|--------|-------|
+| `purchase-orders/purchase-order-distributor.spec.ts` | ✅ Passed | 13 tests; distributor storageState override; list/create/workflow; full finalize via admin API advancement (browser.newContext) |
 
 ## Sales Invoices
 | Spec | Status | Notes |
@@ -142,10 +146,10 @@ Status legend: `✅ Passed` | `❌ Failed` | `⏳ Not Run` | `🚧 Not Created`
 ## Fleets
 | Spec | Status | Notes |
 |------|--------|-------|
-| `fleets/fleet-list.spec.ts` | 🚧 Not Created | |
-| `fleets/fleet-create.spec.ts` | 🚧 Not Created | |
-| `fleets/fleet-update.spec.ts` | 🚧 Not Created | |
-| `fleets/fleet-status.spec.ts` | 🚧 Not Created | |
+| `fleets/fleet-list.spec.ts` | ✅ Passed | 7 tests passed |
+| `fleets/fleet-create.spec.ts` | ✅ Passed | 6 tests passed; fixed `getByLabel('Name *')` → `getByPlaceholder('Enter fleet name')` (label has asterisk) |
+| `fleets/fleet-update.spec.ts` | ✅ Passed | 4 tests passed |
+| `fleets/fleet-status.spec.ts` | ✅ Passed | 8 tests passed |
 
 ## User Reporting Lines
 | Spec | Status | Notes |
@@ -187,13 +191,14 @@ Status legend: `✅ Passed` | `❌ Failed` | `⏳ Not Run` | `🚧 Not Created`
 | Geo Assignments | 4 | 4 | 0 | 0 | 0 |
 | Product Categories | 4 | 4 | 0 | 0 | 0 |
 | Product Category Pricings | 2 | 2 | 0 | 0 | 0 |
-| Purchase Orders | 4 | 0 | 0 | 0 | 4 |
+| Purchase Orders (Admin) | 3 | 3 | 0 | 0 | 0 |
+| Purchase Orders (Distributor) | 1 | 1 | 0 | 0 | 0 |
 | Sales Invoices | 4 | 0 | 0 | 0 | 4 |
 | GRNs | 4 | 0 | 0 | 0 | 4 |
 | Route Cancellations | 3 | 0 | 0 | 0 | 3 |
 | Stock | 2 | 0 | 0 | 0 | 2 |
-| Fleets | 4 | 0 | 0 | 0 | 4 |
+| Fleets | 4 | 4 | 0 | 0 | 0 |
 | User Reporting Lines | 4 | 0 | 0 | 0 | 4 |
 | Sales Targets | 3 | 0 | 0 | 0 | 3 |
 | Stock Taking | 3 | 0 | 0 | 0 | 3 |
-| **Total** | **81** | **54** | **0** | **0** | **35** |
+| **Total** | **83** | **60** | **0** | **0** | **23** |

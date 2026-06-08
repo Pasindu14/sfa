@@ -56,9 +56,18 @@ class _StockCatalogPageState extends State<StockCatalogPage> {
     setState(() => _syncing = true);
     try {
       await getIt<SyncDistributorStockUseCase>()();
-      await _load();
-    } catch (_) {
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: AppColors.warning,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     } finally {
+      await _load();
       if (mounted) setState(() => _syncing = false);
     }
   }
