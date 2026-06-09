@@ -706,7 +706,7 @@ class _ActionsSection extends StatelessWidget {
                   icon: Icons.list_alt_rounded,
                   title: 'VIEW\nASSIGNMENTS',
                   subtitle: "Today's route assignments",
-                  color: AppColors.primary,
+                  color: const Color(0xFF2563EB),
                   onTap: () async {
                     await context.push('/supervisor/assignments');
                     if (context.mounted) {
@@ -721,7 +721,7 @@ class _ActionsSection extends StatelessWidget {
                   icon: Icons.receipt_long_rounded,
                   title: 'VIEW REP\nBILLS',
                   subtitle: 'Bills created by your reps',
-                  color: AppColors.primary,
+                  color: const Color(0xFF7C3AED),
                   onTap: () async {
                     await context.push('/supervisor/billing');
                     if (context.mounted) {
@@ -740,7 +740,7 @@ class _ActionsSection extends StatelessWidget {
                   icon: Icons.block_rounded,
                   title: 'VIEW\nNON-BILLINGS',
                   subtitle: 'Non-billing visits by reps',
-                  color: AppColors.primary,
+                  color: const Color(0xFFDC2626),
                   onTap: () async {
                     await context.push('/supervisor/not-billing');
                     if (context.mounted) {
@@ -755,7 +755,7 @@ class _ActionsSection extends StatelessWidget {
                   icon: Icons.map_rounded,
                   title: "REP ROUTE\nMAP",
                   subtitle: "View a rep's route on map",
-                  color: AppColors.primary,
+                  color: const Color(0xFF16A34A),
                   onTap: () => context.push('/supervisor/rep-route-map'),
                 ),
               ),
@@ -766,7 +766,7 @@ class _ActionsSection extends StatelessWidget {
             icon: Icons.emoji_events_rounded,
             title: 'REP ACHIEVEMENT',
             subtitle: 'Item-wise target vs sold by month',
-            color: AppColors.primary,
+            color: const Color(0xFFCA8A04),
             onTap: () => context.push('/supervisor/achievement'),
           ),
           SizedBox(height: 10.h),
@@ -774,7 +774,7 @@ class _ActionsSection extends StatelessWidget {
             icon: Icons.assignment_turned_in_rounded,
             title: 'PURCHASE ORDERS',
             subtitle: 'Approve orders pending manager review',
-            color: AppColors.primary,
+            color: const Color(0xFFEA580C),
             onTap: () => context.push('/supervisor/purchase-orders'),
           ),
         ],
