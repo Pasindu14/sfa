@@ -123,7 +123,7 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
 
     // ── Confirm GRN ───────────────────────────────────────────────────────
 
-    public async Task<GrnDto> ConfirmAsync(int grnId, ConfirmGrnRequest request, int callerId, CancellationToken ct = default)
+    public async Task<GrnDto> ConfirmAsync(int grnId, ConfirmGrnRequest request, int callerId, int? distributorScopeId = null, CancellationToken ct = default)
     {
         // 1. Acquire advisory lock to prevent concurrent confirms for the same GRN
         await using var advisoryLock = await _lockService.AcquireAsync($"grn:confirm:{grnId}", ct)
@@ -132,6 +132,11 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
         // 2. Load GRN
         var grn = await _repository.GetGrnWithItemsAsync(grnId, ct)
             ?? throw new NotFoundException("GRN", grnId);
+
+        // 2a. Ownership (Distributor caller) — verified inside the lock against the freshly
+        //     loaded GRN, not on a stale pre-read, so it cannot race the status transition.
+        if (distributorScopeId.HasValue && grn.DistributorId != distributorScopeId.Value)
+            throw new BusinessRuleException("GRN_NOT_FOUND", "GRN not found.");
 
         // 3. Business rule: only Pending GRNs can be confirmed
         if (grn.Status != GrnStatus.Pending)

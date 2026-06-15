@@ -309,15 +309,19 @@ public class UserGeoAssignmentServiceTests
     }
 
     [Fact]
-    public async Task CreateAsync_SetsGeoIdsFromRequest()
+    public async Task CreateAsync_DerivesGeoIdsFromDivision_IgnoringClientAncestors()
     {
+        // Client supplies deliberately-mismatched ancestor IDs — they must be ignored
+        // and the true ancestry taken from the Division entity.
         var request = new CreateUserAssignmentRequest
         {
             UserId = 10,
-            RegionId = 1, AreaId = 2, TerritoryId = 3, DivisionId = 4,
+            RegionId = 999, AreaId = 888, TerritoryId = 777, DivisionId = 4,
             EffectiveFrom = new DateOnly(2026, 3, 26)
         };
         SetupSuccessfulCreate(request);
+        _repoMock.Setup(r => r.GetDivisionWithAncestorsAsync(4, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(CreateFakeDivision(id: 4, territoryId: 30, areaId: 20, regionId: 10));
         UserGeoAssignment? captured = null;
         _repoMock.Setup(r => r.CreateAsync(It.IsAny<UserGeoAssignment>(), It.IsAny<CancellationToken>()))
                  .Callback<UserGeoAssignment, CancellationToken>((g, _) => captured = g)
@@ -325,10 +329,10 @@ public class UserGeoAssignmentServiceTests
 
         await _sut.CreateAsync(request, callerId: 1);
 
-        captured!.RegionId.Should().Be(1);
-        captured.AreaId.Should().Be(2);
-        captured.TerritoryId.Should().Be(3);
-        captured.DivisionId.Should().Be(4);
+        captured!.DivisionId.Should().Be(4);
+        captured.TerritoryId.Should().Be(30);
+        captured.AreaId.Should().Be(20);
+        captured.RegionId.Should().Be(10);
     }
 
     // ─────────────────────────────────────────────────
@@ -375,24 +379,27 @@ public class UserGeoAssignmentServiceTests
     }
 
     [Fact]
-    public async Task UpdateAsync_SetsGeoIdsFromRequest()
+    public async Task UpdateAsync_DerivesGeoIdsFromDivision_IgnoringClientAncestors()
     {
         var geo = CreateFakeGeo();
+        // Mismatched client ancestors must be ignored in favour of the Division's ancestry.
         var request = new UpdateUserAssignmentRequest
         {
-            RegionId = 11, AreaId = 22, TerritoryId = 33, DivisionId = 44,
+            RegionId = 999, AreaId = 888, TerritoryId = 777, DivisionId = 44,
             EffectiveFrom = new DateOnly(2026, 4, 1)
         };
         _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(geo);
         SetupSuccessfulUpdate(geo, request, 1);
+        _repoMock.Setup(r => r.GetDivisionWithAncestorsAsync(44, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(CreateFakeDivision(id: 44, territoryId: 30, areaId: 20, regionId: 10));
 
         await _sut.UpdateAsync(1, request, callerId: 1);
 
-        geo.RegionId.Should().Be(11);
-        geo.AreaId.Should().Be(22);
-        geo.TerritoryId.Should().Be(33);
         geo.DivisionId.Should().Be(44);
+        geo.TerritoryId.Should().Be(30);
+        geo.AreaId.Should().Be(20);
+        geo.RegionId.Should().Be(10);
     }
 
     // ─────────────────────────────────────────────────
@@ -460,6 +467,9 @@ public class UserGeoAssignmentServiceTests
                  .ReturnsAsync(UserRole.SalesRep);
         _repoMock.Setup(r => r.DivisionExistsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
                  .ReturnsAsync(true);
+        // Geo IDs are now derived from the Division entity's denormalized ancestors.
+        _repoMock.Setup(r => r.GetDivisionWithAncestorsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(CreateFakeDivision());
 
         _repoMock.Setup(r => r.GetActiveByUserIdAsync(request.UserId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(existingGeo);
@@ -485,6 +495,8 @@ public class UserGeoAssignmentServiceTests
     {
         _repoMock.Setup(r => r.GetUserRoleAsync(geo.UserId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(UserRole.SalesRep);
+        _repoMock.Setup(r => r.GetDivisionWithAncestorsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(CreateFakeDivision());
         _repoMock.Setup(r => r.UpdateAsync(geo, It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))

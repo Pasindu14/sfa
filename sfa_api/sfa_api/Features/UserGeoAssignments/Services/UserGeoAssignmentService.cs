@@ -114,10 +114,9 @@ public class UserGeoAssignmentService(
                 "DIVISION_REQUIRED_FOR_SALES_REP",
                 "SalesRep users must be assigned to a Division.");
 
-        // Validate division if provided
-        if (request.DivisionId.HasValue &&
-            !await _repo.DivisionExistsAsync(request.DivisionId.Value, ct))
-            throw new NotFoundException("Division", request.DivisionId.Value);
+        // Derive ancestor IDs from the Division — never trust client-supplied ancestors.
+        var (regionId, areaId, territoryId, divisionId) = await ResolveGeoIdsAsync(
+            request.RegionId, request.AreaId, request.TerritoryId, request.DivisionId, ct);
 
         var now = DateTime.UtcNow;
 
@@ -131,14 +130,13 @@ public class UserGeoAssignmentService(
             await _repo.UpdateAsync(existingGeo, ct);
         }
 
-        // Create geo assignment — all 4 geo IDs supplied directly by the caller
         var newGeo = new UserGeoAssignment
         {
             UserId = request.UserId,
-            RegionId = request.RegionId,
-            AreaId = request.AreaId,
-            TerritoryId = request.TerritoryId,
-            DivisionId = request.DivisionId,
+            RegionId = regionId,
+            AreaId = areaId,
+            TerritoryId = territoryId,
+            DivisionId = divisionId,
             EffectiveFrom = request.EffectiveFrom,
             IsActive = true,
             CreatedBy = callerId,
@@ -152,7 +150,7 @@ public class UserGeoAssignmentService(
 
         _logger.LogInformation(
             "GeoAssignment created: user {UserId}, region {RegionId}, area {AreaId}, territory {TerritoryId}, division {DivisionId}",
-            request.UserId, request.RegionId, request.AreaId, request.TerritoryId, request.DivisionId);
+            request.UserId, regionId, areaId, territoryId, divisionId);
 
         var created = await _repo.GetByIdAsync(newGeo.Id, ct)
             ?? throw new NotFoundException("UserAssignment", newGeo.Id);
@@ -176,12 +174,16 @@ public class UserGeoAssignmentService(
                 "DIVISION_REQUIRED_FOR_SALES_REP",
                 "SalesRep users must be assigned to a Division.");
 
+        // Derive ancestor IDs from the Division — never trust client-supplied ancestors.
+        var (regionId, areaId, territoryId, divisionId) = await ResolveGeoIdsAsync(
+            request.RegionId, request.AreaId, request.TerritoryId, request.DivisionId, ct);
+
         var now = DateTime.UtcNow;
 
-        geo.RegionId = request.RegionId;
-        geo.AreaId = request.AreaId;
-        geo.TerritoryId = request.TerritoryId;
-        geo.DivisionId = request.DivisionId;
+        geo.RegionId = regionId;
+        geo.AreaId = areaId;
+        geo.TerritoryId = territoryId;
+        geo.DivisionId = divisionId;
         geo.EffectiveFrom = request.EffectiveFrom;
         geo.UpdatedBy = callerId;
         geo.UpdatedAt = now;
@@ -235,6 +237,24 @@ public class UserGeoAssignmentService(
             ?? throw new NotFoundException("UserAssignment", id);
         var rls = await _repo.GetActiveReportingLinesByUserIdsAsync([updated.UserId], ct);
         return MapToDto(updated, rls.FirstOrDefault());
+    }
+
+    /// <summary>
+    /// Resolves the four geo IDs that get persisted. When a Division is supplied, all ancestor
+    /// IDs (Territory/Area/Region) are taken from the Division entity itself — the client's
+    /// ancestor IDs are ignored so a Division can never be stored under a mismatched ancestry.
+    /// Higher-level assignments without a Division keep the supplied IDs.
+    /// </summary>
+    private async Task<(int? RegionId, int? AreaId, int? TerritoryId, int? DivisionId)> ResolveGeoIdsAsync(
+        int? regionId, int? areaId, int? territoryId, int? divisionId, CancellationToken ct)
+    {
+        if (!divisionId.HasValue)
+            return (regionId, areaId, territoryId, null);
+
+        var division = await _repo.GetDivisionWithAncestorsAsync(divisionId.Value, ct)
+            ?? throw new NotFoundException("Division", divisionId.Value);
+
+        return (division.RegionId, division.AreaId, division.TerritoryId, division.Id);
     }
 
     private static UserAssignmentDto MapToDto(

@@ -144,6 +144,25 @@ public class BinCardServiceTests
     }
 
     [Fact]
+    public async Task GetBinCardAsync_CapturesFreeIssuePoolReceipts_AndReconciles()
+    {
+        // Company-FOC stock flows through the FreeIssue pool: a FOC GRN receipt (inflow) AND a
+        // company free issue (outflow). The receipt must be captured (in the Invoice column,
+        // which sums GRNReceipt across all pools) so EndStock still reconciles for FOC SKUs.
+        SetupOpening(150m); // combined opening across Normal + FreeIssue pools
+        SetupMovements(
+            Move(StockTransactionType.GRNReceipt, StockTransactionDirection.In,  20m, StockType.FreeIssue), // FOC receipt
+            Move(StockTransactionType.Sale,       StockTransactionDirection.Out, 30m, StockType.Normal),
+            Move(StockTransactionType.FreeIssue,  StockTransactionDirection.Out, 10m, StockType.FreeIssue)); // company FOC
+
+        var row = (await _sut.GetBinCardAsync(Query())).Rows.Single();
+
+        row.InvoiceQuantity.Should().Be(20m);     // FOC GRN receipt is captured, not dropped
+        row.CompanyFreeIssues.Should().Be(10m);
+        row.EndStock.Should().Be(130m);           // 150 + 20 − 30 − 10
+    }
+
+    [Fact]
     public async Task GetBinCardAsync_CurrentStockAndVariance_AreNull_WhenNeverCounted()
     {
         SetupOpening(10m);

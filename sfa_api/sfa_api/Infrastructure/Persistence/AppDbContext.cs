@@ -329,9 +329,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Id).UseIdentityColumn();
             e.HasIndex(x => x.IsActive);
             e.HasIndex(x => x.IsDeleted);
-            // Unique among active routes within a division — DB backstop for the duplicate-name
-            // check, closing the create-create race the app-level check alone can't.
-            e.HasIndex(x => new { x.Name, x.DivisionId }).IsUnique().HasFilter("\"IsActive\" = true");
+            e.HasIndex(x => x.Name).HasFilter("\"IsActive\" = true");
             e.HasQueryFilter(x => x.IsActive && !x.IsDeleted);
             e.HasIndex(x => x.DivisionId);
             e.HasIndex(x => x.TerritoryId);

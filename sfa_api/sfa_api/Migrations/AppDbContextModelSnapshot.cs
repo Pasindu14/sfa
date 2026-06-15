@@ -17,7 +17,7 @@ namespace sfa_api.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.28")
+                .HasAnnotation("ProductVersion", "8.0.27")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -78,7 +78,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("EntityType", "EntityId");
 
-                    b.ToTable("AuditLogs");
+                    b.ToTable("AuditLogs", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Common.Audit.IdempotencyKey", b =>
@@ -103,7 +103,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("ExpiresAt");
 
-                    b.ToTable("IdempotencyKeys");
+                    b.ToTable("IdempotencyKeys", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Common.Audit.RevokedToken", b =>
@@ -121,7 +121,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("ExpiresAt");
 
-                    b.ToTable("RevokedTokens");
+                    b.ToTable("RevokedTokens", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.Areas.Entities.Area", b =>
@@ -177,7 +177,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("RegionId", "IsActive", "IsDeleted");
 
-                    b.ToTable("Areas");
+                    b.ToTable("Areas", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.Auth.Entities.RefreshToken", b =>
@@ -221,7 +221,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("RefreshTokens");
+                    b.ToTable("RefreshTokens", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.Billings.Entities.Billing", b =>
@@ -411,7 +411,7 @@ namespace sfa_api.Migrations
                     b.HasIndex("SalesRepId", "RouteId", "BillingDate")
                         .HasFilter("\"IsDeleted\" = false");
 
-                    b.ToTable("Billings");
+                    b.ToTable("Billings", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.Billings.Entities.BillingItem", b =>
@@ -478,7 +478,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("BillingItems");
+                    b.ToTable("BillingItems", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.DailyRouteAssignments.Entities.DailyRouteAssignment", b =>
@@ -563,7 +563,7 @@ namespace sfa_api.Migrations
                     b.HasIndex("UserId", "IsActive")
                         .HasFilter("\"IsDeleted\" = false");
 
-                    b.ToTable("DailyRouteAssignments");
+                    b.ToTable("DailyRouteAssignments", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.Distributors.Entities.Distributor", b =>
@@ -670,7 +670,7 @@ namespace sfa_api.Migrations
                         .HasDatabaseName("IX_Distributors_TerritoryId_IsActive_Active")
                         .HasFilter("\"IsDeleted\" = false");
 
-                    b.ToTable("Distributors");
+                    b.ToTable("Distributors", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.Divisions.Entities.Division", b =>
@@ -728,7 +728,7 @@ namespace sfa_api.Migrations
                     b.HasIndex("Name", "TerritoryId")
                         .IsUnique();
 
-                    b.ToTable("Divisions");
+                    b.ToTable("Divisions", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.Fleets.Entities.Fleet", b =>
@@ -771,7 +771,7 @@ namespace sfa_api.Migrations
                     b.HasIndex("UpdatedAt")
                         .HasFilter("\"IsActive\" = true");
 
-                    b.ToTable("Fleets");
+                    b.ToTable("Fleets", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.GRNs.Entities.GRN", b =>
@@ -844,7 +844,7 @@ namespace sfa_api.Migrations
                     b.HasIndex("DistributorId", "Status", "CreatedAt")
                         .IsDescending(false, false, true);
 
-                    b.ToTable("GRNs");
+                    b.ToTable("GRNs", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.GRNs.Entities.GRNItem", b =>
@@ -882,7 +882,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("GRNItems");
+                    b.ToTable("GRNItems", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.NotBillings.Entities.NotBilling", b =>
@@ -993,7 +993,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("TerritoryId", "NotBillingDate");
 
-                    b.ToTable("NotBillings");
+                    b.ToTable("NotBillings", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.Notifications.Entities.Notification", b =>
@@ -1031,7 +1031,7 @@ namespace sfa_api.Migrations
                     b.HasIndex("UserId", "IsRead", "CreatedAt")
                         .IsDescending(false, false, true);
 
-                    b.ToTable("Notifications");
+                    b.ToTable("Notifications", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.Outlets.Entities.Outlet", b =>
@@ -1159,7 +1159,7 @@ namespace sfa_api.Migrations
                     b.HasIndex("UpdatedAt")
                         .HasFilter("\"IsActive\" = true");
 
-                    b.ToTable("Outlets");
+                    b.ToTable("Outlets", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.ProductCategories.Entities.ProductCategory", b =>
@@ -1202,7 +1202,7 @@ namespace sfa_api.Migrations
                     b.HasIndex("UpdatedAt")
                         .HasFilter("\"IsActive\" = true");
 
-                    b.ToTable("ProductCategories");
+                    b.ToTable("ProductCategories", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.ProductCategoryPricings.Entities.ProductCategoryPrice", b =>
@@ -1240,7 +1240,7 @@ namespace sfa_api.Migrations
                     b.HasIndex("ProductId", "Category")
                         .IsUnique();
 
-                    b.ToTable("ProductCategoryPrices");
+                    b.ToTable("ProductCategoryPrices", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.Products.Entities.Product", b =>
@@ -1265,10 +1265,10 @@ namespace sfa_api.Migrations
                         .HasColumnType("integer");
 
                     b.Property<decimal>("DealerCasePrice")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("numeric");
 
                     b.Property<decimal>("DealerPackPrice")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("numeric");
 
                     b.Property<int?>("FleetId")
                         .HasColumnType("integer");
@@ -1287,7 +1287,7 @@ namespace sfa_api.Migrations
                         .HasColumnType("text");
 
                     b.Property<decimal>("Mrp")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("numeric");
 
                     b.Property<int>("PiecesPerPack")
                         .HasColumnType("integer");
@@ -1319,7 +1319,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("UpdatedAt");
 
-                    b.ToTable("Products");
+                    b.ToTable("Products", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.PurchaseOrders.Entities.PurchaseOrder", b =>
@@ -1418,7 +1418,7 @@ namespace sfa_api.Migrations
                     b.HasIndex("DistributorId", "CreatedAt")
                         .IsDescending(false, true);
 
-                    b.ToTable("PurchaseOrders");
+                    b.ToTable("PurchaseOrders", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.PurchaseOrders.Entities.PurchaseOrderHistory", b =>
@@ -1462,7 +1462,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("PurchaseOrderId");
 
-                    b.ToTable("PurchaseOrderHistories");
+                    b.ToTable("PurchaseOrderHistories", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.PurchaseOrders.Entities.PurchaseOrderItem", b =>
@@ -1500,7 +1500,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("PurchaseOrderId");
 
-                    b.ToTable("PurchaseOrderItems");
+                    b.ToTable("PurchaseOrderItems", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.Regions.Entities.Region", b =>
@@ -1543,7 +1543,7 @@ namespace sfa_api.Migrations
                     b.HasIndex("UpdatedAt")
                         .HasFilter("\"IsActive\" = true");
 
-                    b.ToTable("Regions");
+                    b.ToTable("Regions", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.Routes.Entities.Route", b =>
@@ -1605,15 +1605,14 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("IsDeleted");
 
+                    b.HasIndex("Name")
+                        .HasFilter("\"IsActive\" = true");
+
                     b.HasIndex("RegionId");
 
                     b.HasIndex("TerritoryId");
 
-                    b.HasIndex("Name", "DivisionId")
-                        .IsUnique()
-                        .HasFilter("\"IsActive\" = true");
-
-                    b.ToTable("Routes");
+                    b.ToTable("Routes", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.SalesInvoices.Entities.SalesInvoice", b =>
@@ -1701,7 +1700,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("DistributorId", "Status", "InvoiceDate");
 
-                    b.ToTable("SalesInvoices");
+                    b.ToTable("SalesInvoices", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.SalesInvoices.Entities.SalesInvoiceImportBatch", b =>
@@ -1773,7 +1772,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("Status");
 
-                    b.ToTable("SalesInvoiceImportBatches");
+                    b.ToTable("SalesInvoiceImportBatches", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.SalesInvoices.Entities.SalesInvoiceItem", b =>
@@ -1826,7 +1825,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("SalesInvoiceId");
 
-                    b.ToTable("SalesInvoiceItems");
+                    b.ToTable("SalesInvoiceItems", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.SalesTargets.Entities.SalesTarget", b =>
@@ -1932,7 +1931,7 @@ namespace sfa_api.Migrations
                         .IsUnique()
                         .HasFilter("\"IsDeleted\" = false");
 
-                    b.ToTable("SalesTargets");
+                    b.ToTable("SalesTargets", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.SalesTargets.Entities.SalesTargetImportBatch", b =>
@@ -2010,7 +2009,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("Year", "Month");
 
-                    b.ToTable("SalesTargetImportBatches");
+                    b.ToTable("SalesTargetImportBatches", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.Stock.Entities.DistributorStock", b =>
@@ -2049,7 +2048,7 @@ namespace sfa_api.Migrations
                     b.HasIndex("DistributorId", "ProductId", "StockType")
                         .IsUnique();
 
-                    b.ToTable("DistributorStocks");
+                    b.ToTable("DistributorStocks", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.Stock.Entities.StockTransaction", b =>
@@ -2123,7 +2122,7 @@ namespace sfa_api.Migrations
                     b.HasIndex("DistributorId", "ProductId", "TransactedAt")
                         .IsDescending(false, false, true);
 
-                    b.ToTable("StockTransactions");
+                    b.ToTable("StockTransactions", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.StockTaking.Entities.StockTakingLine", b =>
@@ -2179,7 +2178,7 @@ namespace sfa_api.Migrations
                     b.HasIndex("StockTakingSubmissionId", "ProductId", "StockType")
                         .IsUnique();
 
-                    b.ToTable("StockTakingLines");
+                    b.ToTable("StockTakingLines", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.StockTaking.Entities.StockTakingPeriod", b =>
@@ -2239,7 +2238,7 @@ namespace sfa_api.Migrations
                         .IsUnique()
                         .HasFilter("\"IsDeleted\" = false");
 
-                    b.ToTable("StockTakingPeriods");
+                    b.ToTable("StockTakingPeriods", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.StockTaking.Entities.StockTakingSubmission", b =>
@@ -2301,7 +2300,7 @@ namespace sfa_api.Migrations
                         .IsUnique()
                         .HasFilter("\"IsDeleted\" = false");
 
-                    b.ToTable("StockTakingSubmissions");
+                    b.ToTable("StockTakingSubmissions", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.Territories.Entities.Territory", b =>
@@ -2354,7 +2353,7 @@ namespace sfa_api.Migrations
                     b.HasIndex("Name", "AreaId")
                         .IsUnique();
 
-                    b.ToTable("Territories");
+                    b.ToTable("Territories", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.UserGeoAssignments.Entities.UserGeoAssignment", b =>
@@ -2423,7 +2422,7 @@ namespace sfa_api.Migrations
                         .HasDatabaseName("IX_UserGeoAssignments_UserId_IsActive_Active")
                         .HasFilter("\"IsDeleted\" = false");
 
-                    b.ToTable("UserGeoAssignments");
+                    b.ToTable("UserGeoAssignments", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.UserReportingLines.Entities.UserReportingLine", b =>
@@ -2475,7 +2474,7 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("UserId", "IsActive");
 
-                    b.ToTable("UserReportingLines");
+                    b.ToTable("UserReportingLines", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.Users.Entities.User", b =>
@@ -2541,22 +2540,19 @@ namespace sfa_api.Migrations
                     b.HasIndex("DistributorId");
 
                     b.HasIndex("Email")
-                        .IsUnique()
-                        .HasFilter("\"IsDeleted\" = false");
+                        .IsUnique();
 
                     b.HasIndex("IsDeleted");
 
                     b.HasIndex("Phone")
-                        .IsUnique()
-                        .HasFilter("\"IsDeleted\" = false");
+                        .IsUnique();
 
                     b.HasIndex("UpdatedAt");
 
                     b.HasIndex("Username")
-                        .IsUnique()
-                        .HasFilter("\"IsDeleted\" = false");
+                        .IsUnique();
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("sfa_api.Features.Areas.Entities.Area", b =>

@@ -13,7 +13,10 @@ public class NotificationsController(INotificationHistoryService notificationHis
 {
     private readonly INotificationHistoryService _service = notificationHistoryService;
 
-    private int CallerId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    private int CallerId =>
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id)
+            ? id
+            : throw new AuthenticationException("AUTH_INVALID_TOKEN", "Invalid token.");
 
     /// <summary>
     /// GET /api/v1/notifications

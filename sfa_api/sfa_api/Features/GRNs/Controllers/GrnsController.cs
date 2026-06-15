@@ -94,6 +94,9 @@ public class GrnsController(
 
         await _confirmValidator.ValidateOrThrowAsync(request, ct);
 
+        // Resolve the caller's distributor scope (Distributor role only); ownership is then
+        // enforced inside ConfirmAsync's lock against the freshly-loaded GRN.
+        int? distributorScopeId = null;
         if (User.IsInRole("Distributor"))
         {
             int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId);
@@ -101,12 +104,10 @@ public class GrnsController(
             if (user?.DistributorId == null)
                 throw new BusinessRuleException("NO_DISTRIBUTOR_LINKED",
                     "Your account is not linked to a distributor.");
-            var existing = await _grnService.GetByIdAsync(id, ct);
-            if (existing.DistributorId != user.DistributorId.Value)
-                throw new BusinessRuleException("GRN_NOT_FOUND", "GRN not found.");
+            distributorScopeId = user.DistributorId.Value;
         }
 
-        var grn = await _grnService.ConfirmAsync(id, request, GetCallerId(), ct);
+        var grn = await _grnService.ConfirmAsync(id, request, GetCallerId(), distributorScopeId, ct);
         return Ok(ResponseHelper.Ok(grn, correlationId));
     }
 

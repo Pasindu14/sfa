@@ -536,6 +536,11 @@ public class BillingService(
 
     public async Task<BillingDto> CancelAsync(int billingId, int salesRepId, CancellationToken ct = default)
     {
+        // Serialize all status transitions for this bill so cancel/approve/reject cannot race
+        // each other (e.g. a concurrent cancel + approve both observing 'Submitted').
+        await using var @lock = await _lockService.AcquireAsync($"billing:transition:{billingId}", ct)
+            ?? throw new ConcurrencyConflictException(new { billingId, message = "Another operation is in progress for this billing." });
+
         var billing = await _billingRepository.GetTrackedByIdWithItemsAsync(billingId, ct)
             ?? throw new NotFoundException("Billing", billingId);
 
@@ -576,6 +581,9 @@ public class BillingService(
 
     public async Task<BillingDto> ApproveAsync(int billingId, int userId, CancellationToken ct = default)
     {
+        await using var @lock = await _lockService.AcquireAsync($"billing:transition:{billingId}", ct)
+            ?? throw new ConcurrencyConflictException(new { billingId, message = "Another operation is in progress for this billing." });
+
         var billing = await _billingRepository.GetTrackedByIdAsync(billingId, ct)
             ?? throw new NotFoundException("Billing", billingId);
 
@@ -619,6 +627,9 @@ public class BillingService(
 
     public async Task<BillingDto> RejectAsync(int billingId, int userId, string? reason, CancellationToken ct = default)
     {
+        await using var @lock = await _lockService.AcquireAsync($"billing:transition:{billingId}", ct)
+            ?? throw new ConcurrencyConflictException(new { billingId, message = "Another operation is in progress for this billing." });
+
         var billing = await _billingRepository.GetTrackedByIdWithItemsAsync(billingId, ct)
             ?? throw new NotFoundException("Billing", billingId);
 

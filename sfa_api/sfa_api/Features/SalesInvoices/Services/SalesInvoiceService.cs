@@ -153,6 +153,29 @@ public class SalesInvoiceService(
             }
             if (itemError) continue;
 
+            // d2. Money-math validation — never trust the client's totals blindly.
+            const decimal tolerance = 0.01m;
+            var badLine = itemEntities.FirstOrDefault(
+                it => Math.Abs(it.TotalPrice - Math.Round(it.Quantity * it.UnitPrice, 2)) > tolerance);
+            if (badLine is not null)
+            {
+                errors.Add(new ImportBatchErrorDto(inv.VchBillNo,
+                    $"Line total mismatch for '{badLine.ItemErpCode}': {badLine.TotalPrice} != {badLine.Quantity} × {badLine.UnitPrice}"));
+                continue;
+            }
+            // Header total must reconcile with the sum of lines (free-issue vouchers carry
+            // notional line values that don't roll up to the header, so skip them).
+            if (!voucherIsFreeIssue)
+            {
+                var lineSum = itemEntities.Sum(it => it.TotalPrice);
+                if (Math.Abs(inv.TotalAmount - lineSum) > tolerance * Math.Max(1, itemEntities.Count))
+                {
+                    errors.Add(new ImportBatchErrorDto(inv.VchBillNo,
+                        $"Invoice total {inv.TotalAmount} does not match sum of lines {lineSum}"));
+                    continue;
+                }
+            }
+
             // e. Build invoice entity — if any item is free issue the whole voucher is FreeIssue
             Enum.TryParse<SalesInvoiceType>(inv.InvoiceType, out var invoiceType);
             if (voucherIsFreeIssue) invoiceType = SalesInvoiceType.FreeIssue;

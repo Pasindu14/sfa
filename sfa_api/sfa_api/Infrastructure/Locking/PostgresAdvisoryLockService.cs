@@ -11,7 +11,7 @@ public class PostgresAdvisoryLockService(IConfiguration config,
     public async Task<IAsyncDisposable?> AcquireAsync(
         string resource, CancellationToken ct = default)
     {
-        var lockKey = (long)resource.GetHashCode();
+        var lockKey = StableHash(resource);
         var conn = new NpgsqlConnection(_connectionString);
         await conn.OpenAsync(ct);
 
@@ -31,6 +31,24 @@ public class PostgresAdvisoryLockService(IConfiguration config,
 
         _logger.LogDebug("Acquired advisory lock for {Resource}", resource);
         return new AdvisoryLockHandle(conn, lockKey, resource, _logger);
+    }
+
+    /// <summary>
+    /// Deterministic 64-bit FNV-1a hash of the resource name. Unlike string.GetHashCode(),
+    /// this is stable across processes/runtimes (so all API instances compute the same lock
+    /// key for the same resource) and uses the full 64-bit space to minimize collisions.
+    /// </summary>
+    private static long StableHash(string s)
+    {
+        const ulong offset = 14695981039346656037UL;
+        const ulong prime  = 1099511628211UL;
+        var hash = offset;
+        foreach (var b in System.Text.Encoding.UTF8.GetBytes(s))
+        {
+            hash ^= b;
+            hash *= prime;
+        }
+        return unchecked((long)hash);
     }
 
     private sealed class AdvisoryLockHandle(NpgsqlConnection conn, long lockKey,
