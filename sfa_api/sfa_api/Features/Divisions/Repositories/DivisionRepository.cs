@@ -78,10 +78,22 @@ public class DivisionRepository(AppDbContext context) : IDivisionRepository
             .FirstOrDefaultAsync(t => t.Id == territoryId, ct);
 
     public async Task<bool> ExistsByNameAsync(string name, int territoryId, CancellationToken ct = default)
-        => await _context.Divisions.IgnoreQueryFilters().AnyAsync(d => d.Name == name && d.TerritoryId == territoryId, ct);
+    {
+        var query = _context.Divisions.IgnoreQueryFilters().Where(d => d.TerritoryId == territoryId);
+        query = _context.Database.ProviderName?.Contains("Npgsql") == true
+            ? query.Where(d => EF.Functions.ILike(d.Name, name))   // case-insensitive duplicate check
+            : query.Where(d => EF.Functions.Like(d.Name, name));
+        return await query.AnyAsync(ct);
+    }
 
     public async Task<bool> ExistsByNameAsync(string name, int territoryId, int excludeId, CancellationToken ct = default)
-        => await _context.Divisions.IgnoreQueryFilters().AnyAsync(d => d.Name == name && d.TerritoryId == territoryId && d.Id != excludeId, ct);
+    {
+        var query = _context.Divisions.IgnoreQueryFilters().Where(d => d.TerritoryId == territoryId && d.Id != excludeId);
+        query = _context.Database.ProviderName?.Contains("Npgsql") == true
+            ? query.Where(d => EF.Functions.ILike(d.Name, name))
+            : query.Where(d => EF.Functions.Like(d.Name, name));
+        return await query.AnyAsync(ct);
+    }
 
     public async Task<bool> TerritoryExistsAsync(int territoryId, CancellationToken ct = default)
         => await _context.Territories.IgnoreQueryFilters().AnyAsync(t => t.Id == territoryId, ct);

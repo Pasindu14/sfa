@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Moq;
 using sfa_api.Common.Errors;
 using sfa_api.Features.PurchaseOrders.Enums;
@@ -9,12 +10,14 @@ using sfa_api.Features.SalesInvoices.Repositories;
 using sfa_api.Features.SalesInvoices.Requests;
 using Microsoft.Extensions.Logging.Abstractions;
 using sfa_api.Features.SalesInvoices.Services;
+using sfa_api.Infrastructure.Persistence;
 
 namespace sfa_api.UnitTests.Features.SalesInvoices.Services;
 
 public class SalesInvoiceServiceTests
 {
     private readonly Mock<ISalesInvoiceRepository> _repoMock;
+    private readonly AppDbContext _dbContext;
     private readonly SalesInvoiceService _sut;
 
     private const int CallerId       = 42;
@@ -28,7 +31,16 @@ public class SalesInvoiceServiceTests
     public SalesInvoiceServiceTests()
     {
         _repoMock = new Mock<ISalesInvoiceRepository>();
-        _sut = new SalesInvoiceService(_repoMock.Object, NullLogger<SalesInvoiceService>.Instance);
+
+        // SQLite in-memory context — used only for CreateExecutionStrategy() +
+        // BeginTransactionAsync() that wrap the import; all data access is via the mock.
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlite("DataSource=:memory:")
+            .Options;
+        _dbContext = new AppDbContext(options);
+        _dbContext.Database.OpenConnection();
+
+        _sut = new SalesInvoiceService(_repoMock.Object, _dbContext, NullLogger<SalesInvoiceService>.Instance);
     }
 
     // ── Factory helpers ────────────────────────────────────────────────────

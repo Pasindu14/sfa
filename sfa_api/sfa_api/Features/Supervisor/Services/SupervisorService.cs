@@ -1,3 +1,4 @@
+using sfa_api.Common.Errors;
 using sfa_api.Features.Supervisor.DTOs;
 using sfa_api.Features.Supervisor.Repositories;
 
@@ -6,6 +7,12 @@ namespace sfa_api.Features.Supervisor.Services;
 public class SupervisorService(ISupervisorRepository repository) : ISupervisorService
 {
     private readonly ISupervisorRepository _repository = repository;
+
+    public async Task EnsureRepUnderSupervisorAsync(int supervisorId, int userId, CancellationToken ct = default)
+    {
+        if (!await _repository.IsRepUnderSupervisorAsync(supervisorId, userId, ct))
+            throw new AuthorizationException("this sales rep's data");
+    }
 
     public async Task<SupervisorSummaryDto> GetSummaryAsync(int supervisorId, DateOnly date, CancellationToken ct = default)
     {

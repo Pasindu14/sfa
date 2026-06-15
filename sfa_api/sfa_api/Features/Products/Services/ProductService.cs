@@ -34,6 +34,7 @@ public class ProductService(
 
     public async Task<ProductListDto> GetAllAsync(int page, int pageSize, string? search = null, CancellationToken ct = default)
     {
+        (page, pageSize) = sfa_api.Common.Extensions.PaginationHelper.Clamp(page, pageSize);
         var cacheKey = $"products:list:{page}:{pageSize}:{search}";
         var cached = await _cache.GetAsync<ProductListDto>(cacheKey, ct);
         if (cached is not null) return cached;

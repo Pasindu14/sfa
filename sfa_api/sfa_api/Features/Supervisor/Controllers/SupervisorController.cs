@@ -21,6 +21,12 @@ public class SupervisorController(
     private readonly IBillingService _billingService = billingService;
     private readonly ISalesTargetService _salesTargetService = salesTargetService;
 
+    private int GetSupervisorId()
+    {
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id);
+        return id;
+    }
+
     /// <summary>GET /api/v1/supervisor/summary?date=YYYY-MM-DD</summary>
     [HttpGet("summary")]
     public async Task<IActionResult> GetSummary(
@@ -43,6 +49,7 @@ public class SupervisorController(
         CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        await _service.EnsureRepUnderSupervisorAsync(GetSupervisorId(), userId, ct);
         var result = await _billingService.GetRepMonthlySalesItemwiseAsync(userId, year, month, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
@@ -56,6 +63,7 @@ public class SupervisorController(
         CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        await _service.EnsureRepUnderSupervisorAsync(GetSupervisorId(), userId, ct);
         var result = await _billingService.GetRepMonthlySalesAsync(userId, year, month, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
@@ -69,6 +77,7 @@ public class SupervisorController(
         CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        await _service.EnsureRepUnderSupervisorAsync(GetSupervisorId(), userId, ct);
         var result = await _salesTargetService.GetRepMonthlyTargetAsync(userId, year, month, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }

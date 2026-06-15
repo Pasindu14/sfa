@@ -78,10 +78,16 @@ public class AuthController(
 
         await _logoutValidator.ValidateOrThrowAsync(request, ct);
 
-        if (string.IsNullOrEmpty(request.RefreshToken))
-            return Ok(ResponseHelper.Ok("Logged out.", correlationId));
+        var (accessJti, accessExp) = GetCurrentAccessToken();
 
-        await _authService.LogoutAsync(request.RefreshToken, ct);
+        if (string.IsNullOrEmpty(request.RefreshToken))
+        {
+            // Still revoke the access token even if no refresh token was supplied.
+            await _authService.LogoutAsync(string.Empty, accessJti, accessExp, ct);
+            return Ok(ResponseHelper.Ok("Logged out.", correlationId));
+        }
+
+        await _authService.LogoutAsync(request.RefreshToken, accessJti, accessExp, ct);
         return Ok(ResponseHelper.Ok("Logged out successfully.", correlationId));
     }
 
@@ -98,8 +104,21 @@ public class AuthController(
         if (!int.TryParse(userIdClaim, out var userId))
             throw new AuthenticationException("AUTH_INVALID_TOKEN", "Invalid token.");
 
-        await _authService.LogoutAllAsync(userId, ct);
+        var (accessJti, accessExp) = GetCurrentAccessToken();
+
+        await _authService.LogoutAllAsync(userId, accessJti, accessExp, ct);
         return Ok(ResponseHelper.Ok("Logged out from all devices successfully.", correlationId));
+    }
+
+    /// <summary>
+    /// Reads the current request's access-token jti and expiry, stashed by
+    /// JwtBearer's OnTokenValidated. Null when the request carried no valid token.
+    /// </summary>
+    private (string? Jti, DateTime? ExpiresAt) GetCurrentAccessToken()
+    {
+        var jti = HttpContext.Items["AccessTokenJti"] as string;
+        var exp = HttpContext.Items["AccessTokenExpiresAt"] as DateTime?;
+        return (jti, exp);
     }
 
     /// <summary>

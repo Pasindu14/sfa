@@ -41,10 +41,22 @@ public class RegionRepository(AppDbContext context) : IRegionRepository
             .ToListAsync(ct);
 
     public async Task<bool> ExistsByNameAsync(string name, CancellationToken ct = default)
-        => await _context.Regions.IgnoreQueryFilters().AnyAsync(r => r.Name == name, ct);
+    {
+        var query = _context.Regions.IgnoreQueryFilters();
+        query = _context.Database.ProviderName?.Contains("Npgsql") == true
+            ? query.Where(r => EF.Functions.ILike(r.Name, name))   // case-insensitive duplicate check
+            : query.Where(r => EF.Functions.Like(r.Name, name));
+        return await query.AnyAsync(ct);
+    }
 
     public async Task<bool> ExistsByNameAsync(string name, int excludeId, CancellationToken ct = default)
-        => await _context.Regions.IgnoreQueryFilters().AnyAsync(r => r.Name == name && r.Id != excludeId, ct);
+    {
+        var query = _context.Regions.IgnoreQueryFilters().Where(r => r.Id != excludeId);
+        query = _context.Database.ProviderName?.Contains("Npgsql") == true
+            ? query.Where(r => EF.Functions.ILike(r.Name, name))
+            : query.Where(r => EF.Functions.Like(r.Name, name));
+        return await query.AnyAsync(ct);
+    }
 
     public async Task CreateAsync(Region region, CancellationToken ct = default)
         => await _context.Regions.AddAsync(region, ct);

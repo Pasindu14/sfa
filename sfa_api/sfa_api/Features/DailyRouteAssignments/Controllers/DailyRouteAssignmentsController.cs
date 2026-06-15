@@ -48,7 +48,9 @@ public class DailyRouteAssignmentsController(
     public async Task<IActionResult> GetById(int id, CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
-        var result = await _service.GetByIdAsync(id, ct);
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
+        var callerRole = User.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
+        var result = await _service.GetByIdAsync(id, callerId, callerRole, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 
@@ -90,7 +92,9 @@ public class DailyRouteAssignmentsController(
     public async Task<IActionResult> GetRepRoutes(int userId, CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
-        var result = await _service.GetRepRoutesAsync(userId, ct);
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
+        var callerRole = User.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
+        var result = await _service.GetRepRoutesAsync(userId, callerId, callerRole, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 

@@ -8,6 +8,13 @@ public class MobileSyncRepository(AppDbContext db) : IMobileSyncRepository
 {
     private readonly AppDbContext _db = db;
 
+    /// <summary>
+    /// Hard safety ceiling on the catalog sync response. Far above any realistic catalog
+    /// size; bounds memory/payload so a runaway query can never pull an unbounded result.
+    /// If a real catalog ever approaches this, the sync must move to paged/delta sync.
+    /// </summary>
+    public const int MaxCatalogProducts = 10_000;
+
     public Task<List<MobileSyncProductDto>> GetActiveProductsAsync(CancellationToken ct = default)
         => _db.Products
             .AsNoTracking()
@@ -25,6 +32,7 @@ public class MobileSyncRepository(AppDbContext db) : IMobileSyncRepository
                 p.DealerPackPrice,
                 p.DealerCasePrice,
                 p.Mrp))
+            .Take(MaxCatalogProducts)
             .ToListAsync(ct);
 
     public Task<List<MobileProductCategoryDto>> GetActiveProductCategoriesAsync(CancellationToken ct = default)

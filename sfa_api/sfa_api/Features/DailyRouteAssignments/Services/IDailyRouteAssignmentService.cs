@@ -5,7 +5,7 @@ namespace sfa_api.Features.DailyRouteAssignments.Services;
 
 public interface IDailyRouteAssignmentService
 {
-    Task<DailyRouteAssignmentDto> GetByIdAsync(int id, CancellationToken ct = default);
+    Task<DailyRouteAssignmentDto> GetByIdAsync(int id, int? callerId, string callerRole, CancellationToken ct = default);
 
     Task<DailyRouteAssignmentListDto> GetAllAsync(
         int page,
@@ -20,7 +20,7 @@ public interface IDailyRouteAssignmentService
     Task<IEnumerable<RepSummaryDto>> GetMyRepsAsync(int supervisorId, CancellationToken ct = default);
 
     /// <summary>Returns active routes available in the rep's assigned division.</summary>
-    Task<IEnumerable<RepRouteDto>> GetRepRoutesAsync(int userId, CancellationToken ct = default);
+    Task<IEnumerable<RepRouteDto>> GetRepRoutesAsync(int userId, int? callerId, string callerRole, CancellationToken ct = default);
 
     Task<DailyRouteAssignmentDto> CreateAsync(
         CreateDailyRouteAssignmentRequest request,

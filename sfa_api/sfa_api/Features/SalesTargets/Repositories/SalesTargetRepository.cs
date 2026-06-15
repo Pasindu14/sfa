@@ -27,7 +27,7 @@ public class SalesTargetRepository(AppDbContext context) : ISalesTargetRepositor
     }
 
     public async Task<SalesTarget?> GetByIdAsync(int id, CancellationToken ct = default)
-        => await _context.SalesTargets.FirstOrDefaultAsync(t => t.Id == id, ct);
+        => await _context.SalesTargets.FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted, ct);
 
     public void AddRange(IEnumerable<SalesTarget> targets)
         => _context.SalesTargets.AddRange(targets);
@@ -46,7 +46,7 @@ public class SalesTargetRepository(AppDbContext context) : ISalesTargetRepositor
     {
         take = Math.Clamp(take, 1, 200);
 
-        var query = _context.SalesTargets.AsQueryable();
+        var query = _context.SalesTargets.Where(t => !t.IsDeleted);
 
         if (year.HasValue)
             query = query.Where(t => t.Year == year.Value);

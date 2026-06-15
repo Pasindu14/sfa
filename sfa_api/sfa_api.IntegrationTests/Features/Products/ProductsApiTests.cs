@@ -514,7 +514,7 @@ public class ProductsApiTests
     }
 
     [Fact]
-    public async Task DeleteProduct_SetsIsActiveFalse()
+    public async Task DeleteProduct_HidesProductFromReads()
     {
         SetToken(AuthHelper.AdminToken);
 
@@ -528,12 +528,9 @@ public class ProductsApiTests
 
         await _client.DeleteAsync($"/api/v1/products/{id}");
 
-        // GET should still return the product (soft delete — record stays)
+        // Soft delete still keeps the row, but a DELETED product is no longer returned by reads.
         var getResponse = await _client.GetAsync($"/api/v1/products/{id}");
-        getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var getBody = await getResponse.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
-        getBody.GetProperty("data").GetProperty("isActive").GetBoolean().Should().BeFalse();
+        getResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]

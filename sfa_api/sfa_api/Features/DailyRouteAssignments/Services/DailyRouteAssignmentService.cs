@@ -20,11 +20,42 @@ public class DailyRouteAssignmentService(
     private readonly IDistributedLockService _lockService = lockService;
     private readonly ILogger<DailyRouteAssignmentService> _logger = logger;
 
-    public async Task<DailyRouteAssignmentDto> GetByIdAsync(int id, CancellationToken ct = default)
+    public async Task<DailyRouteAssignmentDto> GetByIdAsync(int id, int? callerId, string callerRole, CancellationToken ct = default)
     {
         var assignment = await _repo.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("DailyRouteAssignment", id);
+        await EnsureCanAccessRepAsync(assignment.UserId, callerId, callerRole, ct);
         return MapToDto(assignment);
+    }
+
+    /// <summary>
+    /// Enforces object-level authorization for rep-scoped data:
+    /// Admin/NSM/RSM see everything; a SalesRep only their own; a Supervisor only their
+    /// direct reports. Throws <see cref="AuthorizationException"/> (403) otherwise.
+    /// </summary>
+    private async Task EnsureCanAccessRepAsync(int targetUserId, int? callerId, string callerRole, CancellationToken ct)
+    {
+        var role = callerRole ?? string.Empty;
+
+        if (role.Equals("Admin", StringComparison.OrdinalIgnoreCase)
+            || role.Equals("NSM", StringComparison.OrdinalIgnoreCase)
+            || role.Equals("RSM", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        if (role.Equals("SalesRep", StringComparison.OrdinalIgnoreCase))
+        {
+            if (callerId == targetUserId) return;
+            throw new AuthorizationException("another sales rep's assignments");
+        }
+
+        if (role.Equals("Supervisor", StringComparison.OrdinalIgnoreCase) && callerId.HasValue)
+        {
+            var myReps = await _repo.GetRepsByReportsToAsync(callerId.Value, ct);
+            if (myReps.Any(r => r.Id == targetUserId)) return;
+            throw new AuthorizationException("this sales rep's assignments");
+        }
+
+        throw new AuthorizationException("this assignment");
     }
 
     public async Task<DailyRouteAssignmentListDto> GetAllAsync(
@@ -52,8 +83,10 @@ public class DailyRouteAssignmentService(
         return reps.Select(u => new RepSummaryDto(u.Id, u.Name));
     }
 
-    public async Task<IEnumerable<RepRouteDto>> GetRepRoutesAsync(int userId, CancellationToken ct = default)
+    public async Task<IEnumerable<RepRouteDto>> GetRepRoutesAsync(int userId, int? callerId, string callerRole, CancellationToken ct = default)
     {
+        await EnsureCanAccessRepAsync(userId, callerId, callerRole, ct);
+
         if (!await _repo.UserExistsAsync(userId, ct))
             throw new NotFoundException("User", userId);
 
@@ -141,6 +174,11 @@ public class DailyRouteAssignmentService(
         // Supervisor: flag for approval instead of deleting directly
         if (string.Equals(callerRole, "Supervisor", StringComparison.OrdinalIgnoreCase))
         {
+            // Supervisors may only act on their own reps' assignments
+            var myReps = await _repo.GetRepsByReportsToAsync(callerId ?? 0, ct);
+            if (!myReps.Any(r => r.Id == assignment.UserId))
+                throw new AuthorizationException("this assignment");
+
             if (assignment.DeletionStatus == DailyRouteAssignmentDeletionStatus.PendingApproval)
                 throw new BusinessRuleException(
                     "DELETION_ALREADY_REQUESTED",

@@ -155,8 +155,13 @@ public class AuthService(
         return BuildAuthResponse(newAccessToken, newPlainRefreshToken, newRefreshToken, user);
     }
 
-    public async Task LogoutAsync(string refreshToken, CancellationToken ct = default)
+    public async Task LogoutAsync(string refreshToken, string? accessTokenJti = null,
+        DateTime? accessTokenExpiresAt = null, CancellationToken ct = default)
     {
+        // Revoke the caller's current access token so it cannot be used after logout,
+        // even though it is still cryptographically valid and unexpired.
+        await RevokeAccessTokenAsync(accessTokenJti, accessTokenExpiresAt, ct);
+
         var tokenHash = _jwtHelper.HashToken(refreshToken);
         var storedToken = await _repo.GetRefreshTokenByHashAsync(tokenHash, ct);
 
@@ -170,12 +175,25 @@ public class AuthService(
             storedToken.UserId, storedToken.DeviceId);
     }
 
-    public async Task LogoutAllAsync(int userId, CancellationToken ct = default)
+    public async Task LogoutAllAsync(int userId, string? accessTokenJti = null,
+        DateTime? accessTokenExpiresAt = null, CancellationToken ct = default)
     {
+        // Kill all refresh tokens (no new access tokens can be minted) and revoke the
+        // caller's current access token immediately.
+        await RevokeAccessTokenAsync(accessTokenJti, accessTokenExpiresAt, ct);
+
         await _repo.RevokeAllUserTokensAsync(userId, ct);
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("User {UserId} logged out from all devices", userId);
+    }
+
+    private async Task RevokeAccessTokenAsync(string? jti, DateTime? expiresAt, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(jti) || !expiresAt.HasValue || expiresAt.Value <= DateTime.UtcNow)
+            return;
+
+        await _revocationService.RevokeAsync(jti, expiresAt.Value, ct);
     }
 
     // ── Private Helpers ────────────────────────────────────────────────────

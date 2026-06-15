@@ -113,6 +113,17 @@ public class StockTakingService(
         var line = await _repo.GetLineByIdAsync(lineId, ct)
             ?? throw new NotFoundException("STOCK_TAKING_LINE_NOT_FOUND", $"Line {lineId} not found.");
 
+        // Idempotency: a line may be adjusted exactly once. Re-adjusting would re-move
+        // stock against a fresh QoH read and corrupt the ledger.
+        if (line.IsAdjusted)
+            throw new BusinessRuleException("STOCK_TAKING_LINE_ALREADY_ADJUSTED",
+                "This line has already been adjusted and cannot be adjusted again.");
+
+        // Only a submitted stock take has a meaningful SystemQuantity/Variance to reconcile.
+        if (line.Submission.Status != StockTakingSubmissionStatus.Submitted)
+            throw new BusinessRuleException("STOCK_TAKING_NOT_SUBMITTED",
+                "Stock can only be adjusted for a submitted stock take.");
+
         var distributorId = line.Submission.DistributorId;
         var productId     = line.ProductId;
         var stockType     = line.StockType;
@@ -232,25 +243,51 @@ public class StockTakingService(
 
         EnsurePeriodOpen(period);
 
-        var submission = await GetTrackedSubmissionAsync(periodId, distributorId, ct);
+        StockTakingSubmission submission = null!;
 
-        // Snapshot system stock for every line at this moment
-        foreach (var line in submission.Lines)
+        // The snapshot + status flip is atomic and the per-line SELECT … FOR UPDATE locks
+        // must be held until commit (they only hold inside an open transaction), so the
+        // captured SystemQuantity/Variance is consistent against concurrent billing.
+        var strategy = _db.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
         {
-            var stock = await _stockRepo.GetStockForUpdateAsync(
-                distributorId, line.ProductId, line.StockType, ct);
+            await using var tx = await _repo.BeginTransactionAsync(ct);
+            try
+            {
+                submission = await GetTrackedSubmissionAsync(periodId, distributorId, ct);
 
-            line.SystemQuantity = stock?.QuantityOnHand ?? 0m;
-            line.Variance       = line.CountedQuantity - line.SystemQuantity;
-        }
+                // Idempotency: a stock take is submitted exactly once; re-submitting would
+                // overwrite the captured snapshot/variance.
+                if (submission.Status == StockTakingSubmissionStatus.Submitted)
+                    throw new BusinessRuleException("STOCK_TAKING_ALREADY_SUBMITTED",
+                        "This stock take has already been submitted.");
 
-        submission.Status      = StockTakingSubmissionStatus.Submitted;
-        submission.SubmittedAt = DateTime.UtcNow;
-        submission.SubmittedBy = userId;
-        submission.UpdatedAt   = DateTime.UtcNow;
-        submission.UpdatedBy   = userId;
+                // Snapshot system stock for every line, holding a row lock on each.
+                foreach (var line in submission.Lines)
+                {
+                    var stock = await _stockRepo.GetStockForUpdateAsync(
+                        distributorId, line.ProductId, line.StockType, ct);
 
-        await _repo.SaveChangesAsync(ct);
+                    line.SystemQuantity = stock?.QuantityOnHand ?? 0m;
+                    line.Variance       = line.CountedQuantity - line.SystemQuantity;
+                }
+
+                submission.Status      = StockTakingSubmissionStatus.Submitted;
+                submission.SubmittedAt = DateTime.UtcNow;
+                submission.SubmittedBy = userId;
+                submission.UpdatedAt   = DateTime.UtcNow;
+                submission.UpdatedBy   = userId;
+
+                await _repo.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+            }
+            catch
+            {
+                await tx.RollbackAsync(ct);
+                throw;
+            }
+        });
+
         return MapSubmission(submission);
     }
 

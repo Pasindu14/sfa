@@ -9,10 +9,12 @@ public class ProductRepository(AppDbContext context) : IProductRepository
     private readonly AppDbContext _context = context;
 
     public async Task<Product?> GetByIdAsync(int id, CancellationToken ct = default)
+        // IgnoreQueryFilters so a deactivated product can still be fetched (e.g. to reactivate),
+        // but a soft-DELETED product is never returned.
         => await _context.Products.IgnoreQueryFilters()
             .Include(p => p.Fleet)
             .Include(p => p.Category)
-            .FirstOrDefaultAsync(p => p.Id == id, ct);
+            .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct);
 
     public async Task<(IEnumerable<Product> Products, int TotalCount)> GetAllAsync(int skip, int take, string? search = null, CancellationToken ct = default)
     {

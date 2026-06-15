@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using sfa_api.Common.Errors;
 using sfa_api.Features.PurchaseOrders.Enums;
@@ -7,14 +8,17 @@ using sfa_api.Features.SalesInvoices.Entities;
 using sfa_api.Features.SalesInvoices.Enums;
 using sfa_api.Features.SalesInvoices.Repositories;
 using sfa_api.Features.SalesInvoices.Requests;
+using sfa_api.Infrastructure.Persistence;
 
 namespace sfa_api.Features.SalesInvoices.Services;
 
 public class SalesInvoiceService(
     ISalesInvoiceRepository repository,
+    AppDbContext db,
     ILogger<SalesInvoiceService> logger) : ISalesInvoiceService
 {
     private readonly ISalesInvoiceRepository _repository = repository;
+    private readonly AppDbContext _db = db;
     private readonly ILogger<SalesInvoiceService> _logger = logger;
 
     public async Task<ImportBatchResultDto> ImportAsync(
@@ -26,6 +30,33 @@ public class SalesInvoiceService(
             "Sales invoice import started: {InvoiceCount} invoice(s) in file {FileName} by caller {CallerId}",
             request.Invoices.Count, request.FileName, callerId);
 
+        // The entire import is atomic — batch header, invoices and finalize either all
+        // persist together or none do (no orphaned "Processing" batch on failure).
+        // Wrapped in the execution strategy because the Npgsql retrying strategy forbids
+        // user-initiated transactions unless wrapped this way.
+        var strategy = _db.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await _db.Database.BeginTransactionAsync(ct);
+            try
+            {
+                var result = await ImportCoreAsync(request, callerId, ct);
+                await transaction.CommitAsync(ct);
+                return result;
+            }
+            catch
+            {
+                await transaction.RollbackAsync(ct);
+                throw;
+            }
+        });
+    }
+
+    private async Task<ImportBatchResultDto> ImportCoreAsync(
+        ImportSalesInvoicesRequest request,
+        int callerId,
+        CancellationToken ct)
+    {
         // ── Step 1: Create ImportBatch (Processing) ────────────────────────
         var seqNo = await _repository.GetNextBatchNumberAsync(ct);
         var batchNumber = $"IMP-{DateTime.UtcNow.Year}-{seqNo:D5}";

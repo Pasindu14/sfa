@@ -89,6 +89,7 @@ public class UserRepository(AppDbContext context) : IUserRepository
         if (user != null)
         {
             user.IsDeleted = true;
+            user.IsActive = false; // a deleted user must also be inactive (cannot log in)
             _context.Users.Update(user);
         }
     }

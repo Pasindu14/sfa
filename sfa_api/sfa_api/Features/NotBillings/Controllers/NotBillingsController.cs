@@ -43,6 +43,11 @@ public class NotBillingsController(
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
 
+        // A SalesRep may only see their own records; the client-supplied salesRepId is ignored for reps.
+        var callerRole = User.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
+        if (string.Equals(callerRole, "SalesRep", StringComparison.OrdinalIgnoreCase))
+            salesRepId = GetCallerId();
+
         NotBillingReason? parsedReason = Enum.TryParse<NotBillingReason>(reason, true, out var r) ? r : null;
         DateOnly? parsedDateFrom = DateOnly.TryParse(dateFrom, out var df) ? df : null;
         DateOnly? parsedDateTo   = DateOnly.TryParse(dateTo, out var dt) ? dt : null;
@@ -65,6 +70,13 @@ public class NotBillingsController(
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
         var notBilling = await _notBillingService.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("NotBilling", id);
+
+        // A SalesRep may only read their own records.
+        var callerRole = User.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
+        if (string.Equals(callerRole, "SalesRep", StringComparison.OrdinalIgnoreCase)
+            && notBilling.SalesRepId != GetCallerId())
+            throw new AuthorizationException("this not-billing record");
+
         return Ok(ResponseHelper.Ok(notBilling, correlationId));
     }
 

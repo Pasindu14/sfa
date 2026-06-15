@@ -37,6 +37,7 @@ public class DistributorService(
 
     public async Task<DistributorListDto> GetAllAsync(int page, int pageSize, string? search = null, bool? isActive = null, CancellationToken ct = default)
     {
+        (page, pageSize) = sfa_api.Common.Extensions.PaginationHelper.Clamp(page, pageSize);
         var cacheKey = $"distributors:list:{page}:{pageSize}:{search}:{isActive}";
         var cached = await _cache.GetAsync<DistributorListDto>(cacheKey, ct);
         if (cached is not null) return cached;

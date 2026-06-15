@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using sfa_api.Common.Errors;
+using sfa_api.Common.Extensions;
 using sfa_api.Features.Stock.Entities;
 using sfa_api.Features.Stock.Enums;
 using sfa_api.Infrastructure.Persistence;
@@ -41,14 +42,17 @@ public class StockRepository(AppDbContext db) : IStockRepository
 
     public Task<List<StockTransaction>> GetTransactionsByDistributorAndProductAsync(
         int distributorId, int productId, int page, int pageSize, CancellationToken ct = default)
-        => _db.StockTransactions
+    {
+        var (_, size, skip) = PaginationHelper.Normalize(page, pageSize);
+        return _db.StockTransactions
               .AsNoTracking()
               .Include(x => x.Product)
               .Where(x => x.DistributorId == distributorId && x.ProductId == productId)
               .OrderByDescending(x => x.TransactedAt)
-              .Skip((page - 1) * pageSize)
-              .Take(pageSize)
+              .Skip(skip)
+              .Take(size)
               .ToListAsync(ct);
+    }
 
     public Task<int> GetTransactionCountAsync(int distributorId, int productId, CancellationToken ct = default)
         => _db.StockTransactions
@@ -136,8 +140,22 @@ public class StockRepository(AppDbContext db) : IStockRepository
         CancellationToken ct = default)
     {
         var stock = await _db.DistributorStocks
-            .FirstOrDefaultAsync(x => x.DistributorId == distributorId && x.ProductId == productId && x.StockType == stockType, ct)
-            ?? throw new NotFoundException("DistributorStock", $"distributor={distributorId}/product={productId}/stockType={stockType}");
+            .FirstOrDefaultAsync(x => x.DistributorId == distributorId && x.ProductId == productId && x.StockType == stockType, ct);
+
+        if (stock is null)
+        {
+            // First time this distributor holds this product/stockType — start at zero.
+            // (e.g. a positive stock-take adjustment for a never-before-held product.)
+            stock = new DistributorStock
+            {
+                DistributorId  = distributorId,
+                ProductId      = productId,
+                StockType      = stockType,
+                QuantityOnHand = 0m,
+                LastUpdatedAt  = DateTime.UtcNow
+            };
+            _db.DistributorStocks.Add(stock);
+        }
 
         var quantityBefore = stock.QuantityOnHand;
         var quantityAfter  = quantityBefore + quantity;

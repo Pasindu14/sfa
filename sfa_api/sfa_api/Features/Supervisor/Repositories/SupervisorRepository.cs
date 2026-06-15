@@ -8,6 +8,15 @@ public class SupervisorRepository(AppDbContext context) : ISupervisorRepository
 {
     private readonly AppDbContext _context = context;
 
+    public async Task<bool> IsRepUnderSupervisorAsync(int supervisorId, int userId, CancellationToken ct = default)
+        => await _context.UserReportingLines
+            .AnyAsync(rl => rl.ReportsToUserId == supervisorId
+                         && rl.UserId == userId
+                         && rl.IsActive
+                         && !rl.IsDeleted
+                         && rl.User!.Role == UserRole.SalesRep
+                         && !rl.User.IsDeleted, ct);
+
     public async Task<int> CountRepsByReportsToAsync(int supervisorId, CancellationToken ct = default)
         => await _context.UserReportingLines
             .Where(rl => rl.ReportsToUserId == supervisorId

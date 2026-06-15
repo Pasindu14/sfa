@@ -93,6 +93,12 @@ public class UserReportingLineService(
                 "USER_ROLE_NOT_ASSIGNABLE",
                 "Admin and Distributor users cannot be assigned a reporting line.");
 
+        // Reject reporting cycles (e.g. A→B then B→A, at any depth)
+        if (await WouldCreateCycleAsync(request.UserId, request.ReportsToUserId, ct))
+            throw new BusinessRuleException(
+                "REPORTING_CYCLE",
+                "This assignment would create a reporting cycle: the chosen manager already reports to this user (directly or indirectly).");
+
         // Deactivate the existing active line for this user if one exists
         var existingLine = await _repo.GetActiveByUserIdAsync(request.UserId, ct);
         if (existingLine is not null)
@@ -149,6 +155,12 @@ public class UserReportingLineService(
                 "SELF_REPORTING_NOT_ALLOWED",
                 "A user cannot report to themselves.");
 
+        // Reject reporting cycles at any depth
+        if (await WouldCreateCycleAsync(line.UserId, request.ReportsToUserId, ct))
+            throw new BusinessRuleException(
+                "REPORTING_CYCLE",
+                "This assignment would create a reporting cycle: the chosen manager already reports to this user (directly or indirectly).");
+
         line.ReportsToUserId = request.ReportsToUserId;
         line.EffectiveFrom = request.EffectiveFrom;
         line.UpdatedBy = callerId;
@@ -192,6 +204,32 @@ public class UserReportingLineService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("UserReportingLine {Id} activated", id);
+    }
+
+    /// <summary>
+    /// Returns true if making <paramref name="userId"/> report to <paramref name="managerId"/>
+    /// would create a cycle — i.e. the manager already reports (directly or transitively)
+    /// to the user. Walks UP the active reporting chain from the proposed manager.
+    /// </summary>
+    private async Task<bool> WouldCreateCycleAsync(int userId, int managerId, CancellationToken ct)
+    {
+        var currentId = managerId;
+        var visited = new HashSet<int>();
+
+        while (true)
+        {
+            if (currentId == userId)
+                return true; // the chain loops back to the user → cycle
+
+            if (!visited.Add(currentId))
+                return false; // a pre-existing loop not involving the user; stop safely
+
+            var managerLine = await _repo.GetActiveByUserIdAsync(currentId, ct);
+            if (managerLine is null)
+                return false; // reached the top of the hierarchy, no cycle
+
+            currentId = managerLine.ReportsToUserId;
+        }
     }
 
     private static UserReportingLineDto MapToDto(UserReportingLine rl) => new(

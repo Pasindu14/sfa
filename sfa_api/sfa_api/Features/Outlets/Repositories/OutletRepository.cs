@@ -11,6 +11,8 @@ public class OutletRepository(AppDbContext context) : IOutletRepository
     private readonly AppDbContext _context = context;
 
     public async Task<Outlet?> GetByIdAsync(int id, CancellationToken ct = default)
+        // IgnoreQueryFilters so a deactivated outlet can still be fetched (e.g. to reactivate),
+        // but a soft-DELETED outlet is never returned.
         => await _context.Outlets
             .IgnoreQueryFilters()
             .Include(o => o.Route)
@@ -21,7 +23,7 @@ public class OutletRepository(AppDbContext context) : IOutletRepository
                 .ThenInclude(r => r!.Area)
             .Include(o => o.Route)
                 .ThenInclude(r => r!.Region)
-            .FirstOrDefaultAsync(o => o.Id == id, ct);
+            .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted, ct);
 
     public async Task<(IEnumerable<Outlet> Outlets, int TotalCount)> GetAllAsync(
         int skip, int take, bool? isActive = null, string? search = null, CancellationToken ct = default)

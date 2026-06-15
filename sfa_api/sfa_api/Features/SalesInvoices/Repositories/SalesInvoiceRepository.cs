@@ -93,10 +93,11 @@ public class SalesInvoiceRepository(AppDbContext context) : ISalesInvoiceReposit
             query = query.Where(x => x.DistributorId == distributorId.Value);
 
         var total = await query.CountAsync(ct);
+        var (_, size, skip) = sfa_api.Common.Extensions.PaginationHelper.Normalize(page, pageSize);
         var items = await query
             .OrderByDescending(x => x.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
+            .Skip(skip)
+            .Take(size)
             .ToListAsync(ct);
 
         return (items, total);

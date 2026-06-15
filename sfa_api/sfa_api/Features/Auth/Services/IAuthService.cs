@@ -7,6 +7,8 @@ public interface IAuthService
 {
     Task<AuthResponseDto> LoginAsync(LoginRequest request, CancellationToken ct = default);
     Task<AuthResponseDto> RefreshAsync(RefreshRequest request, CancellationToken ct = default);
-    Task LogoutAsync(string refreshToken, CancellationToken ct = default);
-    Task LogoutAllAsync(int userId, CancellationToken ct = default);
+    Task LogoutAsync(string refreshToken, string? accessTokenJti = null,
+        DateTime? accessTokenExpiresAt = null, CancellationToken ct = default);
+    Task LogoutAllAsync(int userId, string? accessTokenJti = null,
+        DateTime? accessTokenExpiresAt = null, CancellationToken ct = default);
 }

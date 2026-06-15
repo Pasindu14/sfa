@@ -1,3 +1,4 @@
+using sfa_api.Common.Extensions;
 using sfa_api.Features.Notifications.DTOs;
 using sfa_api.Features.Notifications.Repositories;
 
@@ -9,10 +10,10 @@ public class NotificationHistoryService(INotificationRepository repository) : IN
 
     public async Task<NotificationListDto> GetPagedAsync(int userId, int page, int pageSize, CancellationToken ct = default)
     {
-        var skip = (page - 1) * pageSize;
-        var (items, totalCount) = await _repository.GetPagedAsync(userId, skip, pageSize, ct);
+        var (normPage, normPageSize, skip) = PaginationHelper.Normalize(page, pageSize);
+        var (items, totalCount) = await _repository.GetPagedAsync(userId, skip, normPageSize, ct);
         var dtos = items.Select(n => new NotificationDto(n.Id, n.Title, n.Body, n.Data, n.IsRead, n.CreatedAt));
-        return new NotificationListDto(dtos, totalCount, page, pageSize);
+        return new NotificationListDto(dtos, totalCount, normPage, normPageSize);
     }
 
     public async Task<UnreadCountDto> GetUnreadCountAsync(int userId, CancellationToken ct = default)

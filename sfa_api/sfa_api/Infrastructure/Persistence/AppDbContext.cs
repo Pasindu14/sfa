@@ -103,13 +103,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).UseIdentityColumn();
-            e.HasIndex(x => x.Email).IsUnique();
-            e.HasIndex(x => x.Username).IsUnique();
-            e.HasIndex(x => x.Phone).IsUnique();
+            // Filtered unique indexes: a soft-deleted user frees up their email/username/phone
+            // for reuse, while still preventing duplicates among live users.
+            e.HasIndex(x => x.Email).IsUnique().HasFilter("\"IsDeleted\" = false");
+            e.HasIndex(x => x.Username).IsUnique().HasFilter("\"IsDeleted\" = false");
+            e.HasIndex(x => x.Phone).IsUnique().HasFilter("\"IsDeleted\" = false");
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt);
-            // NOTE: No HasQueryFilter (IsActive or IsDeleted) - we display both active and inactive records
-            // Soft delete is for audit purposes only, records are never physically removed
+            // Filter out soft-DELETED users globally so they cannot be read, listed,
+            // authenticated, or refreshed (the navigation from RefreshToken inherits this).
+            // IsActive is deliberately NOT filtered: deactivated users must remain visible
+            // to admins (e.g. to reactivate them); login already blocks IsActive == false.
+            e.HasQueryFilter(x => !x.IsDeleted);
             e.HasOne(x => x.Distributor)
              .WithMany()
              .HasForeignKey(x => x.DistributorId)
@@ -324,7 +329,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Id).UseIdentityColumn();
             e.HasIndex(x => x.IsActive);
             e.HasIndex(x => x.IsDeleted);
-            e.HasIndex(x => x.Name).HasFilter("\"IsActive\" = true");
+            // Unique among active routes within a division — DB backstop for the duplicate-name
+            // check, closing the create-create race the app-level check alone can't.
+            e.HasIndex(x => new { x.Name, x.DivisionId }).IsUnique().HasFilter("\"IsActive\" = true");
             e.HasQueryFilter(x => x.IsActive && !x.IsDeleted);
             e.HasIndex(x => x.DivisionId);
             e.HasIndex(x => x.TerritoryId);
@@ -398,6 +405,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.UpdatedAt);
             e.HasIndex(x => x.FleetId);
             e.HasIndex(x => x.CategoryId);
+            // Money columns: fixed precision, consistent with every other monetary value.
+            e.Property(x => x.DealerPackPrice).HasColumnType("decimal(18,2)");
+            e.Property(x => x.DealerCasePrice).HasColumnType("decimal(18,2)");
+            e.Property(x => x.Mrp).HasColumnType("decimal(18,2)");
             e.HasOne(x => x.Fleet).WithMany().HasForeignKey(x => x.FleetId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.Category).WithMany().HasForeignKey(x => x.CategoryId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
             // NOTE: No HasQueryFilter (IsActive or IsDeleted) — repositories use IgnoreQueryFilters() throughout and

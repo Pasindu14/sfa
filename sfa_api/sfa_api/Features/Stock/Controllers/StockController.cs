@@ -75,6 +75,7 @@ public class StockController(
     /// Returns all current stock levels for a given distributor.
     /// </summary>
     [HttpGet("distributors/{distributorId:int}")]
+    [Authorize(Roles = "Admin,NSM,RSM,ASM")]
     public async Task<IActionResult> GetByDistributor(
         int distributorId,
         [FromQuery] int page = 1,
@@ -82,7 +83,8 @@ public class StockController(
         CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
-        var skip = (page - 1) * pageSize;
+        var (page2, pageSize2, skip) = PaginationHelper.Normalize(page, pageSize);
+        page = page2; pageSize = pageSize2;
         var (stocks, total) = await _stockRepository.GetStockByDistributorAsync(distributorId, skip, pageSize, ct);
         var dtos = stocks.Select(s => new DistributorStockDto(
             s.Id,
@@ -136,6 +138,7 @@ public class StockController(
     /// Returns paginated stock transaction history for a distributor+product combination.
     /// </summary>
     [HttpGet("distributors/{distributorId:int}/products/{productId:int}/transactions")]
+    [Authorize(Roles = "Admin,NSM,RSM,ASM")]
     public async Task<IActionResult> GetTransactions(
         int distributorId, int productId,
         [FromQuery] int page = 1,

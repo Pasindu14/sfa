@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SFA API — Industry-Standard Review</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#161922; --panel-2:#1c2030; --ink:#e8ebf2; --muted:#9aa3b2;
+    --line:#262b39; --accent:#6ea8fe; --accent-2:#8b7bff;
+    --crit:#ff5c6c; --high:#ff9f43; --med:#ffd166; --low:#5fd0a0; --ok:#46c98b;
+    --chip-crit:#3a1620; --chip-high:#3a2613; --chip-med:#332b10; --chip-low:#10291f;
+    --mono:"SF Mono",SFMono-Regular,ui-monospace,"Cascadia Code","JetBrains Mono",Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:linear-gradient(180deg,#0c0e13,#0f1115 40%);color:var(--ink);font-family:var(--sans);line-height:1.6;font-size:15px}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:1100px;margin:0 auto;padding:0 24px}
+  code{font-family:var(--mono);font-size:.86em;background:#0c0e13;border:1px solid var(--line);padding:1px 6px;border-radius:5px;color:#c9d3e6;white-space:nowrap}
+
+  header.hero{padding:56px 0 30px;border-bottom:1px solid var(--line);background:
+    radial-gradient(900px 300px at 15% -10%,rgba(110,168,254,.14),transparent),
+    radial-gradient(700px 260px at 95% 0%,rgba(139,123,255,.12),transparent)}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin:0 0 12px}
+  h1{font-size:38px;line-height:1.1;margin:0 0 14px;font-weight:700;letter-spacing:-.02em}
+  .lede{color:var(--muted);max-width:760px;font-size:16px;margin:0}
+  .meta{display:flex;flex-wrap:wrap;gap:10px 28px;margin-top:24px;font-size:13px;color:var(--muted)}
+  .meta b{color:var(--ink);font-weight:600}
+
+  section{padding:42px 0;border-bottom:1px solid var(--line)}
+  h2{font-size:24px;margin:0 0 6px;letter-spacing:-.01em}
+  h2 .num{font-family:var(--mono);color:var(--accent);font-size:16px;margin-right:10px}
+  .sub{color:var(--muted);margin:0 0 24px;max-width:820px}
+  h3{font-size:18px;margin:30px 0 10px}
+
+  /* verdict banner */
+  .verdict{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center;background:linear-gradient(135deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:16px;padding:26px 28px;margin:8px 0 4px}
+  .score{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:130px;padding:14px 18px;border-radius:14px;background:#0c0e13;border:1px solid var(--line)}
+  .score .big{font-size:40px;font-weight:800;line-height:1;letter-spacing:-.03em}
+  .score .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:8px;text-align:center}
+  .verdict p{margin:0 0 8px}
+  .verdict .tagline{font-size:17px;color:var(--ink)}
+
+  /* stat dashboard */
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin:26px 0 6px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:16px 16px 14px;position:relative;overflow:hidden}
+  .stat .n{font-size:30px;font-weight:800;line-height:1}
+  .stat .t{font-size:12px;color:var(--muted);margin-top:6px}
+  .stat::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px}
+  .stat.c::before{background:var(--crit)} .stat.h::before{background:var(--high)}
+  .stat.m::before{background:var(--med)} .stat.l::before{background:var(--low)}
+  .stat.f::before{background:var(--accent)}
+  @media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}.verdict{grid-template-columns:1fr}}
+
+  /* severity chips */
+  .chip{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;font-weight:600;text-transform:uppercase;padding:2px 8px;border-radius:999px;border:1px solid transparent;vertical-align:middle}
+  .chip.crit{color:var(--crit);background:var(--chip-crit);border-color:#5a2230}
+  .chip.high{color:var(--high);background:var(--chip-high);border-color:#5a3a1c}
+  .chip.med{color:var(--med);background:var(--chip-med);border-color:#4d4018}
+  .chip.low{color:var(--low);background:var(--chip-low);border-color:#1d4536}
+  .chip.ok{color:var(--ok);background:#0f2a1e;border-color:#1d4d36}
+
+  .verdict-pill{font-family:var(--mono);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:3px 10px;border-radius:6px}
+  .v-yes{color:#0c1a12;background:var(--ok)} .v-mostly{color:#1a1305;background:var(--med)} .v-no{color:#fff;background:var(--crit)}
+
+  /* theme cards */
+  .themes{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:760px){.themes{grid-template-columns:1fr}}
+  .theme{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:18px 20px}
+  .theme h4{margin:0 0 6px;font-size:15.5px;display:flex;align-items:center;gap:9px}
+  .theme h4 .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+  .theme p{margin:0 0 8px;color:var(--muted);font-size:13.5px}
+  .theme .where{font-size:12.5px;color:#7f889a}
+  .theme .where b{color:#b9c2d4;font-weight:600}
+
+  /* plain-language explainers */
+  .explainers{margin-top:14px;display:flex;flex-direction:column;gap:12px}
+  details.explainer{background:var(--panel);border:1px solid var(--line);border-radius:13px;overflow:hidden}
+  details.explainer summary{cursor:pointer;list-style:none;padding:16px 20px;display:flex;align-items:center;gap:13px;font-weight:600;font-size:15.5px}
+  details.explainer summary::-webkit-details-marker{display:none}
+  details.explainer summary .tnum{font-family:var(--mono);font-size:12px;font-weight:800;color:#0c0e13;background:var(--accent);width:25px;height:25px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  details.explainer summary .ttl{flex:1}
+  details.explainer summary .arrow{color:var(--muted);font-size:12px;transition:transform .2s;flex:0 0 auto}
+  details.explainer[open] summary .arrow{transform:rotate(90deg)}
+  details.explainer .body{padding:0 20px 20px 58px}
+  .exp-row{margin-top:15px}
+  .exp-row .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;margin-bottom:4px;color:var(--accent)}
+  .exp-row.bad .k{color:var(--high)} .exp-row.fix .k{color:var(--low)}
+  .exp-row p{margin:0;color:#c7cedd;font-size:14px}
+  .exp-row.bad p{background:#0c0e13;border:1px solid var(--line);border-left:3px solid var(--high);border-radius:8px;padding:11px 14px;color:#d2d8e6;font-size:13.5px}
+  .exp-row.fix p{border-left:3px solid var(--low);padding-left:13px;color:#bfe7d3}
+  @media(max-width:760px){details.explainer .body{padding-left:20px}}
+
+  /* matrix table */
+  table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:6px}
+  thead th{text-align:left;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:10px 12px;border-bottom:1px solid var(--line)}
+  tbody td{padding:11px 12px;border-bottom:1px solid #1d2230;vertical-align:middle}
+  tbody tr:hover{background:#13161f}
+  td.feat{font-weight:600;white-space:nowrap}
+  td.cnt{font-family:var(--mono);text-align:center;width:42px}
+  .muted{color:var(--muted)}
+
+  /* finding lists */
+  .feature{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin:18px 0}
+  .feature .fhead{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:4px}
+  .feature h3{margin:0;font-size:17.5px}
+  .feature .strengths{font-size:13.5px;color:var(--low);margin:10px 0 14px;padding-left:2px}
+  .feature .strengths b{color:#7fe0b6}
+  ul.find{list-style:none;margin:0;padding:0}
+  ul.find li{padding:9px 0;border-top:1px solid #1d2230;display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start}
+  ul.find li:first-child{border-top:none}
+  ul.find .desc{font-size:14px}
+  ul.find .ref{display:block;margin-top:3px;font-family:var(--mono);font-size:11.5px;color:#727c90}
+  .clean{color:var(--ok);font-size:13.5px;margin-top:8px}
+
+  .cat{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-2);margin:34px 0 2px;padding-top:6px}
+
+  /* priority list */
+  ol.prio{counter-reset:p;list-style:none;padding:0;margin:0}
+  ol.prio li{counter-increment:p;position:relative;padding:14px 16px 14px 56px;background:var(--panel);border:1px solid var(--line);border-radius:11px;margin-bottom:10px}
+  ol.prio li::before{content:counter(p);position:absolute;left:14px;top:13px;width:28px;height:28px;border-radius:8px;background:#0c0e13;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;color:var(--accent)}
+  ol.prio b{font-weight:650}
+  ol.prio .d{display:block;color:var(--muted);font-size:13px;margin-top:3px}
+
+  .callout{background:linear-gradient(135deg,#1a1320,#181522);border:1px solid #3a2b4d;border-left:3px solid var(--accent-2);border-radius:12px;padding:18px 22px;margin:18px 0}
+  .callout.warn{background:linear-gradient(135deg,#1f1417,#1c1213);border-color:#5a2230;border-left-color:var(--crit)}
+  .callout h4{margin:0 0 6px;font-size:15px}
+  .callout p{margin:0;color:#c7c2d4;font-size:14px}
+
+  footer{padding:36px 0 60px;color:#6a7283;font-size:12.5px}
+  .toc{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+  .toc a{font-size:12.5px;font-family:var(--mono);background:var(--panel);border:1px solid var(--line);padding:5px 11px;border-radius:8px;color:#aeb7c8}
+  .toc a:hover{border-color:var(--accent);text-decoration:none;color:var(--ink)}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:14px;align-items:center}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Code Review · Architecture Audit</p>
+    <h1>SFA API — Industry-Standard Review</h1>
+    <p class="lede">An exhaustive, per-feature audit of the <code>sfa_api</code> service (.NET 8 ASP.NET Core, PostgreSQL) assessing whether the codebase meets professional production-API standards. Read-only review — no code was modified.</p>
+    <div class="meta">
+      <span><b>Scope:</b> 26 features · 31 controllers · cross-cutting infrastructure</span>
+      <span><b>Method:</b> 11 parallel independent auditors</span>
+      <span><b>Date:</b> 15 Jun 2026</span>
+      <span><b>Repo:</b> D:\Github\sfa</span>
+    </div>
+    <div class="toc">
+      <a href="#verdict">Verdict</a>
+      <a href="#themes">Systemic themes</a>
+      <a href="#matrix">Feature matrix</a>
+      <a href="#priorities">Fix priorities</a>
+      <a href="#infra">Infrastructure</a>
+      <a href="#identity">Identity &amp; access</a>
+      <a href="#master">Master data</a>
+      <a href="#txn">Transactions</a>
+      <a href="#field">Field ops</a>
+    </div>
+  </div>
+</header>
+
+<!-- ============ VERDICT ============ -->
+<section id="verdict">
+  <div class="wrap">
+    <h2><span class="num">01</span>Bottom line</h2>
+    <p class="sub">Is this API built to an industry-standard pattern? Yes — clearly. Is every feature production-correct today? No — a set of authorization, soft-delete, and concurrency gaps need closing first.</p>
+
+    <div class="verdict">
+      <div class="score">
+        <span class="big" style="color:var(--med)">8/10</span>
+        <span class="lbl">Engineering<br/>Standard</span>
+      </div>
+      <div>
+        <p class="tagline"><b>The architecture, error handling, observability, persistence and testing are genuinely strong — above the typical line-of-business bar.</b></p>
+        <p class="muted">What holds it back from "production-ready" is <b style="color:var(--ink)">not the design</b>. It's a recurring set of issues in the hand-extended read paths and the newest transactional code: broken object-level authorization (IDOR), soft-delete leakage, unbounded pagination, and two places where stock-mutation concurrency is not actually safe. None require a redesign — they're targeted fixes on solid foundations.</p>
+      </div>
+    </div>
+
+    <div class="verdict" style="margin-top:14px">
+      <div class="score">
+        <span class="big" style="color:var(--crit)">5/10</span>
+        <span class="lbl">Production<br/>Security Hygiene</span>
+      </div>
+      <div>
+        <p class="tagline"><b>Live secrets are committed to source control.</b></p>
+        <p class="muted">A real PostgreSQL connection string (with password), the JWT signing key, and an Upstash Redis token are tracked in <code>appsettings*.json</code>, and a never-expiring admin JWT is pasted in <code>sfa_api/CLAUDE.md</code>. This is the single most urgent item and it violates the project's own <code>never-do.md</code>. Fix this before anything else.</p>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat c"><div class="n" style="color:var(--crit)">11</div><div class="t">Critical findings</div></div>
+      <div class="stat h"><div class="n" style="color:var(--high)">22</div><div class="t">High findings</div></div>
+      <div class="stat m"><div class="n" style="color:var(--med)">30+</div><div class="t">Medium findings</div></div>
+      <div class="stat f"><div class="n" style="color:var(--accent)">26</div><div class="t">Features audited</div></div>
+      <div class="stat l"><div class="n" style="color:var(--low)">~1,250</div><div class="t">Tests in suite</div></div>
+    </div>
+    <div class="legend">
+      <span><span class="chip crit">Critical</span> exploitable / data-corrupting</span>
+      <span><span class="chip high">High</span> real, hit in practice</span>
+      <span><span class="chip med">Medium</span> verified but bounded</span>
+      <span><span class="chip low">Low</span> nitpick / hardening</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STRENGTHS ============ -->
+<section id="strengths">
+  <div class="wrap">
+    <h2><span class="num">02</span>What is genuinely industry-standard</h2>
+    <p class="sub">The majority of the codebase is strong. These are not box-ticks — they were verified in code across many features.</p>
+    <div class="themes">
+      <div class="theme"><h4><span class="dot" style="background:var(--ok)"></span>Architecture &amp; consistency</h4>
+        <p>Clean vertical slices (<code>Features/{X}/</code>) with a disciplined Controller → Service → Repository split, applied uniformly across ~26 features. The brand-new Bin Card feature is structurally indistinguishable from the year-old Users feature.</p>
+        <p class="where"><b>Signal:</b> uniformity is what separates a standard codebase from one that merely contains standard snippets.</p>
+      </div>
+      <div class="theme"><h4><span class="dot" style="background:var(--ok)"></span>Error handling</h4>
+        <p>A typed <code>SFAException</code> hierarchy maps centrally to 400/401/403/404/409/422/429/503 with a <code>500 INTERNAL_ERROR</code> fallback that never leaks stack traces. Model-validation and thrown errors share one <code>ApiResponse</code>/<code>ApiError</code> envelope.</p>
+        <p class="where"><b>Where:</b> <code>GlobalExceptionMiddleware.cs:30-86</code></p>
+      </div>
+      <div class="theme"><h4><span class="dot" style="background:var(--ok)"></span>Observability</h4>
+        <p>OpenTelemetry traces + metrics, Serilog → Seq with correlation IDs, a dedicated slow-query interceptor (≥500&nbsp;ms), audit interceptor that redacts secrets. Real, not cosmetic.</p>
+        <p class="where"><b>Where:</b> <code>Program.cs:114-124</code>, <code>SerilogConfig.cs</code>, <code>AuditInterceptor.cs</code></p>
+      </div>
+      <div class="theme"><h4><span class="dot" style="background:var(--ok)"></span>Persistence</h4>
+        <p>Pooled DbContext with tuned Npgsql + retry, <code>xmin</code> optimistic concurrency on Areas, ~82 purposeful migrations and indexes, money stored as <code>decimal(18,4)</code>. Billings &amp; GRN use real <code>SELECT … FOR UPDATE</code> row locking inside the transaction.</p>
+        <p class="where"><b>Where:</b> <code>Program.cs:64-76</code>, <code>StockRepository.cs:110-123</code></p>
+      </div>
+      <div class="theme"><h4><span class="dot" style="background:var(--ok)"></span>Auth design</h4>
+        <p>Refresh tokens stored hashed (SHA-256), CSPRNG-generated, rotated on use with family-reuse detection and <code>LogCritical</code> alerting. Login is BCrypt + generic error (no user enumeration via message) + rate limited.</p>
+        <p class="where"><b>Where:</b> <code>AuthService.cs:40-118</code>, <code>JwtTokenHelper.cs</code></p>
+      </div>
+      <div class="theme"><h4><span class="dot" style="background:var(--ok)"></span>Testing discipline</h4>
+        <p>~1,250 tests (xUnit + Moq + FluentAssertions + <code>WebApplicationFactory</code>), correctly shaped as a pyramid. Even the one skipped integration test is honestly skipped with a documented reason, not faked green.</p>
+        <p class="where"><b>Caveat:</b> several features (e.g. Distributors) have no tests yet.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SYSTEMIC THEMES ============ -->
+<section id="themes">
+  <div class="wrap">
+    <h2><span class="num">03</span>Systemic themes — the highest-value findings</h2>
+    <p class="sub">These patterns recurred across independent auditors who never saw each other's work — strong signal they are template-level gaps, not one-off slips. Fixing them once, in the shared pattern, fixes them everywhere.</p>
+
+    <div class="themes">
+      <div class="theme">
+        <h4><span class="dot" style="background:var(--crit)"></span>1 · Broken object-level authorization (IDOR)</h4>
+        <p>Many endpoints accept an <code>id</code> or <code>userId</code> from the client and never verify the caller owns it. Write paths are well-scoped from the JWT; <b>read paths frequently are not.</b></p>
+        <p class="where"><b>Hit in:</b> Supervisor (3 endpoints, <span class="chip crit">Crit</span>), DailyRouteAssignments <code>GET /{id}</code> (<span class="chip crit">Crit</span>), Outlets, PurchaseOrders, NotBillings, Stock, SalesInvoices.</p>
+      </div>
+      <div class="theme">
+        <h4><span class="dot" style="background:var(--crit)"></span>2 · Soft-delete leakage</h4>
+        <p>The <code>User</code> entity has <b>no global query filter at all</b>, and many repos call <code>IgnoreQueryFilters()</code> on <code>GetById</code>, so "deleted" rows stay readable, editable and counted. Plain (non-filtered) unique indexes also permanently burn an email / code after soft-delete.</p>
+        <p class="where"><b>Hit in:</b> Users (<span class="chip crit">Crit</span>), SalesTargets, Outlets, Products, ProductCategoryPricings, geo features.</p>
+      </div>
+      <div class="theme">
+        <h4><span class="dot" style="background:var(--high)"></span>3 · Unbounded pagination</h4>
+        <p>The clamp <code>Math.Clamp(take,1,200)</code> lives in <i>some</i> repositories but not all. Several endpoints pass client <code>pageSize</code> straight to <code>Skip/Take</code>, allowing a full-table pull in one request. <code>page=0</code> also yields a negative <code>Skip</code> in places.</p>
+        <p class="where"><b>Hit in:</b> Notifications, MobileSync, SalesInvoices, GRN, Supervisor, Stock <code>GetTransactions</code>; <code>page</code> unguarded in Distributors / Products / PO.</p>
+      </div>
+      <div class="theme">
+        <h4><span class="dot" style="background:var(--high)"></span>4 · Stock concurrency rests on a fragile lock</h4>
+        <p>Billings &amp; GRN do it correctly (in-transaction <code>FOR UPDATE</code>). But StockTaking's lock does not actually serialize against concurrent billing, and the advisory-lock fallback keys on <code>string.GetHashCode()</code> — process-unstable and collision-prone.</p>
+        <p class="where"><b>Hit in:</b> StockTaking (<span class="chip crit">Crit</span>), Billings TOCTOU on status transitions, <code>PostgresAdvisoryLockService.cs:14</code> (all callers).</p>
+      </div>
+      <div class="theme">
+        <h4><span class="dot" style="background:var(--med)"></span>5 · TOCTOU uniqueness without a DB backstop</h4>
+        <p>Duplicate-name/code checks are read-then-write at the app layer; several are case-sensitive (<code>==</code> instead of <code>ILike</code>) and lack a unique index, so a race surfaces as a raw <code>DbUpdateException</code> → 500 instead of a clean 409. Areas does this correctly — copy that pattern.</p>
+        <p class="where"><b>Hit in:</b> Regions, Territories, Divisions, Routes, Fleets, Users.</p>
+      </div>
+      <div class="theme">
+        <h4><span class="dot" style="background:var(--med)"></span>6 · Idempotency is opt-in, not enforced</h4>
+        <p>The <code>IdempotencyMiddleware</code> only acts when the client sends <code>X-Idempotency-Key</code>. Money/stock-critical writes (Billings, GRN confirm, PO create, StockTaking adjust, imports) have no DB-level duplicate backstop, so a double-submit without the header can double-post.</p>
+        <p class="where"><b>Hit in:</b> Billings, GRNs, PurchaseOrders, StockTaking, SalesInvoices, SalesTargets imports.</p>
+      </div>
+    </div>
+
+    <h3 style="margin-top:34px">Why these matter — in plain terms</h3>
+    <p class="sub" style="margin-bottom:14px">The cards above are the summary. Each panel below explains the theme without jargon: what it actually is, the concrete thing that goes wrong, and the simple fix. Click any to collapse.</p>
+
+    <div class="explainers">
+
+      <details class="explainer" open>
+        <summary><span class="tnum">1</span><span class="ttl">Broken object-level authorization (IDOR)</span><span class="chip crit">Critical</span><span class="arrow">&#9654;</span></summary>
+        <div class="body">
+          <div class="exp-row"><div class="k">In plain terms</div><p>Being <i>logged in</i> is not the same as being <i>allowed to see a specific record</i>. These endpoints take an id straight from the client — <code>/orders/55</code> or <code>?userId=12</code> — and return that data without checking the caller actually owns or manages it. (IDOR = Insecure Direct Object Reference.)</p></div>
+          <div class="exp-row bad"><div class="k">What goes wrong</div><p>A sales rep — already authenticated — changes <code>/daily-route-assignments/57</code> to <code>58</code> and sees another rep's day. A supervisor calls <code>rep-monthly-sales?userId=&lt;anyone&gt;</code> and reads any rep's sales figures. The login check passed; the <b>ownership</b> check was never made.</p></div>
+          <div class="exp-row fix"><div class="k">The fix</div><p>After loading a record, confirm it belongs to (or is managed by) the caller, using the identity from the JWT — never trust a client-supplied id to decide what they may see. Put the check in a shared base-controller helper so a new endpoint can't silently skip it.</p></div>
+        </div>
+      </details>
+
+      <details class="explainer" open>
+        <summary><span class="tnum">2</span><span class="ttl">Soft-delete leakage</span><span class="chip crit">Critical</span><span class="arrow">&#9654;</span></summary>
+        <div class="body">
+          <div class="exp-row"><div class="k">In plain terms</div><p>The rule is "never really delete a row — flag <code>IsDeleted=true</code> and hide it." A <i>global query filter</i> is supposed to hide flagged rows from every query automatically. But the <code>User</code> entity has no such filter, and many repositories call <code>IgnoreQueryFilters()</code>, which switches the hiding <b>off</b>.</p></div>
+          <div class="exp-row bad"><div class="k">What goes wrong</div><p>You "delete" a user — and they still appear in lists, can still be fetched and edited, and are still counted in stats: a ghost record. Worse, the email's unique index isn't filtered either, so that email is taken <i>forever</i> — if the person rejoins, you can't recreate them. A "deleted" user left <code>IsActive=true</code> can also still pass checks elsewhere.</p></div>
+          <div class="exp-row fix"><div class="k">The fix</div><p>Add the <code>IsActive &amp;&amp; !IsDeleted</code> global filter to <code>User</code>; audit every <code>IgnoreQueryFilters()</code>; make DELETE also set <code>IsActive=false</code>; and convert the email/username/code unique indexes to filtered (<code>WHERE IsDeleted = false</code>).</p></div>
+        </div>
+      </details>
+
+      <details class="explainer" open>
+        <summary><span class="tnum">3</span><span class="ttl">Unbounded pagination</span><span class="chip high">High</span><span class="arrow">&#9654;</span></summary>
+        <div class="body">
+          <div class="exp-row"><div class="k">In plain terms</div><p>A list request sends two numbers — <code>page</code> and <code>pageSize</code> — which the code turns into <code>Skip((page-1)*pageSize).Take(pageSize)</code>. Some endpoints trust those numbers blindly instead of capping them.</p></div>
+          <div class="exp-row bad"><div class="k">What goes wrong</div><p><code>pageSize=1000000</code> turns "give me 25 rows" into "load the entire table into memory" — a few such requests at once can exhaust server memory (an accidental denial-of-service), and it doesn't even need to be malicious, just a buggy client. And <code>page=0</code> makes the math <code>Skip(-25)</code>, an invalid query → HTTP 500.</p></div>
+          <div class="exp-row fix"><div class="k">The fix</div><p>Clamp both values before use (pageSize 1–200, page ≥ 1). You already do exactly this (<code>Math.Clamp(take,1,200)</code>) in <i>some</i> repositories — make it one shared paging helper so it's impossible to forget.</p></div>
+        </div>
+      </details>
+
+      <details class="explainer" open>
+        <summary><span class="tnum">4</span><span class="ttl">Stock concurrency rests on a fragile lock</span><span class="chip crit">Critical</span><span class="arrow">&#9654;</span></summary>
+        <div class="body">
+          <div class="exp-row"><div class="k">In plain terms</div><p>To deduct stock safely you must do read → subtract → write as one indivisible step, and stop two sales doing it at the same time. The correct tool is a database row lock — <code>SELECT … FOR UPDATE</code> held inside the transaction, which makes everyone else wait until you commit. <b>Billings and GRN do this correctly.</b></p></div>
+          <div class="exp-row bad"><div class="k">What goes wrong</div><p>StockTaking acquires its lock on a <i>different connection</i> than the actual update, so the lock doesn't bracket the work — a concurrent bill can slip in between the count and the adjustment and corrupt the balance. Separately, the fallback lock turns its name into a number with <code>string.GetHashCode()</code>, which (a) changes every app restart, so two server instances don't actually block each other, and (b) can collide, making unrelated operations needlessly wait.</p></div>
+          <div class="exp-row fix"><div class="k">The fix</div><p>Hold <code>FOR UPDATE</code> on the same connection/transaction as the work (treat advisory/Redis locks as an optimization, never the integrity boundary), and replace <code>GetHashCode()</code> with a deterministic hash so lock IDs are stable everywhere.</p></div>
+        </div>
+      </details>
+
+      <details class="explainer" open>
+        <summary><span class="tnum">5</span><span class="ttl">TOCTOU uniqueness without a DB backstop</span><span class="chip med">Medium</span><span class="arrow">&#9654;</span></summary>
+        <div class="body">
+          <div class="exp-row"><div class="k">In plain terms</div><p>TOCTOU = "time of check to time of use" — a gap between checking and acting. To enforce unique names the code asks "does 'North' already exist?" then inserts. Between those two steps, another request can insert the same name.</p></div>
+          <div class="exp-row bad"><div class="k">What goes wrong</div><p>Two concurrent creates both get "doesn't exist" and both insert → two 'North' regions. Some checks are case-sensitive (<code>==</code> instead of <code>ILike</code>), so "North" and "north" both slip through. And where a unique index <i>does</i> exist, the race throws a raw <code>DbUpdateException</code> → an ugly HTTP 500 instead of a clean 409 "name already taken".</p></div>
+          <div class="exp-row fix"><div class="k">The fix</div><p>Copy the <b>Areas</b> pattern — case-insensitive <code>ILike</code> check plus a <code>try/catch</code> that maps a unique-violation to 409 — and ensure every such field has a real database unique index as the unconditional backstop.</p></div>
+        </div>
+      </details>
+
+      <details class="explainer" open>
+        <summary><span class="tnum">6</span><span class="ttl">Idempotency is opt-in, not enforced</span><span class="chip med">Medium</span><span class="arrow">&#9654;</span></summary>
+        <div class="body">
+          <div class="exp-row"><div class="k">In plain terms</div><p>"Idempotent" means doing the same operation twice has the same effect as doing it once. Creating a bill is <i>not</i> idempotent — call it twice, get two bills. The <code>X-Idempotency-Key</code> header lets the server recognize a retry and return the original result — but it only works <b>if the client sends it</b>.</p></div>
+          <div class="exp-row bad"><div class="k">What goes wrong</div><p>A rep on a flaky connection submits a bill; the server succeeds but the response is lost on the way back; the app shows "failed" and the rep taps again → the bill posts <b>twice</b>, stock deducted twice. With no header and no database backstop, nothing stops it. This is extremely common with mobile/offline clients.</p></div>
+          <div class="exp-row fix"><div class="k">The fix</div><p>Require the idempotency key on money/stock-mutating endpoints (reject if missing), and/or add a natural database unique constraint — e.g. on <code>BillingNumber</code>, or <code>(rep, outlet, date)</code> — so a duplicate physically can't be saved even when the header is absent.</p></div>
+        </div>
+      </details>
+
+    </div>
+
+    <div class="callout">
+      <h4>The pattern behind the pattern</h4>
+      <p>Notice that the gaps cluster in <b>hand-written read endpoints and the newest transactional features</b> — not in the generator-produced CRUD core. The framework is right; new code added outside the scaffold path doesn't automatically inherit every guardrail (auth scoping, pagination clamp, query-filter consistency). The durable fix is to bake these into the feature template and a base controller, not to chase each instance.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MATRIX ============ -->
+<section id="matrix">
+  <div class="wrap">
+    <h2><span class="num">04</span>Feature verdict matrix</h2>
+    <p class="sub">Each feature was independently audited against the same rubric: layering, async/cancellation, validation, error handling, EF query quality, DTO usage, security/IDOR, soft-delete, and business-logic correctness.</p>
+    <table>
+      <thead><tr><th>Feature</th><th>Verdict</th><th class="cnt">C</th><th class="cnt">H</th><th>Headline issue</th></tr></thead>
+      <tbody>
+        <tr><td class="feat">Infrastructure</td><td><span class="verdict-pill v-mostly">Mostly</span></td><td class="cnt">2</td><td class="cnt">1</td><td class="muted">Secrets in git; access-token revocation is dead code</td></tr>
+        <tr><td class="feat">Auth</td><td><span class="verdict-pill v-mostly">Mostly</span></td><td class="cnt">2</td><td class="cnt">2</td><td class="muted">Committed secrets + non-enforced revocation; 5h token TTL</td></tr>
+        <tr><td class="feat">Users</td><td><span class="verdict-pill v-mostly">Mostly</span></td><td class="cnt">1</td><td class="cnt">2</td><td class="muted">Soft-deleted users stay fully usable (no query filter)</td></tr>
+        <tr><td class="feat">UserReportingLines</td><td><span class="verdict-pill v-mostly">Mostly</span></td><td class="cnt">1</td><td class="cnt">0</td><td class="muted">No cycle detection → reporting loops persist</td></tr>
+        <tr><td class="feat">UserGeoAssignments</td><td><span class="verdict-pill v-mostly">Mostly</span></td><td class="cnt">0</td><td class="cnt">1</td><td class="muted">Geo ancestor IDs trusted from client, not denormalized</td></tr>
+        <tr><td class="feat">Regions</td><td><span class="verdict-pill v-mostly">Mostly</span></td><td class="cnt">0</td><td class="cnt">1</td><td class="muted">Case-sensitive, race-prone duplicate-name check</td></tr>
+        <tr><td class="feat">Areas</td><td><span class="verdict-pill v-yes">Yes</span></td><td class="cnt">0</td><td class="cnt">0</td><td class="muted">Best-in-class — xmin concurrency, ILike checks</td></tr>
+        <tr><td class="feat">Territories</td><td><span class="verdict-pill v-mostly">Mostly</span></td><td class="cnt">0</td><td class="cnt">1</td><td class="muted">Same duplicate-name gap; no concurrency token</td></tr>
+        <tr><td class="feat">Divisions</td><td><span class="verdict-pill v-mostly">Mostly</span></td><td class="cnt">0</td><td class="cnt">1</td><td class="muted">Same duplicate-name gap (2-level denorm is correct)</td></tr>
+        <tr><td class="feat">Routes</td><td><span class="verdict-pill v-mostly">Mostly</span></td><td class="cnt">0</td><td class="cnt">1</td><td class="muted">No unique constraint on (Name, DivisionId)</td></tr>
+        <tr><td class="feat">DailyRouteAssignments</td><td><span class="verdict-pill v-mostly">Mostly</span></td><td class="cnt">1</td><td class="cnt">2</td><td class="muted">IDOR on GET /{id}; Supervisor delete unscoped</td></tr>
+        <tr><td class="feat">Fleets</td><td><span class="verdict-pill v-yes">Yes</span></td><td class="cnt">0</td><td class="cnt">0</td><td class="muted">Clean lookup CRUD; minor uniqueness race</td></tr>
+        <tr><td class="feat">Products</td><td><span class="verdict-pill v-mostly">Mostly</span></td><td class="cnt">0</td><td class="cnt">1</td><td class="muted">Price columns have no decimal precision configured</td></tr>
+        <tr><td class="feat">ProductCategories</td><td><span class="verdict-pill v-yes">Yes</span></td><td class="cnt">0</td><td class="cnt">0</td><td class="muted">Solid simple CRUD slice</td></tr>
+        <tr><td class="feat">ProductCategoryPricings</td><td><span class="verdict-pill v-mostly">Mostly</span></td><td class="cnt">0</td><td class="cnt">2</td><td class="muted">Portal leaks all A/B/C/D price tiers to every distributor</td></tr>
+        <tr><td class="feat">Distributors</td><td><span class="verdict-pill v-mostly">Mostly</span></td><td class="cnt">0</td><td class="cnt">1</td><td class="muted">Pagination not clamped; portal is IDOR-safe (good)</td></tr>
+        <tr><td class="feat">Outlets</td><td><span class="verdict-pill v-mostly">Mostly</span></td><td class="cnt">0</td><td class="cnt">2</td><td class="muted">Any rep can read every outlet; soft-deleted readable by id</td></tr>
+        <tr><td class="feat">Billings</td><td><span class="verdict-pill v-mostly">Mostly</span></td><td class="cnt">0</td><td class="cnt">2</td><td class="muted">TOCTOU race on Cancel vs Approve; lock mis-scoped</td></tr>
+        <tr><td class="feat">SalesInvoices</td><td><span class="verdict-pill v-mostly">Mostly</span></td><td class="cnt">2</td><td class="cnt">2</td><td class="muted">Import write path not atomic; totals trusted from client</td></tr>
+        <tr><td class="feat">GRNs</td><td><span class="verdict-pill v-mostly">Mostly</span></td><td class="cnt">0</td><td class="cnt">2</td><td class="muted">Confirm relies on status guard only (no idempotency key)</td></tr>
+        <tr><td class="feat">PurchaseOrders</td><td><span class="verdict-pill v-mostly">Mostly</span></td><td class="cnt">0</td><td class="cnt">2</td><td class="muted">IDOR on reads for rep/supervisor; Cancel ordering bug</td></tr>
+        <tr><td class="feat">StockTaking</td><td><span class="verdict-pill v-mostly">Mostly</span></td><td class="cnt">2</td><td class="cnt">3</td><td class="muted">Adjustment not idempotent; lock doesn't truly serialize</td></tr>
+        <tr><td class="feat">Stock / Bin Card</td><td><span class="verdict-pill v-mostly">Mostly</span></td><td class="cnt">0</td><td class="cnt">1</td><td class="muted">FreeIssue pool omitted from end-stock reconciliation</td></tr>
+        <tr><td class="feat">SalesTargets</td><td><span class="verdict-pill v-mostly">Mostly</span></td><td class="cnt">0</td><td class="cnt">2</td><td class="muted">Soft-delete bypass on update &amp; list</td></tr>
+        <tr><td class="feat">Supervisor</td><td><span class="verdict-pill v-no">No</span></td><td class="cnt">3</td><td class="cnt">1</td><td class="muted">IDOR — any supervisor reads any rep's sales &amp; targets</td></tr>
+        <tr><td class="feat">MobileSync</td><td><span class="verdict-pill v-mostly">Mostly</span></td><td class="cnt">0</td><td class="cnt">1</td><td class="muted">Unbounded catalog pull; no delta sync</td></tr>
+        <tr><td class="feat">NotBillings</td><td><span class="verdict-pill v-mostly">Mostly</span></td><td class="cnt">0</td><td class="cnt">1</td><td class="muted">Read IDOR — salesRepId is a client-controlled filter</td></tr>
+        <tr><td class="feat">Notifications</td><td><span class="verdict-pill v-mostly">Mostly</span></td><td class="cnt">0</td><td class="cnt">1</td><td class="muted">pageSize unbounded; writes are recipient-scoped (good)</td></tr>
+      </tbody>
+    </table>
+    <p class="muted" style="font-size:12.5px;margin-top:12px">C = Critical, H = High. Counts reflect distinct findings per feature; the shared secrets/revocation issues are counted under both Infrastructure and Auth.</p>
+  </div>
+</section>
+
+<!-- ============ PRIORITIES ============ -->
+<section id="priorities">
+  <div class="wrap">
+    <h2><span class="num">05</span>Recommended fix order</h2>
+    <p class="sub">Sequenced by blast radius and effort. The first item is non-negotiable and quick; items 2–4 are the systemic fixes that retire many findings at once.</p>
+    <ol class="prio">
+      <li><b>Rotate &amp; purge committed secrets.</b><span class="d">DB password, JWT key, Upstash token in <code>appsettings*.json</code> + the admin JWT in <code>sfa_api/CLAUDE.md</code>. Rotate all, move to env/secret manager, scrub history. Rotating the JWT key also invalidates the leaked admin token.</span></li>
+      <li><b>Close the IDOR class on read endpoints.</b><span class="d">Supervisor, DailyRouteAssignments, Outlets, PurchaseOrders, NotBillings, Stock. Add an ownership/subordinate-membership check (scope from JWT) — ideally in a shared base-controller helper so it can't be forgotten on the next endpoint.</span></li>
+      <li><b>Fix soft-delete globally.</b><span class="d">Add the <code>IsActive &amp;&amp; !IsDeleted</code> global query filter to <code>User</code> (and audit every <code>IgnoreQueryFilters()</code>), make DELETE set <code>IsActive=false</code> too, and convert the email/username/code unique indexes to filtered (<code>WHERE IsDeleted = false</code>).</span></li>
+      <li><b>Make stock concurrency correct, not incidental.</b><span class="d">Wrap StockTaking submit/adjust in one EF transaction whose connection holds the <code>FOR UPDATE</code> lock; gate adjust on <code>IsAdjusted</code>; treat the advisory/Redis lock as an optimization, not the integrity boundary. Add a TOCTOU guard (row-version or <code>FOR UPDATE</code>) on Billings status transitions.</span></li>
+      <li><b>Standardize pagination + enforce idempotency on money/stock writes.</b><span class="d">Clamp <code>page</code>/<code>pageSize</code> once in a shared paging helper; add DB unique backstops (e.g. <code>BillingNumber</code>, rep+outlet+date) so a double-submit without the header can't duplicate.</span></li>
+      <li><b>Wire up (or remove) the access-token revocation infra; tighten Product price precision &amp; validation.</b><span class="d">Either enforce <code>IsRevokedAsync</code> via <code>OnTokenValidated</code> + call <code>RevokeAsync</code> on logout, or delete the dead service. Configure <code>decimal(18,2)</code> on Product price columns.</span></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============ DETAILED FINDINGS ============ -->
+<section>
+  <div class="wrap">
+    <h2><span class="num">06</span>Detailed findings by feature</h2>
+    <p class="sub">Full per-feature breakdown. "Compliant" notes (no IDOR, no raw-SQL injection, no client tenant id, no stack-trace leakage) are omitted where clean; each feature was checked for them.</p>
+
+    <!-- INFRASTRUCTURE -->
+    <p class="cat" id="infra">Cross-cutting infrastructure</p>
+
+    <div class="feature">
+      <div class="fhead"><h3>Infrastructure &amp; architecture</h3><span class="verdict-pill v-mostly">Mostly</span></div>
+      <p class="strengths"><b>Strengths:</b> correctly-ordered middleware pipeline (<code>Program.cs:224-239</code>), centralized exception→envelope mapping, OpenTelemetry + Serilog/Seq, pooled DbContext with retry, audit interceptor with secret redaction, dual-mode distributed locking, idempotency + rate limiting, split health probes.</p>
+      <ul class="find">
+        <li><span class="chip crit">Crit</span><span class="desc">Live secrets committed: real Neon connection string + password and JWT signing key in <code>appsettings.json</code>; Upstash token in <code>appsettings.Development.json</code>. File is git-tracked, not ignored. Violates <code>never-do.md</code>.<span class="ref">appsettings.json:10,15 · appsettings.Development.json:8-9</span></span></li>
+        <li><span class="chip crit">Crit</span><span class="desc">Access-token revocation is dead code: <code>ITokenRevocationService</code> + <code>RevokedTokens</code> table are registered and injected but <code>RevokeAsync</code> is never called and <code>IsRevokedAsync</code> is never wired into <code>OnTokenValidated</code>. Logout revokes refresh tokens only → ~5h window where a logged-out access token still works.<span class="ref">AuthService.cs:15,31 · JwtExtensions.cs:36-77</span></span></li>
+        <li><span class="chip high">High</span><span class="desc">No real API versioning: "v1" is a hardcoded route literal; no <code>Asp.Versioning</code> package. Shipping v2 without breaking v1 means touching every controller.<span class="ref">*Controller.cs [Route("api/v1/…")]</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc">Production log level set to <code>Error</code> — discards the Warning-level handled-exception and slow-query logs the infra works to produce.<span class="ref">appsettings.Production.json:4-6</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc">Idempotency middleware buffers the full response into a <code>MemoryStream</code> for every keyed mutation (bounded by 10&nbsp;MB cap).<span class="ref">IdempotencyMiddleware.cs:52-79</span></span></li>
+        <li><span class="chip low">Low</span><span class="desc">Advisory-lock fallback key uses <code>string.GetHashCode()</code> — not stable across processes, collision-prone. Prefer a deterministic hash → long.<span class="ref">PostgresAdvisoryLockService.cs:14</span></span></li>
+        <li><span class="chip low">Low</span><span class="desc"><code>AllowedHosts:"*"</code> and empty production <code>Cors:AllowedOrigins</code> (must be supplied via env at deploy or browser calls break).<span class="ref">appsettings.Production.json:8,25</span></span></li>
+      </ul>
+    </div>
+
+    <!-- IDENTITY -->
+    <p class="cat" id="identity">Identity &amp; access</p>
+
+    <div class="feature">
+      <div class="fhead"><h3>Auth</h3><span class="verdict-pill v-mostly">Mostly (No for prod as-is)</span></div>
+      <p class="strengths"><b>Strengths:</b> refresh tokens hashed (SHA-256) &amp; CSPRNG; rotation + reuse detection + family revocation with <code>LogCritical</code>; BCrypt verify with generic error (no enumeration via message); inactive users blocked; login/refresh rate-limited.</p>
+      <ul class="find">
+        <li><span class="chip crit">Crit</span><span class="desc">Live secrets committed to git (see Infrastructure).<span class="ref">appsettings.json:10,15</span></span></li>
+        <li><span class="chip crit">Crit</span><span class="desc">Access-token revocation built but never enforced (see Infrastructure).<span class="ref">JwtExtensions.cs:36-77</span></span></li>
+        <li><span class="chip high">High</span><span class="desc">Access-token TTL is 5 hours in base config; combined with non-enforced revocation, a stolen token is usable ~5h with no kill switch (prod overrides to 30m, but base applies in non-prod).<span class="ref">appsettings.json:16</span></span></li>
+        <li><span class="chip high">High</span><span class="desc">Weak hardcoded JWT signing key (exactly the 32-char HMAC minimum, committed). Should be high-entropy from a secrets manager.<span class="ref">appsettings.json:15 → JwtTokenHelper.cs:26</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc">Timing-based user enumeration: BCrypt.Verify short-circuits when user is null, so missing-user returns faster than wrong-password. Mitigate with a dummy verify.<span class="ref">AuthService.cs:40</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc">No per-account lockout / failed-attempt throttle — only IP rate limiting, so slow/distributed brute-force on one account isn't stopped.<span class="ref">AuthService.cs:35-46</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc"><code>dev-token</code> endpoint mints long-lived (up to 10y) tokens, gated only on <code>IsDevelopment()</code>; risky if env is ever misset.<span class="ref">AuthController.cs:109-138</span></span></li>
+      </ul>
+    </div>
+
+    <div class="feature">
+      <div class="fhead"><h3>Users</h3><span class="verdict-pill v-mostly">Mostly</span></div>
+      <p class="strengths"><b>Strengths:</b> BCrypt on create/change/reset; current-password verified before change; <code>PasswordHash</code> never in any DTO; ownership gating (non-admin can only update self); self-service FCM scoped to <code>me</code>.</p>
+      <ul class="find">
+        <li><span class="chip crit">Crit</span><span class="desc"><code>User</code> has NO query filter — soft-deleted users remain readable, listable, updatable, activatable and counted across all features that join <code>User</code>.<span class="ref">AppDbContext.cs:111 · UserRepository.cs:12-15,44-66</span></span></li>
+        <li><span class="chip high">High</span><span class="desc">DELETE sets <code>IsDeleted=true</code> but leaves <code>IsActive=true</code>, so a "deleted" user is indistinguishable from a live one in every query.<span class="ref">UserRepository.cs:86-94</span></span></li>
+        <li><span class="chip high">High</span><span class="desc">Plain (unfiltered) unique indexes on Email/Username/Phone + uniqueness checks that ignore soft-delete → a deleted user permanently burns those values; the person can't be re-created.<span class="ref">UserRepository.cs:26-42 · AppDbContext.cs:106-108</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc">Possible role escalation: a non-admin updating their own profile can send <code>Role="Admin"</code>; service applies <code>request.Role</code> with no guard that a non-admin may not change their own role.<span class="ref">UsersController.cs:79-96 · UserService.cs:99-118</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc">No self-deactivate / self-delete guard (admin can lock themselves out); <code>UpdateFcmTokenRequest</code> has no validator.<span class="ref">UsersController.cs:104-108,182-189</span></span></li>
+      </ul>
+    </div>
+
+    <div class="feature">
+      <div class="fhead"><h3>UserReportingLines</h3><span class="verdict-pill v-mostly">Mostly</span></div>
+      <p class="strengths"><b>Strengths:</b> admin-gated; soft-delete compliant; blocks direct self-reporting and Admin/Distributor managers; auto-deactivates prior active line; subtree BFS guarded against hangs with a visited-set.</p>
+      <ul class="find">
+        <li><span class="chip crit">Crit</span><span class="desc">No cycle detection beyond direct self-reference: if A→B exists, creating B→A (or any deeper loop) is persisted, corrupting every org-chain walk that consumes the data.<span class="ref">UserReportingLineService.cs:79-165</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc">Update doesn't re-check Admin/Distributor assignability that Create enforces.<span class="ref">UserReportingLineService.cs:133-165</span></span></li>
+      </ul>
+    </div>
+
+    <div class="feature">
+      <div class="fhead"><h3>UserGeoAssignments</h3><span class="verdict-pill v-mostly">Mostly</span></div>
+      <p class="strengths"><b>Strengths:</b> granular role gating with <code>GET /me</code> self-scoped from JWT; N+1-free list (batched reporting lines); SalesRep-must-have-Division rule enforced; soft-delete compliant.</p>
+      <ul class="find">
+        <li><span class="chip high">High</span><span class="desc">Geo hierarchy is NOT denormalized/validated — caller supplies <code>RegionId/AreaId/TerritoryId/DivisionId</code> directly and the service trusts them. A Division in Region X can be stored with <code>RegionId=Y</code>. The repo even has <code>GetDivisionWithAncestorsAsync</code> intended for this, but it's never called.<span class="ref">UserGeoAssignmentService.cs:134-148</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc">Only Division existence is validated; Region/Area/Territory IDs never checked for existence.<span class="ref">UserGeoAssignmentService.cs:117-120</span></span></li>
+      </ul>
+    </div>
+
+    <!-- MASTER DATA -->
+    <p class="cat" id="master">Master data</p>
+
+    <div class="feature">
+      <div class="fhead"><h3>Geo hierarchy — Regions · Areas · Territories · Divisions</h3><span class="verdict-pill v-mostly">Areas: Yes · others: Mostly</span></div>
+      <p class="strengths"><b>Strengths:</b> uniform clean slices; ancestor-ID denormalization is <b>correct</b> in Territory &amp; Division (derived from the fetched parent, never the client); no security holes (global reference data, admin-gated writes). <b>Areas is best-in-class</b> — <code>xmin</code> optimistic concurrency, separate tracked/no-tracking paths, ILike duplicate checks, full endpoint set.</p>
+      <ul class="find">
+        <li><span class="chip high">High</span><span class="desc">Regions / Territories / Divisions use case-sensitive exact-match duplicate-name checks (<code>Name == name</code>) — "North" vs "north" bypasses it and races the unique index → raw <code>DbUpdateException</code> instead of a clean 409. Adopt Areas' ILike + catch pattern.<span class="ref">RegionRepository.cs:44 · TerritoryRepository.cs:64 · DivisionRepository.cs:81</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc">Inconsistent optimistic concurrency — only Areas has RowVersion; the other three are silent last-writer-wins on concurrent admin edits.<span class="ref">Region.cs · Territory.cs · Division.cs</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc">Tracked <code>GetByIdAsync</code> (eager-loading the ancestor graph) is reused as the mutation fetch, so <code>.Update()</code> issues a wider-than-needed full-row UPDATE. Areas separates these paths.<span class="ref">TerritoryRepository.cs:12-17 · DivisionRepository.cs:12-20</span></span></li>
+        <li><span class="chip low">Low</span><span class="desc">Parent-existence checks use <code>IgnoreQueryFilters()</code>, so a child can point at a soft-deleted parent; some features lack a DELETE endpoint / rate limiting that Areas has.<span class="ref">AreaRepository.cs:95-96</span></span></li>
+      </ul>
+    </div>
+
+    <div class="feature">
+      <div class="fhead"><h3>Routes</h3><span class="verdict-pill v-mostly">Mostly</span></div>
+      <p class="strengths"><b>Strengths:</b> textbook layering; <code>AsNoTracking</code> + projection + clamped pagination + provider-aware search; DTOs only; full async/CT.</p>
+      <ul class="find">
+        <li><span class="chip high">High</span><span class="desc">No unique DB constraint on (Name, DivisionId); uniqueness is a TOCTOU app check only (the index is non-unique). Two concurrent creates can both insert duplicates.<span class="ref">RouteService.cs:68 · AppDbContext.cs:327</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc"><code>GetByIdAsync</code> uses <code>IgnoreQueryFilters()</code> + eager-loads the full ancestor graph just to flip one bool on activate/deactivate; also returns soft-deleted routes by id.<span class="ref">RouteRepository.cs:12-22</span></span></li>
+      </ul>
+    </div>
+
+    <div class="feature">
+      <div class="fhead"><h3>DailyRouteAssignments</h3><span class="verdict-pill v-mostly">Mostly</span></div>
+      <p class="strengths"><b>Strengths:</b> distributed lock keyed on <code>rep:date</code> + unique filtered index prevents double-booking at app and DB level; strong role gating; SalesRep list force-scoped to caller; mature deletion-approval workflow with typed codes; soft-delete compliant.</p>
+      <ul class="find">
+        <li><span class="chip crit">Crit</span><span class="desc">IDOR on <code>GET /{id}</code>: no ownership scoping — any rep can read any other rep's assignment by id (the list endpoint is scoped, this read isn't).<span class="ref">DailyRouteAssignmentsController.cs:47-53 · Service.cs:23-28</span></span></li>
+        <li><span class="chip high">High</span><span class="desc">IDOR on <code>GET /rep-routes/{userId}</code> — any rep can pass an arbitrary userId and enumerate another rep's routes.<span class="ref">DailyRouteAssignmentsController.cs:89-95</span></span></li>
+        <li><span class="chip high">High</span><span class="desc">Supervisor <code>DeleteAsync</code> doesn't verify the assignment belongs to one of their own reps — a supervisor can request deletion of any assignment by id.<span class="ref">DailyRouteAssignmentService.cs:142-164</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc">Rejection/deletion <code>Reason</code> never validated (no validator); over-length reason → raw DB error → 500. No past-date guard on <code>AssignedDate</code>.<span class="ref">DailyRouteAssignmentsServiceExtensions.cs</span></span></li>
+      </ul>
+    </div>
+
+    <div class="feature">
+      <div class="fhead"><h3>Fleets</h3><span class="verdict-pill v-yes">Yes</span></div>
+      <p class="strengths"><b>Strengths:</b> clean lookup CRUD; full async/CT; <code>AsNoTracking</code> + clamp + provider-aware search; correct soft-delete + cache invalidation. (Fleet is a name-only reference table, so capacity/assignment rubric items don't apply.)</p>
+      <ul class="find">
+        <li><span class="chip med">Med</span><span class="desc">Read-then-write name-uniqueness with no lock → concurrent creates both pass the check; the unique index then throws a raw <code>DbUpdateException</code> → 500 instead of a 409.<span class="ref">FleetService.cs:63-77</span></span></li>
+        <li><span class="chip low">Low</span><span class="desc">Uniqueness check ignores soft-delete, so a deleted fleet's name can never be reused (index is also unfiltered).<span class="ref">FleetRepository.cs:48-52</span></span></li>
+      </ul>
+    </div>
+
+    <div class="feature">
+      <div class="fhead"><h3>Products &amp; ProductCategories</h3><span class="verdict-pill v-mostly">Products: Mostly · Categories: Yes</span></div>
+      <p class="strengths"><b>Strengths:</b> clean layering, full async/CT, strong EF hygiene with FK existence checks, soft-delete via <code>ExecuteUpdateAsync</code>; categories are a solid simple slice with a dedicated cached dropdown query.</p>
+      <ul class="find">
+        <li><span class="chip high">High</span><span class="desc">Product price columns (<code>DealerPackPrice/DealerCasePrice/Mrp</code>) have NO decimal precision configured — Postgres gets default <code>numeric</code> and EF emits a precision warning; inconsistent with the <code>decimal(18,x)</code> standard used by every other money column.<span class="ref">AppDbContext.cs:391-407</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc">No business rule relating MRP to dealer price (an MRP below dealer cost is accepted); <code>GetByIdAsync</code> uses <code>IgnoreQueryFilters()</code> so soft-deleted products are readable/updatable; <code>page</code> not bounds-checked (negative skip possible).<span class="ref">CreateProductValidator.cs:29-36 · ProductRepository.cs:11-15</span></span></li>
+        <li><span class="chip low">Low</span><span class="desc">Categories expose no DELETE/soft-delete path (entity has <code>IsDeleted</code> but it's never set); deactivating a category doesn't check for referencing products.<span class="ref">ProductCategoriesController.cs:92-114</span></span></li>
+      </ul>
+    </div>
+
+    <div class="feature">
+      <div class="fhead"><h3>ProductCategoryPricings</h3><span class="verdict-pill v-mostly">Mostly</span></div>
+      <p class="strengths"><b>Strengths:</b> clean layering; N+1-free batched reads; correct unique <code>(ProductId, Category)</code> model with <code>decimal(18,4)</code>; price ≥ 0 validation; management endpoints properly role-gated.</p>
+      <ul class="find">
+        <li><span class="chip high">High</span><span class="desc">Portal endpoint leaks ALL category prices (A/B/C/D) to every distributor — it calls the unscoped admin <code>GetAllAsync</code> instead of resolving the caller's distributor from JWT and returning only its tier. A category-C distributor sees A/B/D pricing.<span class="ref">ProductCategoryPricingPortalController.cs:25</span></span></li>
+        <li><span class="chip high">High</span><span class="desc">Soft-deleted / inactive products are returned in all read paths (no query filter on <code>Products</code> and these queries don't filter <code>IsActive/IsDeleted</code>), contradicting the "all active products" doc.<span class="ref">ProductCategoryPricingRepository.cs:18-21,53-56</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc">BulkUpsert doesn't validate <code>ProductId</code> exists (raw FK-violation on save) and has no max payload-size cap.<span class="ref">ProductCategoryPricingRepository.cs:75-127</span></span></li>
+      </ul>
+    </div>
+
+    <div class="feature">
+      <div class="fhead"><h3>Distributors</h3><span class="verdict-pill v-mostly">Mostly</span></div>
+      <p class="strengths"><b>Strengths:</b> <b>portal is IDOR-safe</b> — never takes a distributor id from the client, resolves it from JWT; advisory-lock-guarded create/update; soft-delete via <code>ExecuteUpdateAsync</code>; good list hygiene; correct geo denormalization &amp; one-distributor-per-territory rule.</p>
+      <ul class="find">
+        <li><span class="chip high">High</span><span class="desc">Pagination not clamped on <code>page</code>/<code>pageSize</code> (only repo <code>take</code> is): <code>page=0</code> → negative skip; huge <code>pageSize</code> makes the cached <code>PageSize</code> disagree with the returned count. Clamp once in the service.<span class="ref">DistributorService.cs:44 · DistributorRepository.cs:59</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc"><code>GetByIdAsync</code> is a tracking query on a read-only path used by all GET callers; Create/Update validators are byte-for-byte duplicated (drift hazard); no automated tests for this feature.<span class="ref">DistributorRepository.cs:11-15</span></span></li>
+      </ul>
+    </div>
+
+    <div class="feature">
+      <div class="fhead"><h3>Outlets</h3><span class="verdict-pill v-mostly">Mostly</span></div>
+      <p class="strengths"><b>Strengths:</b> thin controller; full async/CT; geo-coordinate bounds validation; correct soft-delete via <code>ExecuteUpdateAsync</code>; <code>AsNoTracking</code> + projection on map-points; NIC-indexed uniqueness.</p>
+      <ul class="find">
+        <li><span class="chip high">High</span><span class="desc">IDOR / no ownership scoping on reads — any authenticated user (incl. SalesRep) can read every outlet across all territories; a <code>GetAllByTerritory</code> method exists but is never used to scope callers.<span class="ref">OutletsController.cs:26-94</span></span></li>
+        <li><span class="chip high">High</span><span class="desc"><code>GetByIdAsync</code> uses <code>IgnoreQueryFilters()</code> → soft-deleted outlets returned via <code>GET /{id}</code>.<span class="ref">OutletRepository.cs:13-24</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc">SalesRep may Create an outlet on any route in the company (no territory check), compounding the IDOR; NIC uniqueness bypasses soft-delete; read-modify-write with no concurrency token.<span class="ref">OutletsController.cs:100 · OutletService.cs:77-122</span></span></li>
+      </ul>
+    </div>
+
+    <!-- TRANSACTIONS -->
+    <p class="cat" id="txn">Transactions &amp; stock</p>
+
+    <div class="feature">
+      <div class="fhead"><h3>Billings</h3><span class="verdict-pill v-mostly">Mostly</span></div>
+      <p class="strengths"><b>Strengths:</b> genuinely well-built core — atomic header+lines+stock in one transaction wrapped in the Npgsql execution strategy with rollback; <b>real <code>SELECT … FOR UPDATE</code></b> on stock rows before deduction; correct immutable ledger (before/after, directions, balanced reversals); all-decimal money math; structured 422 with per-product detail; IDOR-safe (rep/distributor/geo resolved from JWT).</p>
+      <ul class="find">
+        <li><span class="chip high">High</span><span class="desc">TOCTOU on status transitions: <code>Cancel</code>, <code>Approve</code>, <code>Reject</code> read-check-mutate with no lock, no <code>FOR UPDATE</code> on the billing row, and no row-version. A concurrent rep-cancel + distributor-approve can both see <code>Submitted</code> → Approved bill whose stock was credited back.<span class="ref">BillingService.cs:537-618</span></span></li>
+        <li><span class="chip high">High</span><span class="desc">Create advisory lock is scoped <code>billing:create:{salesRepId}</code> — it serializes a rep against themselves but not two different reps on the same distributor+product. Stock stays safe only because the <code>FOR UPDATE</code> row lock does the real work; the advisory lock gives false assurance.<span class="ref">BillingService.cs:208</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc">Advisory lock key uses <code>string.GetHashCode()</code> (process-unstable, collision-prone).<span class="ref">PostgresAdvisoryLockService.cs:14</span></span></li>
+        <li><span class="chip low">Low</span><span class="desc">No DB unique constraint on <code>BillingNumber</code> as a backstop; idempotency is opt-in (client must send the header), so a true double-submit without it creates two bills + two deductions.<span class="ref">BillingRepository.cs:17-23</span></span></li>
+      </ul>
+    </div>
+
+    <div class="feature">
+      <div class="fhead"><h3>SalesInvoices</h3><span class="verdict-pill v-mostly">Mostly</span></div>
+      <p class="strengths"><b>Strengths:</b> well-built read side (<code>AsNoTracking</code> + projection + trigram/composite indexes); batch number via a real DB sequence; N+1-free bulk lookups; DB-level unique index on <code>VchBillNo</code>; all-decimal, full async/CT.</p>
+      <ul class="find">
+        <li><span class="chip crit">Crit</span><span class="desc">Import write path is not atomic — batch + invoices span three separate <code>SaveChangesAsync</code> calls with no transaction; a failure after batch insert leaves an orphaned "Processing" batch / partial import.<span class="ref">SalesInvoiceService.cs:41,155,190</span></span></li>
+        <li><span class="chip crit">Crit</span><span class="desc">No execution-strategy wrapping despite <code>EnableRetryOnFailure(3)</code> — every other multi-step writer (GRN, Billings, PO) wraps writes; this one doesn't, so a transient retry can re-run partial work.<span class="ref">SalesInvoiceService.cs:20-202</span></span></li>
+        <li><span class="chip high">High</span><span class="desc">Bulk insert throws on the unique <code>VchBillNo</code> constraint (single <code>AddRange</code>+<code>SaveChanges</code>) instead of skipping — one concurrent duplicate fails (and, per above, doesn't roll back) the whole batch.<span class="ref">SalesInvoiceService.cs:154-155</span></span></li>
+        <li><span class="chip high">High</span><span class="desc">No money-math validation: <code>TotalAmount</code> is trusted from the client and never reconciled against <code>sum(lines)</code>; line <code>TotalPrice</code> never checked vs <code>Quantity*UnitPrice</code>.<span class="ref">SalesInvoiceService.cs:117-118,137</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc">No idempotency on the import endpoint (re-POST creates a new batch each time); invoice <code>CreatedBy</code> never stamped from <code>callerId</code>; GET endpoints not scoped to caller's distributor.<span class="ref">SalesInvoicesController.cs:32-78</span></span></li>
+      </ul>
+    </div>
+
+    <div class="feature">
+      <div class="fhead"><h3>GRNs (Goods Received Notes)</h3><span class="verdict-pill v-mostly">Mostly</span></div>
+      <p class="strengths"><b>Strengths:</b> real transactional atomicity on confirm (execution-strategy + explicit tx + rollback); <b>pessimistic <code>FOR UPDATE</code></b> before stock increment with before/after capture; correct <code>GRNReceipt</code> In-direction ledger; defense-in-depth duplicate prevention (advisory lock + pre-check + unique index on <code>SalesInvoiceId</code>); duplicate ProductIds rejected.</p>
+      <ul class="find">
+        <li><span class="chip high">High</span><span class="desc">TOCTOU / stale-read in the distributor ownership check on confirm — ownership read via unlocked <code>AsNoTracking</code> <code>GetByIdAsync</code> before the lock+transaction; check and mutation aren't atomic.<span class="ref">GrnsController.cs:104-106</span></span></li>
+        <li><span class="chip high">High</span><span class="desc">No idempotency key on confirm — duplicate stock-credit is prevented only by the <code>Status != Pending</code> guard; the available <code>IdempotencyMiddleware</code> isn't applied to this stock-critical mutation.<span class="ref">GrnService.cs:137-141</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc">Advisory lock runs on a separate connection from the work it guards (consumes a 2nd pooled connection; not tx-scoped); GRN number format <code>GRN-{Year}-{seq:D5}</code> uses a non-resetting global sequence (D5 overflows, year prefix cosmetic).<span class="ref">GrnRepository.cs:94-100</span></span></li>
+      </ul>
+    </div>
+
+    <div class="feature">
+      <div class="fhead"><h3>PurchaseOrders</h3><span class="verdict-pill v-mostly">Mostly</span></div>
+      <p class="strengths"><b>Strengths:</b> race-safe PO numbering via DB sequence + unique index; atomic header+items+history writes (execution-strategy + tx); per-order <code>po:transition:{id}</code> advisory lock on every state change; all-decimal with explicit precision; <code>AsNoTracking</code> + <code>AsSplitQuery</code> + batched history-performer lookup; status transitions explicitly gated against required source status.</p>
+      <ul class="find">
+        <li><span class="chip high">High</span><span class="desc">IDOR on reads — <code>GetByIdAsync</code> only scopes the Distributor role; a SalesRep/Supervisor can fetch ANY order by id (the list endpoint scopes SalesRep, the by-id read doesn't).<span class="ref">PurchaseOrderService.cs:38-58</span></span></li>
+        <li><span class="chip high">High</span><span class="desc"><code>Cancel</code> runs the Draft-only check before the role check, so the in-service authorization logic is incorrect/unreachable for some cases (saved from true escalation only by the controller's <code>[Authorize(Roles=...)]</code>).<span class="ref">PurchaseOrderService.cs:660-667</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc">Advisory lock key uses <code>string.GetHashCode()</code>; list <code>pageSize</code> not clamped at controller/service (<code>page=0</code> → negative skip); no idempotency on Create (double-click → two POs).<span class="ref">PurchaseOrderService.cs:71</span></span></li>
+      </ul>
+    </div>
+
+    <div class="feature">
+      <div class="fhead"><h3>StockTaking</h3><span class="verdict-pill v-mostly">Mostly</span></div>
+      <p class="strengths"><b>Strengths:</b> immutable ledger with full audit; adjustment math correct in both directions (<code>delta = adjusted − qoh</code>); correct <code>StockTakingAdjustment</code> type; adjustment wrapped in execution-strategy + transaction; distributorId always from JWT; structured codes + role gating.</p>
+      <ul class="find">
+        <li><span class="chip crit">Crit</span><span class="desc">Adjustment is not idempotent — <code>AdjustLineAsync</code> never checks <code>line.IsAdjusted</code>; re-running with a changed quantity silently re-moves stock and always writes a ledger row. No double-apply guard.<span class="ref">StockTakingService.cs:110-158</span></span></li>
+        <li><span class="chip crit">Crit</span><span class="desc">The "row lock" doesn't reliably serialize against concurrent billing — the advisory/Redlock runs out-of-band (separate connection / Redis, not in the EF tx), and the <code>FOR UPDATE</code> select-then-requery only holds the lock for the inline read. A concurrent bill between QOH read and commit corrupts the balance.<span class="ref">StockRepository.cs:113-123 · Program.cs:101-107</span></span></li>
+        <li><span class="chip high">High</span><span class="desc"><code>Submit</code> snapshots system quantity with no lock and no transaction (<code>FOR UPDATE</code> is meaningless outside a tx) → inconsistent per-line variance; and it has no status guard, so a Submitted submission can be re-submitted and overwrite the snapshot.<span class="ref">StockTakingService.cs:226-254</span></span></li>
+        <li><span class="chip high">High</span><span class="desc">A positive variance for a product with no existing stock row throws <code>NotFoundException</code> — a first-ever count can't be adjusted up (Submit tolerates the missing row, Adjust doesn't).<span class="ref">StockRepository.cs:138-140</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc"><code>AdjustLine</code> doesn't re-validate the period lock or that the submission is actually <code>Submitted</code> before mutating stock.<span class="ref">StockTakingService.cs:110-158</span></span></li>
+      </ul>
+    </div>
+
+    <div class="feature">
+      <div class="fhead"><h3>Stock / Bin Card</h3><span class="verdict-pill v-mostly">Mostly</span></div>
+      <p class="strengths"><b>Strengths:</b> thin controller; projection-only <code>AsNoTracking</code> queries with SQL-side aggregation (no N+1); bounded validator (366-day cap, To≥From); deterministic ordering; correct half-open UTC date window; running-balance design reconciles by construction for the Normal pool; movement directions verified against how Billing posts them.</p>
+      <ul class="find">
+        <li><span class="chip high">High</span><span class="desc">End-stock/opening sum across all stock pools but subtract company <code>FreeIssue</code> as an outflow with no matching inflow column, so <code>EndStock</code>/<code>StockVariance</code> can be wrong for any SKU with company-FOC activity. Restrict the report to <code>StockType.Normal</code> or add per-pool columns.<span class="ref">BinCardService.cs:77-81</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc">Adjacent modified endpoints <code>GetByDistributor</code> / <code>GetTransactions</code> are only <code>[Authorize]</code> with no role/ownership scoping → any user reads any distributor's full ledger by route id (IDOR). <code>GetTransactions</code> also has unbounded <code>pageSize</code> (no clamp).<span class="ref">StockController.cs:77-78,138-147 · StockRepository.cs:42-51</span></span></li>
+      </ul>
+    </div>
+
+    <!-- FIELD OPS -->
+    <p class="cat" id="field">Planning &amp; field operations</p>
+
+    <div class="feature">
+      <div class="fhead"><h3>SalesTargets</h3><span class="verdict-pill v-mostly">Mostly</span></div>
+      <p class="strengths"><b>Strengths:</b> N+1-free bulk import (5 batched pre-fetches, zero DB calls in the row loop); DTOs only; pageSize clamped; provider-aware search; rep-monthly-target correctly scoped from JWT.</p>
+      <ul class="find">
+        <li><span class="chip high">High</span><span class="desc">Soft-delete bypass on update — <code>GetByIdAsync</code> has no <code>!IsDeleted</code> filter, so a soft-deleted target can be edited and resurrected.<span class="ref">SalesTargetRepository.cs:29-30</span></span></li>
+        <li><span class="chip high">High</span><span class="desc">List endpoint ignores soft-delete — deleted targets appear in admin list and counts.<span class="ref">SalesTargetRepository.cs:49-89</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc">Achievement valuation silently uses <code>0</code> for a missing/deleted product price, understating totals with no signal; import has no idempotency / concurrency guard.<span class="ref">SalesTargetService.cs:126</span></span></li>
+      </ul>
+    </div>
+
+    <div class="feature">
+      <div class="fhead"><h3>Supervisor</h3><span class="verdict-pill v-no">No</span></div>
+      <p class="strengths"><b>Strengths:</b> <code>/summary</code> is correctly self-scoped from JWT and filters the team via the <code>ReportsToUserId</code> chain; aggregations pushed to SQL; DTOs only.</p>
+      <ul class="find">
+        <li><span class="chip crit">Crit</span><span class="desc">IDOR — <code>rep-monthly-sales</code> passes the client <code>userId</code> straight to a method keyed purely on <code>salesRepId</code> with no team-membership check; any supervisor reads any rep's sales.<span class="ref">SupervisorController.cs:52-59 · BillingService.cs:509-521</span></span></li>
+        <li><span class="chip crit">Crit</span><span class="desc">IDOR — <code>rep-itemwise-sales</code>, same pattern, exposes any rep's itemwise sales.<span class="ref">SupervisorController.cs:39-47</span></span></li>
+        <li><span class="chip crit">Crit</span><span class="desc">IDOR — <code>rep-monthly-target</code> forwards the client <code>userId</code> to an unscoped method, exposing any rep's targets.<span class="ref">SupervisorController.cs:65-73</span></span></li>
+        <li><span class="chip high">High</span><span class="desc">No "rep belongs to this supervisor" guard anywhere — fix by validating <code>userId</code> is in the supervisor's subordinate set (the repo already has the pattern) before delegating.<span class="ref">SupervisorRepository.cs:24-31</span></span></li>
+      </ul>
+    </div>
+
+    <div class="feature">
+      <div class="fhead"><h3>MobileSync</h3><span class="verdict-pill v-mostly">Mostly</span></div>
+      <p class="strengths"><b>Strengths:</b> exemplary EF reads (<code>AsNoTracking</code> + projection + soft-delete filtered); DTOs only; 1h cache with eviction-on-mutation; SalesRep-gated. <i>Note: this feature is two cached catalog reads, not the rep-scoped bulk pull/push the name implies — there is no push/write endpoint here.</i></p>
+      <ul class="find">
+        <li><span class="chip high">High</span><span class="desc">Product catalog pull is fully unbounded — returns every active product in one payload with no page/limit/since; cache-bloat / large-payload risk on a big catalog.<span class="ref">MobileSyncRepository.cs:11-28</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc">No delta/incremental sync (no <code>since</code> param → re-downloads everything each call); pricing is returned to all reps as one global list (confirm intended).<span class="ref">MobileSyncController.cs:20-26</span></span></li>
+      </ul>
+    </div>
+
+    <div class="feature">
+      <div class="fhead"><h3>NotBillings</h3><span class="verdict-pill v-mostly">Mostly</span></div>
+      <p class="strengths"><b>Strengths:</b> idempotency via middleware + app-level rep+outlet+date guard; strong EF hygiene with clamped pageSize and report indexes; sensible offline-window validation; <code>SalesRepId</code> from JWT.</p>
+      <ul class="find">
+        <li><span class="chip high">High</span><span class="desc">Read IDOR / over-fetch — list and get-by-id are bare <code>[Authorize]</code> with no rep-scoping; <code>?salesRepId=</code> is attacker-controlled, so a rep can read any other rep's records.<span class="ref">NotBillingsController.cs:33-69</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc">Duplicate guard is TOCTOU with no DB unique constraint on (rep, outlet, date) — two concurrent offline replays without the idempotency header can both insert.<span class="ref">NotBillingService.cs:30-34</span></span></li>
+      </ul>
+    </div>
+
+    <div class="feature">
+      <div class="fhead"><h3>Notifications</h3><span class="verdict-pill v-mostly">Mostly</span></div>
+      <p class="strengths"><b>Strengths:</b> properly recipient-scoped from JWT everywhere (mark-read includes <code>UserId == userId</code>, so no IDOR); set-based <code>ExecuteUpdateAsync</code> mark-read; dedicated composite covering index for inbox + unread count; batch fan-out create.</p>
+      <ul class="find">
+        <li><span class="chip high">High</span><span class="desc"><code>pageSize</code> not clamped or validated — raw client value passed to <code>Skip/Take</code>; <code>pageSize=1000000</code> pulls the entire history in one query.<span class="ref">NotificationHistoryService.cs:10-13</span></span></li>
+        <li><span class="chip med">Med</span><span class="desc"><code>CallerId</code> uses <code>int.Parse(...!)</code> → throws (→500) on a missing/non-numeric claim instead of a typed 401; <code>MarkRead</code> returns <code>Ok(true)</code> even when 0 rows matched.<span class="ref">NotificationsController.cs:16 · NotificationRepository.cs:40-45</span></span></li>
+      </ul>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ METHOD ============ -->
+<section>
+  <div class="wrap">
+    <h2><span class="num">07</span>Scope &amp; method</h2>
+    <p class="sub">How this assessment was produced, so its limits are clear.</p>
+    <div class="themes">
+      <div class="theme">
+        <h4>What was covered</h4>
+        <p>Every feature with a controller (26 features, 31 controllers) was individually audited by an independent reviewer, plus a dedicated pass on cross-cutting infrastructure (middleware, auth, EF/DbContext, observability, secrets) and a baseline pass on the established pattern + test suite.</p>
+      </div>
+      <div class="theme">
+        <h4>Rubric applied per feature</h4>
+        <p>Layering · async &amp; cancellation · input validation · structured error handling · EF query quality (tracking, projection, N+1, pagination) · DTO usage · security &amp; IDOR · soft-delete compliance · business-logic &amp; concurrency correctness · CLAUDE.md / <code>never-do.md</code> adherence.</p>
+      </div>
+      <div class="theme">
+        <h4>Read-only</h4>
+        <p>No files were modified. Findings cite <code>file:line</code> from the working tree at review time. Findings were not cross-validated by a second scorer, so treat individual <span class="chip low">Low</span> items as leads; the <span class="chip crit">Critical</span>/<span class="chip high">High</span> items each have concrete code evidence.</p>
+      </div>
+      <div class="theme">
+        <h4>Not in scope</h4>
+        <p>No build/typecheck/test execution (CI handles that). No <code>sfa_web</code> or <code>sfa_mobile</code> review. Performance/load testing not performed — concurrency findings are from code reasoning, not observed races.</p>
+      </div>
+    </div>
+    <div class="callout warn">
+      <h4>One caveat on severity</h4>
+      <p>This is a <b>single-company</b> deployment (no multi-tenancy), which softens the IDOR findings from "cross-tenant data breach" to "cross-user / cross-territory exposure within the company." That is still a real authorization defect — a sales rep seeing another rep's full ledger, or a supervisor seeing a non-subordinate's numbers — but it is not external data leakage. Prioritize accordingly.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>Generated for an internal industry-standard review of <code>sfa_api</code> · 15 Jun 2026 · read-only audit, no code changed.<br/>
+    Verdict: <b style="color:var(--ink)">industry-standard architecture (8/10)</b>, held back from production-ready by committed secrets, a recurring IDOR/soft-delete/pagination class, and two stock-concurrency gaps. None require redesign.</p>
+  </div>
+</footer>
+
+</body>
+</html>

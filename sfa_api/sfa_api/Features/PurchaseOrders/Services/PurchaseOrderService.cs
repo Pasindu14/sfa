@@ -48,6 +48,20 @@ public class PurchaseOrderService(
             if (order.DistributorId != caller.DistributorId)
                 throw new AuthorizationException("this purchase order");
         }
+        // SalesReps may only view orders for the distributor in their assigned territory
+        // (mirrors the scoping GetAllAsync applies to the list).
+        else if (callerRole == UserRole.SalesRep)
+        {
+            int? allowedDistributorId = null;
+            var geo = await _geoRepo.GetActiveByUserIdAsync(callerId, ct);
+            if (geo?.TerritoryId.HasValue == true)
+            {
+                var distributor = await _distributorRepo.GetByTerritoryIdAsync(geo.TerritoryId.Value, ct);
+                allowedDistributorId = distributor?.Id;
+            }
+            if (order.DistributorId != allowedDistributorId)
+                throw new AuthorizationException("this purchase order");
+        }
 
         // Load history and resolve performer names (single batch query)
         var history = await _repo.GetHistoryAsync(id, ct);
@@ -68,6 +82,7 @@ public class PurchaseOrderService(
         UserRole callerRole,
         CancellationToken ct = default)
     {
+        (page, pageSize) = sfa_api.Common.Extensions.PaginationHelper.Clamp(page, pageSize);
         var skip = (page - 1) * pageSize;
 
         IEnumerable<int>? distributorIds = null;
@@ -656,16 +671,19 @@ public class PurchaseOrderService(
         var order = await _repo.GetByIdWithItemsAsync(id, ct)
             ?? throw new NotFoundException("PurchaseOrder", id);
 
-        // Distributors may only cancel Draft orders
-        if (callerRole == UserRole.Distributor && order.Status != PurchaseOrderStatus.Draft)
-            throw new BusinessRuleException("ORDER_NOT_CANCELLABLE", "Distributors can only cancel Draft orders.");
-
+        // 1. Authorization first: only Distributors and Admins may cancel.
         if (callerRole != UserRole.Distributor && callerRole != UserRole.Admin)
             throw new AuthorizationException("cancel purchase orders");
 
+        // 2. Distributors may only cancel Draft orders.
+        if (callerRole == UserRole.Distributor && order.Status != PurchaseOrderStatus.Draft)
+            throw new BusinessRuleException("ORDER_NOT_CANCELLABLE", "Distributors can only cancel Draft orders.");
+
+        // 3. A finalized/cancelled order can never be cancelled, regardless of role.
         if (order.Status == PurchaseOrderStatus.Finalized || order.Status == PurchaseOrderStatus.Cancelled)
             throw new BusinessRuleException("ORDER_NOT_CANCELLABLE", "Order is already finalized or cancelled.");
 
+        // 4. Ownership: a Distributor may only act on their own orders.
         if (callerRole == UserRole.Distributor)
         {
             var caller = await _userRepo.GetUserByIdAsync(callerId, ct)

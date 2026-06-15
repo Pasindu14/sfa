@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using sfa_api.Common.Errors;
+using sfa_api.Infrastructure.Caching;
+using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using System.Text.Json;
 
@@ -35,6 +38,31 @@ public static class JwtExtensions
 
                 options.Events = new JwtBearerEvents
                 {
+                    // Enforce the access-token denylist: a token whose jti has been
+                    // revoked (e.g. on logout) is rejected even though it is still
+                    // cryptographically valid and unexpired. jti/expiry are also stashed
+                    // into HttpContext.Items so the logout endpoint can revoke precisely
+                    // without depending on inbound claim mapping.
+                    OnTokenValidated = async ctx =>
+                    {
+                        var jti = (ctx.SecurityToken as JsonWebToken)?.Id
+                                  ?? (ctx.SecurityToken as JwtSecurityToken)?.Id;
+                        var expiresAt = (ctx.SecurityToken as JsonWebToken)?.ValidTo
+                                        ?? (ctx.SecurityToken as JwtSecurityToken)?.ValidTo
+                                        ?? DateTime.MinValue;
+
+                        if (string.IsNullOrEmpty(jti)) return;
+
+                        ctx.HttpContext.Items["AccessTokenJti"] = jti;
+                        ctx.HttpContext.Items["AccessTokenExpiresAt"] = expiresAt;
+
+                        var revocationService = ctx.HttpContext.RequestServices
+                            .GetRequiredService<ITokenRevocationService>();
+
+                        if (await revocationService.IsRevokedAsync(jti, ctx.HttpContext.RequestAborted))
+                            ctx.Fail("Token has been revoked.");
+                    },
+
                     OnChallenge = async ctx =>
                     {
                         ctx.HandleResponse();

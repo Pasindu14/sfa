@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using sfa_api.Common.Extensions;
 using sfa_api.Features.GRNs.Entities;
 using sfa_api.Features.GRNs.Enums;
 using sfa_api.Features.SalesInvoices.Entities;
@@ -55,11 +56,12 @@ public class GrnRepository(AppDbContext db) : IGrnRepository
                 x.GrnNumber.Contains(search) ||
                 (x.SalesInvoice != null && x.SalesInvoice.VchBillNo.Contains(search)));
 
+        var (_, size, skip) = PaginationHelper.Normalize(page, pageSize);
         var total = await query.CountAsync(ct);
         var items = await query
             .OrderByDescending(x => x.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
+            .Skip(skip)
+            .Take(size)
             .ToListAsync(ct);
 
         return (items, total);
