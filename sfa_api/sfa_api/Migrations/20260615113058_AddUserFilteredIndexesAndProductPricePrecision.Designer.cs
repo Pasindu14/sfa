@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using sfa_api.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using sfa_api.Infrastructure.Persistence;
 namespace sfa_api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260615113058_AddUserFilteredIndexesAndProductPricePrecision")]
+    partial class AddUserFilteredIndexesAndProductPricePrecision
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1605,13 +1608,12 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("IsDeleted");
 
+                    b.HasIndex("Name")
+                        .HasFilter("\"IsActive\" = true");
+
                     b.HasIndex("RegionId");
 
                     b.HasIndex("TerritoryId");
-
-                    b.HasIndex("Name", "DivisionId")
-                        .IsUnique()
-                        .HasFilter("\"IsActive\" = true");
 
                     b.ToTable("Routes");
                 });
