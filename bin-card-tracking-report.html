@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bin Card / Distributor Stock Tracking — Verification Report (SFA)</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --panel-2: #1c2330;
+    --border: #2d3645;
+    --text: #e6edf3;
+    --muted: #9aa7b8;
+    --accent: #4f9cf9;
+    --green: #3fb950;
+    --amber: #d29922;
+    --red: #f85149;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 40px 28px 80px; }
+  header.title { border-bottom: 1px solid var(--border); padding-bottom: 24px; margin-bottom: 8px; }
+  h1 { font-size: 28px; margin: 0 0 6px; letter-spacing: -0.4px; }
+  .subtitle { color: var(--muted); font-size: 15px; margin: 0; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 14px; color: var(--muted); font-size: 13px; }
+  .meta-row b { color: var(--text); font-weight: 600; }
+
+  h2 { font-size: 20px; margin: 40px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 26px 0 10px; color: var(--accent); }
+  p { margin: 10px 0; }
+
+  .verdict {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 26px 0;
+  }
+  @media (max-width: 720px){ .verdict { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px;
+  }
+  .card .lbl { font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin-bottom: 6px; }
+  .card .val { font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 999px; }
+  .pill.yes { background: rgba(63,185,80,.15); color: var(--green); border: 1px solid rgba(63,185,80,.4); }
+  .pill.part { background: rgba(210,153,34,.15); color: var(--amber); border: 1px solid rgba(210,153,34,.4); }
+  .pill.no { background: rgba(248,81,73,.15); color: var(--red); border: 1px solid rgba(248,81,73,.4); }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13.5px; }
+  th, td { text-align: left; padding: 9px 12px; border: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--panel-2); font-weight: 600; color: var(--text); }
+  td { background: var(--panel); }
+  tr:hover td { background: var(--panel-2); }
+  code, .mono { font-family: var(--mono); font-size: 12.5px; }
+  td code { background: rgba(79,156,249,.10); color: #9cc7ff; padding: 1px 5px; border-radius: 4px; }
+  .dir-in { color: var(--green); font-weight: 600; }
+  .dir-out { color: var(--red); font-weight: 600; }
+  .dir-none { color: var(--muted); font-weight: 600; }
+
+  .filebox {
+    background: #0a0e14; border: 1px solid var(--border); border-left: 3px solid var(--accent);
+    border-radius: 6px; padding: 10px 14px; margin: 8px 0; font-family: var(--mono); font-size: 12.5px; color: #c9d4e3;
+  }
+  .filebox .path { color: var(--accent); }
+
+  .callout { border-radius: 8px; padding: 14px 18px; margin: 16px 0; border: 1px solid var(--border); }
+  .callout.good { border-left: 4px solid var(--green); background: rgba(63,185,80,.06); }
+  .callout.warn { border-left: 4px solid var(--amber); background: rgba(210,153,34,.06); }
+  .callout.info { border-left: 4px solid var(--accent); background: rgba(79,156,249,.06); }
+  .callout b { color: var(--text); }
+
+  ul.tight { margin: 8px 0; padding-left: 22px; }
+  ul.tight li { margin: 5px 0; }
+  .legend { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  .flow { font-family: var(--mono); font-size: 12.5px; background:#0a0e14; border:1px solid var(--border); border-radius:8px; padding:16px; overflow-x:auto; color:#c9d4e3; }
+  .flow .k { color: var(--accent); }
+  .flow .g { color: var(--green); }
+  .flow .r { color: var(--red); }
+  .flow .m { color: var(--muted); }
+
+  footer { margin-top: 50px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12.5px; }
+  .scorebar { height: 8px; border-radius: 999px; background: var(--panel-2); overflow: hidden; margin-top: 8px; }
+  .scorebar > span { display:block; height:100%; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="title">
+    <h1>Bin Card / Distributor Stock Tracking — Verification Report</h1>
+    <p class="subtitle">Does the SFA application already track everything happening to stock inside a distributor (receipts, sales, free issues, returns, reversals, adjustments)?</p>
+    <div class="meta-row">
+      <span><b>Project:</b> SFA Monorepo</span>
+      <span><b>Scope:</b> sfa_api (.NET 8) &amp; sfa_web (Next.js 16)</span>
+      <span><b>Date:</b> 2026-06-15</span>
+      <span><b>Method:</b> Source-code trace of the Stock, Billings, GRNs &amp; StockTaking features</span>
+    </div>
+  </header>
+
+  <!-- VERDICT -->
+  <div class="verdict">
+    <div class="card">
+      <div class="lbl">Backend tracking engine</div>
+      <div class="val">Already built <span class="pill yes">YES — production-grade</span></div>
+      <div class="scorebar"><span style="width:95%;background:var(--green)"></span></div>
+      <p style="margin:10px 0 0;color:var(--muted);font-size:13px;">An append-only stock ledger with running balances, before/after snapshots, source-document linkage, and concurrency locking already exists and is fed by every stock-moving flow.</p>
+    </div>
+    <div class="card">
+      <div class="lbl">"Bin Card" feature (report + UI)</div>
+      <div class="val">Incomplete <span class="pill part">PARTIAL</span></div>
+      <div class="scorebar"><span style="width:55%;background:var(--amber)"></span></div>
+      <p style="margin:10px 0 0;color:var(--muted);font-size:13px;">The read API for per-product history exists (and a web server-action is wired), but no bin-card screen/report renders it. Opening balances &amp; physical damage write-offs are not yet posted to the ledger.</p>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <b>Bottom line:</b> You do <b>not</b> need to build stock tracking from scratch — the SFA API already records every inventory movement per distributor in an immutable ledger that is, by design, a bin card. What's missing is a <b>presentation layer</b> (a classic Bin Card view: opening balance → movements → closing balance, filterable by date) plus two un-wired movement types (<code>Opening</code>, <code>Damage</code>).
+  </div>
+
+  <!-- WHAT A BIN CARD NEEDS -->
+  <h2>1. What a bin card requires vs. what exists</h2>
+  <p>A bin card (stock ledger card) tracks, for <em>one product at one location</em>, every movement with a running balance. Here is each required property mapped to the codebase.</p>
+
+  <table>
+    <thead>
+      <tr><th style="width:30%">Bin-card requirement</th><th style="width:12%">Status</th><th>Where it lives</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Immutable, append-only movement log</td>
+        <td><span class="pill yes">YES</span></td>
+        <td><code>StockTransaction</code> — header comment: <em>"Immutable append-only ledger. Never update or delete rows."</em></td>
+      </tr>
+      <tr>
+        <td>Running balance (qty before &amp; after each move)</td>
+        <td><span class="pill yes">YES</span></td>
+        <td><code>QuantityBefore</code> + <code>QuantityAfter</code> stored on every row; live total kept on <code>DistributorStock.QuantityOnHand</code></td>
+      </tr>
+      <tr>
+        <td>Movement type (receipt / issue / return / adjustment…)</td>
+        <td><span class="pill yes">YES</span></td>
+        <td><code>StockTransactionType</code> enum (8 values) + <code>Direction</code> (In/Out)</td>
+      </tr>
+      <tr>
+        <td>Per distributor &amp; per product</td>
+        <td><span class="pill yes">YES</span></td>
+        <td><code>DistributorId</code> + <code>ProductId</code> on both ledger &amp; balance tables</td>
+      </tr>
+      <tr>
+        <td>Normal vs. Free-Issue (FOC) pools tracked separately</td>
+        <td><span class="pill yes">YES</span></td>
+        <td><code>StockType</code> enum (<code>Normal</code> / <code>FreeIssue</code>) on every row</td>
+      </tr>
+      <tr>
+        <td>Source-document traceability (which bill/GRN caused it)</td>
+        <td><span class="pill yes">YES</span></td>
+        <td><code>ReferenceType</code> ("GRN" / "Billing" / "StockTaking") + <code>ReferenceId</code></td>
+      </tr>
+      <tr>
+        <td>Who &amp; when (audit)</td>
+        <td><span class="pill yes">YES</span></td>
+        <td><code>TransactedBy</code>, <code>TransactedAt</code>, optional <code>Notes</code></td>
+      </tr>
+      <tr>
+        <td>Concurrency-safe posting (no lost updates)</td>
+        <td><span class="pill yes">YES</span></td>
+        <td><code>SELECT … FOR UPDATE</code> row lock + PostgreSQL advisory lock inside an explicit transaction</td>
+      </tr>
+      <tr>
+        <td>Read API to retrieve the card (movement history)</td>
+        <td><span class="pill yes">YES</span></td>
+        <td><code>GET /api/v1/stock/distributors/{id}/products/{pid}/transactions</code></td>
+      </tr>
+      <tr>
+        <td>Bin-card UI / printable report (opening→moves→closing by period)</td>
+        <td><span class="pill no">MISSING</span></td>
+        <td>Web only shows <em>current</em> levels; no ledger screen, no date-range bin card</td>
+      </tr>
+      <tr>
+        <td>Opening balance posting through the ledger</td>
+        <td><span class="pill no">MISSING</span></td>
+        <td><code>StockTransactionType.Opening</code> declared but never written</td>
+      </tr>
+      <tr>
+        <td>Physical damage / write-off as a stock-out (outside return lines)</td>
+        <td><span class="pill no">MISSING</span></td>
+        <td><code>StockTransactionType.Damage</code> declared but never written</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- THE LEDGER MODEL -->
+  <h2>2. The ledger model (the bin card "row")</h2>
+  <div class="filebox"><span class="path">sfa_api/.../Features/Stock/Entities/StockTransaction.cs</span></div>
+  <p>Each row is one line on the bin card. The key fields:</p>
+  <ul class="tight">
+    <li><code>TransactionType</code> + <code>Direction</code> — what happened and whether it added or removed stock</li>
+    <li><code>Quantity</code> (always positive), <code>QuantityBefore</code>, <code>QuantityAfter</code> — the running balance, snapshotted at post time</li>
+    <li><code>StockType</code> — Normal saleable stock vs. company Free-Issue (FOC) pool</li>
+    <li><code>ReferenceType</code> / <code>ReferenceId</code> — drill-back to the GRN, Bill, or Stock-Take that caused the move</li>
+    <li><code>TransactedBy</code> / <code>TransactedAt</code> / <code>Notes</code> — full audit trail</li>
+  </ul>
+  <div class="callout good">
+    <b>Why this is the right design:</b> because <code>QuantityAfter</code> is persisted on every row, you can render a bin card for any date range without recomputing from the beginning of time — the closing balance of the last row in the range is authoritative, and the opening balance is the <code>QuantityBefore</code> of the first row in the range.
+  </div>
+
+  <!-- MOVEMENT MATRIX -->
+  <h2>3. Every tracked movement (the coverage matrix)</h2>
+  <p>This is the core of your question — <em>"is return, billing, everything being tracked?"</em>. Each business event below already writes a ledger row through <code>StockRepository.DeductStockAsync</code> / <code>CreditStockAsync</code>:</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Business event</th>
+        <th>Trigger (feature)</th>
+        <th>Transaction type</th>
+        <th>Dir.</th>
+        <th>Pool</th>
+        <th>Reference</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Stock received from company invoice</td>
+        <td>GRN confirmed</td>
+        <td><code>GRNReceipt</code></td>
+        <td class="dir-in">IN ▲</td>
+        <td>Normal / FreeIssue*</td>
+        <td>GRN</td>
+      </tr>
+      <tr>
+        <td>Sale to outlet</td>
+        <td>Billing create (Sale line)</td>
+        <td><code>Sale</code></td>
+        <td class="dir-out">OUT ▼</td>
+        <td>Normal</td>
+        <td>Billing</td>
+      </tr>
+      <tr>
+        <td>Free issue — company funded (FOC)</td>
+        <td>Billing create (FreeIssue / Company)</td>
+        <td><code>FreeIssue</code></td>
+        <td class="dir-out">OUT ▼</td>
+        <td>FreeIssue</td>
+        <td>Billing</td>
+      </tr>
+      <tr>
+        <td>Free issue — distributor funded</td>
+        <td>Billing create (FreeIssue / Distributor)</td>
+        <td><code>FreeIssue</code></td>
+        <td class="dir-out">OUT ▼</td>
+        <td>Normal</td>
+        <td>Billing</td>
+      </tr>
+      <tr>
+        <td>Sales return — resaleable</td>
+        <td>Billing create (Return / MarketResell)</td>
+        <td><code>Return</code></td>
+        <td class="dir-in">IN ▲</td>
+        <td>Normal</td>
+        <td>Billing</td>
+      </tr>
+      <tr>
+        <td>Sales return — damaged / expired</td>
+        <td>Billing create (Return / Damage|Expire)</td>
+        <td class="dir-none" style="font-weight:400">— recorded on the bill only, <b>no</b> stock movement —</td>
+        <td class="dir-none">NONE</td>
+        <td>—</td>
+        <td>Billing</td>
+      </tr>
+      <tr>
+        <td>Bill cancelled by rep</td>
+        <td>Billing cancel</td>
+        <td><code>BillingReversal</code></td>
+        <td class="dir-none">MIRROR</td>
+        <td>same as original</td>
+        <td>Billing</td>
+      </tr>
+      <tr>
+        <td>Bill rejected by distributor</td>
+        <td>Billing reject</td>
+        <td><code>BillingReversal</code></td>
+        <td class="dir-none">MIRROR</td>
+        <td>same as original</td>
+        <td>Billing</td>
+      </tr>
+      <tr>
+        <td>Physical count correction</td>
+        <td>Stock-take line adjusted by admin</td>
+        <td><code>StockTakingAdjustment</code></td>
+        <td class="dir-none">IN / OUT</td>
+        <td>Normal / FreeIssue</td>
+        <td>StockTaking</td>
+      </tr>
+      <tr style="opacity:.6">
+        <td>Opening / carry-forward balance</td>
+        <td>— not wired —</td>
+        <td><code>Opening</code></td>
+        <td class="dir-none">(IN)</td>
+        <td>—</td>
+        <td>—</td>
+      </tr>
+      <tr style="opacity:.6">
+        <td>Warehouse damage write-off (non-return)</td>
+        <td>— not wired —</td>
+        <td><code>Damage</code></td>
+        <td class="dir-none">(OUT)</td>
+        <td>—</td>
+        <td>—</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="legend">* GRN pool is chosen per line by the invoice's <code>IsFreeIssue</code> flag. "MIRROR" reversals re-credit what was deducted and re-deduct what was credited, so the net ledger balance returns to its pre-bill state while leaving a permanent audit trail.</p>
+
+  <div class="callout good">
+    <b>Verified:</b> Billing, free issues (both funding sources), resaleable returns, bill cancellations, bill rejections, GRN receipts, and stock-take adjustments <b>all post to the same ledger</b>. There is no code path that changes a distributor's stock without writing a ledger row — the balance and the ledger cannot drift apart.
+  </div>
+
+  <!-- HOW POSTING WORKS -->
+  <h2>4. How a movement is posted (atomic &amp; lock-safe)</h2>
+  <div class="filebox"><span class="path">sfa_api/.../Features/Billings/Services/BillingService.cs</span> — CreateAsync (sale line)</div>
+  <div class="flow">
+<span class="m">// 1. pre-check availability (fast fail, collects ALL shortages)</span>
+<span class="k">BeginTransaction</span>()
+  <span class="k">GetStockForUpdateAsync</span>(distributorId, productId, Normal)   <span class="m">// SELECT … FOR UPDATE — row lock</span>
+  <span class="k">DeductStockAsync</span>(qty, Sale, ref="Billing", billId)
+     ├─ <span class="g">QuantityBefore</span> = stock.QuantityOnHand
+     ├─ guard: <span class="r">QuantityAfter &lt; 0 → INSUFFICIENT_STOCK</span>
+     ├─ stock.QuantityOnHand = QuantityAfter        <span class="m">// update running total</span>
+     └─ INSERT StockTransaction { … Direction=Out … } <span class="m">// append ledger row</span>
+<span class="k">Commit</span>()
+  </div>
+  <p>The same pattern wraps GRN confirmation and stock-take adjustments. Posting is also guarded by a PostgreSQL <b>advisory lock</b> (e.g. <code>billing:create:{repId}</code>, <code>grn:confirm:{grnId}</code>) so concurrent operations serialize cleanly rather than racing on the same balance.</p>
+
+  <!-- READ ENDPOINTS -->
+  <h2>5. Read access (retrieving the card)</h2>
+  <div class="filebox"><span class="path">sfa_api/.../Features/Stock/Controllers/StockController.cs</span></div>
+  <table>
+    <thead><tr><th>Endpoint</th><th>Returns</th><th>Who</th></tr></thead>
+    <tbody>
+      <tr><td><code>GET /api/v1/stock/distributors/{id}/products/{pid}/transactions</code></td><td><b>The bin card ledger</b> — paginated movement history (type, direction, qty, before, after, reference, time, notes)</td><td>Authenticated (Admin via web)</td></tr>
+      <tr><td><code>GET /api/v1/stock/distributors/{id}</code></td><td>Current stock levels (qty on hand) for all products</td><td>Authenticated</td></tr>
+      <tr><td><code>GET /api/v1/stock/my-distributor</code></td><td>Current levels for the calling rep's distributor (mobile sync)</td><td>Sales rep</td></tr>
+      <tr><td><code>GET /api/v1/stock/portal</code></td><td>Current levels for the logged-in distributor account</td><td>Distributor</td></tr>
+    </tbody>
+  </table>
+  <div class="callout info">
+    <b>Note:</b> the first endpoint already returns everything a bin card needs. On the web side the server action <code>getStockTransactionsAction</code> (in <code>features/stock/actions/stock.actions.ts</code>) is implemented and calls it — but no component currently renders the result. The web <code>/stock</code> page shows only the current-levels table.
+  </div>
+
+  <!-- GAPS -->
+  <h2>6. Gaps to close for a complete "Bin Card" feature</h2>
+
+  <h3><span class="pill part">1</span> &nbsp;Bin Card screen + printable report (UI)</h3>
+  <p>The data and API exist; build a screen that, given a distributor + product (+ optional date range), shows: <b>Opening balance → each movement (date, type, ref, in, out, balance) → Closing balance</b>. The web stock feature already has the action wired — it needs a drill-in (e.g. click a product row → ledger drawer/page) and an export-to-PDF/Excel.</p>
+
+  <h3><span class="pill part">2</span> &nbsp;Period opening/closing endpoint</h3>
+  <p>Today the transactions endpoint is page-based and sorted newest-first, with no date filter. A true bin card wants <code>?from=&amp;to=</code> plus computed opening balance (the <code>QuantityBefore</code> of the first row in range) and closing balance. This is a small repository addition — the data is already there in <code>QuantityBefore</code>/<code>QuantityAfter</code>.</p>
+
+  <h3><span class="pill no">3</span> &nbsp;Wire the <code>Opening</code> transaction type</h3>
+  <p>Opening / go-live balances should be posted as <code>Opening</code> (Direction=In) ledger rows so the card has a proper starting point instead of stock appearing only from the first GRN.</p>
+
+  <h3><span class="pill no">4</span> &nbsp;Wire the <code>Damage</code> transaction type</h3>
+  <p>Physical damage or expiry discovered <em>at the distributor</em> (not via a sales-return line) currently has no way to leave the ledger. A "stock write-off" action posting <code>Damage</code> (Direction=Out) would close this. Note: damaged/expired <em>sales returns</em> are intentionally recorded on the bill without a stock move — confirm that matches the desired physical-stock policy.</p>
+
+  <div class="callout warn">
+    <b>Data-integrity watch-item:</b> because <code>Damage</code>/<code>Expire</code> returns deliberately skip stock movement, physically unsaleable returned goods are recorded financially (on the bill) but never decrement a stock pool. If you expect a "damaged goods" balance to track at the distributor, that needs an explicit policy decision and a wired movement type.
+  </div>
+
+  <!-- SUMMARY -->
+  <h2>7. Summary</h2>
+  <ul class="tight">
+    <li><b>Tracking everything happening to distributor stock?</b> &nbsp;<span class="pill yes">YES</span> — receipts, sales, both kinds of free issue, resaleable returns, bill cancel/reject reversals, and stock-take corrections all post to one immutable, concurrency-safe ledger with full audit + source linkage.</li>
+    <li><b>Is the ledger query-able as a bin card?</b> &nbsp;<span class="pill yes">YES (API)</span> — a per-distributor, per-product transaction history endpoint already returns the card data.</li>
+    <li><b>Is there a Bin Card feature (UI + period report)?</b> &nbsp;<span class="pill part">NOT YET</span> — needs a screen/report, a date-range opening/closing endpoint, and the <code>Opening</code> + <code>Damage</code> movement types wired in.</li>
+  </ul>
+  <p>So the feature you described is <b>~80% already in place at the data layer</b>. The remaining work is primarily presentation and two small posting flows — not a from-scratch inventory engine.</p>
+
+  <footer>
+    Generated from a static source-code trace of <code>sfa_api</code> (Stock, Billings, GRNs, StockTaking features) and <code>sfa_web</code> (stock feature) on 2026-06-15.
+    Key files: <code>Features/Stock/Entities/StockTransaction.cs</code>, <code>Features/Stock/Repositories/StockRepository.cs</code>,
+    <code>Features/Billings/Services/BillingService.cs</code>, <code>Features/GRNs/Services/GrnService.cs</code>,
+    <code>Features/StockTaking/Services/StockTakingService.cs</code>, <code>Features/Stock/Controllers/StockController.cs</code>.
+  </footer>
+
+</div>
+</body>
+</html>

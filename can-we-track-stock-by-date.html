@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Can we see stock per SKU on any past date?</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --border:#2d3645;
+    --text:#e6edf3; --muted:#9aa7b8; --accent:#4f9cf9;
+    --green:#3fb950; --amber:#d29922; --red:#f85149;
+    --mono:"SFMono-Regular",Consolas,Menlo,monospace;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    line-height:1.6;font-size:16px;}
+  .wrap{max-width:860px;margin:0 auto;padding:40px 24px 80px;}
+  h1{font-size:26px;margin:0 0 4px;letter-spacing:-.3px;}
+  .sub{color:var(--muted);margin:0 0 26px;}
+
+  /* big verdict */
+  .verdict{display:flex;align-items:center;gap:18px;background:rgba(63,185,80,.08);
+    border:1px solid rgba(63,185,80,.4);border-left:6px solid var(--green);
+    border-radius:12px;padding:22px 24px;margin-bottom:14px;}
+  .verdict .tick{font-size:42px;line-height:1;}
+  .verdict h2{margin:0;font-size:22px;color:var(--green);}
+  .verdict p{margin:4px 0 0;color:var(--text);font-size:15px;}
+
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0 30px;}
+  @media(max-width:640px){.twocol{grid-template-columns:1fr;}}
+  .mini{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 18px;}
+  .mini .q{font-size:13px;color:var(--muted);margin-bottom:8px;}
+  .mini .a{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px;}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none;}
+  .dot.g{background:var(--green);} .dot.a{background:var(--amber);}
+
+  h3{font-size:18px;margin:34px 0 6px;}
+  .lead{color:var(--muted);margin:0 0 14px;}
+
+  /* example card */
+  .ex{background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+  .ex .head{background:var(--panel2);padding:12px 18px;border-bottom:1px solid var(--border);
+    font-weight:600;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;}
+  .ex .head small{color:var(--muted);font-weight:400;font-family:var(--mono);}
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px;}
+  td.num{font-family:var(--mono);text-align:right;}
+  .in{color:var(--green);font-weight:600;}
+  .out{color:var(--red);font-weight:600;}
+  .bal{font-family:var(--mono);font-weight:700;text-align:right;}
+  tr.hl td{background:rgba(79,156,249,.10);}
+
+  .askbar{display:flex;gap:10px;flex-wrap:wrap;margin:22px 0 8px;}
+  .ask{flex:1;min-width:220px;background:#0a0e14;border:1px solid var(--border);
+    border-radius:10px;padding:14px 16px;}
+  .ask .date{font-family:var(--mono);color:var(--accent);font-size:13px;}
+  .ask .res{font-size:20px;font-weight:700;margin-top:4px;}
+  .ask .res span{font-size:13px;color:var(--muted);font-weight:400;}
+
+  .how{background:var(--panel);border:1px solid var(--border);border-left:4px solid var(--accent);
+    border-radius:8px;padding:14px 18px;margin:24px 0;}
+  .how b{color:var(--accent);}
+  .note{background:rgba(210,153,34,.07);border:1px solid rgba(210,153,34,.35);
+    border-left:4px solid var(--amber);border-radius:8px;padding:14px 18px;margin:18px 0;font-size:14.5px;}
+  .note b{color:var(--amber);}
+  code{font-family:var(--mono);background:rgba(79,156,249,.1);color:#9cc7ff;padding:1px 6px;border-radius:4px;font-size:13px;}
+  footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--border);color:var(--muted);font-size:12.5px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Can we see stock per SKU on any past date?</h1>
+  <p class="sub">e.g. "How many units of SKU&nbsp;X did distributor&nbsp;Y have on 1&nbsp;June?"</p>
+
+  <div class="verdict">
+    <div class="tick">✅</div>
+    <div>
+      <h2>Yes — and it's easy.</h2>
+      <p>The system already records the running balance after <u>every single stock movement</u>. To get the stock on any past date, you just read the last movement up to that date. No guessing, no recalculation.</p>
+    </div>
+  </div>
+
+  <div class="twocol">
+    <div class="mini">
+      <div class="q">Is the data being captured automatically?</div>
+      <div class="a"><span class="dot g"></span> Yes — every receipt, sale, free issue, return &amp; adjustment is logged</div>
+    </div>
+    <div class="mini">
+      <div class="q">Can we read "stock as of a date" per SKU?</div>
+      <div class="a"><span class="dot g"></span> Yes — it's a single, fast lookup on data we already store</div>
+    </div>
+    <div class="mini">
+      <div class="q">Is it accurate for old dates?</div>
+      <div class="a"><span class="dot g"></span> Yes — nothing changes stock without leaving a record</div>
+    </div>
+    <div class="mini">
+      <div class="q">Is there a ready-made screen/report for it?</div>
+      <div class="a"><span class="dot a"></span> Not yet — needs a small report to be built (data is ready)</div>
+    </div>
+  </div>
+
+  <h3>How it works — a real example</h3>
+  <p class="lead">Take one SKU at one distributor. Every time stock moves, we save the new balance on that line:</p>
+
+  <div class="ex">
+    <div class="head">
+      <span>SKU: Milk Powder 400g</span>
+      <small>PRD-001 · Distributor: Sanari · pool: Normal</small>
+    </div>
+    <table>
+      <thead>
+        <tr><th>Date</th><th>What happened</th><th>In</th><th>Out</th><th>Balance after</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>May 01</td><td>Stock received (GRN)</td><td class="num in">+100</td><td class="num"></td><td class="bal">100</td></tr>
+        <tr><td>May 10</td><td>Sale to outlet</td><td class="num"></td><td class="num out">−30</td><td class="bal">70</td></tr>
+        <tr><td>May 18</td><td>Sale to outlet</td><td class="num"></td><td class="num out">−20</td><td class="bal">50</td></tr>
+        <tr class="hl"><td>May 25</td><td>Return (resaleable)</td><td class="num in">+5</td><td class="num"></td><td class="bal">55 ⬅</td></tr>
+        <tr><td>Jun 02</td><td>Stock received (GRN)</td><td class="num in">+60</td><td class="num"></td><td class="bal">115</td></tr>
+        <tr><td>Jun 09</td><td>Sale to outlet</td><td class="num"></td><td class="num out">−15</td><td class="bal">100</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="askbar">
+    <div class="ask">
+      <div class="date">As of May 31</div>
+      <div class="res">55 units <span>(last move was May 25)</span></div>
+    </div>
+    <div class="ask">
+      <div class="date">As of Jun 05</div>
+      <div class="res">115 units <span>(last move was Jun 02)</span></div>
+    </div>
+    <div class="ask">
+      <div class="date">Today (Jun 15)</div>
+      <div class="res">100 units <span>(latest balance)</span></div>
+    </div>
+  </div>
+
+  <div class="how">
+    <b>The whole trick:</b> we don't add up history every time. Each movement already saves the resulting balance. So "stock on date X" = <b>the balance on the last movement that happened on or before date X</b>. That's why it's fast and easy — even across thousands of SKUs and years of history.
+  </div>
+
+  <h3>So, easy or not?</h3>
+  <div class="twocol" style="margin-top:10px;">
+    <div class="mini">
+      <div class="q">The hard part — capturing &amp; storing it</div>
+      <div class="a"><span class="dot g"></span> DONE. Already running in the live system.</div>
+    </div>
+    <div class="mini">
+      <div class="q">The remaining part — showing it on a date</div>
+      <div class="a"><span class="dot a"></span> EASY to add — one small report screen + lookup.</div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>One thing to confirm:</b> opening (go-live) stock. As long as starting stock was entered through a normal receipt, every past date is 100% accurate. If any opening stock was ever loaded straight into the totals without a movement record, dates <em>before</em> that SKU's first receipt would show 0. Easy to fix by posting opening balances as an "Opening" movement — just worth checking once.
+  </div>
+
+  <footer>
+    Plain-language summary based on the SFA stock ledger (<code>StockTransaction</code> table). Each row stores the balance after the move, indexed by distributor + product + date — so an as-of-date balance per SKU is a single quick lookup.
+  </footer>
+
+</div>
+</body>
+</html>

@@ -103,7 +103,9 @@ export default function ProtectedLayout({
               </div>
             </header>
             <Separator />
-            {children}
+            <div className="min-w-0 overflow-x-hidden">
+              {children}
+            </div>
           </SidebarInset>
         </SidebarProvider>
       </TooltipProvider>

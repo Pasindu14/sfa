@@ -19,7 +19,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning className={cn("font-sans", jost.variable)}>
-      <body className={`${jost.className} antialiased`}>
+      <body className={`${jost.className} antialiased overflow-x-hidden`}>
         <NextTopLoader color="#f97316" />
         <Providers>{children}</Providers>
       </body>

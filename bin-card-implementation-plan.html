@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bin Card Feature — Implementation Plan (SFA)</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --border:#2d3645;
+    --text:#e6edf3; --muted:#9aa7b8; --accent:#4f9cf9;
+    --green:#3fb950; --amber:#d29922; --red:#f85149; --purple:#bc8cff;
+    --mono:"SFMono-Regular",Consolas,Menlo,monospace;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.6;font-size:15px;}
+  .wrap{max-width:1080px;margin:0 auto;padding:38px 24px 80px;}
+  h1{font-size:26px;margin:0 0 4px;letter-spacing:-.3px;}
+  .sub{color:var(--muted);margin:0 0 22px;}
+
+  .decisions{background:rgba(63,185,80,.07);border:1px solid rgba(63,185,80,.35);
+    border-left:5px solid var(--green);border-radius:10px;padding:16px 20px;margin-bottom:26px;}
+  .decisions h3{margin:0 0 8px;font-size:15px;color:var(--green);}
+  .decisions ul{margin:0;padding-left:20px;} .decisions li{margin:5px 0;font-size:14px;}
+
+  h2.sec{font-size:19px;margin:36px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+  .num{display:inline-flex;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#0d1117;font-size:14px;font-weight:700;align-items:center;justify-content:center;flex:none;}
+
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px;}
+  th,td{padding:8px 11px;border:1px solid var(--border);text-align:left;vertical-align:top;}
+  th{background:var(--panel2);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;}
+  td{background:var(--panel);}
+  code{font-family:var(--mono);background:rgba(79,156,249,.1);color:#9cc7ff;padding:1px 5px;border-radius:4px;font-size:12.5px;}
+  .in{color:var(--green);font-weight:600;} .out{color:var(--red);font-weight:600;}
+  .inf{color:var(--muted);font-weight:600;} .calc{color:var(--purple);font-weight:600;}
+
+  .formula{font-family:var(--mono);font-size:13px;background:#0a0e14;border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin:12px 0;color:#c9d4e3;line-height:1.9;}
+  .formula .plus{color:var(--green);} .formula .minus{color:var(--red);} .formula .x{color:var(--muted);}
+
+  .phase{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:4px 20px 16px;margin:14px 0;}
+  .filetree{font-family:var(--mono);font-size:12.5px;background:#0a0e14;border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin:10px 0;color:#c9d4e3;line-height:1.7;white-space:pre;overflow-x:auto;}
+  .filetree .new{color:var(--green);} .filetree .mod{color:var(--amber);} .filetree .dir{color:var(--accent);} .filetree .c{color:var(--muted);}
+
+  ul.tight{margin:8px 0;padding-left:22px;} ul.tight li{margin:6px 0;}
+  .callout{border-radius:8px;padding:14px 18px;margin:16px 0;border:1px solid var(--border);font-size:14px;}
+  .callout.info{border-left:4px solid var(--accent);background:rgba(79,156,249,.06);}
+  .callout.warn{border-left:4px solid var(--amber);background:rgba(210,153,34,.06);}
+  .callout.good{border-left:4px solid var(--green);background:rgba(63,185,80,.06);}
+  .callout b{color:var(--text);}
+
+  .flow{font-family:var(--mono);font-size:12.5px;background:#0a0e14;border:1px solid var(--border);border-radius:8px;padding:14px 16px;color:#c9d4e3;overflow-x:auto;}
+  .flow .k{color:var(--accent);} .flow .m{color:var(--muted);}
+
+  .est{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:14px 0;}
+  @media(max-width:640px){.est{grid-template-columns:1fr 1fr;}}
+  .est .c{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;}
+  .est .c .n{font-size:22px;font-weight:700;color:var(--accent);}
+  .est .c .l{font-size:12px;color:var(--muted);margin-top:2px;}
+  .tag{display:inline-block;font-size:11px;font-weight:600;padding:1px 8px;border-radius:999px;background:rgba(79,156,249,.15);color:var(--accent);border:1px solid rgba(79,156,249,.35);}
+  footer{margin-top:42px;padding-top:16px;border-top:1px solid var(--border);color:var(--muted);font-size:12.5px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Bin Card Feature — Implementation Plan</h1>
+  <p class="sub">A per-SKU, date-range stock movement report for a distributor — matching your target screenshots, on the existing SFA stock ledger.</p>
+
+  <div class="decisions">
+    <h3>✓ Your decisions applied</h3>
+    <ul>
+      <li><b>Stock Taking + Stock Adjustment → one column</b> ("Stock Adjustment"), sourced from the <code>StockTakingAdjustment</code> movement (signed: + for gains, − for losses).</li>
+      <li><b>"Dis Return Qty" column removed.</b></li>
+      <li><b>"Current Stock (Pcs)" = latest physical count</b> (most recent stock-take count), so Stock Variance compares book stock vs counted stock.</li>
+    </ul>
+  </div>
+
+  <!-- COLUMN SPEC -->
+  <h2 class="sec"><span class="num">1</span> Final column specification</h2>
+  <table>
+    <thead><tr><th style="width:18%">Column</th><th style="width:9%">Role</th><th>Source &amp; rule</th></tr></thead>
+    <tbody>
+      <tr><td>Item Code</td><td>—</td><td><code>Product.Code</code></td></tr>
+      <tr><td>Item Description</td><td>—</td><td><code>Product.ItemDescription</code></td></tr>
+      <tr><td>Item Price</td><td>—</td><td><code>Product.DealerPackPrice</code></td></tr>
+      <tr><td>Open Stock</td><td class="inf">BASE</td><td>Combined ledger balance immediately <b>before</b> the From date (last <code>QuantityAfter</code> before range, summed across Normal + FreeIssue pools)</td></tr>
+      <tr><td>Invoice Quantity</td><td class="in">+ IN</td><td>Σ <code>GRNReceipt</code> qty in range</td></tr>
+      <tr><td>Market Resaleable</td><td class="in">+ IN</td><td>Σ <code>Return</code> qty in range (return type = MarketResell)</td></tr>
+      <tr><td>Deleted Inv</td><td class="in">+ IN</td><td>Σ <code>BillingReversal</code> qty for reversed <b>Sale</b> lines (cancelled/rejected bills)</td></tr>
+      <tr><td>Stock Adjustment</td><td class="calc">± NET</td><td>Σ <code>StockTakingAdjustment</code>, signed (In adds, Out subtracts)</td></tr>
+      <tr><td>Sold Qty</td><td class="out">− OUT</td><td>Σ <code>Sale</code> qty in range</td></tr>
+      <tr><td>Free Issues</td><td class="out">− OUT</td><td>Σ <code>FreeIssue</code> qty where pool = Normal (distributor-funded)</td></tr>
+      <tr><td>Company Free Issues</td><td class="out">− OUT</td><td>Σ <code>FreeIssue</code> qty where pool = FreeIssue (company-funded)</td></tr>
+      <tr><td>Rep Return Qty D/E</td><td class="inf">INFO</td><td>Σ bill lines with return type = Damage/Expire (from billing — no stock effect)</td></tr>
+      <tr><td>End Stock</td><td class="calc">CALC</td><td>Open + ins − outs (formula below)</td></tr>
+      <tr><td>Current Stock (Pcs)</td><td class="inf">COUNT</td><td>Latest physical count (<code>StockTakingLine.CountedQuantity</code>, most recent submission); blank if never counted</td></tr>
+      <tr><td>Closing Stock Value</td><td class="calc">CALC</td><td>End Stock × Item Price</td></tr>
+      <tr><td>Stock Variance</td><td class="calc">CALC</td><td>Current Stock − End Stock (red when negative)</td></tr>
+    </tbody>
+  </table>
+
+  <div class="formula">
+    End&nbsp;Stock = Open&nbsp;Stock
+    <span class="plus">+ Invoice&nbsp;Qty + Market&nbsp;Resaleable + Deleted&nbsp;Inv</span>
+    <span class="x">±</span> <span style="color:#bc8cff">Stock&nbsp;Adjustment</span>
+    <span class="minus">− Sold&nbsp;Qty − Free&nbsp;Issues − Company&nbsp;Free&nbsp;Issues</span>
+    <br><span class="x">// Rep Return D/E excluded · Dis Return removed · verified vs screenshots</span>
+  </div>
+  <div class="callout good">
+    <b>Reconciliation guarantee:</b> because every column except Rep&nbsp;Return&nbsp;D/E is summed from the same ledger that maintains the live balance, <b>End Stock will always equal the ledger's true closing balance</b>. The report can compute End Stock <i>either</i> way and assert they match — a built-in correctness check.
+  </div>
+
+  <!-- BACKEND -->
+  <h2 class="sec"><span class="num">2</span> Backend — API <span class="tag">sfa_api</span></h2>
+  <p>One new endpoint on the existing Stock vertical slice. No schema changes, no migration — the ledger and indexes already exist (composite index <code>(DistributorId, ProductId, TransactedAt)</code> covers the range scan).</p>
+
+  <div class="filetree"><span class="dir">Features/Stock/</span>
+├── DTOs/
+│   ├── <span class="new">BinCardRowDto.cs</span>          <span class="c"># one record per SKU (all 16 fields)</span>
+│   └── <span class="new">BinCardResponseDto.cs</span>     <span class="c"># header (distributor, range) + rows + grand totals</span>
+├── Requests/
+│   └── <span class="new">BinCardQuery.cs</span>           <span class="c"># distributorId, from, to (validated)</span>
+├── Repositories/
+│   ├── <span class="mod">IStockRepository.cs</span>       <span class="c"># + GetBinCardAggregatesAsync(...)</span>
+│   └── <span class="mod">StockRepository.cs</span>        <span class="c"># grouped SUM queries (movements, opening, latest count)</span>
+├── Services/
+│   ├── <span class="new">IBinCardService.cs</span>
+│   └── <span class="new">BinCardService.cs</span>         <span class="c"># assembles columns, computes End/Value/Variance</span>
+├── Validators/
+│   └── <span class="new">BinCardQueryValidator.cs</span>  <span class="c"># to >= from, range cap (e.g. 1 year)</span>
+├── Controllers/
+│   └── <span class="mod">StockController.cs</span>        <span class="c"># + GET .../distributors/{id}/bin-card</span>
+└── <span class="mod">StockServiceExtensions.cs</span>     <span class="c"># register IBinCardService</span></div>
+
+  <h3 style="font-size:15px;margin:18px 0 6px;">Endpoint</h3>
+  <div class="flow"><span class="k">GET</span> /api/v1/stock/distributors/{distributorId}/bin-card?from=2026-06-01&to=2026-06-15
+<span class="m">→ ApiResponse&lt;BinCardResponseDto&gt; { distributorName, from, to, rows[], totals }</span></div>
+
+  <h3 style="font-size:15px;margin:18px 0 6px;">Query strategy (set-based, no N+1)</h3>
+  <ul class="tight">
+    <li><b>Movements in range:</b> one <code>GROUP BY ProductId, TransactionType, StockType, Direction</code> SUM over <code>StockTransactions</code> where date ∈ [from, to] → fills Invoice/Resaleable/Deleted/Adjustment/Sold/FreeIssues columns.</li>
+    <li><b>Opening stock:</b> per (product, pool), the <code>QuantityAfter</code> of the latest movement <code>TransactedAt &lt; from</code> → summed per product. (Window function / lateral, one round-trip.)</li>
+    <li><b>Rep Return D/E:</b> one grouped SUM over <code>BillingItems</code> joined to <code>Billings</code> (distributor + date + returnType ∈ Damage/Expire).</li>
+    <li><b>Latest physical count:</b> per product, <code>CountedQuantity</code> from the most recent <code>StockTakingSubmission</code> for the distributor.</li>
+    <li>Service joins these by <code>ProductId</code> in memory, computes End Stock / Closing Value / Variance, returns rows + totals. ~4 grouped queries total regardless of SKU count.</li>
+  </ul>
+
+  <div class="callout info">
+    <b>Date semantics:</b> <code>from</code>/<code>to</code> are inclusive business dates. Open Stock = balance at <code>from 00:00</code>; in-range sums cover <code>from 00:00 → to 23:59:59</code>; End Stock = balance at end of <code>to</code>. Boundaries converted from the business timezone to the UTC <code>TransactedAt</code> stored on each row.
+  </div>
+
+  <!-- FRONTEND -->
+  <h2 class="sec"><span class="num">3</span> Frontend — Web <span class="tag">sfa_web</span></h2>
+  <p>A new 5-layer feature module following the existing Stock/Users pattern, plus a protected route and sidebar entry.</p>
+
+  <div class="filetree"><span class="dir">features/bin-card/</span>
+├── schema/<span class="new">bin-card.schema.ts</span>        <span class="c"># Zod types for row + response</span>
+├── actions/<span class="new">bin-card.actions.ts</span>       <span class="c"># getBinCardAction(distributorId, from, to)</span>
+├── hooks/<span class="new">bin-card.hooks.ts</span>           <span class="c"># useBinCard() TanStack query (manual fetch on Search)</span>
+├── store/<span class="new">bin-card.filter-store.ts</span>    <span class="c"># distributorId, from, to, applied flag</span>
+│   └── <span class="new">index.ts</span>
+└── components/
+    ├── pages/<span class="new">bin-card-page.tsx</span>        <span class="c"># title + criteria bar + results</span>
+    ├── <span class="new">bin-card-criteria.tsx</span>           <span class="c"># distributor select, All, dates, Search/Clear, PDF/Excel</span>
+    ├── table/<span class="new">bin-card-table.tsx</span>       <span class="c"># wide sticky-header table + totals row</span>
+    ├── columns/<span class="new">bin-card-columns.tsx</span>   <span class="c"># 16 columns, red negative variance</span>
+    └── <span class="new">index.ts</span>
+<span class="dir">app/(protected)/</span>bin-card/<span class="new">page.tsx</span>         <span class="c"># route</span>
+<span class="dir">components/</span><span class="mod">app-sidebar.tsx</span>             <span class="c"># + "Bin Card" nav item</span></div>
+
+  <div class="flow"><span class="m">data flow (project convention):</span> schema → actions → hooks → store → components</div>
+
+  <ul class="tight">
+    <li><b>Criteria bar</b> mirrors your screenshots: distributor <code>AsyncSelect</code>, "All" toggle, From/To date pickers, <b>Search</b>, <b>Clear</b>, <b>PDF</b>, <b>Excel</b>.</li>
+    <li><b>Results header:</b> "Bin Card Details (N records)" + distributor name + formatted date range.</li>
+    <li><b>Table:</b> horizontal scroll with frozen Item Code/Description; right-aligned numerics; <span style="color:var(--red)">negative variance in red</span>; bold End Stock; a <b>totals row</b> (sum of quantities &amp; closing value).</li>
+    <li><b>Empty state</b> until a distributor + range is chosen and Search is clicked (matches the on-demand "Load Data" pattern already used by the Stock page).</li>
+  </ul>
+
+  <!-- EXPORT -->
+  <h2 class="sec"><span class="num">4</span> Export — PDF &amp; Excel</h2>
+  <ul class="tight">
+    <li><b>Excel:</b> reuse the existing <code>DataTable</code> export plumbing (<code>exceljs</code>/<code>xlsx</code> already in the project) with a column map for all 16 fields + a totals row.</li>
+    <li><b>PDF:</b> generate landscape A4 (header: distributor + range; the table; totals). Add a small client-side PDF util (the wide table prints best in landscape).</li>
+    <li>Both exports use the <b>same response object</b> the table renders — no second data path, so numbers can never disagree between screen and file.</li>
+  </ul>
+
+  <!-- TESTS -->
+  <h2 class="sec"><span class="num">5</span> Tests</h2>
+  <ul class="tight">
+    <li><b>Unit (xUnit):</b> <code>BinCardService</code> column math — End Stock formula, signed adjustments, value &amp; variance, Rep&nbsp;Return excluded. Reuse your screenshot rows as fixtures (CC03 → 440, CR02 → 292) as golden cases.</li>
+    <li><b>Integration:</b> seed a distributor with GRN + bills (sale/FOC/return) + a stock-take, hit the endpoint, assert each column + reconciliation (End Stock == ledger closing balance).</li>
+    <li><b>E2E (Playwright):</b> pick distributor + range → Search → grid renders, totals correct, Excel downloads.</li>
+  </ul>
+
+  <!-- EDGE CASES -->
+  <h2 class="sec"><span class="num">6</span> Rules &amp; edge cases</h2>
+  <table>
+    <thead><tr><th style="width:34%">Case</th><th>Handling</th></tr></thead>
+    <tbody>
+      <tr><td>SKU with no movement &amp; no count in range</td><td>Omit by default; optional "show all catalog" toggle later</td></tr>
+      <tr><td>SKU never physically counted</td><td>Current Stock = blank; Variance = blank (not 0)</td></tr>
+      <tr><td>Bill cancelled inside the range</td><td>"Deleted Inv" picks up the reversal credit — keeps the book balanced</td></tr>
+      <tr><td>Combined vs split pools</td><td>Columns sum Normal + FreeIssue per SKU into one row (single bin card line per product)</td></tr>
+      <tr><td>Huge range / many SKUs</td><td>Range capped (validator) + set-based grouped queries; paginate the grid if needed</td></tr>
+      <tr><td>"All" distributors</td><td>Phase-2 option: loop/group by distributor (heavier) — start with single distributor</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ESTIMATE -->
+  <h2 class="sec"><span class="num">7</span> Sequencing &amp; effort</h2>
+  <div class="est">
+    <div class="c"><div class="n">A</div><div class="l">API endpoint + repo queries + service math</div></div>
+    <div class="c"><div class="n">B</div><div class="l">Web feature: criteria + table + columns</div></div>
+    <div class="c"><div class="n">C</div><div class="l">PDF / Excel export + totals row</div></div>
+    <div class="c"><div class="n">D</div><div class="l">Unit + integration + E2E tests</div></div>
+  </div>
+  <p style="color:var(--muted);font-size:13.5px;">Build order A → B → C → D. A is the critical path (all column logic lives there); B can start against a mocked response as soon as the DTO shape in A is fixed. No database migration on the critical path.</p>
+
+  <div class="callout warn">
+    <b>One thing to confirm before I start:</b> the <b>"latest physical count"</b> for Current Stock — should it be the most recent <i>submitted</i> stock-take regardless of date, or the latest one whose period falls <i>within</i> the report's date range? (Default I'll use: latest submitted on or before the To date.)
+  </div>
+
+  <div class="callout good">
+    <b>Ready to build.</b> No schema changes for the 16 columns; this is a reporting layer over data SFA already captures correctly. Say the word and I'll start with Phase A (the API endpoint).
+  </div>
+
+  <footer>
+    Plan targets the existing Stock vertical slice (<code>sfa_api/Features/Stock</code>) and a new <code>sfa_web/features/bin-card</code> module, following the project's Controller→Service→Repository and schema→actions→hooks→store→components conventions. Column math verified against the supplied screenshots (A &amp; S Distributors, 1–15 June 2026).
+  </footer>
+
+</div>
+</body>
+</html>

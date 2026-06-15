@@ -1,10 +1,14 @@
+using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using sfa_api.Common.Errors;
+using sfa_api.Common.Extensions;
 using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.Stock.DTOs;
 using sfa_api.Features.Stock.Repositories;
+using sfa_api.Features.Stock.Requests;
+using sfa_api.Features.Stock.Services;
 using sfa_api.Features.UserGeoAssignments.Repositories;
 using sfa_api.Features.Users.Repositories;
 
@@ -17,12 +21,16 @@ public class StockController(
     IStockRepository stockRepository,
     IUserGeoAssignmentRepository geoRepo,
     IDistributorRepository distributorRepo,
-    IUserRepository userRepo) : ControllerBase
+    IUserRepository userRepo,
+    IBinCardService binCardService,
+    IValidator<BinCardQuery> binCardValidator) : ControllerBase
 {
     private readonly IStockRepository _stockRepository = stockRepository;
     private readonly IUserGeoAssignmentRepository _geoRepo = geoRepo;
     private readonly IDistributorRepository _distributorRepo = distributorRepo;
     private readonly IUserRepository _userRepo = userRepo;
+    private readonly IBinCardService _binCardService = binCardService;
+    private readonly IValidator<BinCardQuery> _binCardValidator = binCardValidator;
 
     /// <summary>
     /// GET /api/v1/stock/my-distributor
@@ -152,5 +160,26 @@ public class StockController(
             t.Notes
         )).ToList();
         return Ok(ResponseHelper.Paged(dtos, page, pageSize, total, correlationId));
+    }
+
+    /// <summary>
+    /// GET /api/v1/stock/distributors/{distributorId}/bin-card?from=YYYY-MM-DD&amp;to=YYYY-MM-DD
+    /// Per-SKU bin card for a distributor over a date range: opening stock, every movement
+    /// (receipts, returns, reversals, adjustments, sales, free issues), end stock, latest
+    /// physical count, closing value and variance — plus grand totals.
+    /// </summary>
+    [HttpGet("distributors/{distributorId:int}/bin-card")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetBinCard(
+        int distributorId,
+        [FromQuery] DateOnly from,
+        [FromQuery] DateOnly to,
+        CancellationToken ct = default)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var query = new BinCardQuery(distributorId, from, to);
+        await _binCardValidator.ValidateOrThrowAsync(query, ct);
+        var result = await _binCardService.GetBinCardAsync(query, ct);
+        return Ok(ResponseHelper.Ok(result, correlationId));
     }
 }

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Can we build THIS bin card? — Column-by-column feasibility (SFA)</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --border:#2d3645;
+    --text:#e6edf3; --muted:#9aa7b8; --accent:#4f9cf9;
+    --green:#3fb950; --amber:#d29922; --red:#f85149;
+    --mono:"SFMono-Regular",Consolas,Menlo,monospace;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.6;font-size:15px;}
+  .wrap{max-width:1080px;margin:0 auto;padding:38px 24px 80px;}
+  h1{font-size:25px;margin:0 0 4px;letter-spacing:-.3px;}
+  .sub{color:var(--muted);margin:0 0 24px;}
+
+  .verdict{display:flex;align-items:center;gap:18px;background:rgba(63,185,80,.08);
+    border:1px solid rgba(63,185,80,.4);border-left:6px solid var(--green);border-radius:12px;padding:20px 24px;margin-bottom:16px;}
+  .verdict .tick{font-size:40px;line-height:1;}
+  .verdict h2{margin:0;font-size:21px;color:var(--green);}
+  .verdict p{margin:4px 0 0;font-size:14.5px;}
+
+  .scorebar{display:flex;height:30px;border-radius:8px;overflow:hidden;border:1px solid var(--border);margin:6px 0 26px;font-size:12.5px;font-weight:600;}
+  .scorebar div{display:flex;align-items:center;justify-content:center;color:#0d1117;}
+  .seg-g{background:var(--green);} .seg-a{background:var(--amber);}
+
+  h2.sec{font-size:19px;margin:34px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+
+  .callout{border-radius:8px;padding:15px 18px;margin:16px 0;border:1px solid var(--border);font-size:14.5px;}
+  .callout.good{border-left:4px solid var(--green);background:rgba(63,185,80,.06);}
+  .callout.info{border-left:4px solid var(--accent);background:rgba(79,156,249,.06);}
+  .callout.warn{border-left:4px solid var(--amber);background:rgba(210,153,34,.06);}
+  .callout b{color:var(--text);}
+  .formula{font-family:var(--mono);font-size:13px;background:#0a0e14;border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin:10px 0;color:#c9d4e3;line-height:1.8;}
+  .formula .plus{color:var(--green);} .formula .minus{color:var(--red);} .formula .x{color:var(--muted);}
+
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px;}
+  th,td{padding:9px 12px;border:1px solid var(--border);text-align:left;vertical-align:top;}
+  th{background:var(--panel2);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.4px;}
+  td{background:var(--panel);}
+  tr:hover td{background:var(--panel2);}
+  code{font-family:var(--mono);background:rgba(79,156,249,.1);color:#9cc7ff;padding:1px 5px;border-radius:4px;font-size:12.5px;}
+  .st{font-weight:700;white-space:nowrap;}
+  .st.ok{color:var(--green);} .st.dec{color:var(--amber);}
+  .in{color:var(--green);} .out{color:var(--red);} .inf{color:var(--muted);}
+
+  ul.tight{margin:8px 0;padding-left:22px;} ul.tight li{margin:6px 0;}
+  .qbox{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin:12px 0;}
+  .qbox h4{margin:0 0 6px;font-size:15px;color:var(--amber);}
+  .qbox p{margin:4px 0;font-size:14px;color:var(--muted);}
+  footer{margin-top:42px;padding-top:16px;border-top:1px solid var(--border);color:var(--muted);font-size:12.5px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Can we build the bin card exactly like your screenshots?</h1>
+  <p class="sub">Column-by-column feasibility against the data the SFA system already captures.</p>
+
+  <div class="verdict">
+    <div class="tick">✅</div>
+    <div>
+      <h2>Yes — this exact layout is buildable.</h2>
+      <p>14 of the 18 columns map <b>directly</b> to data we already store on every stock movement. The other 4 just need a quick definition from you — not new plumbing.</p>
+    </div>
+  </div>
+
+  <div class="scorebar">
+    <div class="seg-g" style="width:78%">14 columns — ready now</div>
+    <div class="seg-a" style="width:22%">4 — need a decision</div>
+  </div>
+
+  <div class="callout good">
+    <b>I checked your report's math against our data and it lines up.</b> Your <b>End&nbsp;Stock</b> follows this formula, which I verified on several rows (e.g. CC03: 1232 − 836 + 4 + 8 + 32 = <b>440</b> ✓; CR02: 1160 − 988 + 80 + 40 = <b>292</b> ✓):
+  </div>
+  <div class="formula">
+    End&nbsp;Stock = Open&nbsp;Stock
+    <span class="plus">+ Invoice&nbsp;Qty + Market&nbsp;Resaleable + Deleted&nbsp;Inv + Dis&nbsp;Return + Stock&nbsp;Taking</span>
+    <span class="minus">− Sold&nbsp;Qty − Free&nbsp;Issues − Company&nbsp;Free&nbsp;Issues − Stock&nbsp;Adjustment</span>
+    <br><span class="x">// Rep Return Qty (D/E) is shown for info only — it does NOT change End Stock</span>
+    <br><br>Closing&nbsp;Stock&nbsp;Value = End&nbsp;Stock <span class="x">×</span> Item&nbsp;Price &nbsp;&nbsp;<span class="x">// verified: 195 × 94.60 = 18447.00</span>
+    <br>Stock&nbsp;Variance = Current&nbsp;Stock <span class="x">−</span> End&nbsp;Stock <span class="x">// the red −8 / −80</span>
+  </div>
+  <div class="callout info">
+    The best part: that "Rep Return (D/E) doesn't affect stock" rule is <b>already exactly how SFA works</b> — damaged/expired returns are recorded on the bill but deliberately post no stock movement. Your target report and our data model already agree.
+  </div>
+
+  <!-- MAPPING TABLE -->
+  <h2 class="sec">Column-by-column mapping</h2>
+  <table>
+    <thead>
+      <tr><th style="width:20%">Report column</th><th style="width:10%">Status</th><th>Where it comes from in SFA</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Item Code</td><td class="st ok">✅ Ready</td><td><code>Product.Code</code></td></tr>
+      <tr><td>Item Description</td><td class="st ok">✅ Ready</td><td><code>Product.ItemDescription</code></td></tr>
+      <tr><td>Item Price</td><td class="st ok">✅ Ready</td><td><code>Product.DealerPackPrice</code> (math confirmed)</td></tr>
+      <tr><td>Open Stock</td><td class="st ok">✅ Ready</td><td>Ledger balance the day <b>before</b> the From date (the <code>QuantityAfter</code> of the last movement before the range)</td></tr>
+      <tr><td>Invoice Quantity</td><td class="st ok">✅ Ready</td><td><span class="in">IN</span> · Σ <code>GRNReceipt</code> movements in range (stock received from company)</td></tr>
+      <tr><td>Market Resaleable</td><td class="st ok">✅ Ready</td><td><span class="in">IN</span> · Σ <code>Return</code> movements (return type = MarketResell)</td></tr>
+      <tr><td>Deleted Inv</td><td class="st ok">✅ Ready</td><td><span class="in">IN</span> · Σ <code>BillingReversal</code> of Sale lines (cancelled/rejected bills credit stock back)</td></tr>
+      <tr><td>Stock Adjustment</td><td class="st ok">✅ Ready</td><td>Σ <code>StockTakingAdjustment</code> movements (admin corrections)</td></tr>
+      <tr><td>Sold Qty</td><td class="st ok">✅ Ready</td><td><span class="out">OUT</span> · Σ <code>Sale</code> movements in range</td></tr>
+      <tr><td>Free Issues</td><td class="st ok">✅ Ready</td><td><span class="out">OUT</span> · Σ <code>FreeIssue</code> where pool = Normal (distributor-funded FOC)</td></tr>
+      <tr><td>Company Free Issues</td><td class="st ok">✅ Ready</td><td><span class="out">OUT</span> · Σ <code>FreeIssue</code> where pool = FreeIssue (company-funded FOC)</td></tr>
+      <tr><td>Rep Return Qty D/E</td><td class="st ok">✅ Ready</td><td><span class="inf">INFO</span> · Σ bill lines with return type = Damage/Expire (from billing data; no stock move — matches your report)</td></tr>
+      <tr><td>End Stock</td><td class="st ok">✅ Ready</td><td>Computed by the formula above — or read directly as the ledger closing balance on the To date</td></tr>
+      <tr><td>Current Stock (Pcs)</td><td class="st ok">✅ Ready</td><td><code>DistributorStock.QuantityOnHand</code> (live system quantity)</td></tr>
+      <tr><td>Closing Stock Value</td><td class="st ok">✅ Ready</td><td>End Stock × Item Price</td></tr>
+      <tr><td>Stock Variance</td><td class="st ok">✅ Ready</td><td>Current Stock − End Stock (computed)</td></tr>
+      <tr style="background:rgba(210,153,34,.05)"><td>Stock Taking</td><td class="st dec">🟡 Decide</td><td>We have <b>one</b> adjustment type (<code>StockTakingAdjustment</code>). Your report splits it into "Stock Taking" <i>and</i> "Stock Adjustment". Tell us how to split (e.g. positive count adjustments vs manual corrections) — or we add a second adjustment reason.</td></tr>
+      <tr style="background:rgba(210,153,34,.05)"><td>Dis Return Qty</td><td class="st dec">🟡 Decide</td><td>Adds stock back IN your formula, but separate from "Market Resaleable". SFA has no distinct distributor-return channel today. Define what this is (vs Market Resaleable) and we map it — possibly a new return reason or movement type.</td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:12.5px;color:var(--muted)">Note: "Deleted Inv" and "Stock Adjustment" are marked Ready because SFA <i>does</i> capture the underlying events (bill reversals, stock-take adjustments). They only become 🟡 if your business meaning differs from the mapping above — worth a 2-minute confirm.</p>
+
+  <!-- DECISIONS -->
+  <h2 class="sec">The only 3 things I need from you</h2>
+
+  <div class="qbox">
+    <h4>1. "Stock Taking" vs "Stock Adjustment" — two columns, one source</h4>
+    <p>SFA records every physical-count correction as a single adjustment movement. Your report has two columns. Are these (a) the same thing shown twice, (b) split by sign (count gains vs losses), or (c) two genuinely different processes (auto stock-take vs manual admin tweak)? If (c), it's a small addition — a "reason" tag on the adjustment.</p>
+  </div>
+
+  <div class="qbox">
+    <h4>2. "Dis Return Qty" — what is it, exactly?</h4>
+    <p>In your formula it adds stock back in, alongside "Market Resaleable". What's the difference? (e.g. distributor returning stock to the company, vs returns coming from the market?) Once you define the channel, we map or add it. Today SFA has no separate distributor-return flow.</p>
+  </div>
+
+  <div class="qbox">
+    <h4>3. What should "Current Stock" be compared against for Variance?</h4>
+    <p><b>Important nuance:</b> in SFA, the live stock balance is updated by the <i>same</i> movements the bin card sums — so End&nbsp;Stock and Current&nbsp;Stock would always be <b>equal</b> (Variance = 0) unless "Current Stock" comes from a <b>physical count</b>. Your screenshots show real variances (−8, −80), which means "Current Stock" is a counted/physical figure. Good news: SFA already captures that at stock-take time (<code>StockTakingLine</code>: counted vs system, with a stored variance). We'll point "Current Stock" at the latest physical count so Variance is meaningful.</p>
+  </div>
+
+  <!-- WHAT GETS BUILT -->
+  <h2 class="sec">What building it involves</h2>
+  <ul class="tight">
+    <li><b>1 API endpoint</b> — e.g. <code>GET /api/v1/stock/distributors/{id}/bin-card?from=&amp;to=</code> — one grouped query over the existing ledger producing all columns per SKU.</li>
+    <li><b>1 web page</b> — the filter bar (distributor, date range, All, Search, Clear) + the wide table, matching your screenshots.</li>
+    <li><b>PDF / Excel export</b> — the web app already has Excel export plumbing; PDF is a small add.</li>
+    <li><b>No database changes</b> for the 14 ready columns. Only the 2 "decide" columns might need a small reason-tag field.</li>
+  </ul>
+
+  <div class="callout good">
+    <b>Summary:</b> Yes, you can get this bin card. The data is already being tracked on every movement; this is mainly a <b>reporting screen</b> on top of it. Once you answer the 3 questions above, it's a well-scoped build with no risky schema rework.
+  </div>
+
+  <footer>
+    Feasibility mapped against the SFA stock ledger (<code>StockTransaction</code>), billing (<code>Billing</code>/<code>BillingItem</code>), GRN, and stock-taking features.
+    End-stock formula and pricing verified numerically against the supplied screenshots (A &amp; S Distributors, 1–15 June 2026).
+  </footer>
+
+</div>
+</body>
+</html>
