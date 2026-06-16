@@ -1,15 +1,9 @@
 'use client'
 
+import { useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getActiveTerritoriesAction } from '../../actions/territory.actions'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Spinner } from '@/components/ui/spinner'
+import { AsyncSelect } from '@/components/async-select'
 import type { TerritoryDto } from '../types/territory.types'
 
 function useActiveTerritories() {
@@ -31,34 +25,46 @@ interface TerritorySelectProps {
 }
 
 export function TerritorySelect({
-  value,
+  value = '',
   onValueChange,
   disabled,
   placeholder = 'Select territory',
 }: TerritorySelectProps) {
-  const { data: territories, isLoading } = useActiveTerritories()
+  const { data: territories = [], isLoading } = useActiveTerritories()
+
+  // In-memory fetcher backed by the TanStack Query cache — no API call per keystroke.
+  // Returns every active territory on open (empty query); filters by name as the user types.
+  const fetcher = useCallback(
+    async (query?: string): Promise<TerritoryDto[]> => {
+      if (!query) return territories
+      const q = query.toLowerCase()
+      return territories.filter((t) => t.name.toLowerCase().includes(q))
+    },
+    [territories],
+  )
+
+  // Pre-paint the trigger label in edit mode, where `value` (a territory id) is
+  // known before the options list resolves.
+  const initialOption = value
+    ? territories.find((t) => String(t.id) === value) ?? null
+    : null
 
   return (
-    <div className="flex items-center gap-2">
-      <Select
-        value={value}
-        onValueChange={onValueChange}
-        disabled={disabled || isLoading}
-      >
-        <SelectTrigger className="flex-1">
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent className="max-h-10 overflow-y-scroll">
-          {territories?.map((territory) => (
-            <SelectItem key={territory.id} value={String(territory.id)}>
-              {territory.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      {isLoading && (
-        <Spinner className="size-4 shrink-0 text-muted-foreground" />
-      )}
-    </div>
+    <AsyncSelect<TerritoryDto>
+      fetcher={fetcher}
+      preload={false}
+      label="territory"
+      placeholder={placeholder}
+      value={value}
+      onChange={onValueChange}
+      getOptionValue={(t) => String(t.id)}
+      getDisplayValue={(t) => <span>{t.name}</span>}
+      renderOption={(t) => <span>{t.name}</span>}
+      noResultsMessage="No territories found"
+      disabled={disabled || isLoading}
+      width="100%"
+      triggerClassName="w-full"
+      initialOption={initialOption}
+    />
   )
 }

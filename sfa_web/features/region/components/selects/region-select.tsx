@@ -1,14 +1,9 @@
 "use client";
 
+import { useCallback } from "react";
 import { useActiveRegions } from "../../hooks/region.hooks";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Spinner } from "@/components/ui/spinner";
+import { AsyncSelect } from "@/components/async-select";
+import type { RegionDto } from "../../schema/region.schema";
 
 interface RegionSelectProps {
   value?: string;
@@ -18,34 +13,46 @@ interface RegionSelectProps {
 }
 
 export function RegionSelect({
-  value,
+  value = "",
   onValueChange,
   disabled,
   placeholder = "Select region",
 }: RegionSelectProps) {
-  const { data: regions, isLoading } = useActiveRegions();
+  const { data: regions = [], isLoading } = useActiveRegions();
+
+  // In-memory fetcher backed by the TanStack Query cache — no API call per keystroke.
+  // Returns every active region on open (empty query); filters by name as the user types.
+  const fetcher = useCallback(
+    async (query?: string): Promise<RegionDto[]> => {
+      if (!query) return regions;
+      const q = query.toLowerCase();
+      return regions.filter((r) => r.name.toLowerCase().includes(q));
+    },
+    [regions],
+  );
+
+  // Pre-paint the trigger label in edit mode, where `value` (a region id) is
+  // known before the options list resolves.
+  const initialOption = value
+    ? regions.find((r) => String(r.id) === value) ?? null
+    : null;
 
   return (
-    <div className="flex items-center gap-2">
-      <Select
-        value={value}
-        onValueChange={onValueChange}
-        disabled={disabled || isLoading}
-      >
-        <SelectTrigger className="flex-1">
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent className="max-h-10 overflow-y-scroll">
-          {regions?.map((region) => (
-            <SelectItem key={region.id} value={String(region.id)}>
-              {region.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      {isLoading && (
-        <Spinner className="size-4 shrink-0 text-muted-foreground" />
-      )}
-    </div>
+    <AsyncSelect<RegionDto>
+      fetcher={fetcher}
+      preload={false}
+      label="region"
+      placeholder={placeholder}
+      value={value}
+      onChange={onValueChange}
+      getOptionValue={(r) => String(r.id)}
+      getDisplayValue={(r) => <span>{r.name}</span>}
+      renderOption={(r) => <span>{r.name}</span>}
+      noResultsMessage="No regions found"
+      disabled={disabled || isLoading}
+      width="100%"
+      triggerClassName="w-full"
+      initialOption={initialOption}
+    />
   );
 }

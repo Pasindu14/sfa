@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -20,11 +20,12 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Spinner } from '@/components/ui/spinner'
+import { TerritorySelect } from '@/features/territory/components/selects/territory-select'
 import { DivisionSelect } from '@/features/division/components/selects/division-select'
 
 interface RouteFormProps {
   mode: 'create' | 'edit'
-  defaultValues?: Partial<CreateRouteInput>
+  defaultValues?: Partial<CreateRouteInput> & { territoryId?: number }
   onSubmit: (data: CreateRouteInput) => void
   isLoading: boolean
   fieldErrors?: Record<string, string> | null
@@ -50,7 +51,17 @@ export function RouteForm({
     },
   })
 
-  const { setError } = form
+  const { setError, setValue } = form
+
+  // Territory is UI-only state — it narrows the division list but is never submitted.
+  const [territoryId, setTerritoryId] = useState<number>(defaultValues?.territoryId ?? 0)
+
+  function handleTerritoryChange(value: string) {
+    const id = Number(value)
+    setTerritoryId(id)
+    // Reset division whenever territory changes so a stale selection can't slip through.
+    setValue('divisionId', 0)
+  }
 
   useEffect(() => {
     if (fieldErrors) {
@@ -123,6 +134,17 @@ export function RouteForm({
           )}
         />
 
+        {/* Territory — UI-only, narrows the division list */}
+        <FormItem>
+          <FormLabel>Territory</FormLabel>
+          <TerritorySelect
+            value={territoryId > 0 ? String(territoryId) : ''}
+            onValueChange={handleTerritoryChange}
+            disabled={isLoading}
+          />
+        </FormItem>
+
+        {/* Division — disabled until a territory is selected */}
         <FormField
           control={form.control}
           name="divisionId"
@@ -133,7 +155,9 @@ export function RouteForm({
                 <DivisionSelect
                   value={field.value ? String(field.value) : ''}
                   onValueChange={(value) => field.onChange(Number(value))}
-                  disabled={isLoading}
+                  disabled={isLoading || territoryId === 0}
+                  placeholder={territoryId === 0 ? 'Select territory first' : 'Select division'}
+                  territoryId={territoryId > 0 ? territoryId : undefined}
                 />
               </FormControl>
               <FormMessage />

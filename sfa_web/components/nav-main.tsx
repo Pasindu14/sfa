@@ -17,6 +17,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 export function NavMain({
@@ -34,6 +35,7 @@ export function NavMain({
   }[];
 }) {
   const pathname = usePathname();
+  const { state, setOpen } = useSidebar();
 
   function getActiveTitle() {
     return (
@@ -56,6 +58,12 @@ export function NavMain({
   }
 
   function toggle(title: string) {
+    // When the sidebar is collapsed (icon-only), expand it first and open this group.
+    if (state === "collapsed") {
+      setOpen(true);
+      setManualOpen({ pathname, opens: new Set([title]) });
+      return;
+    }
     if (title === activeTitle) return;
     setManualOpen((prev) => {
       const opens = new Set(prev.pathname === pathname ? prev.opens : []);

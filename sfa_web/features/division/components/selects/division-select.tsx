@@ -1,15 +1,9 @@
 'use client'
 
+import { useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getActiveDivisionsAction } from '../../actions/division.actions'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Spinner } from '@/components/ui/spinner'
+import { AsyncSelect } from '@/components/async-select'
 import type { DivisionDto } from '../types/division.types'
 
 function useActiveDivisionsSelect() {
@@ -28,40 +22,63 @@ interface DivisionSelectProps {
   onValueChange: (value: string) => void
   disabled?: boolean
   placeholder?: string
+  /** When set, only divisions belonging to this territory are shown. */
+  territoryId?: number
 }
 
 export function DivisionSelect({
-  value,
+  value = '',
   onValueChange,
   disabled,
   placeholder = 'Select division',
+  territoryId,
 }: DivisionSelectProps) {
-  const { data: divisions, isLoading } = useActiveDivisionsSelect()
+  const { data: divisions = [], isLoading } = useActiveDivisionsSelect()
+
+  // Narrow to the selected territory when one is provided.
+  const pool = territoryId
+    ? divisions.filter((d) => d.territoryId === territoryId)
+    : divisions
+
+  const fetcher = useCallback(
+    async (query?: string): Promise<DivisionDto[]> => {
+      if (!query) return pool
+      const q = query.toLowerCase()
+      return pool.filter((d) => d.name.toLowerCase().includes(q))
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [pool],
+  )
+
+  const initialOption = value
+    ? pool.find((d) => String(d.id) === value) ?? null
+    : null
 
   return (
-    <div className="flex items-center gap-2">
-      <Select
-        value={value}
-        onValueChange={onValueChange}
-        disabled={disabled || isLoading}
-      >
-        <SelectTrigger className="flex-1">
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent className="max-h-64 overflow-y-auto">
-          {divisions?.map((division) => (
-            <SelectItem key={division.id} value={String(division.id)}>
-              {division.name}
-              <span className="ml-1 text-muted-foreground">
-                ({division.territoryName} → {division.areaName})
-              </span>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      {isLoading && (
-        <Spinner className="size-4 shrink-0 text-muted-foreground" />
+    <AsyncSelect<DivisionDto>
+      // key forces a remount (clearing internal state) whenever the territory changes.
+      key={territoryId ?? 'all'}
+      fetcher={fetcher}
+      preload={false}
+      label="division"
+      placeholder={placeholder}
+      value={value}
+      onChange={onValueChange}
+      getOptionValue={(d) => String(d.id)}
+      getDisplayValue={(d) => <span>{d.name}</span>}
+      renderOption={(d) => (
+        <div className="flex flex-col">
+          <span className="text-sm leading-none">{d.name}</span>
+          <span className="text-xs text-muted-foreground">
+            {d.territoryName} → {d.areaName}
+          </span>
+        </div>
       )}
-    </div>
+      noResultsMessage="No divisions found"
+      disabled={disabled || isLoading}
+      width="100%"
+      triggerClassName="w-full"
+      initialOption={initialOption}
+    />
   )
 }

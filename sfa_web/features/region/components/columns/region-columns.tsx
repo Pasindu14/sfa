@@ -27,6 +27,7 @@ export function getRegionColumns(actions: RegionColumnActions): ColumnDef<Region
     {
       accessorKey: 'name',
       header: 'Name',
+      size: 400,
       cell: ({ row }) => (
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
@@ -39,6 +40,7 @@ export function getRegionColumns(actions: RegionColumnActions): ColumnDef<Region
     {
       accessorKey: 'isActive',
       header: 'Status',
+      size: 110,
       cell: ({ row }) => (
         <Badge
           variant={row.original.isActive ? 'default' : 'secondary'}
@@ -51,6 +53,7 @@ export function getRegionColumns(actions: RegionColumnActions): ColumnDef<Region
     {
       accessorKey: 'createdAt',
       header: 'Created',
+      size: 140,
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">
           {new Date(row.original.createdAt).toLocaleDateString('en-US', {
@@ -64,6 +67,7 @@ export function getRegionColumns(actions: RegionColumnActions): ColumnDef<Region
     {
       id: 'actions',
       header: 'Actions',
+      size: 90,
       cell: ({ row }) => {
         const region = row.original
         return (

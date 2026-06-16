@@ -1,14 +1,9 @@
 'use client'
 
+import { useCallback } from 'react'
 import { useActiveAreas } from '../../hooks/area.hooks'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Spinner } from '@/components/ui/spinner'
+import { AsyncSelect } from '@/components/async-select'
+import type { AreaDto } from '../../schema/area.schema'
 
 interface AreaSelectProps {
   value?: string
@@ -18,34 +13,46 @@ interface AreaSelectProps {
 }
 
 export function AreaSelect({
-  value,
+  value = '',
   onValueChange,
   disabled,
   placeholder = 'Select area',
 }: AreaSelectProps) {
-  const { data: areas, isLoading } = useActiveAreas()
+  const { data: areas = [], isLoading } = useActiveAreas()
+
+  // In-memory fetcher backed by the TanStack Query cache — no API call per keystroke.
+  // Returns every active area on open (empty query); filters by name as the user types.
+  const fetcher = useCallback(
+    async (query?: string): Promise<AreaDto[]> => {
+      if (!query) return areas
+      const q = query.toLowerCase()
+      return areas.filter((a) => a.name.toLowerCase().includes(q))
+    },
+    [areas],
+  )
+
+  // Pre-paint the trigger label in edit mode, where `value` (an area id) is
+  // known before the options list resolves.
+  const initialOption = value
+    ? areas.find((a) => String(a.id) === value) ?? null
+    : null
 
   return (
-    <div className="flex items-center gap-2">
-      <Select
-        value={value}
-        onValueChange={onValueChange}
-        disabled={disabled || isLoading}
-      >
-        <SelectTrigger className="flex-1">
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent className="max-h-10 overflow-y-scroll">
-          {areas?.map((area) => (
-            <SelectItem key={area.id} value={String(area.id)}>
-              {area.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      {isLoading && (
-        <Spinner className="size-4 shrink-0 text-muted-foreground" />
-      )}
-    </div>
+    <AsyncSelect<AreaDto>
+      fetcher={fetcher}
+      preload={false}
+      label="area"
+      placeholder={placeholder}
+      value={value}
+      onChange={onValueChange}
+      getOptionValue={(a) => String(a.id)}
+      getDisplayValue={(a) => <span>{a.name}</span>}
+      renderOption={(a) => <span>{a.name}</span>}
+      noResultsMessage="No areas found"
+      disabled={disabled || isLoading}
+      width="100%"
+      triggerClassName="w-full"
+      initialOption={initialOption}
+    />
   )
 }

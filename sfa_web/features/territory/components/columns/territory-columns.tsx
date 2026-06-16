@@ -27,6 +27,7 @@ export function getTerritoryColumns(actions: TerritoryColumnActions): ColumnDef<
     {
       accessorKey: 'name',
       header: 'Name',
+      size: 400,
       cell: ({ row }) => (
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
@@ -39,6 +40,7 @@ export function getTerritoryColumns(actions: TerritoryColumnActions): ColumnDef<
     {
       accessorKey: 'areaName',
       header: 'Area',
+      size: 180,
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">{row.original.areaName}</span>
       ),
@@ -46,6 +48,7 @@ export function getTerritoryColumns(actions: TerritoryColumnActions): ColumnDef<
     {
       accessorKey: 'isActive',
       header: 'Status',
+      size: 110,
       cell: ({ row }) => (
         <Badge
           variant={row.original.isActive ? 'default' : 'secondary'}
@@ -58,6 +61,7 @@ export function getTerritoryColumns(actions: TerritoryColumnActions): ColumnDef<
     {
       accessorKey: 'createdAt',
       header: 'Created',
+      size: 140,
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">
           {new Date(row.original.createdAt).toLocaleDateString('en-US', {
@@ -71,6 +75,7 @@ export function getTerritoryColumns(actions: TerritoryColumnActions): ColumnDef<
     {
       id: 'actions',
       header: 'Actions',
+      size: 90,
       cell: ({ row }) => {
         const territory = row.original
         return (
