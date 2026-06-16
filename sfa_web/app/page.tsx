@@ -6,7 +6,7 @@ import { auth } from "@/auth";
  * visitor to the right place based on their session:
  *   - not signed in → /sign-in
  *   - distributor   → /distributor-dashboard
- *   - everyone else → /dashboard
+ *   - everyone else → /users
  *
  * Runs in the Node runtime (server component), so calling auth() — which pulls
  * in the credentials provider's axios/https deps — is safe here.
