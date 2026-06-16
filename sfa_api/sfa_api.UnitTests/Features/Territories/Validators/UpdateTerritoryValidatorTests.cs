@@ -11,8 +11,18 @@ public class UpdateTerritoryValidatorTests
     private static UpdateTerritoryRequest ValidRequest() => new()
     {
         Name = "South Territory",
-        AreaId = 2
+        AreaId = 2,
+        RowVersion = 1
     };
+
+    [Fact]
+    public void RowVersion_Zero_Fails()
+    {
+        var req = ValidRequest();
+        req.RowVersion = 0;
+        var result = _validator.TestValidate(req);
+        result.ShouldHaveValidationErrorFor(x => x.RowVersion);
+    }
 
     // ─────────────────────────────────────────────────
     // Valid request — baseline

@@ -93,6 +93,7 @@ public class TerritoryService(
         if (await _repo.ExistsByNameAsync(request.Name, request.AreaId, id, ct))
             throw new DuplicateResourceException("Name");
 
+        _repo.ApplyConcurrencyToken(territory, request.RowVersion);
         territory.Name = request.Name;
         territory.AreaId = area.Id;
         territory.RegionId = area.RegionId;
@@ -150,6 +151,7 @@ public class TerritoryService(
         RegionId: territory.RegionId,
         RegionName: territory.Region?.Name ?? territory.Area?.Region?.Name ?? string.Empty,
         IsActive: territory.IsActive,
+        RowVersion: territory.RowVersion,
         CreatedAt: territory.CreatedAt,
         UpdatedAt: territory.UpdatedAt
     );

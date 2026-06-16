@@ -46,7 +46,7 @@ public class NotificationsController(INotificationHistoryService notificationHis
     /// <summary>
     /// POST /api/v1/notifications/{id}/read
     /// </summary>
-    [HttpPost("{id}/read")]
+    [HttpPost("{id:int}/read")]
     public async Task<IActionResult> MarkRead(int id, CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;

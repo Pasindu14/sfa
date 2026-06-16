@@ -13,5 +13,8 @@ public class UpdateTerritoryValidator : AbstractValidator<UpdateTerritoryRequest
 
         RuleFor(x => x.AreaId)
             .GreaterThan(0).WithMessage("AreaId must be a valid area.");
+
+        RuleFor(x => x.RowVersion)
+            .NotEqual(0u).WithMessage("RowVersion is required for optimistic concurrency.");
     }
 }

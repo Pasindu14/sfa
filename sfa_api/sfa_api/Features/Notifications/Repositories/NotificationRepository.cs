@@ -37,12 +37,10 @@ public class NotificationRepository(AppDbContext context) : INotificationReposit
             .AsNoTracking()
             .CountAsync(n => n.UserId == userId && !n.IsRead, ct);
 
-    public async Task MarkReadAsync(int id, int userId, CancellationToken ct = default)
-    {
-        await _context.Notifications
+    public Task<int> MarkReadAsync(int id, int userId, CancellationToken ct = default) =>
+        _context.Notifications
             .Where(n => n.Id == id && n.UserId == userId)
             .ExecuteUpdateAsync(s => s.SetProperty(n => n.IsRead, true), ct);
-    }
 
     public async Task MarkAllReadAsync(int userId, CancellationToken ct = default)
     {

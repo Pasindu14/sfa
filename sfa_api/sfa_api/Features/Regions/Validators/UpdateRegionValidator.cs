@@ -10,5 +10,8 @@ public class UpdateRegionValidator : AbstractValidator<UpdateRegionRequest>
         RuleFor(x => x.Name)
             .NotEmpty().WithMessage("Name is required.")
             .MaximumLength(100).WithMessage("Name must not exceed 100 characters.");
+
+        RuleFor(x => x.RowVersion)
+            .NotEqual(0u).WithMessage("RowVersion is required for optimistic concurrency.");
     }
 }

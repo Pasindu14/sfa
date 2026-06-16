@@ -542,7 +542,7 @@ public class TerritoriesApiTests
         var createBody = await createResponse.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
         var id = createBody.GetProperty("data").GetProperty("id").GetInt32();
 
-        var updatePayload = new { name = "After Update Territory", areaId };
+        var updatePayload = new { name = "After Update Territory", areaId, rowVersion = 1 };
         var updateResponse = await _client.PutAsJsonAsync($"/api/v1/territories/{id}", updatePayload);
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -558,7 +558,7 @@ public class TerritoriesApiTests
         var regionId = await CreateRegionAsync("Region For Update NonExistent Territory Test");
         var areaId = await CreateAreaAsync("Area For Update NonExistent Territory Test", regionId);
 
-        var response = await _client.PutAsJsonAsync("/api/v1/territories/99999", new { name = "Ghost Territory", areaId });
+        var response = await _client.PutAsJsonAsync("/api/v1/territories/99999", new { name = "Ghost Territory", areaId, rowVersion = 1 });
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -593,7 +593,7 @@ public class TerritoriesApiTests
         var secondId = (await secondResp.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
             .GetProperty("data").GetProperty("id").GetInt32();
 
-        var updatePayload = new { name = "Conflict Territory A", areaId };
+        var updatePayload = new { name = "Conflict Territory A", areaId, rowVersion = 1 };
         var response = await _client.PutAsJsonAsync($"/api/v1/territories/{secondId}", updatePayload);
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
@@ -612,7 +612,7 @@ public class TerritoriesApiTests
         var createBody = await createResponse.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
         var id = createBody.GetProperty("data").GetProperty("id").GetInt32();
 
-        var updatePayload = new { name = "Idempotent Territory", areaId };
+        var updatePayload = new { name = "Idempotent Territory", areaId, rowVersion = 1 };
         var response = await _client.PutAsJsonAsync($"/api/v1/territories/{id}", updatePayload);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);

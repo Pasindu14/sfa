@@ -10,8 +10,18 @@ public class UpdateRegionValidatorTests
 
     private static UpdateRegionRequest ValidRequest() => new()
     {
-        Name = "South Region"
+        Name = "South Region",
+        RowVersion = 1
     };
+
+    [Fact]
+    public void RowVersion_Zero_Fails()
+    {
+        var req = ValidRequest();
+        req.RowVersion = 0;
+        var result = _validator.TestValidate(req);
+        result.ShouldHaveValidationErrorFor(x => x.RowVersion);
+    }
 
     // ─────────────────────────────────────────────────
     // Valid request — baseline

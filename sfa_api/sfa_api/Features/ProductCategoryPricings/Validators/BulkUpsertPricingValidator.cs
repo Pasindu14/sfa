@@ -5,10 +5,14 @@ namespace sfa_api.Features.ProductCategoryPricings.Validators;
 
 public class BulkUpsertPricingValidator : AbstractValidator<BulkUpsertPricingRequest>
 {
+    private const int MaxItems = 5000;
+
     public BulkUpsertPricingValidator()
     {
         RuleFor(x => x.Items)
-            .NotEmpty().WithMessage("At least one pricing row is required.");
+            .NotEmpty().WithMessage("At least one pricing row is required.")
+            .Must(items => items.Count() <= MaxItems)
+            .WithMessage($"A bulk upsert may contain at most {MaxItems} pricing rows.");
 
         RuleForEach(x => x.Items).ChildRules(row =>
         {

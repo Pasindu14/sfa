@@ -15,6 +15,10 @@ public class Territory
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public int? CreatedBy { get; set; }
     public int? UpdatedBy { get; set; }
+
+    // Optimistic concurrency — maps to PostgreSQL xmin system column
+    public uint RowVersion { get; set; }
+
     public Area? Area { get; set; }
     public Region? Region { get; set; }
 }

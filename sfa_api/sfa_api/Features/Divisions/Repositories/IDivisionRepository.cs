@@ -14,5 +14,6 @@ public interface IDivisionRepository
     Task<bool> TerritoryExistsAsync(int territoryId, CancellationToken ct = default);
     Task CreateAsync(Division division, CancellationToken ct = default);
     Task UpdateAsync(Division division, CancellationToken ct = default);
+    void ApplyConcurrencyToken(Division division, uint rowVersion);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

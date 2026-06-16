@@ -387,7 +387,7 @@ public class RegionsApiTests
         var createBody = await createResponse.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
         var id = createBody.GetProperty("data").GetProperty("id").GetInt32();
 
-        var updatePayload = new { name = "After Update Region" };
+        var updatePayload = new { name = "After Update Region", rowVersion = 1 };
         var updateResponse = await _client.PutAsJsonAsync($"/api/v1/regions/{id}", updatePayload);
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -402,7 +402,7 @@ public class RegionsApiTests
     {
         SetToken(AuthHelper.AdminToken);
 
-        var response = await _client.PutAsJsonAsync("/api/v1/regions/99999", new { name = "Ghost Region" });
+        var response = await _client.PutAsJsonAsync("/api/v1/regions/99999", new { name = "Ghost Region", rowVersion = 1 });
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -437,7 +437,7 @@ public class RegionsApiTests
             .GetProperty("data").GetProperty("id").GetInt32();
 
         // Try to rename second region to the first region's name
-        var updatePayload = new { name = "Conflict Region A" };
+        var updatePayload = new { name = "Conflict Region A", rowVersion = 1 };
         var response = await _client.PutAsJsonAsync($"/api/v1/regions/{secondId}", updatePayload);
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
@@ -457,7 +457,7 @@ public class RegionsApiTests
         var id = createBody.GetProperty("data").GetProperty("id").GetInt32();
 
         // Re-send the same name
-        var updatePayload = new { name = "Idempotent Region" };
+        var updatePayload = new { name = "Idempotent Region", rowVersion = 1 };
         var response = await _client.PutAsJsonAsync($"/api/v1/regions/{id}", updatePayload);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);

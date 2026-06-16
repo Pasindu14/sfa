@@ -22,7 +22,7 @@ public class UserReportingLinesController(
     private readonly IValidator<UpdateUserReportingLineRequest> _updateValidator = updateValidator;
 
     /// <summary>GET /api/v1/user-reporting-lines/{id}</summary>
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id, CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
@@ -53,7 +53,7 @@ public class UserReportingLinesController(
     /// GET /api/v1/user-reporting-lines/{userId}/subordinates
     /// Returns direct reports when ?depth=1; full subtree otherwise.
     /// </summary>
-    [HttpGet("{userId}/subordinates")]
+    [HttpGet("{userId:int}/subordinates")]
     public async Task<IActionResult> GetSubordinates(
         int userId,
         [FromQuery] int? depth = null,
@@ -77,7 +77,7 @@ public class UserReportingLinesController(
     }
 
     /// <summary>PUT /api/v1/user-reporting-lines/{id}</summary>
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateUserReportingLineRequest request, CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
@@ -88,7 +88,7 @@ public class UserReportingLinesController(
     }
 
     /// <summary>DELETE /api/v1/user-reporting-lines/{id} — deactivate (IsActive = false)</summary>
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
     {
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
@@ -97,7 +97,7 @@ public class UserReportingLinesController(
     }
 
     /// <summary>POST /api/v1/user-reporting-lines/{id}/activate — reactivate (IsActive = true)</summary>
-    [HttpPost("{id}/activate")]
+    [HttpPost("{id:int}/activate")]
     public async Task<IActionResult> Activate(int id, CancellationToken ct)
     {
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);

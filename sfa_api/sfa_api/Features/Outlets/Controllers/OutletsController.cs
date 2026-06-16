@@ -23,7 +23,7 @@ public class OutletsController(
     /// <summary>
     /// GET /api/v1/outlets/{id}
     /// </summary>
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     [Authorize]
     public async Task<IActionResult> GetById(int id, CancellationToken ct)
     {
@@ -113,7 +113,7 @@ public class OutletsController(
     /// <summary>
     /// PUT /api/v1/outlets/{id}
     /// </summary>
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateOutletRequest request, CancellationToken ct)
     {
@@ -129,7 +129,7 @@ public class OutletsController(
     /// <summary>
     /// DELETE /api/v1/outlets/{id}
     /// </summary>
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
     {
@@ -140,7 +140,7 @@ public class OutletsController(
     /// <summary>
     /// POST /api/v1/outlets/{id}/activate
     /// </summary>
-    [HttpPost("{id}/activate")]
+    [HttpPost("{id:int}/activate")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Activate(int id, CancellationToken ct)
     {
@@ -152,7 +152,7 @@ public class OutletsController(
     /// <summary>
     /// POST /api/v1/outlets/{id}/deactivate
     /// </summary>
-    [HttpPost("{id}/deactivate")]
+    [HttpPost("{id:int}/deactivate")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Deactivate(int id, CancellationToken ct)
     {

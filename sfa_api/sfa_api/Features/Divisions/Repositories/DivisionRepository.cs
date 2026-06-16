@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using sfa_api.Common.Errors;
 using sfa_api.Features.Divisions.Entities;
 using sfa_api.Features.Territories.Entities;
 using sfa_api.Infrastructure.Persistence;
@@ -107,6 +108,20 @@ public class DivisionRepository(AppDbContext context) : IDivisionRepository
         return Task.CompletedTask;
     }
 
+    // Sets the OriginalValue of RowVersion so EF uses the client's version in the
+    // WHERE xmin = $token clause — this is what detects cross-request staleness.
+    public void ApplyConcurrencyToken(Division division, uint rowVersion)
+        => _context.Entry(division).Property(x => x.RowVersion).OriginalValue = rowVersion;
+
     public async Task SaveChangesAsync(CancellationToken ct = default)
-        => await _context.SaveChangesAsync(ct);
+    {
+        try
+        {
+            await _context.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new ConcurrencyConflictException();
+        }
+    }
 }

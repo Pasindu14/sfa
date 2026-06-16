@@ -23,7 +23,7 @@ public class ProductsController(
     /// <summary>
     /// GET /api/v1/products/{id}
     /// </summary>
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetProductById(int id, CancellationToken ct)
     {
@@ -68,7 +68,7 @@ public class ProductsController(
     /// <summary>
     /// PUT /api/v1/products/{id}
     /// </summary>
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> UpdateProduct(int id, [FromBody] UpdateProductRequest request, CancellationToken ct)
     {
@@ -85,7 +85,7 @@ public class ProductsController(
     /// DELETE /api/v1/products/{id}
     /// Sets IsActive = false (soft delete).
     /// </summary>
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteProduct(int id, CancellationToken ct)
     {
@@ -97,7 +97,7 @@ public class ProductsController(
     /// POST /api/v1/products/{id}/deactivate
     /// Sets IsActive = false.
     /// </summary>
-    [HttpPost("{id}/deactivate")]
+    [HttpPost("{id:int}/deactivate")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeactivateProduct(int id, CancellationToken ct)
     {
@@ -109,7 +109,7 @@ public class ProductsController(
     /// POST /api/v1/products/{id}/activate
     /// Sets IsActive = true.
     /// </summary>
-    [HttpPost("{id}/activate")]
+    [HttpPost("{id:int}/activate")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> ActivateProduct(int id, CancellationToken ct)
     {

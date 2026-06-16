@@ -11,5 +11,6 @@ public interface IRegionRepository
     Task<bool> ExistsByNameAsync(string name, int excludeId, CancellationToken ct = default);
     Task CreateAsync(Region region, CancellationToken ct = default);
     Task UpdateAsync(Region region, CancellationToken ct = default);
+    void ApplyConcurrencyToken(Region region, uint rowVersion);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

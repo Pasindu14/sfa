@@ -148,6 +148,13 @@ public class UserReportingLineService(
         if (!await _repo.UserExistsAsync(request.ReportsToUserId, ct))
             throw new NotFoundException("User", request.ReportsToUserId);
 
+        // Admin and Distributor roles are not assignable as subordinates — re-check on
+        // update too, since the subordinate's role may have changed since creation.
+        if (await _repo.IsAdminOrDistributorAsync(line.UserId, ct))
+            throw new BusinessRuleException(
+                "USER_ROLE_NOT_ASSIGNABLE",
+                "Admin and Distributor users cannot be assigned a reporting line.");
+
         // Guard against self-reference (UpdateUserReportingLineRequest doesn't carry UserId
         // but we validate here too to be safe)
         if (line.UserId == request.ReportsToUserId)

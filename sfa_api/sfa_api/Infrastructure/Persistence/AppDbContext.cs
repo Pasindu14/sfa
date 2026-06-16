@@ -166,7 +166,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).UseIdentityColumn();
-            e.HasIndex(x => x.Name).IsUnique();
+            // Filtered unique — a soft-deleted fleet's name can be reused.
+            e.HasIndex(x => x.Name).IsUnique().HasFilter("\"IsDeleted\" = false");
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt).HasFilter("\"IsActive\" = true");
             e.HasQueryFilter(x => x.IsActive && !x.IsDeleted);
@@ -181,6 +182,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt).HasFilter("\"IsActive\" = true");
             e.HasQueryFilter(x => x.IsActive && !x.IsDeleted);
+            e.Property(x => x.RowVersion)
+             .IsRowVersion()
+             .HasColumnName("xmin")
+             .HasColumnType("xid");
         });
 
         // Area
@@ -217,6 +222,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt).HasFilter("\"IsActive\" = true");
             e.HasQueryFilter(x => x.IsActive && !x.IsDeleted);
+            e.Property(x => x.RowVersion)
+             .IsRowVersion()
+             .HasColumnName("xmin")
+             .HasColumnType("xid");
             e.HasOne(x => x.Area)
              .WithMany()
              .HasForeignKey(x => x.AreaId)
@@ -239,6 +248,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt).HasFilter("\"IsActive\" = true");
             e.HasQueryFilter(x => x.IsActive && !x.IsDeleted);
+            e.Property(x => x.RowVersion)
+             .IsRowVersion()
+             .HasColumnName("xmin")
+             .HasColumnType("xid");
             e.HasOne(x => x.Territory)
              .WithMany()
              .HasForeignKey(x => x.TerritoryId)
@@ -878,6 +891,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => new { x.OutletId,         x.NotBillingDate });
             e.HasIndex(x => x.Reason);
             e.HasIndex(x => x.IsDeleted).HasFilter("\"IsDeleted\" = false");
+            // DB backstop for the (rep, outlet, day) duplicate guard — closes the TOCTOU race
+            // where two concurrent offline replays without the idempotency header both insert.
+            e.HasIndex(x => new { x.SalesRepId, x.OutletId, x.NotBillingDate })
+             .IsUnique()
+             .HasFilter("\"IsDeleted\" = false");
             e.HasQueryFilter(x => !x.IsDeleted);
 
             e.HasOne(x => x.Outlet)

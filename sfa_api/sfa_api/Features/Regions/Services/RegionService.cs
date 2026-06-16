@@ -82,6 +82,7 @@ public class RegionService(
         if (await _repo.ExistsByNameAsync(request.Name, id, ct))
             throw new DuplicateResourceException("Name");
 
+        _repo.ApplyConcurrencyToken(region, request.RowVersion);
         region.Name = request.Name;
         region.UpdatedBy = callerId;
         region.UpdatedAt = DateTime.UtcNow;
@@ -130,6 +131,7 @@ public class RegionService(
         Id: region.Id,
         Name: region.Name,
         IsActive: region.IsActive,
+        RowVersion: region.RowVersion,
         CreatedAt: region.CreatedAt,
         UpdatedAt: region.UpdatedAt
     );

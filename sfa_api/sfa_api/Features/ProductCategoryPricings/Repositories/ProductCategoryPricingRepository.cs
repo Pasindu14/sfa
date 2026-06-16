@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using sfa_api.Common.Errors;
 using sfa_api.Features.ProductCategoryPricings.DTOs;
 using sfa_api.Features.ProductCategoryPricings.Entities;
 using sfa_api.Features.ProductCategoryPricings.Requests;
@@ -78,6 +79,19 @@ public class ProductCategoryPricingRepository(AppDbContext context) : IProductCa
     {
         var itemList = items.ToList();
         var productIds = itemList.Select(i => i.ProductId).Distinct().ToList();
+
+        // Reject unknown products up-front so we return a clean 400 instead of a
+        // raw FK-violation (500) on SaveChanges.
+        var existingProductIds = await _context.Products
+            .Where(p => productIds.Contains(p.Id))
+            .Select(p => p.Id)
+            .ToListAsync(ct);
+        var missing = productIds.Except(existingProductIds).ToList();
+        if (missing.Count > 0)
+            throw new ValidationException(new Dictionary<string, string[]>
+            {
+                ["items"] = [$"Unknown product ID(s): {string.Join(", ", missing)}."]
+            });
 
         // Load all existing price rows for the affected products in one query
         var existingRows = await _context.ProductCategoryPrices

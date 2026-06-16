@@ -27,7 +27,7 @@ public class UsersController(
     /// <summary>
     /// GET /api/v1/users/{id}
     /// </summary>
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     [Authorize]
     public async Task<IActionResult> GetUserById(int id, CancellationToken ct)
     {
@@ -74,7 +74,7 @@ public class UsersController(
     /// PUT /api/v1/users/{id}
     /// Admin can update any user; a user can update their own profile.
     /// </summary>
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
     [Authorize]
     public async Task<IActionResult> UpdateUser(int id, [FromBody] UpdateUserRequest request, CancellationToken ct)
     {
@@ -99,7 +99,7 @@ public class UsersController(
     /// <summary>
     /// DELETE /api/v1/users/{id}
     /// </summary>
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteUser(int id, CancellationToken ct)
     {   
@@ -111,7 +111,7 @@ public class UsersController(
     /// POST /api/v1/users/{id}/change-password
     /// Only the owner can change their own password.
     /// </summary>
-    [HttpPost("{id}/change-password")]
+    [HttpPost("{id:int}/change-password")]
     [Authorize]
     public async Task<IActionResult> ChangePassword(int id, [FromBody] ChangePasswordRequest request, CancellationToken ct)
     {
@@ -135,7 +135,7 @@ public class UsersController(
     /// POST /api/v1/users/{id}/reset-password
     /// Admin only.
     /// </summary>
-    [HttpPost("{id}/reset-password")]
+    [HttpPost("{id:int}/reset-password")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> ResetPassword(int id, [FromBody] ResetPasswordRequest request, CancellationToken ct)
     {
@@ -152,7 +152,7 @@ public class UsersController(
     /// POST /api/v1/users/{id}/deactivate
     /// Admin only — sets IsActive = false without deleting the record.
     /// </summary>
-    [HttpPost("{id}/deactivate")]
+    [HttpPost("{id:int}/deactivate")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeactivateUser(int id, CancellationToken ct)
     {
@@ -165,7 +165,7 @@ public class UsersController(
     /// POST /api/v1/users/{id}/activate
     /// Admin only — sets IsActive = true.
     /// </summary>
-    [HttpPost("{id}/activate")]
+    [HttpPost("{id:int}/activate")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> ActivateUser(int id, CancellationToken ct)
     {

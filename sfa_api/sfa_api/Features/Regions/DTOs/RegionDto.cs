@@ -4,6 +4,7 @@ public record RegionDto(
     int Id,
     string Name,
     bool IsActive,
+    uint RowVersion,
     DateTime CreatedAt,
     DateTime UpdatedAt
 );

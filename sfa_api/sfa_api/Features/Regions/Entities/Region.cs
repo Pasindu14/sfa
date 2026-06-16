@@ -12,4 +12,7 @@ public class Region
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public int? CreatedBy { get; set; }
     public int? UpdatedBy { get; set; }
+
+    // Optimistic concurrency — maps to PostgreSQL xmin system column
+    public uint RowVersion { get; set; }
 }

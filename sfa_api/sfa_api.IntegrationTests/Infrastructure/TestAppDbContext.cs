@@ -1,5 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using sfa_api.Features.Areas.Entities;
+using sfa_api.Features.Divisions.Entities;
+using sfa_api.Features.Regions.Entities;
+using sfa_api.Features.Territories.Entities;
 using sfa_api.Infrastructure.Persistence;
 
 namespace sfa_api.IntegrationTests.Infrastructure;
@@ -50,6 +53,28 @@ public class TestAppDbContext(DbContextOptions<AppDbContext> options) : AppDbCon
         // is important because UpdateAreaValidator rejects rowVersion == 0. Concurrency checking is
         // disabled (IsConcurrencyToken false) so updates never need to match xmin.
         modelBuilder.Entity<Area>()
+            .Property(x => x.RowVersion)
+            .HasColumnType("INTEGER")
+            .HasDefaultValue(1u)
+            .ValueGeneratedOnAdd()
+            .IsConcurrencyToken(false);
+
+        // Same xmin → INTEGER patch for the other geo entities that now carry RowVersion.
+        modelBuilder.Entity<Region>()
+            .Property(x => x.RowVersion)
+            .HasColumnType("INTEGER")
+            .HasDefaultValue(1u)
+            .ValueGeneratedOnAdd()
+            .IsConcurrencyToken(false);
+
+        modelBuilder.Entity<Territory>()
+            .Property(x => x.RowVersion)
+            .HasColumnType("INTEGER")
+            .HasDefaultValue(1u)
+            .ValueGeneratedOnAdd()
+            .IsConcurrencyToken(false);
+
+        modelBuilder.Entity<Division>()
             .Property(x => x.RowVersion)
             .HasColumnType("INTEGER")
             .HasDefaultValue(1u)

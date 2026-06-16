@@ -81,7 +81,7 @@ public class PurchaseOrdersController(
     /// GET /api/v1/purchase-orders/{id}
     /// All roles — Distributor: own only
     /// </summary>
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id, CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
@@ -113,7 +113,7 @@ public class PurchaseOrdersController(
     /// PUT /api/v1/purchase-orders/{id}
     /// Role + status gated (see edit rights table)
     /// </summary>
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
     [Authorize(Roles = "Distributor,SalesRep,Supervisor,Admin")]
     [EnableRateLimiting("user")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdatePurchaseOrderRequest request, CancellationToken ct)
@@ -131,7 +131,7 @@ public class PurchaseOrdersController(
     /// POST /api/v1/purchase-orders/{id}/submit
     /// Distributor, Admin — Status must be Draft
     /// </summary>
-    [HttpPost("{id}/submit")]
+    [HttpPost("{id:int}/submit")]
     [Authorize(Roles = "Distributor,Admin")]
     public async Task<IActionResult> Submit(int id, CancellationToken ct)
     {
@@ -145,7 +145,7 @@ public class PurchaseOrdersController(
     /// POST /api/v1/purchase-orders/{id}/rep-approve
     /// SalesRep, Admin — Status must be PendingRepApproval
     /// </summary>
-    [HttpPost("{id}/rep-approve")]
+    [HttpPost("{id:int}/rep-approve")]
     [Authorize(Roles = "SalesRep,Admin")]
     public async Task<IActionResult> RepApprove(int id, CancellationToken ct)
     {
@@ -159,7 +159,7 @@ public class PurchaseOrdersController(
     /// POST /api/v1/purchase-orders/{id}/approve
     /// Manager, Admin — Status must be PendingManagerApproval
     /// </summary>
-    [HttpPost("{id}/approve")]
+    [HttpPost("{id:int}/approve")]
     [Authorize(Roles = "Supervisor,Admin")]
     public async Task<IActionResult> Approve(int id, CancellationToken ct)
     {
@@ -173,7 +173,7 @@ public class PurchaseOrdersController(
     /// POST /api/v1/purchase-orders/{id}/reject
     /// SalesRep/Manager/Admin — Role + status gated
     /// </summary>
-    [HttpPost("{id}/reject")]
+    [HttpPost("{id:int}/reject")]
     [Authorize(Roles = "SalesRep,Supervisor,Admin")]
     public async Task<IActionResult> Reject(int id, [FromBody] RejectPurchaseOrderRequest request, CancellationToken ct)
     {
@@ -187,7 +187,7 @@ public class PurchaseOrdersController(
     /// POST /api/v1/purchase-orders/{id}/acknowledge
     /// Distributor, Admin — acknowledges a rejected order → Cancelled
     /// </summary>
-    [HttpPost("{id}/acknowledge")]
+    [HttpPost("{id:int}/acknowledge")]
     [Authorize(Roles = "Distributor,Admin")]
     public async Task<IActionResult> Acknowledge(int id, CancellationToken ct)
     {
@@ -201,7 +201,7 @@ public class PurchaseOrdersController(
     /// POST /api/v1/purchase-orders/{id}/finalize
     /// Distributor, Admin — Status must be PendingDistributorFinalization
     /// </summary>
-    [HttpPost("{id}/finalize")]
+    [HttpPost("{id:int}/finalize")]
     [Authorize(Roles = "Distributor,Admin")]
     public async Task<IActionResult> Finalize(int id, CancellationToken ct)
     {
@@ -215,7 +215,7 @@ public class PurchaseOrdersController(
     /// POST /api/v1/purchase-orders/{id}/cancel
     /// Distributor (Draft only), Admin
     /// </summary>
-    [HttpPost("{id}/cancel")]
+    [HttpPost("{id:int}/cancel")]
     [Authorize(Roles = "Distributor,Admin")]
     public async Task<IActionResult> Cancel(int id, [FromBody] RejectPurchaseOrderRequest request, CancellationToken ct)
     {

@@ -1,3 +1,4 @@
+using sfa_api.Common.Errors;
 using sfa_api.Common.Extensions;
 using sfa_api.Features.Notifications.DTOs;
 using sfa_api.Features.Notifications.Repositories;
@@ -22,8 +23,12 @@ public class NotificationHistoryService(INotificationRepository repository) : IN
         return new UnreadCountDto(count);
     }
 
-    public Task MarkReadAsync(int id, int callerId, CancellationToken ct = default) =>
-        _repository.MarkReadAsync(id, callerId, ct);
+    public async Task MarkReadAsync(int id, int callerId, CancellationToken ct = default)
+    {
+        var affected = await _repository.MarkReadAsync(id, callerId, ct);
+        if (affected == 0)
+            throw new NotFoundException("Notification", id);
+    }
 
     public Task MarkAllReadAsync(int callerId, CancellationToken ct = default) =>
         _repository.MarkAllReadAsync(callerId, ct);

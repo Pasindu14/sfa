@@ -24,7 +24,7 @@ public class DistributorsController(
     /// <summary>
     /// GET /api/v1/distributors/{id}
     /// </summary>
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id, CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
@@ -73,7 +73,7 @@ public class DistributorsController(
     /// <summary>
     /// PUT /api/v1/distributors/{id}
     /// </summary>
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateDistributorRequest request, CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
@@ -88,7 +88,7 @@ public class DistributorsController(
     /// <summary>
     /// DELETE /api/v1/distributors/{id}
     /// </summary>
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
     {
         await _distributorService.DeleteAsync(id, ct);
@@ -98,7 +98,7 @@ public class DistributorsController(
     /// <summary>
     /// POST /api/v1/distributors/{id}/activate
     /// </summary>
-    [HttpPost("{id}/activate")]
+    [HttpPost("{id:int}/activate")]
     public async Task<IActionResult> Activate(int id, CancellationToken ct)
     {
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
@@ -109,7 +109,7 @@ public class DistributorsController(
     /// <summary>
     /// POST /api/v1/distributors/{id}/deactivate
     /// </summary>
-    [HttpPost("{id}/deactivate")]
+    [HttpPost("{id:int}/deactivate")]
     public async Task<IActionResult> Deactivate(int id, CancellationToken ct)
     {
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);

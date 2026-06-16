@@ -20,6 +20,21 @@ public class DailyRouteAssignmentService(
     private readonly IDistributedLockService _lockService = lockService;
     private readonly ILogger<DailyRouteAssignmentService> _logger = logger;
 
+    private const int MaxReasonLength = 500;
+
+    /// <summary>
+    /// Guards the optional deletion/rejection reason against the 500-char column cap,
+    /// turning what would be a raw DbUpdateException (500) into a clean 400.
+    /// </summary>
+    private static void ValidateReason(string? reason)
+    {
+        if (reason is not null && reason.Length > MaxReasonLength)
+            throw new ValidationException(new Dictionary<string, string[]>
+            {
+                ["reason"] = [$"Reason must not exceed {MaxReasonLength} characters."]
+            });
+    }
+
     public async Task<DailyRouteAssignmentDto> GetByIdAsync(int id, int? callerId, string callerRole, CancellationToken ct = default)
     {
         var assignment = await _repo.GetByIdAsync(id, ct)
@@ -166,6 +181,8 @@ public class DailyRouteAssignmentService(
         string? reason,
         CancellationToken ct = default)
     {
+        ValidateReason(reason);
+
         var assignment = await _repo.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("DailyRouteAssignment", id);
 
@@ -244,6 +261,8 @@ public class DailyRouteAssignmentService(
 
     public async Task RejectDeletionAsync(int id, int? callerId, string? reason, CancellationToken ct = default)
     {
+        ValidateReason(reason);
+
         var assignment = await _repo.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("DailyRouteAssignment", id);
 

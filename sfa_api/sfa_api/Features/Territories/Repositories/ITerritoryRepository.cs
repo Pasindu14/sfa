@@ -14,5 +14,6 @@ public interface ITerritoryRepository
     Task<bool> AreaExistsAsync(int areaId, CancellationToken ct = default);
     Task CreateAsync(Territory territory, CancellationToken ct = default);
     Task UpdateAsync(Territory territory, CancellationToken ct = default);
+    void ApplyConcurrencyToken(Territory territory, uint rowVersion);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

@@ -13,5 +13,8 @@ public class UpdateDivisionValidator : AbstractValidator<UpdateDivisionRequest>
 
         RuleFor(x => x.TerritoryId)
             .GreaterThan(0).WithMessage("TerritoryId must be a valid territory.");
+
+        RuleFor(x => x.RowVersion)
+            .NotEqual(0u).WithMessage("RowVersion is required for optimistic concurrency.");
     }
 }

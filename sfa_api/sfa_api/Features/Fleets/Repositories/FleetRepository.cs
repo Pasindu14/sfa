@@ -46,10 +46,20 @@ public class FleetRepository(AppDbContext context) : IFleetRepository
         => await _context.Fleets.IgnoreQueryFilters().AnyAsync(f => f.Id == id && f.IsActive && !f.IsDeleted, ct);
 
     public async Task<bool> ExistsByNameAsync(string name, CancellationToken ct = default)
-        => await _context.Fleets.IgnoreQueryFilters().AnyAsync(f => f.Name == name, ct);
+    {
+        var query = _context.Fleets.IgnoreQueryFilters().Where(f => !f.IsDeleted);
+        return _context.Database.ProviderName?.Contains("Npgsql") == true
+            ? await query.AnyAsync(f => EF.Functions.ILike(f.Name, name), ct)
+            : await query.AnyAsync(f => EF.Functions.Like(f.Name, name), ct);
+    }
 
     public async Task<bool> ExistsByNameAsync(string name, int excludeId, CancellationToken ct = default)
-        => await _context.Fleets.IgnoreQueryFilters().AnyAsync(f => f.Name == name && f.Id != excludeId, ct);
+    {
+        var query = _context.Fleets.IgnoreQueryFilters().Where(f => !f.IsDeleted && f.Id != excludeId);
+        return _context.Database.ProviderName?.Contains("Npgsql") == true
+            ? await query.AnyAsync(f => EF.Functions.ILike(f.Name, name), ct)
+            : await query.AnyAsync(f => EF.Functions.Like(f.Name, name), ct);
+    }
 
     public async Task CreateAsync(Fleet fleet, CancellationToken ct = default)
         => await _context.Fleets.AddAsync(fleet, ct);

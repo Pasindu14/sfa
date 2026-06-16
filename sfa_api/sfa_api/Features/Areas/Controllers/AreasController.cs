@@ -27,7 +27,7 @@ public class AreasController(
     /// <summary>
     /// GET /api/v1/areas/{id}
     /// </summary>
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     [Authorize]
     public async Task<IActionResult> GetById(int id, CancellationToken ct)
     {
@@ -87,7 +87,7 @@ public class AreasController(
     /// <summary>
     /// PUT /api/v1/areas/{id}
     /// </summary>
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
     [Authorize(Roles = "Admin")]
     [EnableRateLimiting("user")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateAreaRequest request, CancellationToken ct)
@@ -103,7 +103,7 @@ public class AreasController(
     /// <summary>
     /// POST /api/v1/areas/{id}/activate
     /// </summary>
-    [HttpPost("{id}/activate")]
+    [HttpPost("{id:int}/activate")]
     [Authorize(Roles = "Admin")]
     [EnableRateLimiting("user")]
     public async Task<IActionResult> Activate(int id, CancellationToken ct)
@@ -116,7 +116,7 @@ public class AreasController(
     /// <summary>
     /// POST /api/v1/areas/{id}/deactivate
     /// </summary>
-    [HttpPost("{id}/deactivate")]
+    [HttpPost("{id:int}/deactivate")]
     [Authorize(Roles = "Admin")]
     [EnableRateLimiting("user")]
     public async Task<IActionResult> Deactivate(int id, CancellationToken ct)
@@ -129,7 +129,7 @@ public class AreasController(
     /// <summary>
     /// DELETE /api/v1/areas/{id}
     /// </summary>
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     [Authorize(Roles = "Admin")]
     [EnableRateLimiting("user")]
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
