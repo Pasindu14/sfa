@@ -19,5 +19,5 @@ export default async function RootPage() {
   }
 
   const role = session.user.role?.toLowerCase();
-  redirect(role === "distributor" ? "/distributor-dashboard" : "/dashboard");
+  redirect(role === "distributor" ? "/distributor-dashboard" : "/users");
 }
