@@ -79,6 +79,14 @@ public class InsufficientStockException : BusinessRuleException
             s => new[] { $"{s.ProductName}: you ordered {s.Requested}, only {s.Available} available" });
     }
 }
+public class OutletProximityException(double actualMeters, double limitMeters)
+    : BusinessRuleException(
+        "OUTLET_OUT_OF_RANGE",
+        $"You must be within {limitMeters:F0} m of the outlet to bill it (you are {actualMeters:F0} m away).",
+        new { actualMeters, limitMeters })
+{
+}
+
 public class InvalidOrderStateException(string currentState, string attemptedTransition) : BusinessRuleException("INVALID_ORDER_STATE",
         $"Cannot transition order from '{currentState}' to '{attemptedTransition}'.",
         new { currentState, attemptedTransition })

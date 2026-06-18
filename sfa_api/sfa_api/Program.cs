@@ -205,7 +205,7 @@ try
     builder.Services.AddSalesInvoicesFeature();
     builder.Services.AddSalesTargetsFeature();
     builder.Services.AddGrnsFeature();
-    builder.Services.AddBillingsFeature();
+    builder.Services.AddBillingsFeature(builder.Configuration);
     builder.Services.AddNotBillingsFeature();
     builder.Services.AddStockFeature();
     builder.Services.AddStockTakingFeature();

@@ -16,6 +16,9 @@ using sfa_api.Infrastructure.Caching;
 using sfa_api.Infrastructure.Locking;
 using sfa_api.Infrastructure.Notifications;
 using sfa_api.Infrastructure.Persistence;
+using Microsoft.Extensions.Options;
+using sfa_api.Common.Geo;
+using sfa_api.Features.Billings.Options;
 
 namespace sfa_api.Features.Billings.Services;
 
@@ -30,7 +33,8 @@ public class BillingService(
     ICacheService cache,
     IUserRepository userRepository,
     INotificationService notificationService,
-    AppDbContext db) : IBillingService
+    AppDbContext db,
+    IOptions<BillingGeoOptions> geoOptions) : IBillingService
 {
     private readonly IBillingRepository _billingRepository = billingRepository;
     private readonly IStockRepository _stockRepository = stockRepository;
@@ -43,6 +47,7 @@ public class BillingService(
     private readonly IUserRepository _userRepository = userRepository;
     private readonly INotificationService _notificationService = notificationService;
     private readonly AppDbContext _db = db;
+    private readonly IOptions<BillingGeoOptions> _geoOptions = geoOptions;
 
     private static readonly TimeSpan SalesCacheTtl = TimeSpan.FromMinutes(5);
 
@@ -52,20 +57,34 @@ public class BillingService(
         var outlet = await _billingRepository.GetOutletAsync(request.OutletId, ct)
             ?? throw new NotFoundException("Outlet", request.OutletId);
 
-        // ② Validate all products exist and are active
+        // ② Proximity gate — fails fast before any further DB work
+        var geo0 = _geoOptions.Value;
+        double? distanceFromOutletMeters = null;
+        if (request.Latitude is { } repLat && request.Longitude is { } repLng)
+        {
+            var dist = GeoMath.HaversineMeters(repLat, repLng, outlet.Latitude, outlet.Longitude);
+            if (dist < double.MaxValue)
+            {
+                distanceFromOutletMeters = dist;
+                if (geo0.EnforceProximity && dist > geo0.RadiusMeters + geo0.ToleranceMeters)
+                    throw new OutletProximityException(dist, geo0.RadiusMeters);
+            }
+        }
+
+        // ③ Validate all products exist and are active
         var requestedProductIds = request.Items.Select(i => i.ProductId).Distinct().ToList();
         var productNames        = await _billingRepository.GetActiveProductNamesAsync(requestedProductIds, ct);
         var missingIds          = requestedProductIds.Except(productNames.Keys).ToList();
         if (missingIds.Count > 0)
             throw new NotFoundException("Product", string.Join(", ", missingIds));
 
-        // ③ Resolve geo from UserGeoAssignment
+        // ④ Resolve geo from UserGeoAssignment
         var geo = await _geoAssignmentRepository.GetActiveByUserIdAsync(salesRepId, ct)
             ?? throw new BusinessRuleException(
                 "GEO_ASSIGNMENT_NOT_FOUND",
                 $"Sales rep {salesRepId} has no active geographic assignment.");
 
-        // ④ Resolve distributor by territory
+        // ⑤ Resolve distributor by territory
         var territoryId  = geo.TerritoryId
             ?? throw new BusinessRuleException(
                 "GEO_TERRITORY_NOT_SET",
@@ -76,7 +95,7 @@ public class BillingService(
                 "DISTRIBUTOR_NOT_FOUND",
                 $"No active distributor found for territory {territoryId}.");
 
-        // ⑤ Walk org chain — 4 hops up UserReportingLine
+        // ⑥ Walk org chain — 4 hops up UserReportingLine
         var l1 = await _reportingLineRepository.GetActiveByUserIdAsync(salesRepId, ct);
         int? supervisorId = l1?.ReportsToUserId;
 
@@ -92,7 +111,7 @@ public class BillingService(
             ? await _reportingLineRepository.GetActiveByUserIdAsync(rsmId.Value, ct) : null;
         int? nsmId = l4?.ReportsToUserId;
 
-        // ⑥ Pre-check stock availability before acquiring lock (fast fail).
+        // ⑦ Pre-check stock availability before acquiring lock (fast fail).
         // Collects ALL shortages in one pass so the rep sees every missing product at once.
         // FOC lines split by funding source:
         //   - Company-funded FOC   → drawn from StockType.FreeIssue pool
@@ -143,7 +162,7 @@ public class BillingService(
                 throw new InsufficientStockException(shortages);
         }
 
-        // ⑦ Compute amounts
+        // ⑧ Compute amounts
         // Sale       → discountAmount = qty × price × rate/100; totalPrice = qty×price − discountAmount; counts toward SubTotal
         // FreeIssue  → discountAmount = 0; totalPrice = qty × price (informational FOC value); excluded from SubTotal
         // Return     → totalPrice = qty × price; tracked separately, no SubTotal contribution
@@ -204,16 +223,16 @@ public class BillingService(
         var totalAmount        = subTotal - billDiscountAmount - returnValue;
         var totalDiscount      = itemWiseTotalDiscount + billDiscountAmount;
 
-        // ⑧ Acquire advisory lock scoped to sales rep (BillingId not yet known)
+        // ⑨ Acquire advisory lock scoped to sales rep (BillingId not yet known)
         await using var advisoryLock = await _lockService.AcquireAsync($"billing:create:{salesRepId}", ct)
             ?? throw new ConcurrencyConflictException(
                 new { salesRepId, message = "Another billing creation is already in progress for this sales rep." });
 
-        // ⑨ Generate billing number
+        // ⑩ Generate billing number
         var seqNo         = await _billingRepository.GetNextBillingNumberAsync(ct);
         var billingNumber = $"BIL-{DateTime.UtcNow.Year}-{seqNo:D5}";
 
-        // ⑩ Build entity
+        // ⑪ Build entity
         var billing = new Billing
         {
             BillingNumber = billingNumber,
@@ -242,16 +261,17 @@ public class BillingService(
             FreeIssueValueDistributor = freeIssueValueDistributor,
             RepStatus         = RepBillingStatus.Submitted,
             DistributorStatus = DistributorBillingStatus.Pending,
-            Notes             = request.Notes,
-            Latitude          = request.Latitude,
-            Longitude         = request.Longitude,
-            CreatedAt         = DateTime.UtcNow,
+            Notes                    = request.Notes,
+            Latitude                 = request.Latitude,
+            Longitude                = request.Longitude,
+            DistanceFromOutletMeters = distanceFromOutletMeters,
+            CreatedAt                = DateTime.UtcNow,
             UpdatedAt         = DateTime.UtcNow,
             CreatedBy         = salesRepId,
             Items             = lineItems
         };
 
-        // ⑪ ExecutionStrategy + transaction + stock movement (atomic)
+        // ⑫ ExecutionStrategy + transaction + stock movement (atomic)
         var strategy = _db.Database.CreateExecutionStrategy();
         await strategy.ExecuteAsync(async () =>
         {
@@ -326,7 +346,7 @@ public class BillingService(
             .ExecuteUpdateAsync(s => s.SetProperty(o => o.LastBillDate, lastBillDate), ct);
         await _cache.RemoveByPrefixAsync("outlets:route:", ct);
 
-        // ⑫ Re-fetch read-only for DTO projection
+        // ⑬ Re-fetch read-only for DTO projection
         var created = await _billingRepository.GetByIdAsync(billing.Id, ct)
             ?? throw new DatabaseUnavailableException();
 

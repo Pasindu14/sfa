@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:uswatte/core/constants/app_constants.dart';
 import 'package:uswatte/features/outlets/domain/entities/outlet.dart';
 
 sealed class OutletsState extends Equatable {
@@ -21,12 +22,14 @@ final class OutletsLoaded extends OutletsState {
   final bool isSyncing;
   final DateTime? lastSyncedAt;
   final bool hasActiveAssignment;
+  final double geofenceRadiusMeters;
 
   const OutletsLoaded({
     required this.outlets,
     required this.isSyncing,
     this.lastSyncedAt,
     this.hasActiveAssignment = false,
+    this.geofenceRadiusMeters = AppConstants.billingProximityRadiusMeters,
   });
 
   OutletsLoaded copyWith({
@@ -34,16 +37,19 @@ final class OutletsLoaded extends OutletsState {
     bool? isSyncing,
     DateTime? lastSyncedAt,
     bool? hasActiveAssignment,
+    double? geofenceRadiusMeters,
   }) =>
       OutletsLoaded(
         outlets: outlets ?? this.outlets,
         isSyncing: isSyncing ?? this.isSyncing,
         lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
         hasActiveAssignment: hasActiveAssignment ?? this.hasActiveAssignment,
+        geofenceRadiusMeters: geofenceRadiusMeters ?? this.geofenceRadiusMeters,
       );
 
   @override
-  List<Object?> get props => [outlets, isSyncing, lastSyncedAt, hasActiveAssignment];
+  List<Object?> get props =>
+      [outlets, isSyncing, lastSyncedAt, hasActiveAssignment, geofenceRadiusMeters];
 }
 
 final class OutletsError extends OutletsState {

@@ -7,6 +7,6 @@ class AppEnv {
   ///     defaultValue: 'https://sfa-production-e02a.up.railway.app',
   static const String apiBaseUrl = String.fromEnvironment(
     'SFA_API_DOMAIN',
-    defaultValue: 'https://sfa-production-e02a.up.railway.app'
+    defaultValue: 'https://10.0.2.2:7169',
   );
 }

@@ -8,15 +8,21 @@ class OutletsRemoteDatasource {
 
   const OutletsRemoteDatasource(this._dio);
 
-  Future<List<OutletModel>> getOutletsByRoute(int routeId) async {
+  Future<({List<OutletModel> outlets, double geofenceRadiusMeters})>
+      getOutletsByRoute(int routeId) async {
     try {
       final response = await _dio.get('/api/v1/outlets/by-route/$routeId');
 
       final body = response.data as Map<String, dynamic>;
-      final rawList = body['data'] as List<dynamic>;
-      return rawList
-          .map((e) => OutletModel.fromJson(e as Map<String, dynamic>))
-          .toList();
+      final data = body['data'] as Map<String, dynamic>;
+      final rawList = data['outlets'] as List<dynamic>;
+      final radiusMeters = (data['geofenceRadiusMeters'] as num).toDouble();
+      return (
+        outlets: rawList
+            .map((e) => OutletModel.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        geofenceRadiusMeters: radiusMeters,
+      );
     } on AppException {
       rethrow;
     } on DioException catch (e) {

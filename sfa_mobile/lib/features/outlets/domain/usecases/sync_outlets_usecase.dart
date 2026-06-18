@@ -5,6 +5,7 @@ class SyncOutletsUseCase {
   final OutletsRepository _repository;
   const SyncOutletsUseCase(this._repository);
 
-  Future<List<Outlet>> call(int routeId, String routeName) =>
+  Future<({List<Outlet> outlets, double geofenceRadiusMeters})> call(
+          int routeId, String routeName) =>
       _repository.syncOutlets(routeId, routeName);
 }

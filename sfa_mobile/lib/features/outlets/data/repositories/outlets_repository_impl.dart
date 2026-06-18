@@ -16,12 +16,17 @@ class OutletsRepositoryImpl implements OutletsRepository {
   }
 
   @override
-  Future<List<Outlet>> syncOutlets(int routeId, String routeName) async {
+  Future<({List<Outlet> outlets, double geofenceRadiusMeters})> syncOutlets(
+      int routeId, String routeName) async {
     await _local.saveCurrentRoute(routeId, routeName);
-    final models = await _remote.getOutletsByRoute(routeId);
-    await _local.replaceAll(models);
+    final sync = await _remote.getOutletsByRoute(routeId);
+    await _local.replaceAll(sync.outlets);
+    await _local.saveGeofenceRadiusMeters(sync.geofenceRadiusMeters);
     await _local.saveLastSyncedAt(DateTime.now());
-    return models.map((m) => m.toEntity()).toList();
+    return (
+      outlets: sync.outlets.map((m) => m.toEntity()).toList(),
+      geofenceRadiusMeters: sync.geofenceRadiusMeters,
+    );
   }
 
   @override
@@ -29,4 +34,7 @@ class OutletsRepositoryImpl implements OutletsRepository {
 
   @override
   Future<int?> getCurrentRouteId() => _local.getCurrentRouteId();
+
+  @override
+  Future<double?> getGeofenceRadiusMeters() => _local.getGeofenceRadiusMeters();
 }

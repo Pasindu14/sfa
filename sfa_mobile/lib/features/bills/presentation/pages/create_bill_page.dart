@@ -28,13 +28,29 @@ class CreateBillPage extends StatelessWidget {
       statusBarIconBrightness: Brightness.light,
     ));
 
-    return BlocListener<CreateBillBloc, CreateBillState>(
-      listenWhen: (prev, curr) =>
-          (prev.submittedClientBillId != curr.submittedClientBillId &&
-              curr.submittedClientBillId != null) ||
-          (prev.errorMessage != curr.errorMessage &&
-              curr.errorMessage != null),
-      listener: (ctx, state) {
+    return MultiBlocListener(
+      listeners: [
+        // Fires RadiusMetersLoaded whenever the outlet sync delivers a new radius.
+        BlocListener<OutletsBloc, OutletsState>(
+          listenWhen: (prev, curr) =>
+              curr is OutletsLoaded &&
+              (prev is! OutletsLoaded ||
+                  prev.geofenceRadiusMeters != curr.geofenceRadiusMeters),
+          listener: (ctx, oState) {
+            if (oState is OutletsLoaded) {
+              ctx
+                  .read<CreateBillBloc>()
+                  .add(RadiusMetersLoaded(oState.geofenceRadiusMeters));
+            }
+          },
+        ),
+        BlocListener<CreateBillBloc, CreateBillState>(
+          listenWhen: (prev, curr) =>
+              (prev.submittedClientBillId != curr.submittedClientBillId &&
+                  curr.submittedClientBillId != null) ||
+              (prev.errorMessage != curr.errorMessage &&
+                  curr.errorMessage != null),
+          listener: (ctx, state) {
         if (state.submittedClientBillId != null &&
             state.errorMessage == null) {
           ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
@@ -71,7 +87,9 @@ class CreateBillPage extends StatelessWidget {
             duration: const Duration(seconds: 4),
           ));
         }
-      },
+          },
+        ),
+      ],
       child: Scaffold(
         backgroundColor: AppColors.surface,
         body: Column(
@@ -107,7 +125,11 @@ class CreateBillPage extends StatelessWidget {
                               ),
                               SizedBox(height: 10.h),
                               BlocBuilder<CreateBillBloc, CreateBillState>(
-                                buildWhen: (p, c) => p.outlet != c.outlet,
+                                buildWhen: (p, c) =>
+                                    p.outlet != c.outlet ||
+                                    p.latitude != c.latitude ||
+                                    p.longitude != c.longitude ||
+                                    p.radiusMeters != c.radiusMeters,
                                 builder: (ctx, state) =>
                                     BlocBuilder<OutletsBloc, OutletsState>(
                                   builder: (oCtx, oState) {
@@ -129,6 +151,9 @@ class CreateBillPage extends StatelessWidget {
                                               .read<CreateBillBloc>()
                                               .add(OutletSelected(o)),
                                           hasActiveAssignment: hasAssignment,
+                                          repLat: state.latitude,
+                                          repLng: state.longitude,
+                                          radiusMeters: state.radiusMeters,
                                         ),
                                         if (state.outlet != null) ...[
                                           SizedBox(height: 8.h),

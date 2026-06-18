@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:uswatte/core/constants/app_constants.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/not_billings/presentation/bloc/create_not_billing_bloc.dart';
@@ -130,11 +131,13 @@ class _CreateNotBillingPageState extends State<CreateNotBillingPage> {
             Expanded(
               child: BlocBuilder<CreateNotBillingBloc, CreateNotBillingState>(
                 builder: (context, state) {
-                  final outlets = context.watch<OutletsBloc>().state
-                      is OutletsLoaded
-                      ? (context.read<OutletsBloc>().state as OutletsLoaded)
-                          .outlets
+                  final outletsState = context.watch<OutletsBloc>().state;
+                  final outlets = outletsState is OutletsLoaded
+                      ? outletsState.outlets
                       : <Outlet>[];
+                  final radiusMeters = outletsState is OutletsLoaded
+                      ? outletsState.geofenceRadiusMeters
+                      : AppConstants.billingProximityRadiusMeters;
 
                   return SingleChildScrollView(
                     padding:
@@ -146,6 +149,9 @@ class _CreateNotBillingPageState extends State<CreateNotBillingPage> {
                         OutletPicker(
                           selected: _selectedOutlet,
                           outlets: outlets,
+                          repLat: null,
+                          repLng: null,
+                          radiusMeters: radiusMeters,
                           onSelected: (outlet) {
                             setState(() => _selectedOutlet = outlet);
                             context.read<CreateNotBillingBloc>().add(

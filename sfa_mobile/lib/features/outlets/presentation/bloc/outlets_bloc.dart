@@ -1,8 +1,10 @@
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uswatte/core/constants/app_constants.dart';
 import 'package:uswatte/core/errors/app_exception.dart';
 import 'package:uswatte/features/outlets/domain/entities/outlet.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_current_route_id_usecase.dart';
+import 'package:uswatte/features/outlets/domain/usecases/get_geofence_radius_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_outlets_last_synced_at_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_outlets_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/sync_outlets_usecase.dart';
@@ -14,16 +16,19 @@ class OutletsBloc extends Bloc<OutletsEvent, OutletsState> {
   final SyncOutletsUseCase _syncOutlets;
   final GetCurrentRouteIdUseCase _getCurrentRouteId;
   final GetOutletsLastSyncedAtUseCase _getLastSyncedAt;
+  final GetGeofenceRadiusUseCase _getGeofenceRadius;
 
   OutletsBloc({
     required GetOutletsUseCase getOutletsUseCase,
     required SyncOutletsUseCase syncOutletsUseCase,
     required GetCurrentRouteIdUseCase getCurrentRouteIdUseCase,
     required GetOutletsLastSyncedAtUseCase getOutletsLastSyncedAtUseCase,
+    required GetGeofenceRadiusUseCase getGeofenceRadiusUseCase,
   })  : _getOutlets = getOutletsUseCase,
         _syncOutlets = syncOutletsUseCase,
         _getCurrentRouteId = getCurrentRouteIdUseCase,
         _getLastSyncedAt = getOutletsLastSyncedAtUseCase,
+        _getGeofenceRadius = getGeofenceRadiusUseCase,
         super(const OutletsInitial()) {
     on<LoadOutletsRequested>(_onLoad, transformer: sequential());
     on<SyncDailyOutletsRequested>(_onSync, transformer: sequential());
@@ -45,6 +50,9 @@ class OutletsBloc extends Bloc<OutletsEvent, OutletsState> {
       final local = await _getOutlets();
       final routeId = await _getCurrentRouteId();
       final lastSyncedAt = await _getLastSyncedAt();
+      final storedRadius = await _getGeofenceRadius();
+      final radiusMeters =
+          storedRadius ?? AppConstants.billingProximityRadiusMeters;
 
       // The daily_outlets table is a full-replace snapshot keyed to a sync date.
       // If the last sync was on a previous calendar day, the rows are stale —
@@ -58,6 +66,7 @@ class OutletsBloc extends Bloc<OutletsEvent, OutletsState> {
         isSyncing: false,
         lastSyncedAt: lastSyncedAt,
         hasActiveAssignment: hasAssignment,
+        geofenceRadiusMeters: radiusMeters,
       ));
     } on AppException catch (e) {
       emit(OutletsError(message: e.message));
@@ -86,10 +95,11 @@ class OutletsBloc extends Bloc<OutletsEvent, OutletsState> {
       // hasActiveAssignment: true — this event is only ever fired from the home
       // page's AssignmentsBloc listener when today's assignment actually exists.
       emit(OutletsLoaded(
-        outlets: synced,
+        outlets: synced.outlets,
         isSyncing: false,
         lastSyncedAt: DateTime.now(),
         hasActiveAssignment: true,
+        geofenceRadiusMeters: synced.geofenceRadiusMeters,
       ));
     } on AppException catch (e) {
       final prev = state;

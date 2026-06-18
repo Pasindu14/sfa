@@ -41,3 +41,10 @@ public record OutletListDto(
     int Page,
     int PageSize
 );
+
+// Returned by GET /api/v1/outlets/by-route/{routeId} — wraps the outlet list with the
+// server-configured proximity radius so the mobile app never needs a separate config call.
+public record MobileOutletSyncDto(
+    IEnumerable<OutletDto> Outlets,
+    double GeofenceRadiusMeters
+);

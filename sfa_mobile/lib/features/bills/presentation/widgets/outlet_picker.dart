@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/features/outlets/domain/entities/outlet.dart';
+import 'package:uswatte/features/outlets/domain/usecases/filter_nearby_outlets.dart';
 
 /// Tappable card that opens an outlet bottom-sheet.
 class OutletPicker extends StatelessWidget {
@@ -10,6 +11,9 @@ class OutletPicker extends StatelessWidget {
   final List<Outlet> outlets;
   final ValueChanged<Outlet> onSelected;
   final bool hasActiveAssignment;
+  final double? repLat;
+  final double? repLng;
+  final double radiusMeters;
 
   const OutletPicker({
     super.key,
@@ -17,6 +21,9 @@ class OutletPicker extends StatelessWidget {
     required this.outlets,
     required this.onSelected,
     this.hasActiveAssignment = true,
+    this.repLat,
+    this.repLng,
+    required this.radiusMeters,
   });
 
   @override
@@ -193,6 +200,9 @@ class OutletPicker extends StatelessWidget {
             outlets: outlets,
             selected: selected,
             hasActiveAssignment: hasActiveAssignment,
+            repLat: repLat,
+            repLng: repLng,
+            radiusMeters: radiusMeters,
           ),
     );
     if (picked != null) onSelected(picked);
@@ -203,10 +213,17 @@ class _OutletSheet extends StatefulWidget {
   final List<Outlet> outlets;
   final Outlet? selected;
   final bool hasActiveAssignment;
+  final double? repLat;
+  final double? repLng;
+  final double radiusMeters;
+
   const _OutletSheet({
     required this.outlets,
     required this.selected,
     required this.hasActiveAssignment,
+    required this.repLat,
+    required this.repLng,
+    required this.radiusMeters,
   });
 
   @override
@@ -216,14 +233,45 @@ class _OutletSheet extends StatefulWidget {
 class _OutletSheetState extends State<_OutletSheet> {
   String _query = '';
 
+  /// Outlets filtered by proximity, sorted nearest-first.
+  /// Computed once when the sheet opens; text search narrows within this list.
+  late final List<NearbyOutlet> _nearby;
+
+  @override
+  void initState() {
+    super.initState();
+    final repLat = widget.repLat;
+    final repLng = widget.repLng;
+
+    if (repLat != null && repLng != null) {
+      _nearby = const FilterNearbyOutlets()(
+        repLat: repLat,
+        repLng: repLng,
+        outlets: widget.outlets,
+        radiusMeters: widget.radiusMeters,
+      );
+    } else {
+      // GPS not yet available — show all, no distance labels.
+      _nearby = widget.outlets
+          .map((o) => (outlet: o, meters: double.infinity))
+          .toList();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final filtered = widget.outlets
-        .where((o) =>
-            _query.isEmpty ||
-            o.name.toLowerCase().contains(_query.toLowerCase()) ||
-            o.address.toLowerCase().contains(_query.toLowerCase()))
-        .toList();
+    final hasGps = widget.repLat != null && widget.repLng != null;
+
+    final filtered = _nearby.where((n) {
+      if (_query.isEmpty) return true;
+      final q = _query.toLowerCase();
+      return n.outlet.name.toLowerCase().contains(q) ||
+          n.outlet.address.toLowerCase().contains(q);
+    }).toList();
+
+    final radiusLabel = widget.radiusMeters >= 1000
+        ? '${(widget.radiusMeters / 1000).toStringAsFixed(1)} km'
+        : '${widget.radiusMeters.toStringAsFixed(0)} m';
 
     return FractionallySizedBox(
       heightFactor: 0.88,
@@ -261,6 +309,33 @@ class _OutletSheetState extends State<_OutletSheet> {
                     color: AppColors.foregroundMuted,
                   ),
                 ),
+                if (hasGps) ...[
+                  const Spacer(),
+                  Container(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(20.r),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.my_location_rounded,
+                            size: 10.r, color: AppColors.primary),
+                        SizedBox(width: 4.w),
+                        Text(
+                          'Within $radiusLabel',
+                          style: GoogleFonts.barlowCondensed(
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -287,31 +362,27 @@ class _OutletSheetState extends State<_OutletSheet> {
           SizedBox(height: 8.h),
           Expanded(
             child: filtered.isEmpty
-                ? Center(
-                    child: Text(
-                      'No outlets match your search.',
-                      style: GoogleFonts.barlow(
-                        fontSize: 13.sp,
-                        color: AppColors.foregroundMuted,
-                      ),
-                    ),
-                  )
+                ? _emptyState(hasGps, radiusLabel)
                 : ListView.separated(
                     padding: EdgeInsets.symmetric(horizontal: 16.w),
                     itemCount: filtered.length,
                     separatorBuilder: (_, __) =>
                         Divider(height: 1, color: AppColors.surfaceVariant),
                     itemBuilder: (ctx, i) {
-                      final o = filtered[i];
+                      final n = filtered[i];
+                      final o = n.outlet;
                       final isSelected = widget.selected?.id == o.id;
+                      final distLabel = _formatDistance(n.meters);
+
                       return ListTile(
-                        contentPadding:
-                            EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
+                        contentPadding: EdgeInsets.symmetric(
+                            horizontal: 4.w, vertical: 4.h),
                         leading: Container(
                           width: 36.r,
                           height: 36.r,
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.10),
+                            color:
+                                AppColors.primary.withValues(alpha: 0.10),
                             borderRadius: BorderRadius.circular(8.r),
                           ),
                           child: Icon(Icons.storefront_rounded,
@@ -349,6 +420,27 @@ class _OutletSheetState extends State<_OutletSheet> {
                                   ),
                                 ),
                               ),
+                            if (distLabel != null) ...[
+                              SizedBox(width: 6.w),
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 6.w, vertical: 2.h),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary
+                                      .withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(4.r),
+                                ),
+                                child: Text(
+                                  distLabel,
+                                  style: GoogleFonts.barlowCondensed(
+                                    fontSize: 9.sp,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.5,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                         subtitle: Text(
@@ -373,5 +465,73 @@ class _OutletSheetState extends State<_OutletSheet> {
         ],
       ),
     );
+  }
+
+  Widget _emptyState(bool hasGps, String radiusLabel) {
+    if (!hasGps) {
+      return Center(
+        child: Text(
+          'No outlets match your search.',
+          style:
+              GoogleFonts.barlow(fontSize: 13.sp, color: AppColors.foregroundMuted),
+        ),
+      );
+    }
+    if (_query.isNotEmpty) {
+      return Center(
+        child: Text(
+          'No nearby outlets match your search.',
+          style:
+              GoogleFonts.barlow(fontSize: 13.sp, color: AppColors.foregroundMuted),
+        ),
+      );
+    }
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 28.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56.r,
+              height: 56.r,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.location_searching_rounded,
+                  size: 26.r, color: AppColors.primary),
+            ),
+            SizedBox(height: 16.h),
+            Text(
+              'No outlets within $radiusLabel',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.barlowCondensed(
+                fontSize: 18.sp,
+                fontWeight: FontWeight.w800,
+                color: AppColors.foreground,
+              ),
+            ),
+            SizedBox(height: 6.h),
+            Text(
+              'Move closer to a shop on your route and try again.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.barlow(
+                fontSize: 13.sp,
+                color: AppColors.foregroundMuted,
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Returns `"120 m"` / `"0.8 km"` / `null` (for outlets without coordinates).
+  String? _formatDistance(double meters) {
+    if (meters == double.infinity) return null;
+    if (meters < 1000) return '${meters.toStringAsFixed(0)} m';
+    return '${(meters / 1000).toStringAsFixed(1)} km';
   }
 }

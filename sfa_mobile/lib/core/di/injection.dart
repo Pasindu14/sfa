@@ -44,6 +44,7 @@ import 'package:uswatte/features/outlets/data/repositories/outlets_repository_im
 import 'package:uswatte/features/outlets/domain/repositories/outlets_repository.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_outlets_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_current_route_id_usecase.dart';
+import 'package:uswatte/features/outlets/domain/usecases/get_geofence_radius_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_outlets_last_synced_at_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/sync_outlets_usecase.dart';
 import 'package:uswatte/core/connectivity/connectivity_service.dart';
@@ -255,6 +256,8 @@ Future<void> configureDependencies() async {
       () => GetCurrentRouteIdUseCase(getIt<OutletsRepository>()));
   getIt.registerLazySingleton(
       () => GetOutletsLastSyncedAtUseCase(getIt<OutletsRepository>()));
+  getIt.registerLazySingleton(
+      () => GetGeofenceRadiusUseCase(getIt<OutletsRepository>()));
 
   // ── Connectivity ─────────────────────────────────────────────────────────────
   getIt.registerLazySingleton<ConnectivityService>(() => ConnectivityService());

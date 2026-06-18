@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Proximity-Gated Billing — Implementation Plan (SFA Mobile)</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1d212b; --line:#2a2f3a;
+    --text:#e7e9ee; --muted:#9aa3b2; --orange:#ff7a18; --orange-soft:rgba(255,122,24,.12);
+    --green:#34d399; --green-soft:rgba(52,211,153,.12); --red:#f87171; --red-soft:rgba(248,113,113,.12);
+    --blue:#60a5fa; --amber:#fbbf24; --code:#0b0d11;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6;font-size:15px}
+  .wrap{max-width:1040px;margin:0 auto;padding:40px 28px 96px}
+  header.hero{border:1px solid var(--line);border-radius:18px;padding:30px 32px;
+    background:linear-gradient(135deg,#1a1d26,#13151b);position:relative;overflow:hidden}
+  header.hero::after{content:"";position:absolute;top:-40px;right:-40px;width:200px;height:200px;
+    background:radial-gradient(circle,var(--orange-soft),transparent 70%)}
+  .kicker{letter-spacing:3px;font-size:11px;font-weight:800;color:var(--orange);text-transform:uppercase}
+  h1{margin:8px 0 6px;font-size:30px;letter-spacing:.3px}
+  .sub{color:var(--muted);font-size:15px;max-width:760px}
+  h2{margin:48px 0 14px;font-size:21px;letter-spacing:.2px;display:flex;align-items:center;gap:10px}
+  h2 .n{display:inline-flex;width:28px;height:28px;border-radius:8px;background:var(--orange-soft);
+    color:var(--orange);font-size:14px;font-weight:800;align-items:center;justify-content:center}
+  h3{margin:26px 0 8px;font-size:16px;color:#cdd3df}
+  p{margin:10px 0}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:14px 0}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+  .callout{border-left:3px solid var(--orange);background:var(--orange-soft);border-radius:0 12px 12px 0;
+    padding:14px 18px;margin:16px 0}
+  .callout.good{border-color:var(--green);background:var(--green-soft)}
+  .callout.warn{border-color:var(--amber);background:rgba(251,191,36,.10)}
+  .callout.danger{border-color:var(--red);background:var(--red-soft)}
+  .callout b{color:#fff}
+  code,kbd{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:12.5px}
+  code{background:#23262f;padding:1.5px 6px;border-radius:5px;color:#ffd9b8}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:12px;padding:16px 18px;
+    overflow:auto;font-size:12.5px;line-height:1.55}
+  pre code{background:none;padding:0;color:#e7e9ee}
+  .tok-c{color:#6b7280;font-style:italic} .tok-k{color:#c792ea} .tok-s{color:#c3e88d}
+  .tok-f{color:#82aaff} .tok-n{color:#f78c6c} .tok-t{color:#ffcb6b}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.6px}
+  td code{font-size:11.5px}
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;letter-spacing:.3px}
+  .tag.new{background:var(--orange-soft);color:var(--orange)}
+  .tag.edit{background:rgba(96,165,250,.14);color:var(--blue)}
+  .tag.exists{background:var(--green-soft);color:var(--green)}
+  .pill{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:20px;
+    padding:3px 12px;font-size:12px;color:var(--muted);margin:2px 4px 2px 0}
+  ul{margin:8px 0;padding-left:22px} li{margin:5px 0}
+  .flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin:10px 0}
+  .flow .box{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 11px;color:var(--text)}
+  .flow .arr{color:var(--orange);font-weight:800}
+  .phase{border:1px solid var(--line);border-radius:14px;margin:16px 0;overflow:hidden}
+  .phase>.head{padding:14px 18px;background:var(--panel2);display:flex;justify-content:space-between;align-items:center}
+  .phase>.head h3{margin:0;font-size:15px;color:#fff}
+  .phase>.body{padding:6px 18px 16px}
+  .est{font-size:12px;color:var(--muted)}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
+  .num{color:var(--orange);font-weight:800}
+  hr{border:none;border-top:1px solid var(--line);margin:34px 0}
+  .small{font-size:12.5px;color:var(--muted)}
+  .check{color:var(--green);font-weight:800}
+  .q{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--blue);
+    border-radius:0 12px 12px 0;padding:12px 16px;margin:10px 0}
+  .q b{color:#fff}
+  footer{margin-top:48px;color:var(--muted);font-size:12px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="kicker">SFA Mobile · Field Sales</div>
+    <h1>Proximity-Gated Billing</h1>
+    <p class="sub">Only let a rep bill an outlet when they have physically <b>reached</b> it —
+    outlets outside a <b>server-configurable radius</b> of the rep's live GPS position are hidden from the
+    order screen and rejected by the server. <b>Launches at 1&nbsp;km, then tightened gradually from the
+    backend</b> — no app release per change.</p>
+    <div style="margin-top:14px">
+      <span class="pill">Flutter · BLoC</span>
+      <span class="pill">geolocator (already installed)</span>
+      <span class="pill">.NET 8 API enforcement</span>
+      <span class="pill">Server-tunable radius · starts 1 km</span>
+    </div>
+  </header>
+
+  <!-- ─────────────────────────────────────────── -->
+  <h2><span class="n">1</span> What you asked for</h2>
+  <div class="panel">
+    <p>In the rep's mobile app, the <b>Create Bill</b> screen lists outlets to bill. Today it shows
+    <b>every</b> outlet on the rep's assigned route. You want it to show <b>only the outlets the rep is
+    standing near</b> — within a given range of their current coordinates.</p>
+    <div class="flow">
+      <span class="box">Rep at <code>6.9271, 79.8612</code></span>
+      <span class="arr">→</span>
+      <span class="box">Radius = 1&nbsp;km<br><span class="small">server-set · tightened over time</span></span>
+      <span class="arr">→</span>
+      <span class="box">Show only outlets whose distance ≤ 1&nbsp;km</span>
+      <span class="arr">→</span>
+      <span class="box">Far outlets: hidden &amp; un-billable</span>
+    </div>
+    <p class="small">Your example "<code>78.215, 78.455</code> → 1&nbsp;km shops only" is exactly this:
+    compute the straight-line distance from the rep to each outlet, keep the ones within the limit.</p>
+  </div>
+
+  <div class="callout good">
+    <b>Agreed approach (locked):</b> launch with the radius at <b>1&nbsp;km</b>, keep it
+    <b>configurable from the server</b>, and <b>decrease it step by step</b> over time as confidence grows
+    (e.g. 1&nbsp;km → 500&nbsp;m → 300&nbsp;m). Because the value lives on the backend, each tightening is a
+    config change — <b>no new app build, no store release.</b> This makes the server-driven radius
+    (Phase&nbsp;4) a <b>day-one requirement</b>, not a later nice-to-have.
+  </div>
+
+  <!-- ─────────────────────────────────────────── -->
+  <h2><span class="n">2</span> Good news — most of this already exists</h2>
+  <div class="callout good">
+    <b>This is ~80% wiring, not new infrastructure.</b> The codebase already captures every coordinate
+    we need. We are adding <b>one distance comparison</b> on the client and <b>one guard</b> on the server.
+  </div>
+
+  <table>
+    <thead><tr><th>Capability</th><th>Status</th><th>Where it lives</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Outlets store lat/long</td>
+        <td><span class="tag exists">EXISTS</span></td>
+        <td><code>Outlet.Latitude/Longitude</code> (API entity) &amp; <code>outlet.dart</code> (mobile entity)</td>
+      </tr>
+      <tr>
+        <td>Rep's live GPS captured on billing screen</td>
+        <td><span class="tag exists">EXISTS</span></td>
+        <td><code>CreateBillBloc._captureLocation()</code> → stores <code>state.latitude/longitude</code></td>
+      </tr>
+      <tr>
+        <td>Location gate UI (GPS off / permission denied / retry)</td>
+        <td><span class="tag exists">EXISTS</span></td>
+        <td><code>LocationCheckStatus</code> + <code>_LocationBlockedView</code> in <code>create_bill_page.dart</code></td>
+      </tr>
+      <tr>
+        <td>Bill sends rep coords to the API</td>
+        <td><span class="tag exists">EXISTS</span></td>
+        <td><code>CreateBillingRequest(Latitude, Longitude)</code> → stamped at <code>BillingService.cs:246</code></td>
+      </tr>
+      <tr>
+        <td><b>Distance filter</b> on the outlet list</td>
+        <td><span class="tag new">MISSING</span></td>
+        <td><code>OutletPicker</code> shows <b>all</b> outlets, filtered only by text search</td>
+      </tr>
+      <tr>
+        <td><b>Server-side range check</b> (anti-bypass)</td>
+        <td><span class="tag new">MISSING</span></td>
+        <td><code>BillingService.CreateAsync</code> stamps coords but never validates distance</td>
+      </tr>
+      <tr>
+        <td>Configurable radius</td>
+        <td><span class="tag new">MISSING</span></td>
+        <td>No constant / setting exists yet</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ─────────────────────────────────────────── -->
+  <h2><span class="n">3</span> How the distance is calculated</h2>
+  <div class="grid2">
+    <div class="panel">
+      <h3 style="margin-top:4px">The math (no new dependency)</h3>
+      <p>The <code>geolocator</code> package — already a dependency — ships a Haversine helper that returns
+      the great-circle distance <b>in metres</b> between two coordinates:</p>
+<pre><code><span class="tok-k">final</span> meters = Geolocator.<span class="tok-f">distanceBetween</span>(
+  repLat, repLng,        <span class="tok-c">// from CreateBillState</span>
+  outlet.latitude,
+  outlet.longitude,
+);
+<span class="tok-k">final</span> isNearby = meters &lt;= radiusMeters; <span class="tok-c">// 1000.0</span></code></pre>
+      <p class="small">No backend call, no map SDK, works fully offline — pure arithmetic on two points.</p>
+    </div>
+    <div class="panel">
+      <h3 style="margin-top:4px">Why straight-line is fine here</h3>
+      <ul>
+        <li>A <b>1&nbsp;km</b> gate is generous relative to GPS error (~5–30&nbsp;m outdoors), so road-vs-crow-fly
+        difference is irrelevant.</li>
+        <li>It's instant and offline — reps often bill with poor connectivity.</li>
+        <li>We sort the kept outlets <b>nearest-first</b> and print the distance on each card, so the rep
+        sees "Kumar Stores · 120&nbsp;m" and picks confidently.</li>
+      </ul>
+      <p class="small"><b>As you tighten the radius:</b> straight-line stays correct, but the safety margin
+      shrinks. Below a few hundred metres the limiting factor becomes <b>outlet-coordinate accuracy</b>
+      (captured once at outlet creation) plus live GPS error — which is exactly why Phase&nbsp;2 (accuracy
+      gating) and the distance audit matter more the smaller the radius gets.</p>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────── -->
+  <h2><span class="n">4</span> Architecture — where each change lands</h2>
+  <div class="panel">
+    <div class="flow">
+      <span class="box">OutletsBloc<br><span class="small">all route outlets</span></span>
+      <span class="arr">→</span>
+      <span class="box">CreateBillBloc<br><span class="small">rep lat/lng + radius</span></span>
+      <span class="arr">→</span>
+      <span class="box" style="border-color:var(--orange)">NearbyOutlets filter<br><span class="small">NEW · pure fn</span></span>
+      <span class="arr">→</span>
+      <span class="box">OutletPicker<br><span class="small">nearest-first list</span></span>
+      <span class="arr">→</span>
+      <span class="box">Bill → API<br><span class="small">coords sent</span></span>
+      <span class="arr">→</span>
+      <span class="box" style="border-color:var(--orange)">Server range check<br><span class="small">NEW · guard</span></span>
+    </div>
+    <p class="small">The filter is a <b>pure, testable function</b> of <code>(repLat, repLng, outlets, radius)</code>.
+    The rep's coords already live in <code>CreateBillState</code>; the outlets already live in <code>OutletsLoaded</code>.
+    We just intersect them.</p>
+  </div>
+
+  <!-- ─────────────────────────────────────────── -->
+  <h2><span class="n">5</span> Phased delivery</h2>
+  <div class="legend">
+    <span><span class="tag new">NEW</span> new file</span>
+    <span><span class="tag edit">EDIT</span> change existing</span>
+    <span><span class="tag exists">EXISTS</span> already there</span>
+  </div>
+
+  <!-- Phase 1 -->
+  <div class="phase">
+    <div class="head"><h3>Phase 1 — Client-side filter (the visible feature)</h3><span class="est">~½ day</span></div>
+    <div class="body">
+      <p>Make the outlet list show only nearby shops, nearest-first, with distance labels and a clear
+      empty state. This alone delivers exactly what you described.</p>
+      <table>
+        <thead><tr><th>File</th><th>Change</th><th></th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>core/constants/app_constants.dart</code></td>
+            <td>Add <code>billingProximityRadiusMeters = 1000.0</code> — the <b>offline fallback only</b>;
+            the live radius comes from server config (Phase&nbsp;4) so it can be tightened without an app release</td>
+            <td><span class="tag edit">EDIT</span></td>
+          </tr>
+          <tr>
+            <td><code>features/outlets/domain/usecases/<br>filter_nearby_outlets.dart</code></td>
+            <td>Pure function: takes rep coords + outlets + radius → returns
+            <code>List&lt;({Outlet outlet, double meters})&gt;</code> sorted ascending, filtered ≤ radius</td>
+            <td><span class="tag new">NEW</span></td>
+          </tr>
+          <tr>
+            <td><code>bills/presentation/bloc/create_bill_state.dart</code></td>
+            <td>Add <code>radiusMeters</code> (default from constant). Rep coords already in state.</td>
+            <td><span class="tag edit">EDIT</span></td>
+          </tr>
+          <tr>
+            <td><code>bills/presentation/widgets/outlet_picker.dart</code></td>
+            <td>Accept <code>repLat</code>, <code>repLng</code>, <code>radiusMeters</code>; run the filter;
+            show distance per row (<code>"120 m"</code> / <code>"0.8 km"</code>); empty state
+            <i>"No outlets within 1 km — move closer to a shop."</i></td>
+            <td><span class="tag edit">EDIT</span></td>
+          </tr>
+          <tr>
+            <td><code>bills/presentation/pages/create_bill_page.dart</code></td>
+            <td>Pass <code>state.latitude/longitude/radiusMeters</code> into <code>OutletPicker</code></td>
+            <td><span class="tag edit">EDIT</span></td>
+          </tr>
+          <tr>
+            <td><code>create_bill_bloc.dart</code> · <code>_onOutletSelected</code></td>
+            <td>Defensive guard: ignore selection if the chosen outlet is beyond radius (belt &amp; braces —
+            it won't be in the list anyway)</td>
+            <td><span class="tag edit">EDIT</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        <b>UX detail:</b> when the kept list is empty we still show the search box and a friendly empty
+        state rather than an error — the rep simply isn't near a shop yet. The existing GPS-off / permission
+        screens are untouched and still take priority.
+      </div>
+    </div>
+  </div>
+
+  <!-- Phase 2 -->
+  <div class="phase">
+    <div class="head"><h3>Phase 2 — Trust the GPS (accuracy &amp; anti-spoofing)</h3><span class="est">~½ day</span></div>
+    <div class="body">
+      <p>A 1&nbsp;km gate is only meaningful if the fix is real. Field reps have a strong incentive to fake
+      location, so we harden the capture step.</p>
+      <table>
+        <thead><tr><th>Concern</th><th>Handling</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Poor accuracy (e.g. ±400&nbsp;m indoors)</td>
+            <td>Reject fixes where <code>position.accuracy &gt; accuracyThresholdMeters</code> (e.g. 100&nbsp;m);
+            add <code>LocationCheckStatus.lowAccuracy</code> + a "Improve GPS signal / Retry" view.</td>
+          </tr>
+          <tr>
+            <td>Mock-location apps (fake GPS)</td>
+            <td><code>position.isMocked</code> → block with a distinct message, and flag the attempt for the
+            server (see Phase 3). Optional but recommended for a sales-rep app.</td>
+          </tr>
+          <tr>
+            <td>Stale fix (rep moved after opening screen)</td>
+            <td>Re-read position on submit, or subscribe to <code>Geolocator.getPositionStream()</code> to
+            live-refilter the list as they walk. <span class="small">(Optional polish.)</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="small">All of this slots into the existing <code>_captureLocation()</code> method and the
+      existing <code>LocationCheckStatus</code> enum — no structural change.</p>
+    </div>
+  </div>
+
+  <!-- Phase 3 -->
+  <div class="phase">
+    <div class="head"><h3>Phase 3 — Server-side enforcement (un-bypassable)</h3><span class="est">~½ day</span></div>
+    <div class="body">
+      <div class="callout danger">
+        <b>Why this matters:</b> the client filter is <b>UX, not security</b>. A modified APK could bill any
+        outlet. The server already receives the rep's coords <i>and</i> the outlet's coords — so it can and
+        should verify the distance before accepting the bill.
+      </div>
+      <p>The check drops cleanly into <code>BillingService.CreateAsync</code>, right after the outlet is
+      loaded (line&nbsp;52) and before coords are stamped (line&nbsp;246):</p>
+<pre><code><span class="tok-c">// ① Validate outlet  (existing)</span>
+<span class="tok-k">var</span> outlet = <span class="tok-k">await</span> _billingRepository.<span class="tok-f">GetOutletAsync</span>(request.OutletId, ct)
+    ?? <span class="tok-k">throw new</span> <span class="tok-t">NotFoundException</span>(<span class="tok-s">"Outlet"</span>, request.OutletId);
+
+<span class="tok-c">// ②  NEW — proximity guard</span>
+<span class="tok-k">if</span> (_geoOptions.EnforceProximity &amp;&amp; request.Latitude <span class="tok-k">is</span> { } lat &amp;&amp; request.Longitude <span class="tok-k">is</span> { } lng)
+{
+    <span class="tok-k">var</span> meters = <span class="tok-t">GeoMath</span>.<span class="tok-f">HaversineMeters</span>(lat, lng, outlet.Latitude, outlet.Longitude);
+    <span class="tok-k">if</span> (meters &gt; _geoOptions.RadiusMeters + _geoOptions.ToleranceMeters)
+        <span class="tok-k">throw new</span> <span class="tok-t">ValidationException</span>(
+            <span class="tok-s">"OUTLET_OUT_OF_RANGE"</span>,
+            <span class="tok-s">$"You must be within {_geoOptions.RadiusMeters} m of the outlet to bill it."</span>);
+}</code></pre>
+      <table>
+        <thead><tr><th>File</th><th>Change</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><code>Common/Geo/GeoMath.cs</code></td><td>Static Haversine helper (metres)</td><td><span class="tag new">NEW</span></td></tr>
+          <tr><td><code>appsettings.json</code> + <code>BillingGeoOptions</code></td><td><code>EnforceProximity</code>, <code>RadiusMeters</code>, <code>ToleranceMeters</code> (server-tunable, no app release)</td><td><span class="tag new">NEW</span></td></tr>
+          <tr><td><code>BillingService.CreateAsync</code></td><td>Insert the guard above; inject <code>IOptions&lt;BillingGeoOptions&gt;</code></td><td><span class="tag edit">EDIT</span></td></tr>
+          <tr><td>Error mapping</td><td>Map <code>OUTLET_OUT_OF_RANGE</code> → <b>422</b> with structured <code>ApiError</code> (per house rules — no stack traces)</td><td><span class="tag edit">EDIT</span></td></tr>
+        </tbody>
+      </table>
+      <div class="callout warn">
+        <b>Tolerance &amp; soft-fail:</b> set <code>ToleranceMeters</code> (e.g. +200&nbsp;m) above the client
+        radius so honest GPS jitter never blocks a legitimate sale. Consider a <code>WarnOnly</code> mode for
+        the first rollout week: record the distance and <i>flag</i> out-of-range bills instead of rejecting,
+        so you can measure false-positives on real routes before turning on hard enforcement.
+      </div>
+    </div>
+  </div>
+
+  <!-- Phase 4 -->
+  <div class="phase">
+    <div class="head"><h3>Phase 4 — Server-driven radius <span style="color:var(--orange)">· required for your tighten-over-time plan</span></h3><span class="est">~½ day</span></div>
+    <div class="body">
+      <div class="callout">
+        <b>Not optional in your case.</b> Because you start at 1&nbsp;km and <b>decrease gradually</b>, the
+        radius must live on the server — otherwise every tightening step is a new app build pushed to every
+        rep's phone. Ship this <b>together with Phases&nbsp;1&nbsp;&amp;&nbsp;3</b>, not after.
+      </div>
+      <ul>
+        <li>One server setting — <code>BillingGeoOptions.RadiusMeters</code> — is the source of truth for the
+        <b>server range check</b>.</li>
+        <li>Expose that same value to the app via <code>geofenceRadiusMeters</code> in the daily outlet/route
+        <b>sync payload</b> the app already pulls. The app uses it for the client filter, falling back to the
+        bundled <code>1000.0</code> constant only when offline before the first sync.</li>
+        <li>One knob drives both client filter and server check → they can never drift apart. Lower it in the
+        backend, and reps pick up the tighter radius on their next daily sync.</li>
+        <li><b>Recommended (the safety net for tightening):</b> store <code>DistanceFromOutletMeters</code> on
+        each <code>Billing</code> row. This is what lets you step down <i>safely</i> — you can see the real
+        spread of billing distances and only drop to 500&nbsp;m once you confirm, say, 98% of bills are already
+        under 400&nbsp;m.</li>
+        <li>Optional: per-outlet override <code>GeofenceRadiusMeters</code> for malls / large venues that
+        legitimately need a wider radius.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────── -->
+  <h2><span class="n">6</span> Edge cases we must decide</h2>
+  <table>
+    <thead><tr><th>Situation</th><th>Recommended default</th></tr></thead>
+    <tbody>
+      <tr><td>Outlet has no coordinates (<code>0,0</code> / never geocoded)</td>
+        <td>Treat as "cannot verify" → <b>show it but flag</b>, and skip the server range check. Surface a
+        report so admins fix the outlet's location. <span class="small">(Blocking these would strand reps on bad data.)</span></td></tr>
+      <tr><td>Two shops within the radius of each other</td><td>Show both, nearest-first — expected and fine.</td></tr>
+      <tr><td>Rep legitimately can't get a fix (basement shop)</td>
+        <td>The existing GPS-off / low-accuracy screens already cover this; they retry or move outside.</td></tr>
+      <tr><td>Newly created outlet (created on-site this visit)</td>
+        <td><code>create_outlet</code> already captures GPS at creation, so it'll be in-range immediately.</td></tr>
+      <tr><td>Backdated bills (the validator already allows up to 7 days back)</td>
+        <td>If <code>BillingDate &lt; today</code>, skip the range check — the rep isn't physically there now.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ─────────────────────────────────────────── -->
+  <h2><span class="n">7</span> Testing</h2>
+  <div class="grid2">
+    <div class="panel">
+      <h3 style="margin-top:4px">Mobile</h3>
+      <ul>
+        <li><b>Unit</b> — <code>filter_nearby_outlets</code>: in/out of radius, exact boundary, empty input,
+        nearest-first ordering.</li>
+        <li><b>BLoC</b> — picker shows only nearby outlets; empty state when none nearby; far outlet can't be selected.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3 style="margin-top:4px">API</h3>
+      <ul>
+        <li><b>Unit</b> — <code>GeoMath.HaversineMeters</code> against known coordinate pairs.</li>
+        <li><b>Integration</b> — bill within range → <span class="check">201</span>; bill from 5&nbsp;km away →
+        <b>422 OUTLET_OUT_OF_RANGE</b>; missing coords → accepted (per policy).</li>
+      </ul>
+    </div>
+  </div>
+  <p class="small">Fits the existing xUnit + Moq + FluentAssertions suite and the Flutter <code>flutter test</code> setup.</p>
+
+  <!-- ─────────────────────────────────────────── -->
+  <h2><span class="n">8</span> Decisions I need from you</h2>
+  <div class="callout good" style="margin:10px 0"><b>1. Radius — DECIDED.</b> Launch at <b>1&nbsp;km</b>,
+  one global value for all outlets, <b>server-configurable</b>, then decreased gradually over time.
+  Per-outlet overrides deferred until a real need appears.</div>
+  <div class="q"><b>2. Hard block vs. warn-first.</b> On the server, reject out-of-range bills immediately, or
+  run a 1-week "warn &amp; log" period to measure false-positives before enforcing?</div>
+  <div class="q"><b>3. Mock-GPS handling.</b> Block fake-location outright, or allow but flag for supervisors?
+  (Field-sales apps are a common spoofing target.)</div>
+  <div class="q"><b>4. Outlets without coordinates.</b> Show-but-skip-check (my recommendation), or hide them
+  until an admin geocodes them?</div>
+
+  <hr/>
+  <div class="callout good">
+    <b>Bottom line.</b> Ship <b>Phases&nbsp;1&nbsp;+&nbsp;3&nbsp;+&nbsp;4 together</b>, launched at
+    <b>1&nbsp;km</b>: the client filter, the server range check, and the server-driven radius. That gives you
+    a real, un-bypassable gate from day one <i>and</i> the backend knob to tighten it whenever you want —
+    no app release. Add Phase&nbsp;2 (GPS-accuracy hardening) next; it matters more with every step you shrink
+    the radius.
+  </div>
+
+  <footer>SFA Monorepo · Proximity-Gated Billing plan · sfa_mobile + sfa_api · generated for review</footer>
+</div>
+</body>
+</html>

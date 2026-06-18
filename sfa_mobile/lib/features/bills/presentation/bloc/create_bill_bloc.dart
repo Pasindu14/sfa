@@ -22,6 +22,7 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     on<BillLocationCaptured>(_onLocationCaptured);
     on<BillLocationStatusChanged>(_onLocationStatusChanged);
     on<LocationCheckRetried>(_onLocationCheckRetried);
+    on<RadiusMetersLoaded>(_onRadiusMetersLoaded);
     on<OutletSelected>(_onOutletSelected);
     on<ProductAdded>(_onProductAdded);
     on<CartItemQtyChanged>(_onQtyChanged);
@@ -57,9 +58,9 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
 
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
+          accuracy: LocationAccuracy.medium,
         ),
-      );
+      ).timeout(const Duration(seconds: 10));
       add(const BillLocationStatusChanged(LocationCheckStatus.ready));
       add(BillLocationCaptured(position.latitude, position.longitude));
     } catch (_) {
@@ -85,7 +86,24 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     _captureLocation();
   }
 
+  void _onRadiusMetersLoaded(
+      RadiusMetersLoaded e, Emitter<CreateBillState> emit) {
+    emit(state.copyWith(radiusMeters: e.radiusMeters));
+  }
+
   void _onOutletSelected(OutletSelected e, Emitter<CreateBillState> emit) {
+    // Defensive guard: silently ignore if rep is outside range.
+    // The OutletPicker already filters the list; this prevents any edge-case
+    // where a stale/re-ordered list lets a far outlet slip through.
+    final lat = state.latitude;
+    final lng = state.longitude;
+    final hasCoord =
+        e.outlet.latitude != 0.0 || e.outlet.longitude != 0.0;
+    if (lat != null && lng != null && hasCoord) {
+      final meters = Geolocator.distanceBetween(
+          lat, lng, e.outlet.latitude, e.outlet.longitude);
+      if (meters > state.radiusMeters) return;
+    }
     emit(state.copyWith(outlet: e.outlet, clearError: true));
   }
 

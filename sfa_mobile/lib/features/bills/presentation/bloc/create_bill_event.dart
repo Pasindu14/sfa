@@ -144,3 +144,10 @@ final class BillLocationStatusChanged extends CreateBillEvent {
 final class LocationCheckRetried extends CreateBillEvent {
   const LocationCheckRetried();
 }
+
+final class RadiusMetersLoaded extends CreateBillEvent {
+  final double radiusMeters;
+  const RadiusMetersLoaded(this.radiusMeters);
+  @override
+  List<Object?> get props => [radiusMeters];
+}

@@ -59,6 +59,11 @@ public class Billing
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
 
+    // Straight-line distance (metres) from rep's GPS to outlet at billing time.
+    // Null when rep coords or outlet coords were not available.
+    // Used to measure real-world distribution before tightening the gate.
+    public double? DistanceFromOutletMeters { get; set; }
+
     // Audit
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

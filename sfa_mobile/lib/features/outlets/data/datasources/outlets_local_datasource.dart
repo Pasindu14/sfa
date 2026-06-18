@@ -91,4 +91,24 @@ class OutletsLocalDatasource {
     if (rows.isEmpty) return null;
     return rows.first['value'] as String?;
   }
+
+  Future<void> saveGeofenceRadiusMeters(double meters) async {
+    final db = await _dbHelper.database;
+    await db.insert(
+      'metadata',
+      {'key': 'geofence_radius_meters', 'value': meters.toString()},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<double?> getGeofenceRadiusMeters() async {
+    final db = await _dbHelper.database;
+    final rows = await db.query(
+      'metadata',
+      where: 'key = ?',
+      whereArgs: ['geofence_radius_meters'],
+    );
+    if (rows.isEmpty) return null;
+    return double.tryParse(rows.first['value'] as String);
+  }
 }

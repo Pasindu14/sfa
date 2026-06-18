@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Options;
 using sfa_api.Common.Errors;
+using sfa_api.Features.Billings.Options;
 using sfa_api.Features.Outlets.DTOs;
 using sfa_api.Features.Outlets.Entities;
 using sfa_api.Features.Outlets.Repositories;
@@ -10,11 +12,13 @@ namespace sfa_api.Features.Outlets.Services;
 public class OutletService(
     IOutletRepository repo,
     ICacheService cache,
-    ILogger<OutletService> logger) : IOutletService
+    ILogger<OutletService> logger,
+    IOptions<BillingGeoOptions> geoOptions) : IOutletService
 {
     private readonly IOutletRepository _repo = repo;
     private readonly ICacheService _cache = cache;
     private readonly ILogger<OutletService> _logger = logger;
+    private readonly IOptions<BillingGeoOptions> _geoOptions = geoOptions;
 
     private static readonly TimeSpan RouteCacheTtl = TimeSpan.FromMinutes(30);
     private const string RouteCachePrefix = "outlets:route:";
@@ -59,14 +63,16 @@ public class OutletService(
         return outlets.Select(MapToDto);
     }
 
-    public async Task<IEnumerable<OutletDto>> GetByRouteIdAsync(int routeId, CancellationToken ct = default)
+    public async Task<MobileOutletSyncDto> GetByRouteIdAsync(int routeId, CancellationToken ct = default)
     {
         var cacheKey = $"{RouteCachePrefix}{routeId}";
-        var cached = await _cache.GetAsync<IEnumerable<OutletDto>>(cacheKey, ct);
+        var cached = await _cache.GetAsync<MobileOutletSyncDto>(cacheKey, ct);
         if (cached is not null) return cached;
 
         var outlets = await _repo.GetByRouteIdAsync(routeId, ct);
-        var result = outlets.Select(MapToDto).ToList();
+        var result = new MobileOutletSyncDto(
+            Outlets: outlets.Select(MapToDto).ToList(),
+            GeofenceRadiusMeters: _geoOptions.Value.RadiusMeters);
         await _cache.SetAsync(cacheKey, result, RouteCacheTtl, ct);
         return result;
     }

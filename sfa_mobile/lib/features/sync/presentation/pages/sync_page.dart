@@ -652,7 +652,8 @@ class _CategoryCard extends StatelessWidget {
               ),
 
               // Status
-              Container(
+              Flexible(
+               child: Container(
                 padding:
                     EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
                 decoration: BoxDecoration(
@@ -669,17 +670,22 @@ class _CategoryCard extends StatelessWidget {
                         : Icon(_statusIcon(),
                             size: 11.r, color: statusColor),
                     SizedBox(width: 5.w),
-                    Text(
-                      _syncLabel(),
-                      style: GoogleFonts.barlowCondensed(
-                        fontSize: 11.sp,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.3,
-                        color: statusColor,
+                    Flexible(
+                      child: Text(
+                        _syncLabel(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.barlowCondensed(
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
+                          color: statusColor,
+                        ),
                       ),
                     ),
                   ],
                 ),
+               ),
               ),
             ],
           ),
