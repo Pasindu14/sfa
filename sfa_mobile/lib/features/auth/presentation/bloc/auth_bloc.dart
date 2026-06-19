@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
+import 'package:uswatte/core/background/location_tracking_service.dart';
 import 'package:uswatte/core/device/device_id_service.dart';
 import 'package:uswatte/core/errors/app_exception.dart';
 import 'package:uswatte/core/notifications/fcm_service.dart';
@@ -47,11 +48,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     try {
       final token = await _getCurrentAuthUseCase();
-      emit(
-        token != null
-            ? AuthAuthenticated(role: token.role, name: token.name)
-            : const AuthUnauthenticated(),
-      );
+      if (token != null) {
+        emit(AuthAuthenticated(role: token.role, name: token.name));
+        if (token.role == UserRole.salesRep) {
+          unawaited(LocationTrackingService.start());
+        }
+      } else {
+        emit(const AuthUnauthenticated());
+      }
     } catch (e, stack) {
       debugPrint('AUTH RESTORE ERROR: $e\n$stack');
       emit(const AuthUnauthenticated());
@@ -71,8 +75,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         deviceId: deviceId,
       );
       emit(AuthAuthenticated(role: token.role, name: token.name));
-      // Fire-and-forget — FCM failure never blocks login
+      // Fire-and-forget — failures never block login
       unawaited(_fcmService.registerToken());
+      if (token.role == UserRole.salesRep) {
+        unawaited(LocationTrackingService.start());
+      }
     } on AppException catch (e) {
       emit(AuthFailure(e.message));
     } catch (e, stack) {
@@ -94,6 +101,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } catch (_) {
       // Swallow — navigating to login is the priority
     }
+    unawaited(LocationTrackingService.stop());
     emit(const AuthUnauthenticated());
   }
 }

@@ -31,6 +31,7 @@ using sfa_api.Features.SalesTargets.Entities;
 using sfa_api.Features.Notifications.Entities;
 using sfa_api.Features.StockTaking.Entities;
 using sfa_api.Features.StockTaking.Enums;
+using sfa_api.Features.LocationPings.Entities;
 using RouteEntity = sfa_api.Features.Routes.Entities.Route;
 
 namespace sfa_api.Infrastructure.Persistence;
@@ -78,6 +79,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<StockTakingPeriod>     StockTakingPeriods     => Set<StockTakingPeriod>();
     public DbSet<StockTakingSubmission> StockTakingSubmissions => Set<StockTakingSubmission>();
     public DbSet<StockTakingLine>       StockTakingLines       => Set<StockTakingLine>();
+    public DbSet<RepLocationPing>       RepLocationPings       => Set<RepLocationPing>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -1157,6 +1159,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .HasForeignKey(x => x.AdjustedBy)
              .IsRequired(false)
              .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── RepLocationPing ───────────────────────────────────────────────────
+        modelBuilder.Entity<RepLocationPing>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            // Primary query pattern: latest ping per rep
+            e.HasIndex(x => new { x.RepId, x.RecordedAt });
+            e.HasOne(x => x.Rep)
+             .WithMany()
+             .HasForeignKey(x => x.RepId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);

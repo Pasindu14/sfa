@@ -24,6 +24,7 @@ using sfa_api.Features.GRNs;
 using sfa_api.Features.Supervisor;
 using sfa_api.Features.SalesInvoices;
 using sfa_api.Features.SalesTargets;
+using sfa_api.Features.LocationPings;
 using sfa_api.Features.Notifications;
 using sfa_api.Features.Stock;
 using sfa_api.Features.StockTaking;
@@ -212,6 +213,7 @@ try
     builder.Services.AddMobileSyncFeature();
     builder.Services.AddSupervisorFeature();
     builder.Services.AddNotificationsFeature();
+    builder.Services.AddLocationPingsFeature();
 
     var app = builder.Build();
 

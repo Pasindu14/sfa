@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uswatte/core/background/background_sync_service.dart';
+import 'package:uswatte/core/background/location_tracking_service.dart';
 import 'package:uswatte/core/device/device_id_service.dart';
 import 'package:uswatte/core/di/injection.dart';
 import 'package:uswatte/core/network/session_expired_notifier.dart';
@@ -50,6 +51,7 @@ void main() async {
 
   // Register the 4-hour background sync task. ExistingWorkPolicy.keep means
   // relaunching the app does not reset the timer for an already-queued task.
+  await LocationTrackingService.initialize();
   await Workmanager().initialize(callbackDispatcher);
   await Workmanager().registerPeriodicTask(
     'com.sfa.uswatte.background_sync',

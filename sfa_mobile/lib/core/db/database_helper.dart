@@ -6,7 +6,7 @@ import 'package:sqflite/sqflite.dart';
 /// [onUpgrade] when schema changes.
 class DatabaseHelper {
   static const _dbName = 'sfa_local.db';
-  static const _dbVersion = 17;
+  static const _dbVersion = 18;
 
   DatabaseHelper._private();
   static final DatabaseHelper instance = DatabaseHelper._private();
@@ -66,6 +66,7 @@ class DatabaseHelper {
     await _createBillsTables(db);
     await _createNotBillingsTable(db);
     await _createDistributorStocksTable(db);
+    await _createLocationPingsTable(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -85,6 +86,7 @@ class DatabaseHelper {
     if (oldVersion < 15) await _migrateOutletsV15(db);
     if (oldVersion < 16) await _migrateProductPricesAndDropPricingV16(db);
     if (oldVersion < 17) await _migrateBillItemsPriceTypeV17(db);
+    if (oldVersion < 18) await _createLocationPingsTable(db);
   }
 
   Future<void> _migrateBillItemsPriceTypeV17(Database db) async {
@@ -270,6 +272,22 @@ class DatabaseHelper {
   Future<void> _migrateOutletsV15(Database db) async {
     await db.execute(
         'ALTER TABLE daily_outlets ADD COLUMN last_bill_date TEXT');
+  }
+
+  /// Offline outbox for location pings captured by the foreground service.
+  /// Rows are written on every 5-min tick and deleted after a successful
+  /// batch upload to POST /api/v1/location-pings.
+  Future<void> _createLocationPingsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE pending_location_pings (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        lat         REAL    NOT NULL,
+        lng         REAL    NOT NULL,
+        accuracy    REAL    NOT NULL,
+        recorded_at TEXT    NOT NULL,
+        created_at  TEXT    NOT NULL
+      )
+    ''');
   }
 
   Future<void> _createDailyOutletsTable(Database db) async {

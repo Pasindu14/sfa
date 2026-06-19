@@ -1,3 +1,4 @@
+import 'package:uswatte/core/background/location_tracking_service.dart';
 import 'package:uswatte/core/sync/bill_sync_service.dart';
 import 'package:uswatte/core/sync/not_billing_sync_service.dart';
 import 'package:uswatte/features/outlets/data/datasources/outlets_local_datasource.dart';
@@ -62,6 +63,11 @@ class BackgroundSyncService {
 
     try {
       await _notBillingSync.flushAll();
+    } catch (_) {}
+
+    // Backstop flush for any pings queued while the foreground service was offline.
+    try {
+      await flushLocationPingQueue();
     } catch (_) {}
 
     return true;
