@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SFA API — Duplication &amp; Robustness Audit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --accent: #ff4D00;
+    --accent-soft: #fff1ec;
+    --accent-line: #ffd9cb;
+    --ink: #1a1a1a;
+    --muted: #6b6b6b;
+    --line: #ececec;
+    --crit: #c81d11;
+    --high: #ff4D00;
+    --med: #d98a00;
+    --low: #5a8f3c;
+    --ok: #1f9d6b;
+    --bg-code: #faf7f5;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: #ffffff;
+    color: var(--ink);
+    font-family: 'Jost', system-ui, sans-serif;
+    font-weight: 400;
+    line-height: 1.6;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 28px 96px; }
+
+  /* Header */
+  header.hero {
+    border-bottom: 3px solid var(--accent);
+    padding: 56px 0 30px;
+    margin-bottom: 8px;
+  }
+  .kicker {
+    text-transform: uppercase;
+    letter-spacing: .32em;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    margin: 0 0 14px;
+  }
+  h1 {
+    font-size: 44px;
+    font-weight: 700;
+    line-height: 1.1;
+    margin: 0 0 16px;
+    letter-spacing: -.5px;
+  }
+  h1 .em { color: var(--accent); }
+  .sub { font-size: 18px; color: var(--muted); font-weight: 300; max-width: 760px; }
+  .meta-row {
+    display: flex; flex-wrap: wrap; gap: 22px;
+    margin-top: 24px; font-size: 13px; color: var(--muted);
+  }
+  .meta-row b { color: var(--ink); font-weight: 600; }
+
+  /* Verdict banner */
+  .verdict {
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-line);
+    border-left: 5px solid var(--accent);
+    border-radius: 10px;
+    padding: 26px 28px;
+    margin: 34px 0;
+  }
+  .verdict h2 { margin: 0 0 10px; font-size: 21px; font-weight: 600; }
+  .verdict p { margin: 0 0 10px; }
+  .verdict p:last-child { margin-bottom: 0; }
+  .verdict .good { color: var(--ok); font-weight: 600; }
+  .verdict .bad { color: var(--crit); font-weight: 600; }
+
+  /* Scorecard */
+  .score-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin: 30px 0 10px;
+  }
+  .score {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px 14px;
+    text-align: center;
+  }
+  .score .n { font-size: 34px; font-weight: 700; line-height: 1; }
+  .score .l { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-top: 8px; }
+  .score.c .n { color: var(--crit); }
+  .score.h .n { color: var(--high); }
+  .score.m .n { color: var(--med); }
+  .score.l .n { color: var(--low); }
+  .score.o .n { color: var(--ok); }
+
+  /* Section headings */
+  h2.sec {
+    font-size: 14px; text-transform: uppercase; letter-spacing: .18em;
+    color: var(--accent); font-weight: 700;
+    margin: 56px 0 6px; padding-bottom: 10px; border-bottom: 2px solid var(--accent-line);
+  }
+  .sec-note { color: var(--muted); font-size: 15px; margin: 0 0 22px; }
+
+  /* Finding cards */
+  .finding {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 22px 24px;
+    margin: 16px 0;
+    background: #fff;
+  }
+  .finding.crit { border-left: 5px solid var(--crit); }
+  .finding.high { border-left: 5px solid var(--high); }
+  .finding.med  { border-left: 5px solid var(--med); }
+  .finding.low  { border-left: 5px solid var(--low); }
+  .finding.ok   { border-left: 5px solid var(--ok); background: #fcfdfc; }
+
+  .f-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  .badge {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+    padding: 4px 10px; border-radius: 999px; color: #fff; white-space: nowrap;
+  }
+  .badge.crit { background: var(--crit); }
+  .badge.high { background: var(--high); }
+  .badge.med  { background: var(--med); }
+  .badge.low  { background: var(--low); }
+  .badge.ok   { background: var(--ok); }
+  .f-title { font-size: 18px; font-weight: 600; margin: 0; }
+  .f-body { color: #2a2a2a; }
+  .f-body p { margin: 8px 0; }
+  .f-row { margin: 10px 0; }
+  .f-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .1em;
+    color: var(--muted); font-weight: 600; display: block; margin-bottom: 2px;
+  }
+  code, .path {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+    font-size: 13px;
+    background: var(--bg-code);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 1px 6px;
+    color: #8a2c00;
+    word-break: break-word;
+  }
+  .risk-flag {
+    display: inline-block; font-weight: 600; font-size: 13px;
+    padding: 2px 8px; border-radius: 5px;
+  }
+  .risk-yes { color: var(--crit); background: #fdecea; }
+  .risk-no  { color: var(--ok);  background: #e9f7f1; }
+
+  .biscuit {
+    background: var(--accent-soft);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 12px;
+    font-size: 14px;
+    color: #7a3413;
+  }
+  .biscuit b { color: var(--accent); }
+
+  /* Solid list */
+  .solid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px 22px;
+    margin: 8px 0 0;
+  }
+  .solid div { padding-left: 26px; position: relative; font-size: 15px; }
+  .solid div::before {
+    content: "\2713"; position: absolute; left: 0; top: 0;
+    color: var(--ok); font-weight: 700;
+  }
+
+  /* TOC */
+  .toc { font-size: 14px; color: var(--muted); margin: 0 0 8px; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  footer {
+    margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: 13px;
+  }
+  .priority-table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 14px; }
+  .priority-table th, .priority-table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  .priority-table th { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+  .priority-table tr:hover td { background: var(--accent-soft); }
+
+  @media (max-width: 720px) {
+    h1 { font-size: 32px; }
+    .score-grid { grid-template-columns: repeat(2, 1fr); }
+    .solid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <p class="kicker">Production Robustness Review · SFA API</p>
+    <h1>Duplicate-Request &amp; <span class="em">Industry-Grade</span> Resilience Audit</h1>
+    <p class="sub">A deep read of the <code>sfa_api</code> codebase across the five highest-risk domains for a Sales Force Automation platform: duplicate requests, concurrency &amp; races, transaction atomicity, authorization / data isolation, and data integrity.</p>
+    <div class="meta-row">
+      <span><b>Scope:</b> D:\Github\sfa\sfa_api</span>
+      <span><b>Stack:</b> .NET 8 · EF Core · PostgreSQL</span>
+      <span><b>Method:</b> 5 parallel full-file code audits</span>
+      <span><b>Date:</b> 2026-06-22</span>
+    </div>
+  </header>
+
+  <div class="verdict">
+    <h2>The honest bottom line</h2>
+    <p><span class="good">What is safe:</span> The two failures that would corrupt a real distributor's books — <b>overselling stock</b> and <b>colliding invoice numbers</b> — are <b>correctly prevented</b> by row-level <code>SELECT … FOR UPDATE</code> locks and PostgreSQL <code>nextval</code> sequences. The order&nbsp;&rarr;&nbsp;stock&nbsp;&rarr;&nbsp;ledger&nbsp;&rarr;&nbsp;audit pipeline is genuinely <b>all-or-nothing</b>. Auth token handling is strong.</p>
+    <p><span class="bad">What is NOT yet safe:</span> The specific thing asked about — <b>duplicate request handling</b> — has a real gap. The idempotency layer is a post-completion cache with <b>no in-flight lock</b>, Billing has <b>no database-level duplicate backstop</b>, and the web client <b>sends no idempotency key at all</b>. Several read endpoints also have <b>IDOR</b> (cross-territory data access) gaps. These are <b>fixable</b> and none silently corrupts money totals — but they are genuine and should be closed before scale.</p>
+  </div>
+
+  <div class="score-grid">
+    <div class="score c"><div class="n">5</div><div class="l">Critical</div></div>
+    <div class="score h"><div class="n">6</div><div class="l">High</div></div>
+    <div class="score m"><div class="n">7</div><div class="l">Medium</div></div>
+    <div class="score l"><div class="n">6</div><div class="l">Low</div></div>
+    <div class="score o"><div class="n">10+</div><div class="l">Verified Solid</div></div>
+  </div>
+  <p class="toc">Jump to:
+    <a href="#solid">✓ What's solid</a> ·
+    <a href="#critical">Critical</a> ·
+    <a href="#high">High</a> ·
+    <a href="#medium">Medium</a> ·
+    <a href="#low">Low</a> ·
+    <a href="#priority">Priority order</a>
+  </p>
+
+  <!-- ============ SOLID ============ -->
+  <h2 class="sec" id="solid">✓ What is already solid (verified, not assumed)</h2>
+  <p class="sec-note">These were read end-to-end and confirmed correct. They are the load-bearing walls of the system — they hold.</p>
+  <div class="finding ok">
+    <div class="f-head"><span class="badge ok">OK</span><p class="f-title">The money-critical core is correctly engineered</p></div>
+    <div class="solid">
+      <div><b>No stock oversell.</b> Real <code>SELECT … FOR UPDATE</code> in the same transaction as the deduct — concurrent orders block, re-read, and respect the negative-stock guard. <span class="path">StockRepository.cs:114-127</span></div>
+      <div><b>No invoice-number collisions.</b> Bill / GRN / PO / batch numbers all use PostgreSQL <code>nextval</code> sequences (atomic), not <code>Max()+1</code>. <span class="path">BillingRepository.cs:17-23</span></div>
+      <div><b>True transaction atomicity.</b> Every multi-table write is wrapped in <code>CreateExecutionStrategy().ExecuteAsync</code> + explicit transaction — correct for retry-on-failure. No partial-commit path found.</div>
+      <div><b>Audit is in-transaction.</b> <code>AuditInterceptor</code> adds audit rows into the same <code>SaveChanges</code> — rolls back with the data, never orphaned.</div>
+      <div><b>Strong auth.</b> Refresh-token rotation with family reuse-detection, SHA-256 hashed tokens, device binding, jti denylist, zero clock skew. No secrets in DTOs/logs.</div>
+      <div><b>Decimal precision applied.</b> All money = <code>numeric(18,2)</code>, quantities <code>numeric(18,4)</code> — no silent rounding.</div>
+      <div><b>Gold-standard scoping exists.</b> PurchaseOrders + all Distributor-portal endpoints resolve scope server-side and re-check per-record ownership. The correct pattern is in the codebase already.</div>
+      <div><b>No hard deletes anywhere.</b> Soft-delete policy honored project-wide; FluentValidation enforces non-negative money &amp; positive quantities.</div>
+    </div>
+    <div class="biscuit"><b>Correction to internal notes:</b> the "Routes unique index PENDING" item is <b>stale</b> — migration <code>20260615113307</code> applied <code>IX_Routes_Name_DivisionId</code> (UNIQUE, filtered on active). Duplicate active routes are now blocked at the DB level.</div>
+  </div>
+
+  <!-- ============ CRITICAL ============ -->
+  <h2 class="sec" id="critical">Critical findings</h2>
+  <p class="sec-note">Real paths to duplicate writes or cross-tenant data access. These are the ones to close first.</p>
+
+  <div class="finding crit">
+    <div class="f-head"><span class="badge crit">Critical · Duplicates</span><p class="f-title">1. Idempotency has no in-flight lock — concurrent retries both get through</p></div>
+    <div class="f-body">
+      <div class="f-row"><span class="f-label">Where</span><span class="path">Common/Middleware/IdempotencyMiddleware.cs:38-79</span> · <span class="path">PostgresIdempotencyService.cs:13-39</span></div>
+      <p>The middleware reads the cache, then only <i>writes</i> it <b>after</b> the controller fully completes with a 2xx. There is no lock and no "in-progress" marker. Two identical requests arriving before the first finishes both see an empty cache, both run the full controller, and both create separate records.</p>
+      <div class="f-row"><span class="f-label">SFA risk</span> <span class="risk-flag risk-yes">YES — but narrowed by the mobile client</span> Real in the slow-bill / lost-response timeout window only.</div>
+      <div class="biscuit"><b>Mobile mitigation (verified):</b> the Flutter app generates the idempotency key (<code>clientBillId</code>) <b>once</b> via <code>uuid.v4()</code> at save (<span class="path">create_bill_bloc.dart:271</span>), persists it to SQLite, and <b>reuses it verbatim on every retry</b>. It also disables the save button while submitting (<span class="path">cart_list.dart:499</span>) and has no Dio auto-retry. So <b>casual double-taps and sequential retry-after-failure are already handled</b> — the server cache dedupes those.</div>
+      <div class="biscuit"><b>Residual biscuit-floor window:</b> Dio's receive timeout is <b>15&nbsp;s</b> (<span class="path">dio_client.dart:21</span>). On a heavy bill the device can abandon an <i>in-flight</i> request at 15&nbsp;s and re-send the <b>same key</b> while the original is <i>still committing server-side</i> → two same-key requests overlap → the lockless middleware lets the second past the still-empty cache → potential second bill. The device's <code>_inFlight</code> set can't help because it already gave up on the first request. <b>Fix belongs on the server, not the app.</b></div>
+    </div>
+  </div>
+
+  <div class="finding crit">
+    <div class="f-head"><span class="badge crit">Critical · Duplicates</span><p class="f-title">2. Billing create has no database-level duplicate backstop</p></div>
+    <div class="f-body">
+      <div class="f-row"><span class="f-label">Where</span><span class="path">Features/Billings/Services/BillingService.cs:226-340</span> · <span class="path">AppDbContext.cs:749-847</span></div>
+      <p>The advisory lock is keyed <code>billing:create:{salesRepId}</code> and is fail-fast — it <i>serializes</i> a rep's requests but does not <i>deduplicate</i> them. The client's <code>clientBillId</code> is sent only as the idempotency header and is <b>never persisted</b>, so the database cannot reject a duplicate. If finding #1 lets two requests through, nothing downstream stops two bills. Contrast <code>NotBilling</code>, which <b>does</b> have a filtered unique index on <code>(SalesRepId, OutletId, NotBillingDate)</code> — the correct pattern, just not applied to Billing.</p>
+      <div class="f-row"><span class="f-label">SFA risk</span> <span class="risk-flag risk-yes">YES — real</span> Billing is the highest-value duplicate target and depends entirely on the racy middleware cache.</div>
+      <div class="biscuit"><b>Proof the fix belongs here:</b> the mobile <b>not-billing</b> flow uses identical client code (same once-per-record key, same 15&nbsp;s timeout, same outbox) yet <b>cannot</b> duplicate — because <code>NotBilling</code> has a unique index on <code>(SalesRepId, OutletId, NotBillingDate)</code> (<span class="path">AppDbContext.cs:896-901</span>). Billing has no equivalent. Mirroring that — persist <code>clientBillId</code> on the Billing row + unique index — closes finding #1's residual window regardless of client behaviour.</div>
+    </div>
+  </div>
+
+  <div class="finding crit">
+    <div class="f-head"><span class="badge crit">Critical · IDOR</span><p class="f-title">3. Any SalesRep can delete ANY route assignment</p></div>
+    <div class="f-body">
+      <div class="f-row"><span class="f-label">Where</span><span class="path">Features/DailyRouteAssignments/Controllers/DailyRouteAssignmentsController.cs:121-134</span> · <span class="path">…/Services/DailyRouteAssignmentService.cs:177-234</span></div>
+      <p>The <code>Delete</code> action has no method-level role attribute, so it inherits the class-level list that includes <code>SalesRep</code>. In the service, only the Supervisor branch checks ownership; every other role (including SalesRep) <b>falls through to an unconditional soft-delete</b>. A field rep can delete any rep's route assignment, system-wide.</p>
+      <div class="f-row"><span class="f-label">SFA risk</span> <span class="risk-flag risk-yes">YES — real</span> Operational sabotage / accidental wipe of another rep's day plan.</div>
+    </div>
+  </div>
+
+  <div class="finding crit">
+    <div class="f-head"><span class="badge crit">Critical · IDOR</span><p class="f-title">4. SalesInvoices — any authenticated user reads / enumerates any invoice</p></div>
+    <div class="f-body">
+      <div class="f-row"><span class="f-label">Where</span><span class="path">Features/SalesInvoices/Controllers/SalesInvoicesController.cs:14,32-61</span></div>
+      <p>Controller is a bare <code>[Authorize]</code>. <code>GetById</code> fetches purely by primary key with no ownership scoping, and <code>GetList</code> trusts a client-supplied <code>?distributorId=</code> with no caller-scope validation. A distributor can enumerate another distributor's financial invoices by iterating IDs.</p>
+      <div class="f-row"><span class="f-label">SFA risk</span> <span class="risk-flag risk-yes">YES — real</span> Confidential financial data disclosure across tenants/distributors.</div>
+    </div>
+  </div>
+
+  <div class="finding crit">
+    <div class="f-head"><span class="badge crit">Critical · IDOR</span><p class="f-title">5. GRNs — any authenticated user reads / enumerates any GRN</p></div>
+    <div class="f-body">
+      <div class="f-row"><span class="f-label">Where</span><span class="path">Features/GRNs/Controllers/GrnsController.cs:37-65</span></div>
+      <p>Same shape as #4: bare <code>[Authorize]</code>, <code>GetById</code> by PK with no ownership check, <code>GetList</code> honours a client <code>distributorId</code> with no scope check. (The distributor <i>portal</i> endpoints at <code>:147-161</code> do enforce ownership correctly — so the fix pattern already exists nearby.)</p>
+      <div class="f-row"><span class="f-label">SFA risk</span> <span class="risk-flag risk-yes">YES — real</span> Cross-distributor goods-receipt disclosure. Recommend a quick direct confirm before remediation; pattern matches the verified controllers.</div>
+    </div>
+  </div>
+
+  <!-- ============ HIGH ============ -->
+  <h2 class="sec" id="high">High findings</h2>
+
+  <div class="finding high">
+    <div class="f-head"><span class="badge high">High · Duplicates</span><p class="f-title">6. Concurrent idempotency stores throw — a successful write surfaces as HTTP 500</p></div>
+    <div class="f-body">
+      <div class="f-row"><span class="f-label">Where</span><span class="path">Infrastructure/Caching/PostgresIdempotencyService.cs:27-39</span></div>
+      <p><code>StoreAsync</code> does a blind <code>INSERT</code> on the primary-key column with no upsert / <code>ON CONFLICT</code>. When the #1 race lets two requests complete, the second store violates the PK and throws — and because this runs after the controller succeeded, the user sees a 500 for work that actually committed, confusing retry logic.</p>
+      <div class="f-row"><span class="f-label">SFA risk</span> <span class="risk-flag risk-yes">YES</span> Masks success as failure → encourages yet another retry → compounds #1/#2.</div>
+    </div>
+  </div>
+
+  <div class="finding high">
+    <div class="f-head"><span class="badge high">High · Duplicates</span><p class="f-title">7. Idempotency key ignores the request body and path</p></div>
+    <div class="f-body">
+      <div class="f-row"><span class="f-label">Where</span><span class="path">Common/Middleware/IdempotencyMiddleware.cs:22-34</span></div>
+      <p>The cache key is only <code>{userId}:{rawKey}</code> — no path, method, or body fingerprint. If a client ever reuses a key across two different mutations, the server replays the first response for the second request, silently skipping the second operation and returning a stale body.</p>
+      <div class="f-row"><span class="f-label">SFA risk</span> <span class="risk-flag risk-yes">YES</span> Most dangerous on web, where one helper would generate keys for arbitrary endpoints.</div>
+    </div>
+  </div>
+
+  <div class="finding high">
+    <div class="f-head"><span class="badge high">High · Duplicates</span><p class="f-title">8. The web client never sends an idempotency key</p></div>
+    <div class="f-body">
+      <div class="f-row"><span class="f-label">Where</span><span class="path">sfa_web/lib/api/client.ts:73-93</span></div>
+      <p><code>createIdempotencyKey()</code> is defined but <b>never called</b> anywhere in <code>sfa_web</code>. Every web POST/PUT/DELETE flows through the middleware with no key and gets <b>zero</b> duplicate protection (the middleware short-circuits when the header is absent).</p>
+      <div class="f-row"><span class="f-label">SFA risk</span> <span class="risk-flag risk-yes">YES</span> Admin/portal mutations from the browser are entirely unprotected against double-submit.</div>
+    </div>
+  </div>
+
+  <div class="finding high">
+    <div class="f-head"><span class="badge high">High · IDOR</span><p class="f-title">9. Billings GET-by-id &amp; list — no ownership scoping for non-portal callers</p></div>
+    <div class="f-body">
+      <div class="f-row"><span class="f-label">Where</span><span class="path">Features/Billings/Controllers/BillingsController.cs:36-78</span> · <span class="path">…/Services/BillingService.cs:368-387</span></div>
+      <p>Bare <code>[Authorize]</code>; <code>GetById</code> fetches by PK and <code>GetList</code> is a passthrough that trusts client <code>salesRepId/distributorId/outletId</code>. A rep or distributor can read any bill (amounts, outlet, geo, rep names) by id. The write/state transitions (Cancel/Approve/Reject/payment/cash) <b>do</b> check ownership correctly — it's the reads that leak.</p>
+      <div class="f-row"><span class="f-label">SFA risk</span> <span class="risk-flag risk-yes">YES</span> Cross-rep / cross-distributor financial disclosure.</div>
+    </div>
+  </div>
+
+  <div class="finding high">
+    <div class="f-head"><span class="badge high">High · IDOR</span><p class="f-title">10. Users GET-by-id — any authenticated user reads any user's profile</p></div>
+    <div class="f-body">
+      <div class="f-row"><span class="f-label">Where</span><span class="path">Features/Users/Controllers/UsersController.cs:30-37</span></div>
+      <p>Bare <code>[Authorize]</code> with no self-or-Admin check (unlike <code>UpdateUser</code>, which does enforce it). Discloses PII — name, username, email, phone, role, distributor. <b>Good news:</b> <code>UserDto</code> does <b>not</b> expose password hash, PIN, or tokens, so this is PII + org-structure disclosure, not a credential leak.</p>
+      <div class="f-row"><span class="f-label">SFA risk</span> <span class="risk-flag risk-yes">YES</span> Staff PII exposure / org-chart enumeration.</div>
+    </div>
+  </div>
+
+  <div class="finding high">
+    <div class="f-head"><span class="badge high">High · Integrity</span><p class="f-title">11. Soft-deleted rows leak through unfiltered single-record fetches</p></div>
+    <div class="f-body">
+      <div class="f-row"><span class="f-label">Where</span><span class="path">DistributorRepository.GetByIdAsync</span>, <span class="path">PurchaseOrderRepository</span> (get/list/counts), <span class="path">UserReportingLineRepository</span>, <span class="path">UserGeoAssignmentRepository</span> (incl. stats counts)</p></div>
+      <p>These entities have <b>no global query filter</b>, and several methods omit the <code>!IsDeleted</code> predicate that list paths use — so a soft-deleted distributor is still fetchable by id, and deleted/inactive purchase orders leak into get, list, and status counts. Most other entities <b>do</b> have a global <code>HasQueryFilter</code>; these are the inconsistent stragglers.</p>
+      <div class="f-row"><span class="f-label">SFA risk</span> <span class="risk-flag risk-yes">YES</span> Deactivated distributors/orders reappear in user-facing reads and dashboards counts.</div>
+    </div>
+  </div>
+
+  <!-- ============ MEDIUM ============ -->
+  <h2 class="sec" id="medium">Medium findings</h2>
+
+  <div class="finding med">
+    <div class="f-head"><span class="badge med">Medium · Concurrency</span><p class="f-title">12. Inconsistent optimistic-concurrency coverage (lost updates)</p></div>
+    <div class="f-body">
+      <p>Only the geo hierarchy (Region/Area/Territory/Division) has an <code>xmin</code> rowversion. <code>Outlet</code>, <code>User</code>, <code>Distributor</code>, <code>Product</code> have none — two managers editing the same record = silent last-writer-wins. Two Billing setters (<code>UpdatePaymentTypeAsync</code>, <code>UpdateCashCollectedAsync</code>) take no lock and no token either. <i>Note:</i> status transitions are saved by advisory locks, and all money/stock totals go through <code>FOR UPDATE</code>, so there is no <b>financial</b> corruption risk here — just plain lost edits on master data.</p>
+      <div class="f-row"><span class="f-label">Where</span><span class="path">AppDbContext.cs:749-847</span> · <span class="path">BillingService.cs:731-769</span></div>
+    </div>
+  </div>
+
+  <div class="finding med">
+    <div class="f-head"><span class="badge med">Medium · Duplicates</span><p class="f-title">13. Idempotency is opt-in per request — most mutating endpoints unprotected</p></div>
+    <div class="f-body">
+      <p>The only two clients that actually send the key are mobile <b>billing</b> and <b>not-billing</b> create. Billing status transitions, all PurchaseOrder/SalesInvoice/GRN/Stock/StockTaking mutations, and location pings send no key. Some have their own DB guards; others (PurchaseOrders, stock adjustments) rely on nothing.</p>
+      <div class="f-row"><span class="f-label">Where</span><span class="path">bills_remote_datasource.dart:37</span> · <span class="path">not_billings_remote_datasource.dart:30</span> (only call sites)</div>
+    </div>
+  </div>
+
+  <div class="finding med">
+    <div class="f-head"><span class="badge med">Medium · IDOR</span><p class="f-title">14. Outlets GET-by-id / list — no territory ownership check (the originally-flagged item, confirmed real)</p></div>
+    <div class="f-body">
+      <p>Any authenticated user can read any outlet by id or list all outlets cross-territory — leaking customer PII (NIC, phone, email, credit limit, coordinates). A correctly-scoped <code>GetAllByTerritoryAsync</code> exists but is wired only to the distributor portal, not the general controller. Writes are Admin-only, so the exposure is read-side.</p>
+      <div class="f-row"><span class="f-label">Where</span><span class="path">Features/Outlets/Repositories/OutletRepository.cs:13-26</span></div>
+    </div>
+  </div>
+
+  <div class="finding med">
+    <div class="f-head"><span class="badge med">Medium · IDOR</span><p class="f-title">15. NotBillings — management roles not scoped to reporting line</p></div>
+    <div class="f-body">
+      <p>SalesRep is correctly scoped to own records, but Supervisor/NSM/RSM have no scoping — a Supervisor can read not-billing records of reps outside their reporting line via <code>?salesRepId=</code> or a guessed id.</p>
+      <div class="f-row"><span class="f-label">Where</span><span class="path">Features/NotBillings/Controllers/NotBillingsController.cs:34-81</span></div>
+    </div>
+  </div>
+
+  <div class="finding med">
+    <div class="f-head"><span class="badge med">Medium · IDOR</span><p class="f-title">16. StockTaking admin endpoints accept client distributorId / fetch line without scope</p></div>
+    <div class="f-body">
+      <p>Admin-only endpoints fetch by client-supplied <code>distributorId</code> / <code>lineId</code> with no scope check. Low real-world risk in a single-company model where Admin is fully trusted, but it offers no defense if Admin is ever sub-scoped.</p>
+      <div class="f-row"><span class="f-label">Where</span><span class="path">Features/StockTaking/Controllers/StockTakingController.cs:98-119</span></div>
+    </div>
+  </div>
+
+  <div class="finding med">
+    <div class="f-head"><span class="badge med">Medium · Integrity</span><p class="f-title">17. Outlet (customer) has no unique constraint on any natural key</p></div>
+    <div class="f-body">
+      <p><code>NicNo</code> is required by the validator but only a <b>non-unique</b> index — nothing prevents two customer records with the same NIC. May be intentional (multiple outlets per owner), but worth a deliberate decision rather than an accident.</p>
+      <div class="f-row"><span class="f-label">Where</span><span class="path">AppDbContext.cs:367</span></div>
+    </div>
+  </div>
+
+  <div class="finding med">
+    <div class="f-head"><span class="badge med">Medium · Integrity</span><p class="f-title">18. Distributor email/phone uniqueness is not soft-delete-aware</p></div>
+    <div class="f-body">
+      <p>The unique indexes on Distributor Email/Phone are <b>not</b> filtered by <code>IsDeleted</code>, so a soft-deleted distributor's email/phone can never be reused — inconsistent with Users, which deliberately frees them on soft-delete. Behavioral inconsistency, not corruption.</p>
+      <div class="f-row"><span class="f-label">Where</span><span class="path">AppDbContextModelSnapshot.cs:655-663</span></div>
+    </div>
+  </div>
+
+  <!-- ============ LOW ============ -->
+  <h2 class="sec" id="low">Low findings &amp; hardening notes</h2>
+
+  <div class="finding low">
+    <div class="f-head"><span class="badge low">Low</span><p class="f-title">19. Bill / GRN / PO numbers develop gaps when the retry strategy re-runs a transaction</p></div>
+    <div class="f-body"><p>On a transient-failure retry, the whole lambda re-runs including <code>nextval</code>, which is non-transactional — so sequence values are burned, producing <b>gaps</b> in bill numbers. Not a collision or oversell risk, but finance teams often expect contiguous numbering. <span class="path">BillingService.cs:275</span></p></div>
+  </div>
+  <div class="finding low">
+    <div class="f-head"><span class="badge low">Low</span><p class="f-title">20. Idempotency "anonymous" fallback shares a key namespace</p></div>
+    <div class="f-body"><p>With no user claim the scope falls back to literal <code>anonymous</code>. Practically limited because all audited mutating endpoints require auth, but any future <code>[AllowAnonymous]</code> POST with a client key could read another anonymous caller's cached response. <span class="path">IdempotencyMiddleware.cs:30-34</span></p></div>
+  </div>
+  <div class="finding low">
+    <div class="f-head"><span class="badge low">Low</span><p class="f-title">21. Cached-response replay drops headers (incl. Location) and forces JSON</p></div>
+    <div class="f-body"><p>A replayed 201 omits the <code>Location</code> header and always sets <code>application/json</code>. Clients read the body, so low impact — but the replay is not a faithful copy. <span class="path">IdempotencyMiddleware.cs:46-49</span></p></div>
+  </div>
+  <div class="finding low">
+    <div class="f-head"><span class="badge low">Low</span><p class="f-title">22. No upper bound on money / quantity values in validators</p></div>
+    <div class="f-body"><p>Validators enforce non-negative but no ceiling; a pathological value (e.g. 10¹⁵) is constrained only by the <code>decimal(18,x)</code> column and could overflow a summed total. Low likelihood.</p></div>
+  </div>
+  <div class="finding low">
+    <div class="f-head"><span class="badge low">Low</span><p class="f-title">23. Distributor geographic FKs (Territory/Area/Region) are nullable</p></div>
+    <div class="f-body"><p>A distributor with a null territory won't appear in territory-scoped rep stock-sync queries — operational gap, weakens the "1 distributor per territory" guarantee when unset. Documented as intentional for legacy rows.</p></div>
+  </div>
+  <div class="finding low">
+    <div class="f-head"><span class="badge low">Low</span><p class="f-title">24. No global authorization fallback policy; Swagger served in Production</p></div>
+    <div class="f-body"><p><code>AddAuthorization()</code> has no <code>FallbackPolicy</code>, so a future controller missing <code>[Authorize]</code> would be public by default. <code>app.UseSwagger()</code> runs unconditionally, exposing the full API surface in Production. <span class="path">Program.cs:129,248-249</span></p></div>
+  </div>
+
+  <!-- ============ PRIORITY ============ -->
+  <h2 class="sec" id="priority">Suggested priority order (no code — for planning)</h2>
+  <table class="priority-table">
+    <thead><tr><th>#</th><th>Action area</th><th>Severity</th><th>Why first</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Add a DB-level duplicate backstop to Billing (persist + unique-index the client bill id), like NotBilling already has</td><td>Critical</td><td>Closes the double-bill path even if the middleware races</td></tr>
+      <tr><td>2</td><td>Give idempotency an insert-on-entry "in-progress" lock + <code>ON CONFLICT</code> upsert</td><td>Critical/High</td><td>Fixes findings #1 and #6 together</td></tr>
+      <tr><td>3</td><td>Add object-level ownership checks to SalesInvoices, GRNs, Billings, Users, Outlets reads; fix the DailyRouteAssignment delete fall-through</td><td>Critical/High</td><td>Closes the IDOR cluster; pattern already exists in PurchaseOrders/portal</td></tr>
+      <tr><td>4</td><td>Make the web client actually send idempotency keys on mutations</td><td>High</td><td>Browser writes are currently unprotected</td></tr>
+      <tr><td>5</td><td>Add global query filters to Distributor &amp; PurchaseOrder (soft-delete leak)</td><td>High</td><td>One-line-per-entity fix; stops deleted rows resurfacing</td></tr>
+      <tr><td>6</td><td>Add rowversion to Outlet/User/Distributor/Product; lock the two Billing setters</td><td>Medium</td><td>Stops silent lost updates on master data</td></tr>
+    </tbody>
+  </table>
+
+  <footer>
+    <p>Generated from a five-domain parallel source audit of <code>sfa_api</code> (idempotency, concurrency, transactions, authorization, data integrity). Findings cite exact files and line numbers; severities reflect impact for a single-company SFA platform with field-mobile clients. This is an analysis document — no code was changed.</p>
+    <p>Note: GRN IDOR (#5) matches the verified pattern of its sibling controllers but is the one finding recommended for a quick direct confirmation before remediation.</p>
+  </footer>
+
+</div>
+</body>
+</html>

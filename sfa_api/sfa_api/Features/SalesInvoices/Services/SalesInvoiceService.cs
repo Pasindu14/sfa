@@ -8,6 +8,10 @@ using sfa_api.Features.SalesInvoices.Entities;
 using sfa_api.Features.SalesInvoices.Enums;
 using sfa_api.Features.SalesInvoices.Repositories;
 using sfa_api.Features.SalesInvoices.Requests;
+using sfa_api.Features.Distributors.Repositories;
+using sfa_api.Features.UserGeoAssignments.Repositories;
+using sfa_api.Features.Users.Entities;
+using sfa_api.Features.Users.Repositories;
 using sfa_api.Infrastructure.Persistence;
 
 namespace sfa_api.Features.SalesInvoices.Services;
@@ -15,10 +19,16 @@ namespace sfa_api.Features.SalesInvoices.Services;
 public class SalesInvoiceService(
     ISalesInvoiceRepository repository,
     AppDbContext db,
+    IUserRepository userRepo,
+    IUserGeoAssignmentRepository geoRepo,
+    IDistributorRepository distributorRepo,
     ILogger<SalesInvoiceService> logger) : ISalesInvoiceService
 {
     private readonly ISalesInvoiceRepository _repository = repository;
     private readonly AppDbContext _db = db;
+    private readonly IUserRepository _userRepo = userRepo;
+    private readonly IUserGeoAssignmentRepository _geoRepo = geoRepo;
+    private readonly IDistributorRepository _distributorRepo = distributorRepo;
     private readonly ILogger<SalesInvoiceService> _logger = logger;
 
     public async Task<ImportBatchResultDto> ImportAsync(
@@ -257,10 +267,45 @@ public class SalesInvoiceService(
 
     // ── Read ──────────────────────────────────────────────────────────────
 
+    // Resolves the distributor a non-management caller is allowed to see (audit finding #4).
+    //   (Restricted=true,  id): caller may only see invoices for distributor `id`
+    //                           (id may be null = "matches nothing", e.g. a rep with no territory).
+    //   (Restricted=false, _ ): management / Admin — unrestricted.
+    private async Task<(bool Restricted, int? DistributorId)> ResolveDistributorScopeAsync(
+        int callerId, UserRole callerRole, CancellationToken ct)
+    {
+        switch (callerRole)
+        {
+            case UserRole.Distributor:
+                var caller = await _userRepo.GetUserByIdAsync(callerId, ct)
+                    ?? throw new NotFoundException("User", callerId);
+                return (true, caller.DistributorId);
+            case UserRole.SalesRep:
+                var geo = await _geoRepo.GetActiveByUserIdAsync(callerId, ct);
+                int? distId = null;
+                if (geo?.TerritoryId is int territoryId)
+                    distId = (await _distributorRepo.GetByTerritoryIdAsync(territoryId, ct))?.Id;
+                return (true, distId);
+            default:
+                return (false, null);
+        }
+    }
+
     public async Task<(List<SalesInvoiceListDto> Items, int TotalCount)> GetListAsync(
         int page, int pageSize, string? search, string? status,
-        DateOnly? dateFrom, DateOnly? dateTo, int? distributorId, CancellationToken ct = default)
+        DateOnly? dateFrom, DateOnly? dateTo, int? distributorId,
+        int callerId, UserRole callerRole, CancellationToken ct = default)
     {
+        // Non-management callers are pinned to their own distributor scope; any client-supplied
+        // distributorId is ignored for them. Management/Admin keep the optional distributorId filter.
+        var (restricted, scopeDistributorId) = await ResolveDistributorScopeAsync(callerId, callerRole, ct);
+        if (restricted)
+        {
+            if (scopeDistributorId is null)
+                return ([], 0);
+            distributorId = scopeDistributorId;
+        }
+
         var (invoices, total) = await _repository.GetListAsync(page, pageSize, search, status, dateFrom, dateTo, distributorId, ct);
         var dtos = invoices.Select(inv => new SalesInvoiceListDto(
             inv.Id,
@@ -280,10 +325,16 @@ public class SalesInvoiceService(
         return (dtos, total);
     }
 
-    public async Task<SalesInvoiceDetailDto> GetDetailAsync(int id, CancellationToken ct = default)
+    public async Task<SalesInvoiceDetailDto> GetDetailAsync(int id, int callerId, UserRole callerRole, CancellationToken ct = default)
     {
         var inv = await _repository.GetDetailAsync(id, ct)
             ?? throw new NotFoundException("SalesInvoice", id);
+
+        // A Distributor / SalesRep may only read invoices within their own distributor scope;
+        // managers / Admin may read any (audit finding #4).
+        var (restricted, scopeDistributorId) = await ResolveDistributorScopeAsync(callerId, callerRole, ct);
+        if (restricted && inv.DistributorId != scopeDistributorId)
+            throw new AuthorizationException("this sales invoice");
 
         return new SalesInvoiceDetailDto(
             inv.Id,

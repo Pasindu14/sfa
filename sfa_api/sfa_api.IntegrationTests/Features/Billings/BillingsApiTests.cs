@@ -5,6 +5,9 @@ using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using sfa_api.Features.Areas.Entities;
+using sfa_api.Features.Billings.Enums;
+using sfa_api.Features.Billings.Requests;
+using sfa_api.Features.Billings.Services;
 using sfa_api.Features.Distributors.Entities;
 using sfa_api.Features.Divisions.Entities;
 using sfa_api.Features.Outlets.Entities;
@@ -55,6 +58,7 @@ public class BillingsApiTests
     private static int _productCId;   // FreeIssue (company-funded)
     private static int _productDId;   // Return (MarketResell)
     private static string _repToken = string.Empty;   // JWT minted for the seeded rep (FKs enforced under SQLite)
+    private static int _repId;                         // seeded rep id — for direct service-level calls
 
     private async Task EnsureSeededAsync()
     {
@@ -160,6 +164,7 @@ public class BillingsApiTests
             _productCId = pC.Id;
             _productDId = pD.Id;
             _repToken   = AuthHelper.GenerateToken(rep.Id, "SalesRep");
+            _repId      = rep.Id;
             _seeded = true;
         }
         finally
@@ -260,5 +265,69 @@ public class BillingsApiTests
         data.GetProperty("itemWiseTotalDiscount").GetDecimal().Should().Be(0m);
         data.GetProperty("totalDiscount").GetDecimal().Should().Be(0m);
         data.GetProperty("totalAmount").GetDecimal().Should().Be(100m);
+    }
+
+    // ─────────────────────────────────────────────────
+    // CreateAsync — idempotency / duplicate-request backstop (audit finding #2)
+    // Calls the service directly to bypass the HTTP IdempotencyMiddleware cache, so this
+    // exercises the DB-level backstop (clientBillId fast-path + unique index) in isolation —
+    // it fails if that backstop is removed, even though the middleware would mask it over HTTP.
+    // ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CreateBilling_SameClientBillId_ReturnsSameBill_AndCreatesOnlyOne()
+    {
+        await EnsureSeededAsync();
+
+        var clientBillId = Guid.NewGuid().ToString();
+        var request = new CreateBillingRequest(
+            OutletId: _outletId,
+            BillDiscountRate: 0m,
+            Notes: "idempotency backstop test",
+            Items: new List<CreateBillingItemRequest>
+            {
+                new(_productAId, Quantity: 1m, UnitPrice: 50m, BillingItemType: BillingItemType.Sale)
+            },
+            BillingDate: DateOnly.FromDateTime(DateTime.UtcNow));
+
+        using var scope = _factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<IBillingService>();
+
+        // First create persists the bill carrying the client bill id.
+        var first = await service.CreateAsync(request, _repId, clientBillId);
+        // A retry with the SAME client bill id must return the same bill, not create a second.
+        var second = await service.CreateAsync(request, _repId, clientBillId);
+
+        second.Id.Should().Be(first.Id,
+            "a retry carrying the same clientBillId must be idempotent, not create a duplicate bill");
+
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.Billings.Count(b => b.ClientBillId == clientBillId)
+          .Should().Be(1, "the clientBillId fast-path + unique index must prevent a duplicate bill");
+    }
+
+    [Fact]
+    public async Task CreateBilling_DifferentClientBillIds_CreateDistinctBills()
+    {
+        await EnsureSeededAsync();
+
+        var request = new CreateBillingRequest(
+            OutletId: _outletId,
+            BillDiscountRate: 0m,
+            Notes: "distinct-key control",
+            Items: new List<CreateBillingItemRequest>
+            {
+                new(_productAId, Quantity: 1m, UnitPrice: 25m, BillingItemType: BillingItemType.Sale)
+            },
+            BillingDate: DateOnly.FromDateTime(DateTime.UtcNow));
+
+        using var scope = _factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<IBillingService>();
+
+        var a = await service.CreateAsync(request, _repId, Guid.NewGuid().ToString());
+        var b = await service.CreateAsync(request, _repId, Guid.NewGuid().ToString());
+
+        b.Id.Should().NotBe(a.Id,
+            "different clientBillIds are genuinely different submissions and must each create a bill");
     }
 }

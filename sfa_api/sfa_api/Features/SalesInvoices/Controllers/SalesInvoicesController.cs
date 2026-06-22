@@ -6,6 +6,7 @@ using sfa_api.Common.Errors;
 using sfa_api.Common.Extensions;
 using sfa_api.Features.SalesInvoices.Requests;
 using sfa_api.Features.SalesInvoices.Services;
+using sfa_api.Features.Users.Entities;
 
 namespace sfa_api.Features.SalesInvoices.Controllers;
 
@@ -23,6 +24,13 @@ public class SalesInvoicesController(
     {
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
         return callerId;
+    }
+
+    private (int callerId, UserRole callerRole) GetCallerInfo()
+    {
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
+        Enum.TryParse<UserRole>(User.FindFirstValue(ClaimTypes.Role) ?? string.Empty, out var callerRole);
+        return (callerId, callerRole);
     }
 
     /// <summary>
@@ -43,8 +51,9 @@ public class SalesInvoicesController(
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
         DateOnly? parsedDateFrom = DateOnly.TryParse(dateFrom, out var df) ? df : null;
         DateOnly? parsedDateTo = DateOnly.TryParse(dateTo, out var dt) ? dt : null;
+        var (callerId, callerRole) = GetCallerInfo();
         var (items, total) = await _salesInvoiceService.GetListAsync(
-            page, pageSize, search, status, parsedDateFrom, parsedDateTo, distributorId, ct);
+            page, pageSize, search, status, parsedDateFrom, parsedDateTo, distributorId, callerId, callerRole, ct);
         return Ok(ResponseHelper.Paged(items, page, pageSize, total, correlationId));
     }
 
@@ -56,7 +65,8 @@ public class SalesInvoicesController(
     public async Task<IActionResult> GetById(int id, CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
-        var invoice = await _salesInvoiceService.GetDetailAsync(id, ct);
+        var (callerId, callerRole) = GetCallerInfo();
+        var invoice = await _salesInvoiceService.GetDetailAsync(id, callerId, callerRole, ct);
         return Ok(ResponseHelper.Ok(invoice, correlationId));
     }
 

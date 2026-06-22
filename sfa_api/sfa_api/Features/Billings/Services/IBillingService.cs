@@ -6,7 +6,7 @@ namespace sfa_api.Features.Billings.Services;
 
 public interface IBillingService
 {
-    Task<BillingDto> CreateAsync(CreateBillingRequest request, int salesRepId, CancellationToken ct = default);
+    Task<BillingDto> CreateAsync(CreateBillingRequest request, int salesRepId, string? clientBillId = null, CancellationToken ct = default);
     Task<BillingDto?> GetByIdAsync(int id, CancellationToken ct = default);
     Task<(List<BillingListDto> Items, int TotalCount)> GetListAsync(
         int page, int pageSize,

@@ -253,7 +253,12 @@ public class BillingsController(
 
         await _createValidator.ValidateOrThrowAsync(request, ct);
 
-        var billing = await _billingService.CreateAsync(request, GetCallerId(), ct);
+        // The mobile sends its client-generated bill id as X-Idempotency-Key; persist it so a
+        // duplicate submission (retry / offline replay) is rejected at the DB layer, not just
+        // by the best-effort idempotency-cache middleware.
+        var clientBillId = Request.Headers["X-Idempotency-Key"].FirstOrDefault();
+
+        var billing = await _billingService.CreateAsync(request, GetCallerId(), clientBillId, ct);
         return CreatedAtAction(nameof(GetById), new { id = billing.Id }, ResponseHelper.Ok(billing, correlationId));
     }
 }

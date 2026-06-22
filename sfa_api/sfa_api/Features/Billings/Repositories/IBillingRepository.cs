@@ -25,6 +25,13 @@ public interface IBillingRepository
     Task<List<DistributorStock>> GetStockSnapshotAsync(int distributorId, IEnumerable<int> productIds, CancellationToken ct = default);
 
     Task<Billing?> GetByIdAsync(int id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the Id of a non-deleted bill carrying the given client-generated bill id
+    /// (the X-Idempotency-Key UUID), or null. Backs the idempotent create fast-path.
+    /// </summary>
+    Task<int?> FindIdByClientBillIdAsync(string clientBillId, CancellationToken ct = default);
+
     Task<(List<BillingListDto> Items, int TotalCount)> GetListAsync(
         int page, int pageSize,
         RepBillingStatus? repStatus,

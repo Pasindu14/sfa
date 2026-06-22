@@ -14,6 +14,14 @@ public class Billing
     public int Id { get; set; }
     public string BillingNumber { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Client-generated idempotency key — the mobile <c>clientBillId</c> UUID, received as the
+    /// <c>X-Idempotency-Key</c> header. Null for bills created without a key (e.g. web). A filtered
+    /// unique index on this column is the DB-level backstop that makes a duplicate bill impossible
+    /// even when a retry slips past the idempotency-cache middleware.
+    /// </summary>
+    public string? ClientBillId { get; set; }
+
     public DateOnly BillingDate { get; set; }
 
     // Core references

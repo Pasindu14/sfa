@@ -119,6 +119,7 @@ public class DailyRouteAssignmentsController(
     /// Admin/NSM/RSM: direct soft-delete, returns 204.
     /// </summary>
     [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Admin,NSM,RSM,Supervisor")]
     public async Task<IActionResult> Delete(int id, [FromBody] RequestDeletionBody? body, CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;

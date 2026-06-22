@@ -75,6 +75,13 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
                   .ThenInclude(i => i.Product)
               .FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted, ct);
 
+    public async Task<int?> FindIdByClientBillIdAsync(string clientBillId, CancellationToken ct = default)
+        => await _db.Billings
+                    .AsNoTracking()
+                    .Where(x => x.ClientBillId == clientBillId)
+                    .Select(x => (int?)x.Id)
+                    .FirstOrDefaultAsync(ct);
+
     public async Task<(List<BillingListDto> Items, int TotalCount)> GetListAsync(
         int page, int pageSize,
         RepBillingStatus? repStatus,

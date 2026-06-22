@@ -35,6 +35,7 @@ public class GrnsController(
     /// Returns a paginated list of GRNs, optionally filtered by status or distributor.
     /// </summary>
     [HttpGet]
+    [Authorize(Roles = "Admin,NSM,RSM,ASM")]   // staff only; distributors use /grns/portal (ownership-scoped)
     public async Task<IActionResult> GetList(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -57,6 +58,7 @@ public class GrnsController(
     /// Returns a GRN with its items.
     /// </summary>
     [HttpGet("{id:int}")]
+    [Authorize(Roles = "Admin,NSM,RSM,ASM")]   // staff only; distributors use /grns/portal/{id} (ownership-checked)
     public async Task<IActionResult> GetById(int id, CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;

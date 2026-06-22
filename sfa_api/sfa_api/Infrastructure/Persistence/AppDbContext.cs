@@ -751,6 +751,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(x => x.Id);
             e.Property(x => x.BillingNumber).IsRequired().HasMaxLength(30);
             e.HasIndex(x => x.BillingNumber).IsUnique();
+            e.Property(x => x.ClientBillId).HasMaxLength(64);
+            // DB backstop for duplicate-bill prevention. The client-generated UUID (sent as the
+            // X-Idempotency-Key header and persisted here) is globally unique per bill, so two
+            // offline replays that slip past the idempotency-cache middleware — e.g. a 15s-timeout
+            // abandoned in-flight request resent while the original is still committing — cannot
+            // both insert. Filtered to non-null so web bills (which send no key) are unaffected.
+            e.HasIndex(x => x.ClientBillId).IsUnique().HasFilter("\"ClientBillId\" IS NOT NULL");
             e.Property(x => x.RepStatus).HasConversion<string>().HasMaxLength(15);
             e.Property(x => x.DistributorStatus).HasConversion<string>().HasMaxLength(15);
             e.Property(x => x.RejectionReason).HasMaxLength(500);

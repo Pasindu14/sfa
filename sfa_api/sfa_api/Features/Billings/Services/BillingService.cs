@@ -51,8 +51,23 @@ public class BillingService(
 
     private static readonly TimeSpan SalesCacheTtl = TimeSpan.FromMinutes(5);
 
-    public async Task<BillingDto> CreateAsync(CreateBillingRequest request, int salesRepId, CancellationToken ct = default)
+    public async Task<BillingDto> CreateAsync(CreateBillingRequest request, int salesRepId, string? clientBillId = null, CancellationToken ct = default)
     {
+        // ⓪ Idempotent fast-path — if this client bill id was already persisted (a retry of a
+        // submission that previously succeeded), return the existing bill without redoing any
+        // work or burning a billing-number sequence value. The unique index on ClientBillId is
+        // the concurrency backstop for the narrower race where two replays arrive at once.
+        if (!string.IsNullOrWhiteSpace(clientBillId))
+        {
+            var existingId = await _billingRepository.FindIdByClientBillIdAsync(clientBillId, ct);
+            if (existingId is not null)
+            {
+                var existing = await _billingRepository.GetByIdAsync(existingId.Value, ct)
+                    ?? throw new DatabaseUnavailableException();
+                return ProjectToDto(existing);
+            }
+        }
+
         // ① Validate outlet
         var outlet = await _billingRepository.GetOutletAsync(request.OutletId, ct)
             ?? throw new NotFoundException("Outlet", request.OutletId);
@@ -236,6 +251,7 @@ public class BillingService(
         var billing = new Billing
         {
             BillingNumber = billingNumber,
+            ClientBillId  = clientBillId,
             BillingDate   = request.BillingDate ?? DateOnly.FromDateTime(DateTime.UtcNow),
             OutletId          = request.OutletId,
             SalesRepId        = salesRepId,
@@ -271,8 +287,13 @@ public class BillingService(
             Items             = lineItems
         };
 
-        // ⑫ ExecutionStrategy + transaction + stock movement (atomic)
+        // ⑫ ExecutionStrategy + transaction + stock movement (atomic).
+        // Wrapped so a ClientBillId unique-index violation from a concurrent duplicate (two
+        // replays of the same client bill id arriving at once) becomes an idempotent success:
+        // we return the bill the winning request created instead of surfacing a 500.
         var strategy = _db.Database.CreateExecutionStrategy();
+        try
+        {
         await strategy.ExecuteAsync(async () =>
         {
             await using var transaction = await _billingRepository.BeginTransactionAsync(ct);
@@ -338,6 +359,17 @@ public class BillingService(
                 throw;
             }
         });
+        }
+        catch (DbUpdateException) when (!string.IsNullOrWhiteSpace(clientBillId))
+        {
+            // A concurrent request with the same client bill id won the insert race; the unique
+            // index rejected ours. Return the winner's bill so this retry is an idempotent success.
+            var winnerId = await _billingRepository.FindIdByClientBillIdAsync(clientBillId, ct);
+            if (winnerId is null) throw;
+            var winner = await _billingRepository.GetByIdAsync(winnerId.Value, ct)
+                ?? throw new DatabaseUnavailableException();
+            return ProjectToDto(winner);
+        }
 
         // Stamp outlet's last bill date and bust the route cache
         var lastBillDate = billing.BillingDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);

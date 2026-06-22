@@ -218,7 +218,16 @@ public class DailyRouteAssignmentService(
             return MapToDto(assignment);
         }
 
-        // Admin / NSM / RSM: direct soft-delete
+        // Admin / NSM / RSM: direct soft-delete. Explicitly allow-list these roles so a caller
+        // with any other role (e.g. SalesRep) can never fall through to the unconditional delete
+        // below — defense-in-depth behind the controller's [Authorize(Roles=...)] attribute.
+        if (!(string.Equals(callerRole, "Admin", StringComparison.OrdinalIgnoreCase)
+              || string.Equals(callerRole, "NSM", StringComparison.OrdinalIgnoreCase)
+              || string.Equals(callerRole, "RSM", StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new AuthorizationException("this assignment");
+        }
+
         assignment.IsActive = false;
         assignment.IsDeleted = true;
         assignment.UpdatedBy = callerId;

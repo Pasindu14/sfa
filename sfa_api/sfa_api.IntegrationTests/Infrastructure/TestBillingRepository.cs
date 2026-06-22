@@ -40,6 +40,9 @@ public sealed class TestBillingRepository(IBillingRepository inner) : IBillingRe
     public Task<Billing?> GetByIdAsync(int id, CancellationToken ct = default)
         => inner.GetByIdAsync(id, ct);
 
+    public Task<int?> FindIdByClientBillIdAsync(string clientBillId, CancellationToken ct = default)
+        => inner.FindIdByClientBillIdAsync(clientBillId, ct);
+
     public Task<(List<BillingListDto> Items, int TotalCount)> GetListAsync(
         int page, int pageSize,
         RepBillingStatus? repStatus,

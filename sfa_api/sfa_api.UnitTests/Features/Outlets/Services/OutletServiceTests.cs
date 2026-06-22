@@ -11,6 +11,8 @@ using sfa_api.Features.Outlets.Services;
 using sfa_api.Features.Regions.Entities;
 using sfa_api.Features.Territories.Entities;
 using sfa_api.Infrastructure.Caching;
+using Microsoft.Extensions.Options;
+using sfa_api.Features.Billings.Options;
 using RouteEntity = sfa_api.Features.Routes.Entities.Route;
 
 namespace sfa_api.UnitTests.Features.Outlets.Services;
@@ -25,7 +27,8 @@ public class OutletServiceTests
     {
         _repoMock  = new Mock<IOutletRepository>();
         _cacheMock = new Mock<ICacheService>();
-        _sut = new OutletService(_repoMock.Object, _cacheMock.Object, NullLogger<OutletService>.Instance);
+        _sut = new OutletService(_repoMock.Object, _cacheMock.Object, NullLogger<OutletService>.Instance,
+            Options.Create(new BillingGeoOptions()));
     }
 
     // ─────────────────────────────────────────────────

@@ -27,14 +27,32 @@ public class PostgresIdempotencyService(AppDbContext db,
     public async Task StoreAsync(string key, int statusCode, string responseJson,
         CancellationToken ct = default)
     {
-        _db.IdempotencyKeys.Add(new IdempotencyKey
+        // A row for this key may already exist — a prior completed request still within TTL, or
+        // a concurrent store. Storing again is harmless (the response is already cached), so we
+        // must never let a primary-key violation bubble up as a 500 for a request that succeeded.
+        if (await _db.IdempotencyKeys.AnyAsync(x => x.Key == key, ct))
+            return;
+
+        var entity = new IdempotencyKey
         {
             Key = key,
             StatusCode = statusCode,
             ResponseJson = responseJson,
             ExpiresAt = DateTime.UtcNow.AddHours(24)
-        });
+        };
+        _db.IdempotencyKeys.Add(entity);
 
-        await _db.SaveChangesAsync(ct);
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            // Lost a concurrent insert race for the same key — the winner already cached an
+            // equivalent response, so treat this as success and drop our duplicate insert.
+            _db.Entry(entity).State = EntityState.Detached;
+            _logger.LogInformation(
+                "Idempotency key {Key} already stored by a concurrent request — skipping duplicate insert", key);
+        }
     }
 }

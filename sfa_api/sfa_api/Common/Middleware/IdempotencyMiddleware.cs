@@ -1,5 +1,7 @@
 using System.Text.Json;
+using sfa_api.Common.Errors;
 using sfa_api.Infrastructure.Caching;
+using sfa_api.Infrastructure.Locking;
 
 namespace sfa_api.Common.Middleware;
 
@@ -35,6 +37,13 @@ public class IdempotencyMiddleware(RequestDelegate next, ILogger<IdempotencyMidd
 
         var idempotencyService = context.RequestServices.GetRequiredService<IIdempotencyService>();
 
+        async Task WriteCachedAsync(IdempotencyResult hit)
+        {
+            context.Response.StatusCode = hit.StatusCode;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsync(hit.ResponseJson, context.RequestAborted);
+        }
+
         // Check for a cached response
         var cached = await idempotencyService.GetAsync(scopedKey, context.RequestAborted);
         if (cached is not null)
@@ -42,10 +51,47 @@ public class IdempotencyMiddleware(RequestDelegate next, ILogger<IdempotencyMidd
             logger.LogInformation(
                 "Returning cached idempotent response for key {Key} (userId={UserId})",
                 rawKey, userId);
+            await WriteCachedAsync(cached);
+            return;
+        }
 
-            context.Response.StatusCode = cached.StatusCode;
-            context.Response.ContentType = "application/json";
-            await context.Response.WriteAsync(cached.ResponseJson, context.RequestAborted);
+        // In-flight guard — claim the key for the duration of processing so two identical requests
+        // that race in before the first has cached its response cannot BOTH execute the controller.
+        // Reuses the same distributed-lock primitive the domain services use; the test harness
+        // swaps in a no-op that always grants, so this is transparent under SQLite.
+        var lockService = context.RequestServices.GetRequiredService<IDistributedLockService>();
+        await using var inflight = await lockService.AcquireAsync($"idempotency:{scopedKey}", context.RequestAborted);
+        if (inflight is null)
+        {
+            // A concurrent request with this key is already mid-flight. It may have just finished —
+            // re-check the cache once; otherwise reject so the client retries and then gets the
+            // cached result (mobile already handles CONCURRENCY_CONFLICT for billing creates).
+            var raced = await idempotencyService.GetAsync(scopedKey, context.RequestAborted);
+            if (raced is not null)
+            {
+                logger.LogInformation(
+                    "Returning cached idempotent response for key {Key} after in-flight race (userId={UserId})",
+                    rawKey, userId);
+                await WriteCachedAsync(raced);
+                return;
+            }
+
+            logger.LogWarning(
+                "Duplicate in-flight request for idempotency key {Key} (userId={UserId}) — rejecting as conflict",
+                rawKey, userId);
+            throw new ConcurrencyConflictException(
+                new { message = "A request with this idempotency key is already being processed. Retry shortly." });
+        }
+
+        // We hold the in-flight lock. Double-check the cache in case a prior holder completed
+        // between our first read and acquiring the lock.
+        cached = await idempotencyService.GetAsync(scopedKey, context.RequestAborted);
+        if (cached is not null)
+        {
+            logger.LogInformation(
+                "Returning cached idempotent response for key {Key} after acquiring lock (userId={UserId})",
+                rawKey, userId);
+            await WriteCachedAsync(cached);
             return;
         }
 

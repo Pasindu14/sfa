@@ -10,6 +10,10 @@ using sfa_api.Features.SalesInvoices.Repositories;
 using sfa_api.Features.SalesInvoices.Requests;
 using Microsoft.Extensions.Logging.Abstractions;
 using sfa_api.Features.SalesInvoices.Services;
+using sfa_api.Features.Distributors.Repositories;
+using sfa_api.Features.UserGeoAssignments.Repositories;
+using sfa_api.Features.Users.Entities;
+using sfa_api.Features.Users.Repositories;
 using sfa_api.Infrastructure.Persistence;
 
 namespace sfa_api.UnitTests.Features.SalesInvoices.Services;
@@ -17,6 +21,9 @@ namespace sfa_api.UnitTests.Features.SalesInvoices.Services;
 public class SalesInvoiceServiceTests
 {
     private readonly Mock<ISalesInvoiceRepository> _repoMock;
+    private readonly Mock<IUserRepository> _userRepoMock = new();
+    private readonly Mock<IUserGeoAssignmentRepository> _geoRepoMock = new();
+    private readonly Mock<IDistributorRepository> _distributorRepoMock = new();
     private readonly AppDbContext _dbContext;
     private readonly SalesInvoiceService _sut;
 
@@ -40,7 +47,10 @@ public class SalesInvoiceServiceTests
         _dbContext = new AppDbContext(options);
         _dbContext.Database.OpenConnection();
 
-        _sut = new SalesInvoiceService(_repoMock.Object, _dbContext, NullLogger<SalesInvoiceService>.Instance);
+        _sut = new SalesInvoiceService(
+            _repoMock.Object, _dbContext,
+            _userRepoMock.Object, _geoRepoMock.Object, _distributorRepoMock.Object,
+            NullLogger<SalesInvoiceService>.Instance);
     }
 
     // ── Factory helpers ────────────────────────────────────────────────────
@@ -387,5 +397,45 @@ public class SalesInvoiceServiceTests
 
         result.Errors.Should().HaveCount(1);
         result.Errors[0].VchBillNo.Should().Be(VchBillNo);
+    }
+
+    // ── GetDetailAsync — object-level scoping (audit finding #4) ──────────────
+
+    [Fact]
+    public async Task GetDetailAsync_AsDistributor_ForeignInvoice_ThrowsAuthorization()
+    {
+        _repoMock.Setup(r => r.GetDetailAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(new SalesInvoice { Id = 1, DistributorId = 10 });
+        _userRepoMock.Setup(r => r.GetUserByIdAsync(CallerId, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(new User { Id = CallerId, DistributorId = 20 });
+
+        var act = async () => await _sut.GetDetailAsync(1, CallerId, UserRole.Distributor);
+
+        await act.Should().ThrowAsync<AuthorizationException>(
+            "a distributor must not read another distributor's invoice");
+    }
+
+    [Fact]
+    public async Task GetDetailAsync_AsDistributor_OwnInvoice_ReturnsIt()
+    {
+        _repoMock.Setup(r => r.GetDetailAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(new SalesInvoice { Id = 1, DistributorId = 10 });
+        _userRepoMock.Setup(r => r.GetUserByIdAsync(CallerId, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(new User { Id = CallerId, DistributorId = 10 });
+
+        var result = await _sut.GetDetailAsync(1, CallerId, UserRole.Distributor);
+
+        result.Id.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GetDetailAsync_AsAdmin_ForeignInvoice_ReturnsIt()
+    {
+        _repoMock.Setup(r => r.GetDetailAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(new SalesInvoice { Id = 1, DistributorId = 10 });
+
+        var result = await _sut.GetDetailAsync(1, CallerId, UserRole.Admin);
+
+        result.Id.Should().Be(1, "Admin reads are unrestricted");
     }
 }
