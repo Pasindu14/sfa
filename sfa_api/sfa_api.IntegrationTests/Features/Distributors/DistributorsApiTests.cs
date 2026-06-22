@@ -292,6 +292,44 @@ public class DistributorsApiTests
         getBody.GetProperty("data").GetProperty("isActive").GetBoolean().Should().BeTrue();
     }
 
+    // ── Soft-delete leak + uniqueness safeguard (audit finding #11) ──────────
+    [Fact]
+    public async Task DeletedDistributor_IsHiddenFromGetById_AndEmailReuseFailsCleanly()
+    {
+        SetToken(AuthHelper.AdminToken);
+
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/distributors", CreateDistributorPayload(
+            name: "SoftDelete Test Distributors",
+            address: "9 Audit Lane, Kandy",
+            phone: "0339990001",
+            email: "softdelete-reuse@distributors.com",
+            alias: 591));
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var id = (await createResponse.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data").GetProperty("id").GetInt32();
+
+        var deleteResponse = await _client.DeleteAsync($"/api/v1/distributors/{id}");
+        deleteResponse.StatusCode.Should().BeOneOf(HttpStatusCode.NoContent, HttpStatusCode.OK);
+
+        // #11: a soft-deleted distributor must no longer be fetchable (global query filter).
+        var getResponse = await _client.GetAsync($"/api/v1/distributors/{id}");
+        getResponse.StatusCode.Should().Be(HttpStatusCode.NotFound,
+            "a soft-deleted distributor must be hidden by the global query filter");
+
+        // Safeguard: reusing the deleted distributor's email must fail CLEANLY (4xx), not 500.
+        // The uniqueness check uses IgnoreQueryFilters() so it still sees the soft-deleted row,
+        // matching the (unfiltered) unique Email index.
+        var reuseResponse = await _client.PostAsJsonAsync("/api/v1/distributors", CreateDistributorPayload(
+            name: "Email Reuse Attempt",
+            address: "9 Audit Lane, Kandy",
+            phone: "0339990002",
+            email: "softdelete-reuse@distributors.com",   // same email as the deleted distributor
+            alias: 592));
+
+        ((int)reuseResponse.StatusCode).Should().BeInRange(400, 499,
+            "reusing a soft-deleted distributor's email must be a clean client error, not a 500");
+    }
+
     [Fact]
     public async Task CreateDistributor_AsAdmin_SetsIsActiveByDefault()
     {

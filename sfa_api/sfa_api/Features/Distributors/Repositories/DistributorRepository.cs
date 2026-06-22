@@ -14,23 +14,27 @@ public class DistributorRepository(AppDbContext context) : IDistributorRepositor
             .Include(d => d.Fleet)
             .FirstOrDefaultAsync(d => d.Id == id, ct);
 
+    // Natural-key lookups and uniqueness checks use IgnoreQueryFilters() so they still see
+    // soft-deleted rows — matching the (unfiltered) unique Email/Phone DB indexes. Without this,
+    // the global !IsDeleted query filter would report a deleted distributor's email as free and
+    // the create would then fail at the DB index with a 500 instead of a clean validation error.
     public async Task<Distributor?> GetByEmailAsync(string email, CancellationToken ct = default)
-        => await _context.Distributors.AsNoTracking().FirstOrDefaultAsync(d => d.Email == email, ct);
+        => await _context.Distributors.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(d => d.Email == email, ct);
 
     public async Task<Distributor?> GetByPhoneAsync(string phone, CancellationToken ct = default)
-        => await _context.Distributors.AsNoTracking().FirstOrDefaultAsync(d => d.Phone == phone, ct);
+        => await _context.Distributors.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(d => d.Phone == phone, ct);
 
     public async Task<bool> ExistsByEmailAsync(string email, CancellationToken ct = default)
-        => await _context.Distributors.AnyAsync(d => d.Email == email, ct);
+        => await _context.Distributors.IgnoreQueryFilters().AnyAsync(d => d.Email == email, ct);
 
     public async Task<bool> ExistsByPhoneAsync(string phone, CancellationToken ct = default)
-        => await _context.Distributors.AnyAsync(d => d.Phone == phone, ct);
+        => await _context.Distributors.IgnoreQueryFilters().AnyAsync(d => d.Phone == phone, ct);
 
     public async Task<bool> ExistsByEmailAsync(string email, int excludeId, CancellationToken ct = default)
-        => await _context.Distributors.AnyAsync(d => d.Email == email && d.Id != excludeId, ct);
+        => await _context.Distributors.IgnoreQueryFilters().AnyAsync(d => d.Email == email && d.Id != excludeId, ct);
 
     public async Task<bool> ExistsByPhoneAsync(string phone, int excludeId, CancellationToken ct = default)
-        => await _context.Distributors.AnyAsync(d => d.Phone == phone && d.Id != excludeId, ct);
+        => await _context.Distributors.IgnoreQueryFilters().AnyAsync(d => d.Phone == phone && d.Id != excludeId, ct);
 
     public async Task<bool> ExistsByTerritoryIdAsync(int territoryId, CancellationToken ct = default)
         => await _context.Distributors.AnyAsync(d => d.TerritoryId == territoryId && !d.IsDeleted, ct);

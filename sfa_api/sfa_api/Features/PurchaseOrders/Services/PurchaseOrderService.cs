@@ -144,15 +144,17 @@ public class PurchaseOrderService(
 
         PurchaseOrder? order = null;
 
+        // Generate the order number OUTSIDE the retried transaction so a transient retry of the
+        // execution strategy doesn't burn a sequence value and leave a gap in PO numbers (#19).
+        var seq = await _repo.GetNextOrderNumberAsync(ct);
+        var orderNumber = $"PO-{DateTime.UtcNow.Year}-{seq:D5}";
+
         var strategy = _context.Database.CreateExecutionStrategy();
         await strategy.ExecuteAsync(async () =>
         {
             await using var tx = await _context.Database.BeginTransactionAsync(ct);
             try
             {
-                var seq = await _repo.GetNextOrderNumberAsync(ct);
-                var orderNumber = $"PO-{DateTime.UtcNow.Year}-{seq:D5}";
-
                 order = new PurchaseOrder
                 {
                     OrderNumber = orderNumber,

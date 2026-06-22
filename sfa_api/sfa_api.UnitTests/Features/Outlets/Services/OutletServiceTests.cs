@@ -13,6 +13,11 @@ using sfa_api.Features.Territories.Entities;
 using sfa_api.Infrastructure.Caching;
 using Microsoft.Extensions.Options;
 using sfa_api.Features.Billings.Options;
+using sfa_api.Features.Distributors.Repositories;
+using sfa_api.Features.UserGeoAssignments.Entities;
+using sfa_api.Features.UserGeoAssignments.Repositories;
+using sfa_api.Features.Users.Entities;
+using sfa_api.Features.Users.Repositories;
 using RouteEntity = sfa_api.Features.Routes.Entities.Route;
 
 namespace sfa_api.UnitTests.Features.Outlets.Services;
@@ -21,6 +26,9 @@ public class OutletServiceTests
 {
     private readonly Mock<IOutletRepository> _repoMock;
     private readonly Mock<ICacheService> _cacheMock;
+    private readonly Mock<IUserGeoAssignmentRepository> _geoRepoMock = new();
+    private readonly Mock<IUserRepository> _userRepoMock = new();
+    private readonly Mock<IDistributorRepository> _distributorRepoMock = new();
     private readonly OutletService _sut;
 
     public OutletServiceTests()
@@ -28,7 +36,8 @@ public class OutletServiceTests
         _repoMock  = new Mock<IOutletRepository>();
         _cacheMock = new Mock<ICacheService>();
         _sut = new OutletService(_repoMock.Object, _cacheMock.Object, NullLogger<OutletService>.Instance,
-            Options.Create(new BillingGeoOptions()));
+            Options.Create(new BillingGeoOptions()),
+            _geoRepoMock.Object, _userRepoMock.Object, _distributorRepoMock.Object);
     }
 
     // ─────────────────────────────────────────────────
@@ -150,7 +159,7 @@ public class OutletServiceTests
         _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(outlet);
 
-        var result = await _sut.GetByIdAsync(1);
+        var result = await _sut.GetByIdAsync(1, 1, UserRole.Admin);
 
         result.Should().NotBeNull();
         result.Id.Should().Be(outlet.Id);
@@ -176,7 +185,7 @@ public class OutletServiceTests
         _repoMock.Setup(r => r.GetByIdAsync(99, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Outlet?)null);
 
-        var act = () => _sut.GetByIdAsync(99);
+        var act = () => _sut.GetByIdAsync(99, 1, UserRole.Admin);
 
         var ex = await act.Should().ThrowAsync<NotFoundException>();
         ex.Which.ErrorCode.Should().Be("OUTLET_NOT_FOUND");
@@ -193,7 +202,7 @@ public class OutletServiceTests
         _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((outlets.AsEnumerable(), 2));
 
-        var result = await _sut.GetAllAsync(1, 10);
+        var result = await _sut.GetAllAsync(1, 10, 1, UserRole.Admin);
 
         result.Outlets.Should().HaveCount(2);
         result.TotalCount.Should().Be(2);
@@ -207,7 +216,7 @@ public class OutletServiceTests
         _repoMock.Setup(r => r.GetAllAsync(10, 10, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<Outlet>(), 0));
 
-        await _sut.GetAllAsync(2, 10);
+        await _sut.GetAllAsync(2, 10, 1, UserRole.Admin);
 
         _repoMock.Verify(r => r.GetAllAsync(10, 10, null, null, It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -218,7 +227,7 @@ public class OutletServiceTests
         _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<Outlet>(), 0));
 
-        var result = await _sut.GetAllAsync(1, 10);
+        var result = await _sut.GetAllAsync(1, 10, 1, UserRole.Admin);
 
         result.Outlets.Should().BeEmpty();
         result.TotalCount.Should().Be(0);
@@ -230,7 +239,7 @@ public class OutletServiceTests
         _repoMock.Setup(r => r.GetAllAsync(0, 10, true, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<Outlet>(), 0));
 
-        await _sut.GetAllAsync(1, 10, isActive: true);
+        await _sut.GetAllAsync(1, 10, 1, UserRole.Admin, isActive: true);
 
         _repoMock.Verify(r => r.GetAllAsync(0, 10, true, null, It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -241,7 +250,7 @@ public class OutletServiceTests
         _repoMock.Setup(r => r.GetAllAsync(0, 10, false, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<Outlet>(), 0));
 
-        await _sut.GetAllAsync(1, 10, isActive: false);
+        await _sut.GetAllAsync(1, 10, 1, UserRole.Admin, isActive: false);
 
         _repoMock.Verify(r => r.GetAllAsync(0, 10, false, null, It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -252,9 +261,38 @@ public class OutletServiceTests
         _repoMock.Setup(r => r.GetAllAsync(0, 10, null, "pharmacy", It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<Outlet>(), 0));
 
-        await _sut.GetAllAsync(1, 10, search: "pharmacy");
+        await _sut.GetAllAsync(1, 10, 1, UserRole.Admin, search: "pharmacy");
 
         _repoMock.Verify(r => r.GetAllAsync(0, 10, null, "pharmacy", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // ── #14 territory scoping ────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetByIdAsync_AsSalesRep_OutletInAnotherTerritory_ThrowsAuthorization()
+    {
+        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateFakeOutlet(id: 1, territoryId: 30));
+        _geoRepoMock.Setup(r => r.GetActiveByUserIdAsync(5, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserGeoAssignment { UserId = 5, TerritoryId = 99 });
+
+        var act = () => _sut.GetByIdAsync(1, callerId: 5, callerRole: UserRole.SalesRep);
+
+        await act.Should().ThrowAsync<AuthorizationException>(
+            "a sales rep must not read an outlet outside their territory");
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_AsSalesRep_OutletInOwnTerritory_ReturnsIt()
+    {
+        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateFakeOutlet(id: 1, territoryId: 30));
+        _geoRepoMock.Setup(r => r.GetActiveByUserIdAsync(5, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserGeoAssignment { UserId = 5, TerritoryId = 30 });
+
+        var result = await _sut.GetByIdAsync(1, callerId: 5, callerRole: UserRole.SalesRep);
+
+        result.Id.Should().Be(1);
     }
 
     // ─────────────────────────────────────────────────

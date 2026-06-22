@@ -34,6 +34,7 @@ public class BillingsController(
     /// Returns a paginated list of billings with optional filters.
     /// </summary>
     [HttpGet]
+    [Authorize(Roles = "Admin,NSM,RSM,ASM,Supervisor")]   // staff only; reps use /rep-billing, distributors use /billings/portal
     public async Task<IActionResult> GetList(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -69,6 +70,7 @@ public class BillingsController(
     /// Returns a billing with its line items.
     /// </summary>
     [HttpGet("{id:int}")]
+    [Authorize(Roles = "Admin,NSM,RSM,ASM,Supervisor")]   // staff only; reps use /rep-billing, distributors use /billings/portal/{id}
     public async Task<IActionResult> GetById(int id, CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;

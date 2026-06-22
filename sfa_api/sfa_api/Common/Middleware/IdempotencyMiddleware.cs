@@ -11,7 +11,7 @@ public class IdempotencyMiddleware(RequestDelegate next, ILogger<IdempotencyMidd
 
     // Only cache responses for state-mutating methods
     private static readonly HashSet<string> IdempotentMethods =
-        new(StringComparer.OrdinalIgnoreCase) { "POST", "PUT", "DELETE" };
+        new(StringComparer.OrdinalIgnoreCase) { "POST", "PUT", "PATCH", "DELETE" };
 
     public async Task InvokeAsync(HttpContext context)
     {
@@ -28,15 +28,28 @@ public class IdempotencyMiddleware(RequestDelegate next, ILogger<IdempotencyMidd
             return;
         }
 
-        // Scope key to the authenticated user so keys cannot leak across users
+        // Scope key to the authenticated user so keys cannot leak across users. With no
+        // authenticated user we skip idempotency entirely rather than share an "anonymous"
+        // namespace where keys from different unauthenticated callers could collide (#20).
         var userId = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-                     ?? context.User.FindFirst("sub")?.Value
-                     ?? "anonymous";
+                     ?? context.User.FindFirst("sub")?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            await next(context);
+            return;
+        }
 
-        var scopedKey = $"{userId}:{rawKey}";
+        // Scope by HTTP method + path as well as user, so the same client key reused on a
+        // different endpoint cannot replay the first endpoint's cached response (finding #7).
+        var method = context.Request.Method;
+        var path = context.Request.Path.Value ?? string.Empty;
+        var scopedKey = $"{method}:{path}:{userId}:{rawKey}";
 
         var idempotencyService = context.RequestServices.GetRequiredService<IIdempotencyService>();
 
+        // Replays a cached response. Forcing application/json is correct here (#21 — accepted):
+        // every API response is the JSON ApiResponse envelope. A 201's Location header is not
+        // replayed, but clients read the new id from the body (data.id), not Location.
         async Task WriteCachedAsync(IdempotencyResult hit)
         {
             context.Response.StatusCode = hit.StatusCode;

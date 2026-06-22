@@ -32,6 +32,15 @@ public class UsersController(
     public async Task<IActionResult> GetUserById(int id, CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+
+        // Self-or-Admin (mirrors UpdateUser): a non-Admin may only read their own profile.
+        // Closes finding #10 — any authenticated user enumerating others' PII by id.
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(userIdClaim, out var currentUserId))
+            throw new AuthenticationException("AUTH_INVALID_TOKEN", "Invalid token.");
+        if (User.FindFirstValue(ClaimTypes.Role) != "Admin" && currentUserId != id)
+            throw new AuthorizationException("this user");
+
         var result = await _userService.GetUserByIdAsync(id, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }

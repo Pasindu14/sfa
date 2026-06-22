@@ -762,6 +762,11 @@ public class BillingService(
 
     public async Task<BillingDto> UpdatePaymentTypeAsync(int billingId, int userId, PaymentType paymentType, CancellationToken ct = default)
     {
+        // Serialize with other transitions on this bill (approve/reject/cancel/cash) so two
+        // concurrent distributor edits can't race into a lost update (audit finding #12).
+        await using var @lock = await _lockService.AcquireAsync($"billing:transition:{billingId}", ct)
+            ?? throw new ConcurrencyConflictException(new { billingId, message = "Another operation is in progress for this billing." });
+
         var billing = await _billingRepository.GetTrackedByIdAsync(billingId, ct)
             ?? throw new NotFoundException("Billing", billingId);
 
@@ -782,6 +787,11 @@ public class BillingService(
 
     public async Task<BillingDto> UpdateCashCollectedAsync(int billingId, int userId, bool isCashCollected, CancellationToken ct = default)
     {
+        // Serialize with other transitions on this bill so two concurrent edits can't race
+        // into a lost update (audit finding #12).
+        await using var @lock = await _lockService.AcquireAsync($"billing:transition:{billingId}", ct)
+            ?? throw new ConcurrencyConflictException(new { billingId, message = "Another operation is in progress for this billing." });
+
         var billing = await _billingRepository.GetTrackedByIdAsync(billingId, ct)
             ?? throw new NotFoundException("Billing", billingId);
 

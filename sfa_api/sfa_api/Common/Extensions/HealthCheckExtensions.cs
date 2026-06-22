@@ -19,15 +19,17 @@ public static class HealthCheckExtensions
 
     public static IEndpointRouteBuilder MapSFAHealthChecks(this IEndpointRouteBuilder app)
     {
+        // AllowAnonymous so the global authorization FallbackPolicy (#24) doesn't make liveness/
+        // readiness probes require a JWT — probes must reach these without authentication.
         app.MapHealthChecks("/health/live", new HealthCheckOptions
         {
             Predicate = _ => false
-        });
+        }).AllowAnonymous();
 
         app.MapHealthChecks("/health/ready", new HealthCheckOptions
         {
             Predicate = hc => hc.Tags.Contains("ready")
-        });
+        }).AllowAnonymous();
 
         return app;
     }

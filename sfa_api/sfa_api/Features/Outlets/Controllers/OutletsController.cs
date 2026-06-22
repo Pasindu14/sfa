@@ -6,6 +6,7 @@ using sfa_api.Common.Errors;
 using sfa_api.Common.Extensions;
 using sfa_api.Features.Outlets.Requests;
 using sfa_api.Features.Outlets.Services;
+using sfa_api.Features.Users.Entities;
 
 namespace sfa_api.Features.Outlets.Controllers;
 
@@ -20,6 +21,13 @@ public class OutletsController(
     private readonly IValidator<CreateOutletRequest> _createValidator = createValidator;
     private readonly IValidator<UpdateOutletRequest> _updateValidator = updateValidator;
 
+    private (int callerId, UserRole callerRole) GetCallerInfo()
+    {
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
+        Enum.TryParse<UserRole>(User.FindFirstValue(ClaimTypes.Role) ?? string.Empty, out var callerRole);
+        return (callerId, callerRole);
+    }
+
     /// <summary>
     /// GET /api/v1/outlets/{id}
     /// </summary>
@@ -28,7 +36,8 @@ public class OutletsController(
     public async Task<IActionResult> GetById(int id, CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
-        var result = await _service.GetByIdAsync(id, ct);
+        var (callerId, callerRole) = GetCallerInfo();
+        var result = await _service.GetByIdAsync(id, callerId, callerRole, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 
@@ -51,7 +60,8 @@ public class OutletsController(
             "inactive" => (bool?)false,
             _ => null
         };
-        var result = await _service.GetAllAsync(page, pageSize, isActive, search, ct);
+        var (callerId, callerRole) = GetCallerInfo();
+        var result = await _service.GetAllAsync(page, pageSize, callerId, callerRole, isActive, search, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 

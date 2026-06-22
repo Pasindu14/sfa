@@ -1,10 +1,14 @@
 using Microsoft.Extensions.Options;
 using sfa_api.Common.Errors;
 using sfa_api.Features.Billings.Options;
+using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.Outlets.DTOs;
 using sfa_api.Features.Outlets.Entities;
 using sfa_api.Features.Outlets.Repositories;
 using sfa_api.Features.Outlets.Requests;
+using sfa_api.Features.UserGeoAssignments.Repositories;
+using sfa_api.Features.Users.Entities;
+using sfa_api.Features.Users.Repositories;
 using sfa_api.Infrastructure.Caching;
 
 namespace sfa_api.Features.Outlets.Services;
@@ -13,26 +17,74 @@ public class OutletService(
     IOutletRepository repo,
     ICacheService cache,
     ILogger<OutletService> logger,
-    IOptions<BillingGeoOptions> geoOptions) : IOutletService
+    IOptions<BillingGeoOptions> geoOptions,
+    IUserGeoAssignmentRepository geoRepo,
+    IUserRepository userRepo,
+    IDistributorRepository distributorRepo) : IOutletService
 {
     private readonly IOutletRepository _repo = repo;
     private readonly ICacheService _cache = cache;
     private readonly ILogger<OutletService> _logger = logger;
     private readonly IOptions<BillingGeoOptions> _geoOptions = geoOptions;
+    private readonly IUserGeoAssignmentRepository _geoRepo = geoRepo;
+    private readonly IUserRepository _userRepo = userRepo;
+    private readonly IDistributorRepository _distributorRepo = distributorRepo;
 
     private static readonly TimeSpan RouteCacheTtl = TimeSpan.FromMinutes(30);
     private const string RouteCachePrefix = "outlets:route:";
 
-    public async Task<OutletDto> GetByIdAsync(int id, CancellationToken ct = default)
+    // Resolves the territory a non-management caller is allowed to see (audit finding #14).
+    //   (Restricted=true,  id): caller may only see outlets in territory `id`
+    //                           (id may be null = "matches nothing", e.g. a rep with no territory).
+    //   (Restricted=false, _ ): management / Admin — unrestricted.
+    private async Task<(bool Restricted, int? TerritoryId)> ResolveTerritoryScopeAsync(
+        int callerId, UserRole callerRole, CancellationToken ct)
+    {
+        switch (callerRole)
+        {
+            case UserRole.SalesRep:
+                var geo = await _geoRepo.GetActiveByUserIdAsync(callerId, ct);
+                return (true, geo?.TerritoryId);
+            case UserRole.Distributor:
+                var user = await _userRepo.GetUserByIdAsync(callerId, ct);
+                int? territoryId = null;
+                if (user?.DistributorId is int distId)
+                    territoryId = (await _distributorRepo.GetByIdAsync(distId, ct))?.TerritoryId;
+                return (true, territoryId);
+            default:
+                return (false, null);
+        }
+    }
+
+    public async Task<OutletDto> GetByIdAsync(int id, int callerId, UserRole callerRole, CancellationToken ct = default)
     {
         var outlet = await _repo.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("Outlet", id);
+
+        // Field reps / distributors may only read outlets in their own territory; managers/Admin
+        // may read any (audit finding #14 — prevents cross-territory customer-PII enumeration).
+        var (restricted, territoryId) = await ResolveTerritoryScopeAsync(callerId, callerRole, ct);
+        if (restricted && outlet.TerritoryId != territoryId)
+            throw new AuthorizationException("this outlet");
+
         return MapToDto(outlet);
     }
 
-    public async Task<OutletListDto> GetAllAsync(int page, int pageSize, bool? isActive = null, string? search = null, CancellationToken ct = default)
+    public async Task<OutletListDto> GetAllAsync(int page, int pageSize, int callerId, UserRole callerRole, bool? isActive = null, string? search = null, CancellationToken ct = default)
     {
         var skip = (page - 1) * pageSize;
+
+        // Non-management callers are pinned to their own territory's outlets.
+        var (restricted, territoryId) = await ResolveTerritoryScopeAsync(callerId, callerRole, ct);
+        if (restricted)
+        {
+            if (territoryId is null)
+                return new OutletListDto(Outlets: [], TotalCount: 0, Page: page, PageSize: pageSize);
+
+            var (scoped, scopedCount) = await _repo.GetAllByTerritoryAsync(territoryId.Value, skip, pageSize, isActive, search, ct);
+            return new OutletListDto(scoped.Select(MapToDto), scopedCount, page, pageSize);
+        }
+
         var (outlets, totalCount) = await _repo.GetAllAsync(skip, pageSize, isActive, search, ct);
         return new OutletListDto(
             Outlets: outlets.Select(MapToDto),

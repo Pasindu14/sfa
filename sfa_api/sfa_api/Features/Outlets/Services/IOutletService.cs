@@ -1,12 +1,13 @@
 using sfa_api.Features.Outlets.DTOs;
 using sfa_api.Features.Outlets.Requests;
+using sfa_api.Features.Users.Entities;
 
 namespace sfa_api.Features.Outlets.Services;
 
 public interface IOutletService
 {
-    Task<OutletDto> GetByIdAsync(int id, CancellationToken ct = default);
-    Task<OutletListDto> GetAllAsync(int page, int pageSize, bool? isActive = null, string? search = null, CancellationToken ct = default);
+    Task<OutletDto> GetByIdAsync(int id, int callerId, UserRole callerRole, CancellationToken ct = default);
+    Task<OutletListDto> GetAllAsync(int page, int pageSize, int callerId, UserRole callerRole, bool? isActive = null, string? search = null, CancellationToken ct = default);
     Task<OutletListDto> GetAllByTerritoryAsync(int territoryId, int page, int pageSize, bool? isActive = null, string? search = null, CancellationToken ct = default);
     Task<IEnumerable<OutletDto>> GetAllActiveAsync(CancellationToken ct = default);
     Task<IEnumerable<OutletMapPointDto>> GetMapPointsAsync(CancellationToken ct = default);

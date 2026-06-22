@@ -105,11 +105,25 @@ const client = axios.create({
   }),
 });
 
+// Methods whose requests mutate server state and therefore carry an idempotency key.
+const MUTATING_METHODS = new Set(["post", "put", "patch", "delete"]);
+
 // Attach Bearer token from Next-Auth session on every request
 client.interceptors.request.use(async (config) => {
   const session = await auth();
   if (session?.user?.accessToken) {
     config.headers.Authorization = `Bearer ${session.user.accessToken}`;
+  }
+
+  // Attach a stable idempotency key to every mutating request. It is generated once and kept
+  // on the config, so the transport-level retry below re-sends the SAME key — letting the API
+  // collapse a duplicate (e.g. a request that committed but whose response was lost) instead of
+  // creating a second record. Double-submit from the UI is separately prevented by disabling
+  // submit buttons while the mutation is pending.
+  if (config.method && MUTATING_METHODS.has(config.method.toLowerCase())) {
+    if (!config.headers["X-Idempotency-Key"]) {
+      config.headers["X-Idempotency-Key"] = createIdempotencyKey();
+    }
   }
 
   return config;
@@ -123,6 +137,24 @@ client.interceptors.request.use(async (config) => {
 client.interceptors.response.use(
   (response) => response,
   async (error) => {
+    // Transport-level retry (once) for mutating requests. A missing response means the request
+    // either never reached the server or its response was lost after the server committed.
+    // Re-sending reuses the same X-Idempotency-Key (already on the config), so the API
+    // deduplicates rather than creating a duplicate. Bounded to a single retry.
+    if (axios.isAxiosError(error) && !error.response) {
+      const retryConfig = error.config as
+        | (NonNullable<typeof error.config> & { _idempotentRetry?: boolean })
+        | undefined;
+      if (
+        retryConfig?.method &&
+        MUTATING_METHODS.has(retryConfig.method.toLowerCase()) &&
+        !retryConfig._idempotentRetry
+      ) {
+        retryConfig._idempotentRetry = true;
+        return client(retryConfig);
+      }
+    }
+
     if (axios.isAxiosError(error) && error.response) {
       const status = error.response.status;
       const body = error.response.data as ApiErrorBody | undefined;

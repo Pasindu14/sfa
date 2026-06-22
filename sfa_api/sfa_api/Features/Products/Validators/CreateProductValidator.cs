@@ -27,12 +27,15 @@ public class CreateProductValidator : AbstractValidator<CreateProductRequest>
             .When(x => x.ImageUrl != null);
 
         RuleFor(x => x.DealerPackPrice)
-            .GreaterThanOrEqualTo(0).WithMessage("Dealer pack price must be 0 or greater.");
+            .GreaterThanOrEqualTo(0).WithMessage("Dealer pack price must be 0 or greater.")
+            .LessThanOrEqualTo(1_000_000).WithMessage("Dealer pack price must not exceed 1,000,000.");
 
         RuleFor(x => x.DealerCasePrice)
-            .GreaterThanOrEqualTo(0).WithMessage("Dealer case price must be 0 or greater.");
+            .GreaterThanOrEqualTo(0).WithMessage("Dealer case price must be 0 or greater.")
+            .LessThanOrEqualTo(1_000_000).WithMessage("Dealer case price must not exceed 1,000,000.");
 
         RuleFor(x => x.Mrp)
-            .GreaterThanOrEqualTo(0).WithMessage("MRP must be 0 or greater.");
+            .GreaterThanOrEqualTo(0).WithMessage("MRP must be 0 or greater.")
+            .LessThanOrEqualTo(1_000_000).WithMessage("MRP must not exceed 1,000,000.");
     }
 }

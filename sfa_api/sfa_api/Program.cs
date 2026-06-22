@@ -126,7 +126,15 @@ try
 
     // ── Auth ──────────────────────────────────────────────────────────────
     builder.Services.AddJwtAuthentication(builder.Configuration);
-    builder.Services.AddAuthorization();
+    builder.Services.AddAuthorization(options =>
+    {
+        // Defense-in-depth (#24): any endpoint without an explicit [Authorize]/[AllowAnonymous]
+        // requires an authenticated user by default, so a future controller can't accidentally
+        // ship public. Public endpoints (Auth, health checks) opt out explicitly.
+        options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+            .RequireAuthenticatedUser()
+            .Build();
+    });
 
     // ── Response Compression ─────────────────────────────────────────────
     builder.Services.AddResponseCompression(options =>
@@ -244,9 +252,12 @@ try
     app.MapControllers();
     app.MapSFAHealthChecks();
 
-    // ── Swagger ───────────────────────────────────────────────────────────
-    app.UseSwagger();
-    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "SFA API v1"));
+    // ── Swagger (non-production only — don't expose the full API surface in prod) (#24) ──
+    if (!app.Environment.IsProduction())
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "SFA API v1"));
+    }
 
     app.Run();
 }

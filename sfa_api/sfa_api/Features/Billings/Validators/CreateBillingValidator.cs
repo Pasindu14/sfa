@@ -47,10 +47,12 @@ public class CreateBillingValidator : AbstractValidator<CreateBillingRequest>
                 .GreaterThan(0).WithMessage("ProductId must be a positive integer.");
 
             item.RuleFor(i => i.Quantity)
-                .GreaterThan(0).WithMessage("Quantity must be greater than zero.");
+                .GreaterThan(0).WithMessage("Quantity must be greater than zero.")
+                .LessThanOrEqualTo(1_000_000).WithMessage("Quantity must not exceed 1,000,000.");
 
             item.RuleFor(i => i.UnitPrice)
-                .GreaterThanOrEqualTo(0).WithMessage("UnitPrice must be zero or greater.");
+                .GreaterThanOrEqualTo(0).WithMessage("UnitPrice must be zero or greater.")
+                .LessThanOrEqualTo(1_000_000).WithMessage("UnitPrice must not exceed 1,000,000.");
 
             item.RuleFor(i => i.DiscountRate)
                 .InclusiveBetween(0, 100).WithMessage("DiscountRate must be between 0 and 100.");

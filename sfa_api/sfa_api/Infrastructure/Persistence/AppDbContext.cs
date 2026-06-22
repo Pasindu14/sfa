@@ -155,12 +155,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .HasDatabaseName("IX_Distributors_TerritoryId_IsActive_Active");
             e.HasIndex(x => x.RegionId);
             e.HasIndex(x => x.FleetId);
+            // Geo FKs are intentionally nullable (#23 — reviewed & accepted): a distributor may be
+            // unassigned (legacy, or not yet placed in a territory). A null territory simply excludes
+            // it from territory-scoped rep stock-sync; it is not a data-integrity defect.
             e.HasOne(x => x.Territory).WithMany().HasForeignKey(x => x.TerritoryId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.Area).WithMany().HasForeignKey(x => x.AreaId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.Region).WithMany().HasForeignKey(x => x.RegionId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.Fleet).WithMany().HasForeignKey(x => x.FleetId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
-            // NOTE: No HasQueryFilter (IsActive or IsDeleted) - we display both active and inactive records
-            // Soft delete is for audit purposes only, records are never physically removed
+            // Soft delete is an audit flag — deleted distributors are hidden from normal queries
+            // (closes finding #11). IsActive is NOT filtered, so deactivated-but-not-deleted
+            // distributors stay visible. Natural-key uniqueness lookups in DistributorRepository
+            // use IgnoreQueryFilters() so they still honour the (unfiltered) unique Email/Phone indexes.
+            e.HasQueryFilter(x => !x.IsDeleted);
         });
 
         // Fleet
@@ -279,6 +285,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.IsActive);
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.EffectiveFrom);
+            // Soft-deleted reporting lines are hidden from normal queries (closes finding #11).
+            e.HasQueryFilter(x => !x.IsDeleted);
             // Both FKs point to Users — restrict delete to protect audit trail
             e.HasOne(x => x.User)
              .WithMany()
@@ -309,6 +317,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.IsActive);
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.EffectiveFrom);
+            // Soft-deleted geo assignments are hidden from normal queries (closes finding #11).
+            e.HasQueryFilter(x => !x.IsDeleted);
             // All FKs use Restrict — no cascades, preserving full audit history
             e.HasOne(x => x.User)
              .WithMany()
@@ -364,6 +374,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).UseIdentityColumn();
             e.Property(x => x.CreditLimit).HasColumnType("decimal(18,2)");
+            // NicNo and Name are intentionally NON-unique (audit finding #17 — reviewed & accepted):
+            // one owner (NIC) may run multiple outlets, and outlet names repeat across areas. Do not
+            // add a unique index here without a data-cleanup migration for existing duplicates.
             e.HasIndex(x => x.NicNo);
             e.HasIndex(x => x.IsActive);
             e.HasIndex(x => x.IsDeleted);
@@ -464,6 +477,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             // Composite covering index for common filtered+sorted list query
             e.HasIndex(x => new { x.DistributorId, x.CreatedAt })
              .IsDescending(false, true);
+            // Soft-deleted orders are hidden from normal queries (closes finding #11).
+            e.HasQueryFilter(x => !x.IsDeleted);
             e.HasOne(x => x.Distributor)
              .WithMany()
              .HasForeignKey(x => x.DistributorId)
