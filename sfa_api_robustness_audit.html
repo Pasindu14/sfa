@@ -218,7 +218,17 @@
   <div class="verdict">
     <h2>The honest bottom line</h2>
     <p><span class="good">What is safe:</span> The two failures that would corrupt a real distributor's books — <b>overselling stock</b> and <b>colliding invoice numbers</b> — are <b>correctly prevented</b> by row-level <code>SELECT … FOR UPDATE</code> locks and PostgreSQL <code>nextval</code> sequences. The order&nbsp;&rarr;&nbsp;stock&nbsp;&rarr;&nbsp;ledger&nbsp;&rarr;&nbsp;audit pipeline is genuinely <b>all-or-nothing</b>. Auth token handling is strong.</p>
-    <p><span class="bad">What is NOT yet safe:</span> The specific thing asked about — <b>duplicate request handling</b> — has a real gap. The idempotency layer is a post-completion cache with <b>no in-flight lock</b>, Billing has <b>no database-level duplicate backstop</b>, and the web client <b>sends no idempotency key at all</b>. Several read endpoints also have <b>IDOR</b> (cross-territory data access) gaps. These are <b>fixable</b> and none silently corrupts money totals — but they are genuine and should be closed before scale.</p>
+    <p><span class="bad">What was NOT safe (at audit time — now remediated; see status banner below):</span> The specific thing asked about — <b>duplicate request handling</b> — has a real gap. The idempotency layer is a post-completion cache with <b>no in-flight lock</b>, Billing has <b>no database-level duplicate backstop</b>, and the web client <b>sends no idempotency key at all</b>. Several read endpoints also have <b>IDOR</b> (cross-territory data access) gaps. These are <b>fixable</b> and none silently corrupts money totals — but they are genuine and should be closed before scale.</p>
+  </div>
+
+  <div class="verdict" style="border-left-color:#1f9d6b; background:#e9f7f1; border-color:#b6e6d2;">
+    <h2 style="color:#1f9d6b;">✅ Remediation status — all 24 findings addressed (2026-06-22)</h2>
+    <p>Every finding below has since been <b>fixed</b> or <b>reviewed &amp; accepted with a documented decision</b>. Full .NET suite green: <b>873 unit + 500 integration</b> (1 known skip).</p>
+    <p><b>Critical (5):</b> all fixed — Billing gained a DB-level <code>ClientBillId</code> unique backstop + idempotent fast-path; the idempotency middleware gained an in-flight lock + upsert; the DailyRouteAssignment delete fall-through, SalesInvoices and GRNs IDOR are closed.
+    &nbsp;<b>High (6):</b> all fixed — Billings/Users read scoping, soft-delete global query filters, idempotency key scoped by method+path, and the web client now sends keys on every mutation.
+    &nbsp;<b>Medium (7):</b> 2 fixed (billing-setter locks, Outlets territory scoping), 5 reviewed &amp; accepted/documented.
+    &nbsp;<b>Low (6):</b> 4 fixed (PO sequence-gap, anonymous-key skip, validator upper bounds, global fallback auth policy + Swagger prod-gate), 2 accepted/documented.</p>
+    <p><b>⚠ Deploy note:</b> the new <code>20260622073117_AddBillingClientBillId</code> migration is queued <b>behind</b> the still-pending <code>20260615113307</code> Routes migration, which is blocked on duplicate active-routes data (<code>23505</code>). Clean the duplicates, then <code>dotnet ef database update</code> applies both.</p>
   </div>
 
   <div class="score-grid">
@@ -252,7 +262,7 @@
       <div><b>Gold-standard scoping exists.</b> PurchaseOrders + all Distributor-portal endpoints resolve scope server-side and re-check per-record ownership. The correct pattern is in the codebase already.</div>
       <div><b>No hard deletes anywhere.</b> Soft-delete policy honored project-wide; FluentValidation enforces non-negative money &amp; positive quantities.</div>
     </div>
-    <div class="biscuit"><b>Correction to internal notes:</b> the "Routes unique index PENDING" item is <b>stale</b> — migration <code>20260615113307</code> applied <code>IX_Routes_Name_DivisionId</code> (UNIQUE, filtered on active). Duplicate active routes are now blocked at the DB level.</div>
+    <div class="biscuit"><b>Note on the Routes unique index:</b> migration <code>20260615113307</code> <i>defines</i> <code>IX_Routes_Name_DivisionId</code> (UNIQUE, filtered on active) — so it is in the EF model and exercised by tests — but it is <b>not yet applied to the production database</b>: <code>database update</code> fails with <code>23505</code> because prod still has duplicate active routes. Clean the duplicates to apply it (and the Billing migration queued behind it).</div>
   </div>
 
   <!-- ============ CRITICAL ============ -->
