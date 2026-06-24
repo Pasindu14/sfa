@@ -67,6 +67,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<GRNItem> GRNItems => Set<GRNItem>();
     public DbSet<DistributorStock> DistributorStocks => Set<DistributorStock>();
     public DbSet<StockTransaction> StockTransactions => Set<StockTransaction>();
+    public DbSet<StockReconciliationRun> StockReconciliationRuns => Set<StockReconciliationRun>();
+    public DbSet<StockReconciliationFlag> StockReconciliationFlags => Set<StockReconciliationFlag>();
     public DbSet<UserReportingLine> UserReportingLines => Set<UserReportingLine>();
     public DbSet<UserGeoAssignment> UserGeoAssignments => Set<UserGeoAssignment>();
     public DbSet<DailyRouteAssignment> DailyRouteAssignments => Set<DailyRouteAssignment>();
@@ -739,6 +741,39 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .WithMany()
              .HasForeignKey(x => x.TransactedBy)
              .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── StockReconciliationRun (finding #4) ───────────────────────────────
+        modelBuilder.Entity<StockReconciliationRun>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.Property(x => x.TriggeredBy).IsRequired().HasMaxLength(40);
+            // Latest-run lookup and retention purge both order/filter by RunAt.
+            e.HasIndex(x => x.RunAt);
+            e.HasMany(x => x.Flags)
+             .WithOne(f => f.Run)
+             .HasForeignKey(f => f.RunId)
+             .OnDelete(DeleteBehavior.Cascade);   // purging a run drops its flags
+        });
+
+        // ── StockReconciliationFlag (finding #4) ──────────────────────────────
+        modelBuilder.Entity<StockReconciliationFlag>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.Property(x => x.StockType)
+             .HasConversion<string>()
+             .HasMaxLength(10)
+             .HasDefaultValue(StockType.Normal);
+            e.Property(x => x.Kind)
+             .HasConversion<string>()
+             .HasMaxLength(30);
+            e.Property(x => x.ExpectedQuantity).HasColumnType("decimal(18,4)");
+            e.Property(x => x.ActualQuantity).HasColumnType("decimal(18,4)");
+            e.Property(x => x.Delta).HasColumnType("decimal(18,4)");
+            e.HasIndex(x => x.RunId);
+            e.HasIndex(x => new { x.DistributorId, x.ProductId });
         });
 
         // DailyRouteAssignment

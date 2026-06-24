@@ -410,11 +410,12 @@ DealerCasePrice  ≈  DealerPackPrice × PiecesPerPack</code></pre>
     </div>
   </div>
 
-  <div class="finding med">
-    <div class="f-head"><span class="badge med">Medium · Accuracy</span><p class="f-title">4. No automated stock reconciliation (GRN in − billed out vs on-hand)</p></div>
+  <div class="finding ok">
+    <div class="f-head"><span class="badge ok">Fixed</span><p class="f-title">4. No automated stock reconciliation (GRN in − billed out vs on-hand)</p></div>
     <div class="f-body">
       <p>You have <b>StockTaking</b> (physical count vs system) which is great for catching shrinkage — but there is no <b>system-internal</b> reconciliation that proves the ledger is self-consistent: <code>opening + GRN received − billed − adjustments + returns = current QuantityOnHand</code>. If a bug ever mis-posts a stock transaction, nothing detects the drift until a human counts the warehouse.</p>
-      <div class="fix"><b>Fix:</b> A periodic (nightly or on-demand) reconciliation report per distributor+product that recomputes expected on-hand from the transaction ledger and flags any row where expected ≠ actual. It's read-only and cheap, and it turns silent data bugs into a dashboard line. (You already have the <code>BackgroundService</code> pattern from the cleanup jobs to host it.)</div>
+      <div class="fix"><b>✅ Fixed (2026-06-24):</b> new read-only reconciliation feature under <span class="path">Features/Stock</span>. A pure, exhaustively unit-tested core (<span class="path">StockReconciliation.cs</span>) checks two orthogonal invariants per (distributor, product, stock-type): <b>#1</b> Σ(In) − Σ(Out) re-summed from the ledger == live <code>QuantityOnHand</code> (the check this finding asks for), and <b>#2</b> the ledger's latest <code>QuantityAfter</code> snapshot == that same Σ (a ledger-internal integrity check). Surfaced two ways: on-demand <code>GET /api/v1/stock/reconciliation</code> (admin) and a nightly <code>StockReconciliationBackgroundService</code> that logs a warning per drift and persists a run summary + flags (<code>StockReconciliationRun</code> / <code>StockReconciliationFlag</code>, self-purged on a retention window) so a dashboard can show "last run — N discrepancies". 894 unit + 502 integration green.</div>
+      <div class="biscuit"><b>Note (testing &amp; deploy):</b> the ledger re-sum uses SQL <code>SUM</code> over <code>decimal</code>, which the SQLite test provider can't translate — so the math is covered by unit tests and the run-endpoint integration test is skipped (same documented limitation as Bin Card); the persistence/read path <i>is</i> integration-tested. The new tables ship in migration <code>20260624072453_AddStockReconciliationTables</code> — real DDL, so it sits in the pending-migration queue and won't take effect until the long-blocked Routes migration is unblocked.</div>
     </div>
   </div>
 

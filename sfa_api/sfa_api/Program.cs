@@ -98,6 +98,9 @@ try
     // ── Refresh Token Cleanup ─────────────────────────────────────────────
     builder.Services.AddHostedService<sfa_api.Features.Auth.Services.RefreshTokenCleanupService>();
 
+    // ── Nightly Stock Reconciliation ──────────────────────────────────────
+    builder.Services.AddHostedService<sfa_api.Features.Stock.Services.StockReconciliationBackgroundService>();
+
     // ── JWT Revocation ────────────────────────────────────────────────────
     builder.Services.AddScoped<ITokenRevocationService, PostgresTokenRevocationService>();
 
