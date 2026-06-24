@@ -16,6 +16,7 @@ public record ProductDto(
     decimal DealerPackPrice,
     decimal DealerCasePrice,
     decimal Mrp,
+    uint RowVersion,
     DateTime CreatedAt,
     DateTime UpdatedAt
 );

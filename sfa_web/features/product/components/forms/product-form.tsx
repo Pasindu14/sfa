@@ -7,6 +7,7 @@ import {
   createProductSchema,
   updateProductSchema,
   type CreateProductInput,
+  type UpdateProductInput,
 } from '../../schema/product.schema'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -26,10 +27,11 @@ import { fetchProductCategoriesForSelect } from '@/features/product-category/act
 import type { FleetDto } from '@/features/fleet/schema/fleet.schema'
 import type { ProductCategoryDto } from '@/features/product-category/schema/product-category.schema'
 
+// UpdateProductInput is a superset of CreateProductInput (adds rowVersion).
 interface ProductFormProps {
   mode: 'create' | 'edit'
-  defaultValues?: Partial<CreateProductInput>
-  onSubmit: (data: CreateProductInput) => void
+  defaultValues?: Partial<UpdateProductInput>
+  onSubmit: (data: UpdateProductInput) => void
   isLoading: boolean
   fieldErrors?: Record<string, string> | null
 }
@@ -43,8 +45,8 @@ export function ProductForm({
 }: ProductFormProps) {
   const schema = mode === 'create' ? createProductSchema : updateProductSchema
 
-  const form = useForm<CreateProductInput>({
-    resolver: zodResolver(schema),
+  const form = useForm<UpdateProductInput>({
+    resolver: zodResolver(schema as typeof updateProductSchema),
     defaultValues: {
       code: '',
       itemDescription: '',
@@ -57,6 +59,7 @@ export function ProductForm({
       dealerPackPrice: 0,
       dealerCasePrice: 0,
       mrp: 0,
+      rowVersion: 0,
       ...defaultValues,
     },
   })
@@ -77,6 +80,7 @@ export function ProductForm({
         dealerPackPrice: 0,
         dealerCasePrice: 0,
         mrp: 0,
+        rowVersion: 0,
         ...defaultValues,
       })
     }
@@ -85,7 +89,7 @@ export function ProductForm({
   useEffect(() => {
     if (fieldErrors) {
       Object.entries(fieldErrors).forEach(([field, message]) => {
-        setError(field as keyof CreateProductInput, { message })
+        setError(field as keyof UpdateProductInput, { message })
       })
     }
   }, [fieldErrors, setError])
@@ -329,6 +333,27 @@ export function ProductForm({
             )}
           />
         </div>
+
+        {/* Hidden concurrency token — edit mode only */}
+        {mode === 'edit' && (
+          <FormField
+            control={form.control}
+            name="rowVersion"
+            render={({ field }) => (
+              <FormItem className="hidden">
+                <FormControl>
+                  <input
+                    type="hidden"
+                    {...field}
+                    onChange={(e) => field.onChange(Number(e.target.value))}
+                    value={field.value ?? 0}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading ? (

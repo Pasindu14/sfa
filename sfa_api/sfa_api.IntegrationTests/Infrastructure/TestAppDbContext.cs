@@ -1,8 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using sfa_api.Features.Areas.Entities;
+using sfa_api.Features.Distributors.Entities;
 using sfa_api.Features.Divisions.Entities;
+using sfa_api.Features.Outlets.Entities;
+using sfa_api.Features.Products.Entities;
 using sfa_api.Features.Regions.Entities;
 using sfa_api.Features.Territories.Entities;
+using sfa_api.Features.Users.Entities;
 using sfa_api.Infrastructure.Persistence;
 
 namespace sfa_api.IntegrationTests.Infrastructure;
@@ -75,6 +79,36 @@ public class TestAppDbContext(DbContextOptions<AppDbContext> options) : AppDbCon
             .IsConcurrencyToken(false);
 
         modelBuilder.Entity<Division>()
+            .Property(x => x.RowVersion)
+            .HasColumnType("INTEGER")
+            .HasDefaultValue(1u)
+            .ValueGeneratedOnAdd()
+            .IsConcurrencyToken(false);
+
+        // Same xmin → INTEGER patch for the master-data entities that now carry RowVersion
+        // (finding #9: User, Outlet, Distributor, Product).
+        modelBuilder.Entity<User>()
+            .Property(x => x.RowVersion)
+            .HasColumnType("INTEGER")
+            .HasDefaultValue(1u)
+            .ValueGeneratedOnAdd()
+            .IsConcurrencyToken(false);
+
+        modelBuilder.Entity<Outlet>()
+            .Property(x => x.RowVersion)
+            .HasColumnType("INTEGER")
+            .HasDefaultValue(1u)
+            .ValueGeneratedOnAdd()
+            .IsConcurrencyToken(false);
+
+        modelBuilder.Entity<Distributor>()
+            .Property(x => x.RowVersion)
+            .HasColumnType("INTEGER")
+            .HasDefaultValue(1u)
+            .ValueGeneratedOnAdd()
+            .IsConcurrencyToken(false);
+
+        modelBuilder.Entity<Product>()
             .Property(x => x.RowVersion)
             .HasColumnType("INTEGER")
             .HasDefaultValue(1u)

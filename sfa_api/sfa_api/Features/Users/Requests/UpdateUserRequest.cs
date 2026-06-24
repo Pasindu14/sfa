@@ -9,4 +9,7 @@ public class UpdateUserRequest
     public string Role { get; set; } = string.Empty;
     public string? DeviceId { get; set; }
     public int? DistributorId { get; set; }
+
+    // Optimistic concurrency token — client echoes the value it last read
+    public uint RowVersion { get; set; }
 }

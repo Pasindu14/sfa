@@ -44,5 +44,8 @@ public class UpdateUserValidator : AbstractValidator<UpdateUserRequest>
         RuleFor(x => x.DistributorId)
             .Null().When(x => !x.Role.Equals("Distributor", StringComparison.OrdinalIgnoreCase))
             .WithMessage("Distributor ID must be empty for non-Distributor roles.");
+
+        RuleFor(x => x.RowVersion)
+            .NotEqual(0u).WithMessage("RowVersion is required for optimistic concurrency.");
     }
 }

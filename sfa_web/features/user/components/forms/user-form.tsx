@@ -7,6 +7,7 @@ import {
   createUserSchema,
   updateUserSchema,
   type CreateUserInput,
+  type UpdateUserInput,
 } from '../../schema/user.schema'
 import { useDistributorsForSelect } from '@/features/distributor/hooks/distributor.hooks'
 import { Button } from '@/components/ui/button'
@@ -28,10 +29,13 @@ import {
 } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 
+// Form value type covers both modes: password is create-only, rowVersion is edit-only.
+type UserFormValues = UpdateUserInput & { password?: string }
+
 interface UserFormProps {
   mode: 'create' | 'edit'
-  defaultValues?: Partial<CreateUserInput>
-  onSubmit: (data: CreateUserInput) => void
+  defaultValues?: Partial<UserFormValues>
+  onSubmit: (data: CreateUserInput | UpdateUserInput) => void
   isLoading: boolean
   fieldErrors?: Record<string, string> | null
 }
@@ -45,8 +49,8 @@ export function UserForm({
 }: UserFormProps) {
   const schema = mode === 'create' ? createUserSchema : updateUserSchema
 
-  const form = useForm<CreateUserInput>({
-    resolver: zodResolver(schema as typeof createUserSchema),
+  const form = useForm<UserFormValues>({
+    resolver: zodResolver(schema as typeof updateUserSchema),
     defaultValues: {
       name: '',
       username: '',
@@ -55,6 +59,7 @@ export function UserForm({
       password: '',
       role: 'SalesRep',
       deviceId: '',
+      rowVersion: 0,
       ...defaultValues,
     },
   })
@@ -72,7 +77,7 @@ export function UserForm({
   useEffect(() => {
     if (fieldErrors) {
       Object.entries(fieldErrors).forEach(([field, message]) => {
-        setError(field as keyof CreateUserInput, { message })
+        setError(field as keyof UserFormValues, { message })
       })
     }
   }, [fieldErrors, setError])
@@ -217,6 +222,27 @@ export function UserForm({
                 <FormLabel>Password</FormLabel>
                 <FormControl>
                   <Input type="password" placeholder="Password" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        {/* Hidden concurrency token — edit mode only */}
+        {mode === 'edit' && (
+          <FormField
+            control={form.control}
+            name="rowVersion"
+            render={({ field }) => (
+              <FormItem className="hidden">
+                <FormControl>
+                  <input
+                    type="hidden"
+                    {...field}
+                    onChange={(e) => field.onChange(Number(e.target.value))}
+                    value={field.value ?? 0}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

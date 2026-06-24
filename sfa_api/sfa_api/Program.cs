@@ -95,6 +95,9 @@ try
     // ── Audit Log Cleanup ─────────────────────────────────────────────────
     builder.Services.AddHostedService<AuditLogCleanupService>();
 
+    // ── Refresh Token Cleanup ─────────────────────────────────────────────
+    builder.Services.AddHostedService<sfa_api.Features.Auth.Services.RefreshTokenCleanupService>();
+
     // ── JWT Revocation ────────────────────────────────────────────────────
     builder.Services.AddScoped<ITokenRevocationService, PostgresTokenRevocationService>();
 

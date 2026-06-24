@@ -145,7 +145,8 @@ public class OutletServiceTests
         OutletCategory = "SMMT",
         ProvinceCode = 2,
         DistrictCode = 22,
-        RouteId = 50
+        RouteId = 50,
+        RowVersion = 1u
     };
 
     // ─────────────────────────────────────────────────

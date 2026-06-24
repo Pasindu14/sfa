@@ -5,7 +5,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   createOutletSchema,
+  updateOutletSchema,
   type CreateOutletInput,
+  type UpdateOutletInput,
   OUTLET_TYPES,
   OUTLET_CATEGORIES,
   BILLING_PRICE_TYPES,
@@ -35,11 +37,12 @@ import { AsyncSelect } from "@/components/async-select";
 import { searchActiveRoutesAction } from "@/features/route/actions/route.actions";
 import type { RouteDto } from "@/features/route/schema/route.schema";
 
+// UpdateOutletInput is a superset of CreateOutletInput (adds rowVersion).
 interface OutletFormProps {
   mode: "create" | "edit";
-  defaultValues?: Partial<CreateOutletInput>;
+  defaultValues?: Partial<UpdateOutletInput>;
   initialRouteName?: string;
-  onSubmit: (data: CreateOutletInput) => void;
+  onSubmit: (data: UpdateOutletInput) => void;
   isLoading: boolean;
   fieldErrors?: Record<string, string> | null;
 }
@@ -52,8 +55,10 @@ export function OutletForm({
   isLoading,
   fieldErrors,
 }: OutletFormProps) {
-  const form = useForm<CreateOutletInput>({
-    resolver: zodResolver(createOutletSchema),
+  const schema = mode === "create" ? createOutletSchema : updateOutletSchema;
+
+  const form = useForm<UpdateOutletInput>({
+    resolver: zodResolver(schema as typeof updateOutletSchema),
     defaultValues: {
       name: "",
       address: "",
@@ -74,6 +79,7 @@ export function OutletForm({
       provinceCode: undefined,
       districtCode: undefined,
       routeId: 0,
+      rowVersion: 0,
       ...defaultValues,
     },
   });
@@ -83,7 +89,7 @@ export function OutletForm({
   useEffect(() => {
     if (fieldErrors) {
       Object.entries(fieldErrors).forEach(([field, message]) => {
-        setError(field as keyof CreateOutletInput, { message });
+        setError(field as keyof UpdateOutletInput, { message });
       });
     }
   }, [fieldErrors, setError]);
@@ -516,6 +522,27 @@ export function OutletForm({
             </FormItem>
           )}
         />
+
+        {/* Hidden concurrency token — edit mode only */}
+        {mode === "edit" && (
+          <FormField
+            control={form.control}
+            name="rowVersion"
+            render={({ field }) => (
+              <FormItem className="hidden">
+                <FormControl>
+                  <input
+                    type="hidden"
+                    {...field}
+                    onChange={(e) => field.onChange(Number(e.target.value))}
+                    value={field.value ?? 0}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading ? (

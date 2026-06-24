@@ -67,6 +67,7 @@ Each level stores all ancestor IDs (denormalized) — join-free queries.
 - **Envelope:** `ApiResponse<T>` — `{ success, data, pagination, traceId }`
 - **Errors:** `ApiError` — `{ code, message, fields, traceId }` — never expose stack traces
 - **Scale:** 500 reps, ~50 concurrent, ~200 req/min — Redis + `AsNoTracking()` mandatory
+- **Reporting (active-vs-all):** master-data counts = current/active; financial aggregates = historical facts (filter the bill's own state, never the referenced entity's `IsActive`) → @.claude/docs/reporting-conventions.md
 
 > Exception → HTTP status mapping, EF Core patterns, auth details, infra services
 > auto-loaded via `.claude/rules/api-conventions.md` when editing `sfa_api/**`.

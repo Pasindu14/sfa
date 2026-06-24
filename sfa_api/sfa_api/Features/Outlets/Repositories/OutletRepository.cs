@@ -152,6 +152,11 @@ public class OutletRepository(AppDbContext context) : IOutletRepository
         return Task.CompletedTask;
     }
 
+    // Sets the OriginalValue of RowVersion so EF uses the client's version in the
+    // WHERE xmin = $token clause — this is what detects cross-request staleness.
+    public void ApplyConcurrencyToken(Outlet outlet, uint rowVersion)
+        => _context.Entry(outlet).Property(x => x.RowVersion).OriginalValue = rowVersion;
+
     public async Task DeleteAsync(int id, CancellationToken ct = default)
         => await _context.Outlets
             .IgnoreQueryFilters()
@@ -162,5 +167,14 @@ public class OutletRepository(AppDbContext context) : IOutletRepository
                 .SetProperty(o => o.UpdatedAt, DateTime.UtcNow), ct);
 
     public async Task SaveChangesAsync(CancellationToken ct = default)
-        => await _context.SaveChangesAsync(ct);
+    {
+        try
+        {
+            await _context.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new sfa_api.Common.Errors.ConcurrencyConflictException();
+        }
+    }
 }

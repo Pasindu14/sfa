@@ -330,15 +330,17 @@ public class UsersApiTests
         var createResponse = await _client.PostAsJsonAsync("/api/v1/users", payload);
         var createBody = await createResponse.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
         var userId = createBody.GetProperty("data").GetProperty("id").GetInt32();
+        var rowVersion = createBody.GetProperty("data").GetProperty("rowVersion").GetUInt32();
 
-        // Update the user
+        // Update the user — echo the rowVersion read from the create response (optimistic concurrency)
         var updatePayload = new
         {
             name = "After Update",
             username = "update_target",
             email = "update@test.com",
             phone = "6661110001",
-            role = "Admin"
+            role = "Admin",
+            rowVersion
         };
 
         var updateResponse = await _client.PutAsJsonAsync($"/api/v1/users/{userId}", updatePayload);

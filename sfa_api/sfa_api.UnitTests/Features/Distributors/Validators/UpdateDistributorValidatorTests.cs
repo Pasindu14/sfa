@@ -20,8 +20,32 @@ public class UpdateDistributorValidatorTests
         Remark = null,
         VatRegNo = null,
         Latitude = null,
-        Longitude = null
+        Longitude = null,
+        RowVersion = 1
     };
+
+    // ─────────────────────────────────────────────────
+    // RowVersion (optimistic concurrency)
+    // ─────────────────────────────────────────────────
+
+    [Fact]
+    public void RowVersion_Zero_Fails()
+    {
+        var req = ValidRequest();
+        req.RowVersion = 0;
+        var result = _validator.TestValidate(req);
+        result.ShouldHaveValidationErrorFor(x => x.RowVersion)
+              .WithErrorMessage("RowVersion is required for optimistic concurrency.");
+    }
+
+    [Fact]
+    public void RowVersion_NonZero_Passes()
+    {
+        var req = ValidRequest();
+        req.RowVersion = 42;
+        var result = _validator.TestValidate(req);
+        result.ShouldNotHaveValidationErrorFor(x => x.RowVersion);
+    }
 
     // ─────────────────────────────────────────────────
     // Valid request — baseline

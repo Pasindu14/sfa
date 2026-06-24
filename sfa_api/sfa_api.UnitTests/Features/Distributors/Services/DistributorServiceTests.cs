@@ -90,7 +90,8 @@ public class DistributorServiceTests
         Remark = "Updated remark",
         VatRegNo = "VAT999888",
         Latitude = 8.3114,
-        Longitude = 80.4037
+        Longitude = 80.4037,
+        RowVersion = 1
     };
 
     // ─────────────────────────────────────────────────

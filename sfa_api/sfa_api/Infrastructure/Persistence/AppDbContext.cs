@@ -117,6 +117,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             // IsActive is deliberately NOT filtered: deactivated users must remain visible
             // to admins (e.g. to reactivate them); login already blocks IsActive == false.
             e.HasQueryFilter(x => !x.IsDeleted);
+            // Optimistic concurrency — maps to PostgreSQL's xmin system column so two
+            // managers editing the same user can't silently overwrite each other (finding #9).
+            e.Property(x => x.RowVersion)
+             .IsRowVersion()
+             .HasColumnName("xmin")
+             .HasColumnType("xid");
             e.HasOne(x => x.Distributor)
              .WithMany()
              .HasForeignKey(x => x.DistributorId)
@@ -167,6 +173,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             // distributors stay visible. Natural-key uniqueness lookups in DistributorRepository
             // use IgnoreQueryFilters() so they still honour the (unfiltered) unique Email/Phone indexes.
             e.HasQueryFilter(x => !x.IsDeleted);
+            // Optimistic concurrency — maps to PostgreSQL's xmin system column (finding #9).
+            e.Property(x => x.RowVersion)
+             .IsRowVersion()
+             .HasColumnName("xmin")
+             .HasColumnType("xid");
         });
 
         // Fleet
@@ -409,6 +420,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .WithMany()
              .HasForeignKey(x => x.RegionId)
              .OnDelete(DeleteBehavior.Restrict);
+            // Optimistic concurrency — maps to PostgreSQL's xmin system column (finding #9).
+            e.Property(x => x.RowVersion)
+             .IsRowVersion()
+             .HasColumnName("xmin")
+             .HasColumnType("xid");
         });
 
         // ProductCategory
@@ -443,6 +459,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             // filter IsActive and IsDeleted explicitly. A global filter here causes EF warnings because
             // GRNItem, PurchaseOrderItem, SalesInvoiceItem, DistributorStock, StockTransaction
             // all have required FKs to Product.
+            // Optimistic concurrency — maps to PostgreSQL's xmin system column (finding #9).
+            e.Property(x => x.RowVersion)
+             .IsRowVersion()
+             .HasColumnName("xmin")
+             .HasColumnType("xid");
         });
 
         // ProductCategoryPrice

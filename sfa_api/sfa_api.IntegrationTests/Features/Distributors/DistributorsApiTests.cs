@@ -546,6 +546,7 @@ public class DistributorsApiTests
         var createResponse = await _client.PostAsJsonAsync("/api/v1/distributors", createPayload);
         var createBody = await createResponse.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
         var id = createBody.GetProperty("data").GetProperty("id").GetInt32();
+        var rowVersion = createBody.GetProperty("data").GetProperty("rowVersion").GetUInt32();
 
         var updatePayload = new
         {
@@ -559,7 +560,8 @@ public class DistributorsApiTests
             remark = "Updated partner",
             vatRegNo = (string?)null,
             latitude = (double?)null,
-            longitude = (double?)null
+            longitude = (double?)null,
+            rowVersion
         };
 
         var updateResponse = await _client.PutAsJsonAsync($"/api/v1/distributors/{id}", updatePayload);
@@ -590,7 +592,8 @@ public class DistributorsApiTests
             remark = (string?)null,
             vatRegNo = (string?)null,
             latitude = (double?)null,
-            longitude = (double?)null
+            longitude = (double?)null,
+            rowVersion = 1u    // non-zero so validation passes and the request reaches the 404 lookup
         };
 
         var response = await _client.PutAsJsonAsync("/api/v1/distributors/99999", payload);
@@ -657,8 +660,10 @@ public class DistributorsApiTests
         var firstResp = await _client.PostAsJsonAsync("/api/v1/distributors", first);
         var secondResp = await _client.PostAsJsonAsync("/api/v1/distributors", second);
 
-        var secondId = (await secondResp.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
-            .GetProperty("data").GetProperty("id").GetInt32();
+        var secondData = (await secondResp.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data");
+        var secondId = secondData.GetProperty("id").GetInt32();
+        var secondRowVersion = secondData.GetProperty("rowVersion").GetUInt32();
 
         // Try to update second distributor to use first distributor's email
         var updatePayload = new
@@ -673,7 +678,8 @@ public class DistributorsApiTests
             remark = (string?)null,
             vatRegNo = (string?)null,
             latitude = (double?)null,
-            longitude = (double?)null
+            longitude = (double?)null,
+            rowVersion = secondRowVersion
         };
 
         var response = await _client.PutAsJsonAsync($"/api/v1/distributors/{secondId}", updatePayload);

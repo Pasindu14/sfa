@@ -70,9 +70,11 @@ export const createOutletSchema = z.object({
   routeId: z.number({ error: 'Route is required' }).int().min(1, 'Route is required'),
 })
 
-// --- Update schema (same shape as create) ---
+// --- Update schema (create shape + concurrency token) ---
 
-export const updateOutletSchema = createOutletSchema
+export const updateOutletSchema = createOutletSchema.extend({
+  rowVersion: z.number().int().min(1, 'Row version is required'),
+})
 
 // --- Filter schema ---
 
@@ -122,6 +124,7 @@ export type OutletDto = {
   regionId: number
   regionName: string
   isActive: boolean
+  rowVersion: number
   createdAt: string
   updatedAt: string
 }

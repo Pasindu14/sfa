@@ -18,6 +18,7 @@ public interface IUserRepository
     Task<Dictionary<int, string?>> GetNamesByIdsAsync(IEnumerable<int> ids, CancellationToken ct = default);
     Task CreateUserAsync(User user, CancellationToken ct = default);
     Task UpdateUserAsync(User user, CancellationToken ct = default);
+    void ApplyConcurrencyToken(User user, uint rowVersion);
     Task DeleteUserAsync(int userId, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
     Task<string?> GetFcmTokenByUserIdAsync(int userId, CancellationToken ct = default);

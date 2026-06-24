@@ -129,6 +129,7 @@ function EditOutletDialog() {
                     provinceCode: outlet.provinceCode ?? undefined,
                     districtCode: outlet.districtCode ?? undefined,
                     routeId: outlet.routeId,
+                    rowVersion: outlet.rowVersion,
                   }
                 : undefined
             }

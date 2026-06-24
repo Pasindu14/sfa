@@ -25,8 +25,10 @@ export const createDistributorSchema = z.object({
   category: z.enum(['A', 'B', 'C', 'D'], { message: 'Category must be A, B, C, or D' }),
 })
 
-// Update schema (same shape as create)
-export const updateDistributorSchema = createDistributorSchema
+// Update schema (create shape + concurrency token)
+export const updateDistributorSchema = createDistributorSchema.extend({
+  rowVersion: z.number().int().min(1, 'Row version is required'),
+})
 
 // Filter schema (for search and pagination)
 export const filterSchema = z.object({
@@ -63,6 +65,7 @@ export type DistributorDto = {
   fleetId: number | null
   fleetName: string | null
   isActive: boolean
+  rowVersion: number
   createdAt: string
   updatedAt: string
 }

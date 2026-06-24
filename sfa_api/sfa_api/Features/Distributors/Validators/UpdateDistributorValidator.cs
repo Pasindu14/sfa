@@ -61,5 +61,8 @@ public class UpdateDistributorValidator : AbstractValidator<UpdateDistributorReq
         RuleFor(x => x.TerritoryId)
             .GreaterThan(0).WithMessage("TerritoryId must be greater than 0.")
             .When(x => x.TerritoryId.HasValue);
+
+        RuleFor(x => x.RowVersion)
+            .NotEqual(0u).WithMessage("RowVersion is required for optimistic concurrency.");
     }
 }

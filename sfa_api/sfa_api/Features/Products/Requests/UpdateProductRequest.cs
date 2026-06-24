@@ -13,4 +13,5 @@ public class UpdateProductRequest
     public decimal DealerPackPrice { get; set; }
     public decimal DealerCasePrice { get; set; }
     public decimal Mrp { get; set; }
+    public uint RowVersion { get; set; }
 }

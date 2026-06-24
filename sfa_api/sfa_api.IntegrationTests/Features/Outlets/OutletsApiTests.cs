@@ -84,6 +84,15 @@ public class OutletsApiTests
         return body.GetProperty("data").GetProperty("id").GetInt32();
     }
 
+    private async Task<uint> GetOutletRowVersionAsync(int id)
+    {
+        SetToken(AuthHelper.AdminToken);
+        var response = await _client.GetAsync($"/api/v1/outlets/{id}");
+        response.StatusCode.Should().Be(HttpStatusCode.OK, $"reading rowVersion for outlet {id} must succeed");
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
+        return body.GetProperty("data").GetProperty("rowVersion").GetUInt32();
+    }
+
     private static object CreateOutletPayload(string name, int routeId, string nicNo, string outletType = "Medium", string outletCategory = "Wholesale")
         => new
         {
@@ -556,12 +565,14 @@ public class OutletsApiTests
         var routeId = await CreateRouteAsync("Route For Update Outlet Test", divisionId);
 
         var id = await CreateOutletAsync("Before Update Outlet", routeId, "911001001V");
+        var rowVersion = await GetOutletRowVersionAsync(id);
 
         var updatePayload = new
         {
             name = "After Update Outlet", address = "999 Updated Street", tel = "0779999999",
             nicNo = "911001001V", creditLimit = 5000, latitude = 7.5, longitude = 80.5,
-            outletType = "Large", outletCategory = "SMMT", provinceCode = 2, districtCode = 22, routeId
+            outletType = "Large", outletCategory = "SMMT", provinceCode = 2, districtCode = 22, routeId,
+            rowVersion
         };
         var updateResponse = await _client.PutAsJsonAsync($"/api/v1/outlets/{id}", updatePayload);
 
@@ -572,6 +583,11 @@ public class OutletsApiTests
         updateBody.GetProperty("data").GetProperty("outletType").GetString().Should().Be("Large");
         updateBody.GetProperty("data").GetProperty("outletCategory").GetString().Should().Be("SMMT");
     }
+
+    // NOTE: a stale-rowVersion → 409 test is intentionally NOT included here. Integration tests run
+    // on SQLite, where TestAppDbContext disables the xmin concurrency token (IsConcurrencyToken(false)),
+    // so a stale update returns 200, not 409. The xmin concurrency path is exercised against real
+    // PostgreSQL; the round-trip plumbing is covered by the validator unit tests. (review finding #9)
 
     [Fact]
     public async Task UpdateOutlet_WithNewRoute_ReDenormalizesAncestorIds()
@@ -589,13 +605,15 @@ public class OutletsApiTests
         var routeBId = await CreateRouteAsync("Route B For Route Change Outlet Test", divisionBId);
 
         var id = await CreateOutletAsync("Outlet Before Route Change", routeAId, "912001001V");
+        var rowVersion = await GetOutletRowVersionAsync(id);
 
         var updatePayload = new
         {
             name = "Outlet After Route Change", address = "456 Street", tel = "0771111111",
             nicNo = "912001001V", latitude = 6.0, longitude = 80.0,
             outletType = "Small", outletCategory = "Wholesale", provinceCode = 1, districtCode = 11,
-            routeId = routeBId
+            routeId = routeBId,
+            rowVersion
         };
         var updateResponse = await _client.PutAsJsonAsync($"/api/v1/outlets/{id}", updatePayload);
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -620,12 +638,14 @@ public class OutletsApiTests
 
         var id = await CreateOutletAsync("Outlet Before IsActive Update", routeId, "913001001V");
         await _client.PostAsJsonAsync($"/api/v1/outlets/{id}/deactivate", new { });
+        var rowVersion = await GetOutletRowVersionAsync(id);
 
         var updatePayload = new
         {
             name = "Outlet After IsActive Update", address = "123 Street", tel = "0771234567",
             nicNo = "913001001V", latitude = 6.9, longitude = 79.8,
-            outletType = "Medium", outletCategory = "Wholesale", provinceCode = 1, districtCode = 11, routeId
+            outletType = "Medium", outletCategory = "Wholesale", provinceCode = 1, districtCode = 11, routeId,
+            rowVersion
         };
         await _client.PutAsJsonAsync($"/api/v1/outlets/{id}", updatePayload);
 
@@ -638,7 +658,7 @@ public class OutletsApiTests
     public async Task UpdateOutlet_NonExistent_Returns404()
     {
         SetToken(AuthHelper.AdminToken);
-        var payload = new { name = "Ghost", address = "123 Street", tel = "0771234567", nicNo = "999001001V", latitude = 6.9, longitude = 79.8, outletType = "Medium", outletCategory = "Wholesale", provinceCode = 1, districtCode = 11, routeId = 1 };
+        var payload = new { name = "Ghost", address = "123 Street", tel = "0771234567", nicNo = "999001001V", latitude = 6.9, longitude = 79.8, outletType = "Medium", outletCategory = "Wholesale", provinceCode = 1, districtCode = 11, routeId = 1, rowVersion = 1u };
         var response = await _client.PutAsJsonAsync("/api/v1/outlets/99999", payload);
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }

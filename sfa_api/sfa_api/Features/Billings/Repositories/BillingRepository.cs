@@ -157,6 +157,11 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
         return (items, total);
     }
 
+    // Active-vs-all policy (finding #10): this report INCLUDES every bill in the date range
+    // regardless of bill state — cancelled/rejected bills are returned too, annotated via RepStatus
+    // so the caller can present them. It is deliberately NOT filtered to active bills. The referenced
+    // Outlet's current active state is likewise irrelevant: a bill written to an outlet that was later
+    // deactivated is still a historical fact and stays in the summary.
     public async Task<List<OutletBillingSummaryRawRow>> GetOutletSummaryRawAsync(
         int salesRepId, int routeId,
         DateOnly dateFrom, DateOnly dateTo,
@@ -177,6 +182,14 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
                 b.RepStatus))
             .ToListAsync(ct);
 
+    // Active-vs-all policy (finding #10) for every sales aggregate below:
+    // The BILL's own state is filtered explicitly (IsActive && !IsDeleted + the relevant
+    // RepStatus/DistributorStatus) so cancelled/rejected bills never inflate revenue.
+    // The current active state of the referenced Product / Outlet / Distributor is deliberately
+    // NOT filtered — revenue is a historical fact and a sale of a since-deactivated product still
+    // counts. Consequence: a "total sales by product" figure can reference products that no longer
+    // appear in an "active products" count. That divergence is by design, documented in
+    // .claude/docs/reporting-conventions.md — do not "fix" it by joining on Product.IsActive.
     public async Task<decimal> GetRepMonthlySalesTotalAsync(
         int salesRepId, int year, int month, CancellationToken ct = default)
     {

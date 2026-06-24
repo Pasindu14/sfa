@@ -93,6 +93,11 @@ public class DistributorRepository(AppDbContext context) : IDistributorRepositor
         return Task.CompletedTask;
     }
 
+    // Sets the OriginalValue of RowVersion so EF uses the client's version in the
+    // WHERE xmin = $token clause — this is what detects cross-request staleness.
+    public void ApplyConcurrencyToken(Distributor distributor, uint rowVersion)
+        => _context.Entry(distributor).Property(x => x.RowVersion).OriginalValue = rowVersion;
+
     public async Task DeleteAsync(int id, CancellationToken ct = default)
         => await _context.Distributors
             .Where(d => d.Id == id)
@@ -102,5 +107,14 @@ public class DistributorRepository(AppDbContext context) : IDistributorRepositor
                 .SetProperty(d => d.UpdatedAt, DateTime.UtcNow), ct);
 
     public async Task SaveChangesAsync(CancellationToken ct = default)
-        => await _context.SaveChangesAsync(ct);
+    {
+        try
+        {
+            await _context.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new sfa_api.Common.Errors.ConcurrencyConflictException();
+        }
+    }
 }

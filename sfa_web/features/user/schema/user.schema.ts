@@ -22,31 +22,40 @@ const phoneRules = z
   .max(20, 'Phone number must not exceed 20 characters')
   .regex(/^[0-9+\-\s()]+$/, 'Phone number can only contain digits, +, -, spaces, and parentheses')
 
-const baseUserSchema = z
-  .object({
-    name: z.string().min(1, 'Name is required').max(100, 'Name must not exceed 100 characters'),
-    username: usernameRules,
-    email: z.string().email('Invalid email format').max(255, 'Email must not exceed 255 characters'),
-    phone: phoneRules,
-    role: roleEnum,
-    deviceId: z.string().optional(),
-    distributorId: z.number().optional(),
-  })
-  .superRefine((data, ctx) => {
-    if (data.role === 'Distributor' && !data.distributorId) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Distributor is required for Distributor role.',
-        path: ['distributorId'],
-      })
-    }
-  })
-
-export const createUserSchema = baseUserSchema.extend({
-  password: passwordRules,
+const baseUserObject = z.object({
+  name: z.string().min(1, 'Name is required').max(100, 'Name must not exceed 100 characters'),
+  username: usernameRules,
+  email: z.string().email('Invalid email format').max(255, 'Email must not exceed 255 characters'),
+  phone: phoneRules,
+  role: roleEnum,
+  deviceId: z.string().optional(),
+  distributorId: z.number().optional(),
 })
 
-export const updateUserSchema = baseUserSchema
+const distributorRoleRefinement = (
+  data: { role: z.infer<typeof roleEnum>; distributorId?: number },
+  ctx: z.RefinementCtx,
+) => {
+  if (data.role === 'Distributor' && !data.distributorId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Distributor is required for Distributor role.',
+      path: ['distributorId'],
+    })
+  }
+}
+
+export const createUserSchema = baseUserObject
+  .extend({
+    password: passwordRules,
+  })
+  .superRefine(distributorRoleRefinement)
+
+export const updateUserSchema = baseUserObject
+  .extend({
+    rowVersion: z.number().int().min(1, 'Row version is required'),
+  })
+  .superRefine(distributorRoleRefinement)
 
 export const changePasswordSchema = z
   .object({
@@ -88,6 +97,7 @@ export type UserDto = {
   distributorName?: string
   deviceId?: string
   isActive: boolean
+  rowVersion: number
   createdAt: string
   updatedAt: string
 }

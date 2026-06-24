@@ -62,7 +62,8 @@ public class ProductServiceTests
         PrintDescription = "UPDATED PRODUCT",
         PiecesPerPack = 24,
         ImageUrl = "https://example.com/updated.jpg",
-        Remarks = "Updated remark"
+        Remarks = "Updated remark",
+        RowVersion = 1u
     };
 
     // ─────────────────────────────────────────────────

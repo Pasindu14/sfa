@@ -83,6 +83,11 @@ public class UserRepository(AppDbContext context) : IUserRepository
         return Task.CompletedTask;
     }
 
+    // Sets the OriginalValue of RowVersion so EF uses the client's version in the
+    // WHERE xmin = $token clause — this is what detects cross-request staleness.
+    public void ApplyConcurrencyToken(User user, uint rowVersion)
+        => _context.Entry(user).Property(x => x.RowVersion).OriginalValue = rowVersion;
+
     public async Task DeleteUserAsync(int userId, CancellationToken ct = default)
     {
         var user = await _context.Users.FindAsync([userId], ct);
@@ -95,7 +100,16 @@ public class UserRepository(AppDbContext context) : IUserRepository
     }
 
     public async Task SaveChangesAsync(CancellationToken ct = default)
-        => await _context.SaveChangesAsync(ct);
+    {
+        try
+        {
+            await _context.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new sfa_api.Common.Errors.ConcurrencyConflictException();
+        }
+    }
 
     public async Task<string?> GetFcmTokenByUserIdAsync(int userId, CancellationToken ct = default)
         => await _context.Users

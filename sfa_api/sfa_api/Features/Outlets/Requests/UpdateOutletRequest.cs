@@ -20,4 +20,5 @@ public class UpdateOutletRequest
     public int? ProvinceCode { get; set; }
     public int? DistrictCode { get; set; }
     public int RouteId { get; set; }
+    public uint RowVersion { get; set; }
 }

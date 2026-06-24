@@ -123,6 +123,9 @@ public class DistributorService(
         var distributor = await _repo.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("Distributor", id);
 
+        // Tell EF to use the client's RowVersion as the OriginalValue in the WHERE xmin = $token clause.
+        _repo.ApplyConcurrencyToken(distributor, request.RowVersion);
+
         if (await _repo.ExistsByEmailAsync(request.Email, id, ct))
             throw new DuplicateResourceException("Email");
 
@@ -245,6 +248,7 @@ public class DistributorService(
         FleetId: d.FleetId,
         FleetName: d.Fleet?.Name,
         IsActive: d.IsActive,
+        RowVersion: d.RowVersion,
         CreatedAt: d.CreatedAt,
         UpdatedAt: d.UpdatedAt
     );

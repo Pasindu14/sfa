@@ -111,6 +111,10 @@ public class UserService(
             user.DistributorId = null;
         }
 
+        // Tell EF to use the client's RowVersion as the OriginalValue in the WHERE xmin = $token clause.
+        // Setting user.RowVersion directly only changes CurrentValue — OriginalValue is what EF checks.
+        _repo.ApplyConcurrencyToken(user, request.RowVersion);
+
         user.Name = request.Name;
         user.Username = request.Username.ToLowerInvariant();
         user.Email = request.Email.ToLowerInvariant();
@@ -218,6 +222,7 @@ public class UserService(
         DistributorId: user.DistributorId,
         DistributorName: user.Distributor?.Name,
         IsActive: user.IsActive,
+        RowVersion: user.RowVersion,
         CreatedAt: user.CreatedAt,
         UpdatedAt: user.UpdatedAt
     );

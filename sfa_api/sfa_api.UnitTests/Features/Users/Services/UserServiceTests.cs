@@ -301,7 +301,8 @@ public class UserServiceTests
             Username = "updateduser",
             Email = "updated@example.com",
             Phone = "5555555555",
-            Role = "NSM"
+            Role = "NSM",
+            RowVersion = 1
         };
 
         var result = await _sut.UpdateUserAsync(1, request, callerId: 2);
@@ -318,7 +319,7 @@ public class UserServiceTests
         _repoMock.Setup(r => r.GetUserByIdAsync(99, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((User?)null);
 
-        var request = new UpdateUserRequest { Name = "X", Username = "x", Email = "x@x.com", Phone = "1234567890", Role = "Admin" };
+        var request = new UpdateUserRequest { Name = "X", Username = "x", Email = "x@x.com", Phone = "1234567890", Role = "Admin", RowVersion = 1 };
         var act = () => _sut.UpdateUserAsync(99, request, callerId: 1);
 
         await act.Should().ThrowAsync<NotFoundException>();
@@ -333,7 +334,7 @@ public class UserServiceTests
         _repoMock.Setup(r => r.ExistsByUsernameAsync("taken", 1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(true);
 
-        var request = new UpdateUserRequest { Name = "X", Username = "taken", Email = "x@x.com", Phone = "1234567890", Role = "Admin" };
+        var request = new UpdateUserRequest { Name = "X", Username = "taken", Email = "x@x.com", Phone = "1234567890", Role = "Admin", RowVersion = 1 };
         var act = () => _sut.UpdateUserAsync(1, request, callerId: 1);
 
         await act.Should().ThrowAsync<DuplicateResourceException>();
@@ -347,7 +348,7 @@ public class UserServiceTests
                  .ReturnsAsync(user);
         SetupNoDuplicatesForUpdate(1);
 
-        var request = new UpdateUserRequest { Name = "X", Username = "x", Email = "x@x.com", Phone = "1234567890", Role = "BadRole" };
+        var request = new UpdateUserRequest { Name = "X", Username = "x", Email = "x@x.com", Phone = "1234567890", Role = "BadRole", RowVersion = 1 };
         var act = () => _sut.UpdateUserAsync(1, request, callerId: 1);
 
         var ex = await act.Should().ThrowAsync<ValidationException>();
@@ -362,7 +363,7 @@ public class UserServiceTests
                  .ReturnsAsync(user);
         SetupNoDuplicatesForUpdate(1);
 
-        var request = new UpdateUserRequest { Name = "X", Username = "x", Email = "x@x.com", Phone = "1234567890", Role = "Admin" };
+        var request = new UpdateUserRequest { Name = "X", Username = "x", Email = "x@x.com", Phone = "1234567890", Role = "Admin", RowVersion = 1 };
         await _sut.UpdateUserAsync(1, request, callerId: 7);
 
         user.UpdatedBy.Should().Be(7);

@@ -15,7 +15,8 @@ public class UpdateProductValidatorTests
         PrintDescription = null,
         PiecesPerPack = 12,
         ImageUrl = null,
-        Remarks = null
+        Remarks = null,
+        RowVersion = 1u
     };
 
     // ─────────────────────────────────────────────────
@@ -187,5 +188,28 @@ public class UpdateProductValidatorTests
         req.ImageUrl = new string('a', 500);
         var result = _validator.TestValidate(req);
         result.ShouldNotHaveValidationErrorFor(x => x.ImageUrl);
+    }
+
+    // ─────────────────────────────────────────────────
+    // RowVersion (optimistic concurrency)
+    // ─────────────────────────────────────────────────
+
+    [Fact]
+    public void RowVersion_Zero_Fails()
+    {
+        var req = ValidRequest();
+        req.RowVersion = 0u;
+        var result = _validator.TestValidate(req);
+        result.ShouldHaveValidationErrorFor(x => x.RowVersion)
+              .WithErrorMessage("RowVersion is required for optimistic concurrency.");
+    }
+
+    [Fact]
+    public void RowVersion_NonZero_Passes()
+    {
+        var req = ValidRequest();
+        req.RowVersion = 42u;
+        var result = _validator.TestValidate(req);
+        result.ShouldNotHaveValidationErrorFor(x => x.RowVersion);
     }
 }

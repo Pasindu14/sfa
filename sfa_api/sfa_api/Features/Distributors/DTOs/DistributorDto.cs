@@ -21,6 +21,7 @@ public record DistributorDto(
     int? FleetId,
     string? FleetName,
     bool IsActive,
+    uint RowVersion,
     DateTime CreatedAt,
     DateTime UpdatedAt
 );

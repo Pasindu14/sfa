@@ -70,5 +70,8 @@ public class UpdateOutletValidator : AbstractValidator<UpdateOutletRequest>
 
         RuleFor(x => x.RouteId)
             .GreaterThan(0).WithMessage("RouteId must be a valid route.");
+
+        RuleFor(x => x.RowVersion)
+            .NotEqual(0u).WithMessage("RowVersion is required for optimistic concurrency.");
     }
 }

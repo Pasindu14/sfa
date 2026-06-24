@@ -49,6 +49,9 @@ public class Outlet
     public int? CreatedBy { get; set; }
     public int? UpdatedBy { get; set; }
 
+    // Optimistic concurrency — maps to PostgreSQL xmin system column
+    public uint RowVersion { get; set; }
+
     // Navigation
     public RouteEntity? Route    { get; set; }
     public Division     Division   { get; set; } = null!;

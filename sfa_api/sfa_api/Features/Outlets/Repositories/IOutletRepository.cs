@@ -17,6 +17,7 @@ public interface IOutletRepository
     Task<bool> ExistsByNicNoAsync(string nicNo, int excludeId, CancellationToken ct = default);
     Task CreateAsync(Outlet outlet, CancellationToken ct = default);
     Task UpdateAsync(Outlet outlet, CancellationToken ct = default);
+    void ApplyConcurrencyToken(Outlet outlet, uint rowVersion);
     Task DeleteAsync(int id, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

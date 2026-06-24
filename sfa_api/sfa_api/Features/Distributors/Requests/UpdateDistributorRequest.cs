@@ -16,4 +16,7 @@ public class UpdateDistributorRequest
     public double? Longitude { get; set; }
     public int? TerritoryId { get; set; }
     public int? FleetId { get; set; }
+
+    // Optimistic concurrency token — required (validator rejects 0).
+    public uint RowVersion { get; set; }
 }

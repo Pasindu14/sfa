@@ -27,14 +27,16 @@ public class ProductsApiTests
         string? printDescription = null,
         int piecesPerPack = 12,
         string? imageUrl = null,
-        string? remarks = null) => new
+        string? remarks = null,
+        uint rowVersion = 1u) => new
         {
             code,
             itemDescription,
             printDescription,
             piecesPerPack,
             imageUrl,
-            remarks
+            remarks,
+            rowVersion
         };
 
     // ─────────────────────────────────────────────────
@@ -410,12 +412,14 @@ public class ProductsApiTests
         var createResponse = await _client.PostAsJsonAsync("/api/v1/products", createPayload);
         var createBody = await createResponse.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
         var id = createBody.GetProperty("data").GetProperty("id").GetInt32();
+        var rowVersion = createBody.GetProperty("data").GetProperty("rowVersion").GetUInt32();
 
         var updatePayload = CreateProductPayload(
             code: "AFT-UPD-001",
             itemDescription: "After Update Product",
             printDescription: "UPDATED",
-            piecesPerPack: 48);
+            piecesPerPack: 48,
+            rowVersion: rowVersion);
 
         var updateResponse = await _client.PutAsJsonAsync($"/api/v1/products/{id}", updatePayload);
 
@@ -478,13 +482,16 @@ public class ProductsApiTests
 
         await _client.PostAsJsonAsync("/api/v1/products", first);
         var secondResp = await _client.PostAsJsonAsync("/api/v1/products", second);
-        var secondId = (await secondResp.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
-            .GetProperty("data").GetProperty("id").GetInt32();
+        var secondData = (await secondResp.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data");
+        var secondId = secondData.GetProperty("id").GetInt32();
+        var secondRowVersion = secondData.GetProperty("rowVersion").GetUInt32();
 
         // Try to update second product to use first product's code
         var updatePayload = CreateProductPayload(
             code: "CONFLICT-A-001",     // taken by first product
-            itemDescription: "Conflict Product B Updated");
+            itemDescription: "Conflict Product B Updated",
+            rowVersion: secondRowVersion);
 
         var response = await _client.PutAsJsonAsync($"/api/v1/products/{secondId}", updatePayload);
 

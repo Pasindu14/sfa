@@ -5,7 +5,9 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   createDistributorSchema,
+  updateDistributorSchema,
   type CreateDistributorInput,
+  type UpdateDistributorInput,
 } from "../../schema/distributor.schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,10 +34,11 @@ import type { TerritoryDto } from "@/features/territory/schema/territory.schema"
 import { fetchFleetsForSelect } from "@/features/fleet/actions/fleet.actions";
 import type { FleetDto } from "@/features/fleet/schema/fleet.schema";
 
+// UpdateDistributorInput is a superset of CreateDistributorInput (adds rowVersion).
 interface DistributorFormProps {
   mode: "create" | "edit";
-  defaultValues?: Partial<CreateDistributorInput>;
-  onSubmit: (data: CreateDistributorInput) => void;
+  defaultValues?: Partial<UpdateDistributorInput>;
+  onSubmit: (data: UpdateDistributorInput) => void;
   isLoading: boolean;
   fieldErrors?: Record<string, string> | null;
 }
@@ -47,8 +50,10 @@ export function DistributorForm({
   isLoading,
   fieldErrors,
 }: DistributorFormProps) {
-  const form = useForm<CreateDistributorInput>({
-    resolver: zodResolver(createDistributorSchema),
+  const schema = mode === "create" ? createDistributorSchema : updateDistributorSchema;
+
+  const form = useForm<UpdateDistributorInput>({
+    resolver: zodResolver(schema as typeof updateDistributorSchema),
     defaultValues: {
       name: "",
       address: "",
@@ -64,6 +69,7 @@ export function DistributorForm({
       longitude: undefined,
       territoryId: undefined,
       fleetId: undefined,
+      rowVersion: 0,
       ...defaultValues,
     },
   });
@@ -73,7 +79,7 @@ export function DistributorForm({
   useEffect(() => {
     if (fieldErrors) {
       Object.entries(fieldErrors).forEach(([field, message]) => {
-        setError(field as keyof CreateDistributorInput, { message });
+        setError(field as keyof UpdateDistributorInput, { message });
       });
     }
   }, [fieldErrors, setError]);
@@ -394,6 +400,27 @@ export function DistributorForm({
             </FormItem>
           )}
         />
+
+        {/* Hidden concurrency token — edit mode only */}
+        {mode === "edit" && (
+          <FormField
+            control={form.control}
+            name="rowVersion"
+            render={({ field }) => (
+              <FormItem className="hidden">
+                <FormControl>
+                  <input
+                    type="hidden"
+                    {...field}
+                    onChange={(e) => field.onChange(Number(e.target.value))}
+                    value={field.value ?? 0}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading ? (

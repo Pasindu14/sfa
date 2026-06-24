@@ -37,6 +37,9 @@ public class Distributor
     public int? UpdatedBy { get; set; }
     public bool IsDeleted { get; set; } = false;
 
+    // Optimistic concurrency — maps to PostgreSQL xmin system column
+    public uint RowVersion { get; set; }
+
     // Navigation
     public Territory? Territory { get; set; }
     public Area? Area { get; set; }

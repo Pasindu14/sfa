@@ -209,6 +209,10 @@ public class OutletService(
         if (await _repo.ExistsByNicNoAsync(request.NicNo, id, ct))
             throw new DuplicateResourceException("NicNo");
 
+        // Tell EF to use the client's RowVersion as the OriginalValue in the WHERE xmin = $token clause.
+        // Setting outlet.RowVersion directly only changes CurrentValue — OriginalValue is what EF checks.
+        _repo.ApplyConcurrencyToken(outlet, request.RowVersion);
+
         outlet.Name = request.Name;
         outlet.Address = request.Address;
         outlet.Tel = request.Tel;
@@ -319,6 +323,7 @@ public class OutletService(
         RegionId: o.RegionId,
         RegionName: o.Route?.Region?.Name ?? string.Empty,
         IsActive: o.IsActive,
+        RowVersion: o.RowVersion,
         CreatedAt: o.CreatedAt,
         UpdatedAt: o.UpdatedAt,
         LastBillDate: o.LastBillDate

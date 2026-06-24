@@ -21,7 +21,8 @@ public class UpdateOutletValidatorTests
         OutletCategory = "SMMT",
         ProvinceCode = 2,
         DistrictCode = 22,
-        RouteId = 1
+        RouteId = 1,
+        RowVersion = 1u
     };
 
     [Fact]
@@ -221,5 +222,19 @@ public class UpdateOutletValidatorTests
 
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.PropertyName == "RouteId");
+    }
+
+    // ── RowVersion (optimistic concurrency) ───────────
+
+    [Fact]
+    public void Validate_ZeroRowVersion_FailsWithRowVersionError()
+    {
+        var request = ValidRequest();
+        request.RowVersion = 0u;
+
+        var result = _validator.Validate(request);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "RowVersion");
     }
 }

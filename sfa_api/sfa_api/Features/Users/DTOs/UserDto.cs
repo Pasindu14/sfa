@@ -10,6 +10,7 @@ public record UserDto(
     int? DistributorId,
     string? DistributorName,
     bool IsActive,
+    uint RowVersion,
     DateTime CreatedAt,
     DateTime UpdatedAt
 );

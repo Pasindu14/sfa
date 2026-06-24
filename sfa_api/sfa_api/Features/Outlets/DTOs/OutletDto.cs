@@ -30,6 +30,7 @@ public record OutletDto(
     int RegionId,
     string RegionName,
     bool IsActive,
+    uint RowVersion,
     DateTime CreatedAt,
     DateTime UpdatedAt,
     DateTime? LastBillDate

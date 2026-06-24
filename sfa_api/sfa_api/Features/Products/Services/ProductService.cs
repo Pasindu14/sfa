@@ -106,6 +106,9 @@ public class ProductService(
         if (request.CategoryId.HasValue && !await _categoryRepo.ExistsByIdAsync(request.CategoryId.Value, ct))
             throw new NotFoundException("ProductCategory", request.CategoryId.Value);
 
+        // Tell EF to use the client's RowVersion as the OriginalValue in the WHERE xmin = $token clause.
+        // Setting product.RowVersion directly only changes CurrentValue — OriginalValue is what EF checks.
+        _repo.ApplyConcurrencyToken(product, request.RowVersion);
         product.Code = request.Code;
         product.ItemDescription = request.ItemDescription;
         product.PrintDescription = request.PrintDescription;
@@ -184,6 +187,7 @@ public class ProductService(
         DealerPackPrice: product.DealerPackPrice,
         DealerCasePrice: product.DealerCasePrice,
         Mrp: product.Mrp,
+        RowVersion: product.RowVersion,
         CreatedAt: product.CreatedAt,
         UpdatedAt: product.UpdatedAt
     );

@@ -37,5 +37,8 @@ public class UpdateProductValidator : AbstractValidator<UpdateProductRequest>
         RuleFor(x => x.Mrp)
             .GreaterThanOrEqualTo(0).WithMessage("MRP must be 0 or greater.")
             .LessThanOrEqualTo(1_000_000).WithMessage("MRP must not exceed 1,000,000.");
+
+        RuleFor(x => x.RowVersion)
+            .NotEqual(0u).WithMessage("RowVersion is required for optimistic concurrency.");
     }
 }

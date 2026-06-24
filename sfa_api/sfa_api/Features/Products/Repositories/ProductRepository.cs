@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using sfa_api.Common.Errors;
 using sfa_api.Features.Products.Entities;
 using sfa_api.Infrastructure.Persistence;
 
@@ -84,6 +85,12 @@ public class ProductRepository(AppDbContext context) : IProductRepository
         return Task.CompletedTask;
     }
 
+    // Sets the OriginalValue of RowVersion so EF uses the client's version in the
+    // WHERE xmin = $token clause — this is what actually detects cross-request staleness.
+    // Assigning product.RowVersion directly only changes CurrentValue and has no effect on the lock.
+    public void ApplyConcurrencyToken(Product product, uint rowVersion)
+        => _context.Entry(product).Property(x => x.RowVersion).OriginalValue = rowVersion;
+
     public async Task DeactivateAsync(int id, CancellationToken ct = default)
         => await _context.Products
             .IgnoreQueryFilters()
@@ -102,5 +109,14 @@ public class ProductRepository(AppDbContext context) : IProductRepository
                 .SetProperty(p => p.UpdatedAt, DateTime.UtcNow), ct);
 
     public async Task SaveChangesAsync(CancellationToken ct = default)
-        => await _context.SaveChangesAsync(ct);
+    {
+        try
+        {
+            await _context.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new ConcurrencyConflictException();
+        }
+    }
 }

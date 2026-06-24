@@ -29,8 +29,10 @@ export const createProductSchema = z.object({
   mrp: z.number().min(0, 'MRP must be 0 or greater'),
 })
 
-// Update schema (same shape as create)
-export const updateProductSchema = createProductSchema
+// Update schema (create shape + concurrency token)
+export const updateProductSchema = createProductSchema.extend({
+  rowVersion: z.number().int().min(1, 'Row version is required'),
+})
 
 // Filter schema
 export const filterSchema = z.object({
@@ -58,6 +60,7 @@ export type ProductDto = {
   categoryId: number | null
   categoryName: string | null
   isActive: boolean
+  rowVersion: number
   dealerPackPrice: number
   dealerCasePrice: number
   mrp: number

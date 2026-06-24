@@ -91,6 +91,7 @@ function EditProductDialog() {
             dealerPackPrice: product.dealerPackPrice ?? 0,
             dealerCasePrice: product.dealerCasePrice ?? 0,
             mrp: product.mrp ?? 0,
+            rowVersion: product.rowVersion,
           }
         : undefined,
     [product]
