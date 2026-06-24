@@ -3,6 +3,7 @@
 import type { ColumnDef } from '@tanstack/react-table'
 import { Badge } from '@/components/ui/badge'
 import type { DistributorStockItem } from '../../schema/stock.schema'
+import { formatColombo } from '@/lib/utils/datetime'
 
 function StockLevelBadge({ qty }: { qty: number }) {
   if (qty <= 0)
@@ -57,7 +58,7 @@ export function getStockColumns(): ColumnDef<DistributorStockItem>[] {
       header: 'Last Updated',
       cell: ({ row }) => (
         <span className="text-xs text-muted-foreground">
-          {new Date(row.original.lastUpdatedAt).toLocaleString()}
+          {formatColombo(row.original.lastUpdatedAt, 'd MMM yyyy, HH:mm')}
         </span>
       ),
     },

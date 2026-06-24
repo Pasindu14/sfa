@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { StockTakingPeriodDto } from '../../schema/stock-taking.schema'
+import { formatColombo } from '@/lib/utils/datetime'
 
 const MONTHS = [
   '', 'January', 'February', 'March', 'April', 'May', 'June',
@@ -66,7 +67,7 @@ export function getStockTakingColumns(actions: StockTakingColumnActions): Column
             <div className="text-sm">{lockedByName}</div>
             {lockedAt && (
               <div className="text-xs text-muted-foreground">
-                {new Date(lockedAt).toLocaleDateString()}
+                {formatColombo(lockedAt, 'd MMM yyyy')}
               </div>
             )}
           </div>

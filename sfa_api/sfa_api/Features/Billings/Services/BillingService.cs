@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using sfa_api.Common.Errors;
+using sfa_api.Common.Extensions;
 using sfa_api.Features.Billings.DTOs;
 using sfa_api.Features.Billings.Entities;
 using sfa_api.Features.Billings.Enums;
@@ -245,14 +246,14 @@ public class BillingService(
 
         // ⑩ Generate billing number
         var seqNo         = await _billingRepository.GetNextBillingNumberAsync(ct);
-        var billingNumber = $"BIL-{DateTime.UtcNow.Year}-{seqNo:D5}";
+        var billingNumber = $"BIL-{SriLankaTime.Year}-{seqNo:D5}";
 
         // ⑪ Build entity
         var billing = new Billing
         {
             BillingNumber = billingNumber,
             ClientBillId  = clientBillId,
-            BillingDate   = request.BillingDate ?? DateOnly.FromDateTime(DateTime.UtcNow),
+            BillingDate   = request.BillingDate ?? SriLankaTime.Today,
             OutletId          = request.OutletId,
             SalesRepId        = salesRepId,
             DistributorId     = distributor.Id,

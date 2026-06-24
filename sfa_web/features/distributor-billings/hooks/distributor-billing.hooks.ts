@@ -11,15 +11,11 @@ import {
   updateCashCollectedAction,
 } from '../actions/distributor-billing.actions'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
+import { toColomboDateStr } from '@/lib/utils/datetime'
 import type { DistributorBillingListItem } from '../schema/distributor-billing.schema'
 
-function toLocalDateStr(d: Date) {
-  return [
-    d.getFullYear(),
-    String(d.getMonth() + 1).padStart(2, '0'),
-    String(d.getDate()).padStart(2, '0'),
-  ].join('-')
-}
+// Serialize date filters in Sri Lanka time (not the browser's timezone). See lib/utils/datetime.ts.
+const toLocalDateStr = toColomboDateStr
 
 export const myBillingKeys = {
   all: ['my-billings'] as const,

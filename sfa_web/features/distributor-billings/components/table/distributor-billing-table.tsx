@@ -18,13 +18,10 @@ import { DistributorBillingDetailDialog } from '../dialogs/distributor-billing-d
 import { DistributorBillingReviewDialog } from '../dialogs/distributor-billing-review-dialog'
 import { DistributorBillingCashCollectedDialog } from '../dialogs/distributor-billing-cash-collected-dialog'
 import type { DistributorBillingListItem } from '../../schema/distributor-billing.schema'
+import { toColomboDateStr } from '@/lib/utils/datetime'
 
 function toLocalDateStr(date: Date) {
-  return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, '0'),
-    String(date.getDate()).padStart(2, '0'),
-  ].join('-')
+  return toColomboDateStr(date)
 }
 
 const today = toLocalDateStr(new Date())

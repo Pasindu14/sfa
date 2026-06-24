@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { PurchaseOrderStatusBadge } from '../purchase-order-status-badge'
 import type { PurchaseOrderSummaryDto } from "../../schema/purchase-order.schema";
+import { formatColombo } from '@/lib/utils/datetime'
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('en-LK', {
@@ -22,12 +23,7 @@ function formatCurrency(amount: number) {
 }
 
 function formatDate(dateStr: string | null | undefined) {
-  if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleDateString('en-LK', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
+  return formatColombo(dateStr, 'd MMM yyyy')
 }
 
 export function getPurchaseOrderColumns(): ColumnDef<PurchaseOrderSummaryDto>[] {

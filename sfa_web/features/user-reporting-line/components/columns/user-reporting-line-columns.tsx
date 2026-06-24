@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { UserReportingLineDto } from '../types/user-reporting-line.types'
+import { formatColombo } from '@/lib/utils/datetime'
 
 function getInitials(name: string) {
   return name
@@ -98,11 +99,7 @@ export function getUserReportingLineColumns(
       header: 'Effective From',
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">
-          {new Date(row.original.effectiveFrom).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          })}
+          {formatColombo(row.original.effectiveFrom, 'd MMM yyyy')}
         </span>
       ),
     },

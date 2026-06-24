@@ -3,6 +3,7 @@
 import type { ColumnDef } from '@tanstack/react-table'
 import { Badge } from '@/components/ui/badge'
 import type { SalesTargetImportBatchDto } from '../../schema/sales-target.schema'
+import { formatColombo } from '@/lib/utils/datetime'
 
 const MONTH_LABELS = [
   '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -72,7 +73,7 @@ export function getImportHistoryColumns(): ColumnDef<SalesTargetImportBatchDto>[
       header: 'Date',
       cell: ({ row }) => (
         <span className="text-xs text-muted-foreground">
-          {new Date(row.original.importedAt).toLocaleDateString('en-LK')}
+          {formatColombo(row.original.importedAt, 'd MMM yyyy')}
         </span>
       ),
     },

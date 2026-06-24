@@ -13,6 +13,7 @@ import { useMyBillingsTodaySummary, useMyBillingWeeklyTrend, useMyPendingBilling
 import { useMyStockSummary } from "@/features/distributor-stock/hooks/distributor-stock.hooks"
 import { useMyGrnPendingCount } from "@/features/distributor-grn/hooks/distributor-grn.hooks"
 import { useMyPurchaseOrderStats, useMyDistributorProfile } from "@/features/distributor-purchase-orders/hooks/distributor-purchase-order.hooks"
+import { formatColombo } from "@/lib/utils/datetime"
 
 // ── Formatters ─────────────────────────────────────────────────────────────
 
@@ -27,7 +28,7 @@ function formatCurrencyFull(amount: number) {
 }
 
 function formatDate(d: Date) {
-  return d.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+  return formatColombo(d, "EEEE, d MMMM yyyy")
 }
 
 const CATEGORY_STYLES: Record<string, string> = {

@@ -13,13 +13,10 @@ import { getDistributorGrnColumns } from '../columns/distributor-grn-columns'
 import { useMyGrnsDataTable } from '../../hooks/distributor-grn.hooks'
 import { DistributorGrnConfirmDialog } from '../dialogs/distributor-grn-confirm-dialog'
 import { DistributorGrnDetailDialog } from '../dialogs/distributor-grn-detail-dialog'
+import { toColomboDateStr } from '@/lib/utils/datetime'
 
 function toLocalDateStr(date: Date) {
-  return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, '0'),
-    String(date.getDate()).padStart(2, '0'),
-  ].join('-')
+  return toColomboDateStr(date)
 }
 
 const today = toLocalDateStr(new Date())

@@ -39,6 +39,7 @@ import { getSalesInvoiceColumns } from "../columns/sales-invoice-columns";
 import { SalesInvoiceCreateGrnDialog } from "../dialogs/sales-invoice-create-grn-dialog";
 import { getDistributorsAction } from "@/features/distributor/actions/distributor.actions";
 import type { DistributorDto } from "@/features/distributor/schema/distributor.schema";
+import { toColomboDateStr } from "@/lib/utils/datetime";
 
 // ── Distributor fetcher ───────────────────────────────────────────────────
 // Returns [] until user types at least 1 character — avoids loading all
@@ -84,13 +85,8 @@ function DatePicker({
           selected={selected}
           onSelect={(day) => {
             if (day) {
-              // Convert back to YYYY-MM-DD local string
-              const iso = [
-                day.getFullYear(),
-                String(day.getMonth() + 1).padStart(2, "0"),
-                String(day.getDate()).padStart(2, "0"),
-              ].join("-")
-              onChange(iso)
+              // Convert back to YYYY-MM-DD in Sri Lanka time
+              onChange(toColomboDateStr(day))
             }
             setOpen(false)
           }}

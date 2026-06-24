@@ -15,6 +15,7 @@ import {
   DeletionStatus,
   type RouteCancellationDto,
 } from "../../schema/route-cancellation.schema";
+import { formatColombo } from "@/lib/utils/datetime";
 
 const MONTHS = [
   "Jan",
@@ -48,10 +49,7 @@ function formatRelativeTime(dateStr: string | null): string {
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays === 1) return "Yesterday";
   if (diffDays < 7) return `${diffDays}d ago`;
-  return new Date(dateStr).toLocaleDateString("en-LK", {
-    month: "short",
-    day: "numeric",
-  });
+  return formatColombo(dateStr, "d MMM");
 }
 
 function TruncatedReason({ reason }: { reason: string | null }) {
@@ -170,11 +168,7 @@ export function getRouteCancellationColumns(): ColumnDef<RouteCancellationDto>[]
               </span>
             </TooltipTrigger>
             <TooltipContent>
-              {row.original.deletionRequestedAt
-                ? new Date(row.original.deletionRequestedAt).toLocaleString(
-                    "en-LK",
-                  )
-                : "—"}
+              {formatColombo(row.original.deletionRequestedAt, "d MMM yyyy, HH:mm")}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>

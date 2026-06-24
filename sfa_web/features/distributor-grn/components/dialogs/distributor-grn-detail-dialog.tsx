@@ -14,6 +14,7 @@ import { Separator } from '@/components/ui/separator'
 import { Calendar, ClipboardCheck, FileText, User } from 'lucide-react'
 import { useMyGrnDetail } from '../../hooks/distributor-grn.hooks'
 import type { MyGrnListItem } from '../../schema/distributor-grn.schema'
+import { formatColombo } from '@/lib/utils/datetime'
 
 function GrnStatusBadge({ status }: { status: MyGrnListItem['status'] }) {
   if (status === 'Confirmed')
@@ -67,12 +68,7 @@ function LoadingSkeleton() {
 }
 
 function formatDate(dateStr: string | null) {
-  if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
+  return formatColombo(dateStr, 'd MMM yyyy')
 }
 
 interface Props {

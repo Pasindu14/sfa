@@ -27,6 +27,7 @@ import { GrnConfirmDialog } from '../dialogs/grn-confirm-dialog'
 import { GrnDeleteDialog } from '../dialogs/grn-delete-dialog'
 import { getDistributorsAction } from '@/features/distributor/actions/distributor.actions'
 import type { DistributorDto } from '@/features/distributor/schema/distributor.schema'
+import { toColomboDateStr } from '@/lib/utils/datetime'
 
 // ── Distributor fetcher ───────────────────────────────────────────────────
 
@@ -69,12 +70,7 @@ function DatePicker({
           selected={selected}
           onSelect={(day) => {
             if (day) {
-              const iso = [
-                day.getFullYear(),
-                String(day.getMonth() + 1).padStart(2, '0'),
-                String(day.getDate()).padStart(2, '0'),
-              ].join('-')
-              onChange(iso)
+              onChange(toColomboDateStr(day))
             }
             setOpen(false)
           }}

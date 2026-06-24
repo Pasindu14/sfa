@@ -6,6 +6,7 @@ import { Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DistributorPurchaseOrderStatusBadge } from '../distributor-purchase-order-status-badge'
 import type { MyPurchaseOrderSummaryDto } from '../../schema/distributor-purchase-order.schema'
+import { formatColombo } from '@/lib/utils/datetime'
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('en-LK', {
@@ -16,12 +17,7 @@ function formatCurrency(amount: number) {
 }
 
 function formatDate(dateStr: string | null) {
-  if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleDateString('en-LK', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
+  return formatColombo(dateStr, 'd MMM yyyy')
 }
 
 export function getDistributorPurchaseOrderColumns(): ColumnDef<MyPurchaseOrderSummaryDto>[] {

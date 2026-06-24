@@ -69,25 +69,16 @@ import {
 } from "../../schema/purchase-order.schema";
 import type { ProductDto } from "@/features/product/schema/product.schema";
 import { formatCurrency } from '../../utils/format'
+import { formatColombo } from '@/lib/utils/datetime'
 
 function formatDate(dateStr: string | null | undefined) {
   if (!dateStr) return null
-  return new Date(dateStr).toLocaleDateString('en-LK', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return formatColombo(dateStr, 'd MMM yyyy, HH:mm')
 }
 
 function formatDateShort(dateStr: string | null | undefined) {
   if (!dateStr) return null
-  return new Date(dateStr).toLocaleDateString('en-LK', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
+  return formatColombo(dateStr, 'd MMM yyyy')
 }
 
 // ── History Timeline ───────────────────────────────────────────────────────

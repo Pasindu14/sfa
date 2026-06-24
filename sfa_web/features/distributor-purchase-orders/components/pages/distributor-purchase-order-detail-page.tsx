@@ -54,6 +54,7 @@ import {
   type SnapshotItem,
   type PurchaseOrderStatusValue,
 } from '../../schema/distributor-purchase-order.schema'
+import { formatColombo } from '@/lib/utils/datetime'
 type ProductLike = { id: number; code: string; itemDescription: string }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -68,22 +69,12 @@ function formatCurrency(amount: number) {
 
 function formatDate(dateStr: string | null | undefined) {
   if (!dateStr) return null
-  return new Date(dateStr).toLocaleDateString('en-LK', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return formatColombo(dateStr, 'd MMM yyyy, HH:mm')
 }
 
 function formatDateShort(dateStr: string | null | undefined) {
   if (!dateStr) return null
-  return new Date(dateStr).toLocaleDateString('en-LK', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
+  return formatColombo(dateStr, 'd MMM yyyy')
 }
 
 // ── History Timeline ───────────────────────────────────────────────────────

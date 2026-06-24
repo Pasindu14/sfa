@@ -1,13 +1,9 @@
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
+import { toColomboDateStr } from '@/lib/utils/datetime'
 
 function todayIso() {
-  const d = new Date()
-  return [
-    d.getFullYear(),
-    String(d.getMonth() + 1).padStart(2, '0'),
-    String(d.getDate()).padStart(2, '0'),
-  ].join('-')
+  return toColomboDateStr(new Date())
 }
 
 export interface AppliedSalesInvoiceFilters {

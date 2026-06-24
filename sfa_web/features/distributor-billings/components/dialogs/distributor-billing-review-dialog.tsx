@@ -31,6 +31,7 @@ import {
 import { CheckCircle2, XCircle, Loader2, Save } from 'lucide-react'
 import { useApproveBilling, useRejectBilling, useUpdatePaymentType } from '../../hooks/distributor-billing.hooks'
 import type { DistributorBillingListItem } from '../../schema/distributor-billing.schema'
+import { formatColombo } from '@/lib/utils/datetime'
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('en-LK', {
@@ -98,9 +99,7 @@ export function DistributorBillingReviewDialog({ billing, onClose }: Props) {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Date</span>
                   <span className="font-medium">
-                    {new Date(billing.billingDate).toLocaleDateString('en-US', {
-                      day: 'numeric', month: 'short', year: 'numeric',
-                    })}
+                    {formatColombo(billing.billingDate, 'd MMM yyyy')}
                   </span>
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-2">

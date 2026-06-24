@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { RegionDto } from '../types/region.types'
+import { formatColombo } from '@/lib/utils/datetime'
 
 export interface RegionColumnActions {
   openEdit: (id: number) => void
@@ -56,11 +57,7 @@ export function getRegionColumns(actions: RegionColumnActions): ColumnDef<Region
       size: 140,
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">
-          {new Date(row.original.createdAt).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          })}
+          {formatColombo(row.original.createdAt, 'd MMM yyyy')}
         </span>
       ),
     },

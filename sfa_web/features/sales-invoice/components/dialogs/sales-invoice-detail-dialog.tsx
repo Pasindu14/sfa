@@ -15,6 +15,7 @@ import { Calendar, Banknote, Package, Hash, FileText, Tag } from 'lucide-react'
 import { useDetailDialog } from '../../store'
 import { useSalesInvoiceDetail } from '../../hooks/sales-invoice.hooks'
 import type { SalesInvoiceStatus, SalesInvoiceType } from '../../schema/sales-invoice-list.schema'
+import { formatColombo } from '@/lib/utils/datetime'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -27,11 +28,7 @@ function formatCurrency(amount: number) {
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
+  return formatColombo(iso, 'd MMM yyyy')
 }
 
 // ── Badges ─────────────────────────────────────────────────────────────────

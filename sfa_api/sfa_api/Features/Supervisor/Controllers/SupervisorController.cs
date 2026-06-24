@@ -35,7 +35,7 @@ public class SupervisorController(
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var supervisorId);
-        var summaryDate = date ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var summaryDate = date ?? SriLankaTime.Today;
         var result = await _service.GetSummaryAsync(supervisorId, summaryDate, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }

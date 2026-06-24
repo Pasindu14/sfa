@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { SalesTargetDto } from '../../schema/sales-target.schema'
+import { formatColombo } from '@/lib/utils/datetime'
 
 const MONTH_LABELS = [
   '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -72,7 +73,7 @@ export function getTargetsColumns(
       header: 'Updated',
       cell: ({ row }) => (
         <span className="text-xs text-muted-foreground">
-          {new Date(row.original.updatedAt).toLocaleDateString('en-LK')}
+          {formatColombo(row.original.updatedAt, 'd MMM yyyy')}
         </span>
       ),
     },

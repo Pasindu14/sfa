@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { UserAssignmentDto } from '../types/user-geo-assignment.types'
+import { formatColombo } from '@/lib/utils/datetime'
 
 function getInitials(name: string) {
   return name.split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase()
@@ -145,11 +146,7 @@ export function getUserGeoAssignmentColumns(
       header: 'Assigned On',
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">
-          {new Date(row.original.effectiveFrom).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          })}
+          {formatColombo(row.original.effectiveFrom, 'd MMM yyyy')}
         </span>
       ),
     },

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using sfa_api.Common.Extensions;
 using sfa_api.Features.DailyRouteAssignments.Entities;
 using sfa_api.Features.DailyRouteAssignments.Enums;
 using sfa_api.Features.Users.Entities;
@@ -133,7 +134,7 @@ public class DailyRouteAssignmentRepository(AppDbContext context) : IDailyRouteA
 
     public async Task<DailyRouteAssignment?> GetActiveTodayAssignmentForRepAsync(int repId, CancellationToken ct = default)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = SriLankaTime.Today;
         return await _context.DailyRouteAssignments
             .Include(a => a.Route)
             .Where(a => a.UserId == repId && a.AssignedDate == today && a.IsActive && !a.IsDeleted)

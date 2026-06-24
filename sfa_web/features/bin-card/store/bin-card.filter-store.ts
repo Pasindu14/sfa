@@ -1,13 +1,11 @@
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
+import { toColomboDateStr } from '@/lib/utils/datetime'
 
 // ── Local date helpers (avoid UTC drift from toISOString) ───────────────────
 
 function fmt(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
+  return toColomboDateStr(d)
 }
 
 function defaultFrom(): string {

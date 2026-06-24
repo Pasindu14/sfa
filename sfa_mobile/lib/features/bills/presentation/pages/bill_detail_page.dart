@@ -1087,6 +1087,9 @@ String _formatDate(DateTime d) {
 }
 
 String _formatDateTime(DateTime d) {
+  // Server timestamps arrive as UTC; convert to the rep's local (SL) time before
+  // formatting. .toLocal() is a no-op on values that are already local.
+  final local = d.toLocal();
   String two(int n) => n.toString().padLeft(2, '0');
-  return '${d.year}-${two(d.month)}-${two(d.day)}  ${two(d.hour)}:${two(d.minute)}';
+  return '${local.year}-${two(local.month)}-${two(local.day)}  ${two(local.hour)}:${two(local.minute)}';
 }

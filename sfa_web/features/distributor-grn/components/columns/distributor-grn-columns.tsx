@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ClipboardCheck, Eye } from 'lucide-react'
 import type { MyGrnListItem } from '../../schema/distributor-grn.schema'
+import { formatColombo } from '@/lib/utils/datetime'
 
 function GrnStatusBadge({ status }: { status: MyGrnListItem['status'] }) {
   if (status === 'Confirmed')
@@ -44,11 +45,7 @@ export function getDistributorGrnColumns(
         if (!date) return <span className="text-muted-foreground text-sm">—</span>
         return (
           <span className="text-sm">
-            {new Date(date).toLocaleDateString('en-US', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-            })}
+            {formatColombo(date, 'd MMM yyyy')}
           </span>
         )
       },
@@ -67,11 +64,7 @@ export function getDistributorGrnColumns(
       header: 'Created',
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">
-          {new Date(row.original.createdAt).toLocaleDateString('en-US', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-          })}
+          {formatColombo(row.original.createdAt, 'd MMM yyyy')}
         </span>
       ),
     },

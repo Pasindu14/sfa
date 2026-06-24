@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SFA API — Data Consistency &amp; Accuracy Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --accent: #ff4D00;
+    --accent-soft: #fff1ec;
+    --accent-line: #ffd9cb;
+    --ink: #1a1a1a;
+    --muted: #6b6b6b;
+    --line: #ececec;
+    --crit: #c81d11;
+    --high: #ff4D00;
+    --med: #d98a00;
+    --low: #5a8f3c;
+    --ok: #1f9d6b;
+    --bg-code: #faf7f5;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: #ffffff;
+    color: var(--ink);
+    font-family: 'Jost', system-ui, sans-serif;
+    font-weight: 400;
+    line-height: 1.6;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 28px 96px; }
+
+  header.hero {
+    border-bottom: 3px solid var(--accent);
+    padding: 56px 0 30px;
+    margin-bottom: 8px;
+  }
+  .kicker {
+    text-transform: uppercase;
+    letter-spacing: .32em;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    margin: 0 0 14px;
+  }
+  h1 {
+    font-size: 44px;
+    font-weight: 700;
+    line-height: 1.1;
+    margin: 0 0 16px;
+    letter-spacing: -.5px;
+  }
+  h1 .em { color: var(--accent); }
+  .sub { font-size: 18px; color: var(--muted); font-weight: 300; max-width: 780px; }
+  .meta-row {
+    display: flex; flex-wrap: wrap; gap: 22px;
+    margin-top: 24px; font-size: 13px; color: var(--muted);
+  }
+  .meta-row b { color: var(--ink); font-weight: 600; }
+
+  .verdict {
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-line);
+    border-left: 5px solid var(--accent);
+    border-radius: 10px;
+    padding: 26px 28px;
+    margin: 34px 0;
+  }
+  .verdict h2 { margin: 0 0 10px; font-size: 21px; font-weight: 600; }
+  .verdict p { margin: 0 0 10px; }
+  .verdict p:last-child { margin-bottom: 0; }
+  .verdict .good { color: var(--ok); font-weight: 600; }
+  .verdict .bad { color: var(--crit); font-weight: 600; }
+
+  .score-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin: 30px 0 10px;
+  }
+  .score {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px 14px;
+    text-align: center;
+  }
+  .score .n { font-size: 34px; font-weight: 700; line-height: 1; }
+  .score .l { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-top: 8px; }
+  .score.c .n { color: var(--crit); }
+  .score.m .n { color: var(--med); }
+  .score.l .n { color: var(--low); }
+  .score.o .n { color: var(--ok); }
+
+  h2.sec {
+    font-size: 14px; text-transform: uppercase; letter-spacing: .18em;
+    color: var(--accent); font-weight: 700;
+    margin: 56px 0 6px; padding-bottom: 10px; border-bottom: 2px solid var(--accent-line);
+  }
+  .sec-note { color: var(--muted); font-size: 15px; margin: 0 0 22px; }
+
+  .finding {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 22px 24px;
+    margin: 16px 0;
+    background: #fff;
+  }
+  .finding.crit { border-left: 5px solid var(--crit); }
+  .finding.high { border-left: 5px solid var(--high); }
+  .finding.med  { border-left: 5px solid var(--med); }
+  .finding.low  { border-left: 5px solid var(--low); }
+  .finding.ok   { border-left: 5px solid var(--ok); background: #fcfdfc; }
+
+  .f-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  .badge {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+    padding: 4px 10px; border-radius: 999px; color: #fff; white-space: nowrap;
+  }
+  .badge.crit { background: var(--crit); }
+  .badge.high { background: var(--high); }
+  .badge.med  { background: var(--med); }
+  .badge.low  { background: var(--low); }
+  .badge.ok   { background: var(--ok); }
+  .f-title { font-size: 18px; font-weight: 600; margin: 0; }
+  .f-body { color: #2a2a2a; }
+  .f-body p { margin: 8px 0; }
+  .f-row { margin: 10px 0; }
+  .f-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .1em;
+    color: var(--muted); font-weight: 600; display: block; margin-bottom: 2px;
+  }
+  code, .path {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+    font-size: 13px;
+    background: var(--bg-code);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 1px 6px;
+    color: #8a2c00;
+    word-break: break-word;
+  }
+  pre {
+    background: var(--bg-code);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 12px 0;
+  }
+  pre code { background: none; border: none; padding: 0; color: #3a3a3a; }
+  .risk-flag {
+    display: inline-block; font-weight: 600; font-size: 13px;
+    padding: 2px 8px; border-radius: 5px;
+  }
+  .risk-yes { color: var(--crit); background: #fdecea; }
+  .risk-mid { color: #9a6200; background: #fff4e0; }
+  .risk-no  { color: var(--ok);  background: #e9f7f1; }
+
+  .fix {
+    background: #f3f9f6;
+    border: 1px solid #cfe9dd;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 12px;
+    font-size: 14px;
+    color: #1c5e44;
+  }
+  .fix b { color: #14513a; }
+  .biscuit {
+    background: var(--accent-soft);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 12px;
+    font-size: 14px;
+    color: #7a3413;
+  }
+  .biscuit b { color: var(--accent); }
+
+  .solid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px 22px;
+    margin: 8px 0 0;
+  }
+  .solid div { padding-left: 26px; position: relative; font-size: 15px; }
+  .solid div::before {
+    content: "\2713"; position: absolute; left: 0; top: 0;
+    color: var(--ok); font-weight: 700;
+  }
+
+  .toc { font-size: 14px; color: var(--muted); margin: 0 0 8px; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  footer {
+    margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: 13px;
+  }
+  .priority-table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 14px; }
+  .priority-table th, .priority-table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .priority-table th { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+  .priority-table tr:hover td { background: var(--accent-soft); }
+
+  @media (max-width: 720px) {
+    h1 { font-size: 32px; }
+    .score-grid { grid-template-columns: repeat(2, 1fr); }
+    .solid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <p class="kicker">Data Consistency &amp; Accuracy Review · SFA API</p>
+    <h1>Beyond Security: Will the <span class="em">Numbers</span> Always Be Right?</h1>
+    <p class="sub">The security pass is done. This is the companion review — the things that don't leak data but quietly make it <b>wrong</b>: stale prices, duplicate bills, un-reconciled stock, and day-boundary drift. Focus: consistency, accuracy, no duplicates. Not security.</p>
+    <div class="meta-row">
+      <span><b>Scope:</b> D:\Github\sfa\sfa_api (billing, stock, sync, reporting)</span>
+      <span><b>Stack:</b> .NET 8 · EF Core · PostgreSQL · Flutter</span>
+      <span><b>Method:</b> 2 parallel full-source surveys, code-cited</span>
+      <span><b>Date:</b> 2026-06-24</span>
+    </div>
+  </header>
+
+  <div class="verdict">
+    <h2>The honest bottom line</h2>
+    <p><span class="good">What is already accurate:</span> The arithmetic core is sound. Money is <code>decimal(18,2)</code> with explicit <code>Math.Round(x, 2)</code> everywhere, totals sum with no float drift, dates store as UTC, hot queries are properly indexed, list reads avoid N+1, and bill cancellation correctly <b>reverses stock</b>. Stock-taking captures variance under a row lock. These are the parts that usually go wrong in SFA apps — and yours are right.</p>
+    <p><span class="bad">What can still make data wrong:</span> Billing <b>trusts the price the phone sends</b> — it never re-checks the product master, so a stale offline price list writes wrong revenue with no error. Worse, there are <b>two independent pricing systems</b> (flat dealer price for reps, category-tier price for distributors) that nothing reconciles. There is <b>no soft duplicate-bill detection</b> (a reinstall or web re-submit can create a true duplicate). <b>Credit limits are stored but never enforced.</b> There is <b>no automated stock reconciliation</b> (GRN in vs billed out vs on-hand). None of these throw an exception — that's exactly why they're dangerous: the books look fine until month-end doesn't tie out.</p>
+  </div>
+
+  <div class="score-grid">
+    <div class="score c"><div class="n">4</div><div class="l">High impact</div></div>
+    <div class="score m"><div class="n">6</div><div class="l">Worth deciding</div></div>
+    <div class="score l"><div class="n">5</div><div class="l">Hardening</div></div>
+    <div class="score o"><div class="n">10</div><div class="l">Verified solid</div></div>
+  </div>
+  <p class="toc">Jump to:
+    <a href="#solid">✓ What's solid</a> ·
+    <a href="#high">High impact</a> ·
+    <a href="#pricing">Pricing architecture</a> ·
+    <a href="#time">Time &amp; timezone</a> ·
+    <a href="#medium">Worth a decision</a> ·
+    <a href="#low">Hardening</a> ·
+    <a href="#priority">Priority order</a>
+  </p>
+
+  <!-- ============ SOLID ============ -->
+  <h2 class="sec" id="solid">✓ What is already correct (verified in code)</h2>
+  <p class="sec-note">Read end-to-end and confirmed. These are the accuracy foundations — they hold.</p>
+  <div class="finding ok">
+    <div class="f-head"><span class="badge ok">OK</span><p class="f-title">The arithmetic &amp; consistency core is sound</p></div>
+    <div class="solid">
+      <div><b>No money drift.</b> All monetary columns are <code>decimal(18,2)</code>; every computed value uses <code>Math.Round(x, 2)</code> before storage; aggregate <code>Sum()</code> runs on exact <code>decimal</code>, not float. <span class="path">BillingService.cs:199–237</span></div>
+      <div><b>Dates stored as UTC.</b> No <code>DateTime.Now</code> / <code>DateTime.Today</code> anywhere in production code — only <code>UtcNow</code>. <span class="path">BillingService.cs:255,284</span></div>
+      <div><b>No N+1 on list reads.</b> Billing list uses a single projected query (FK navigations → SQL JOINs); detail uses explicit <code>Include().ThenInclude()</code>. <span class="path">BillingRepository.cs:85–158</span></div>
+      <div><b>Hot queries are indexed.</b> Composite <code>(SalesRepId, BillingDate)</code> + 10 more on Billing; unique <code>(DistributorId, ProductId, StockType)</code> on stock; <code>(UserId, AssignedDate)</code> on route assignments. <span class="path">AppDbContext.cs:670,731,791</span></div>
+      <div><b>Cancellation reverses stock.</b> Cancel/Reject both call <code>ReverseStockForBillingAsync</code> in-transaction, crediting back Sale / FOC pools correctly per item type. <span class="path">BillingService.cs:421–471,589–724</span></div>
+      <div><b>Stock-taking variance is captured.</b> Physical count vs system qty under <code>FOR UPDATE</code> lock; variance stored, admin adjustment posts a ledger transaction. <span class="path">StockTakingService.cs:237–292</span></div>
+      <div><b>Discounts are bounded.</b> Item and bill discount both validated <code>InclusiveBetween(0,100)</code>; free-issue forced to 0. <span class="path">CreateBillingValidator.cs:14,57,66</span></div>
+      <div><b>Pagination is capped.</b> <code>Math.Clamp(pageSize, 1, 200)</code> — a client cannot request a million-row table scan. <span class="path">PaginationHelper.cs:9,19</span></div>
+      <div><b>Idempotency &amp; audit tables self-purge.</b> Hourly cleanup of expired idempotency keys (24h TTL); daily audit-log cleanup (90-day retention). <span class="path">IdempotencyCleanupService.cs · AuditLogCleanupService.cs</span></div>
+      <div><b>Bill numbers never collide.</b> PostgreSQL <code>nextval</code> sequences, not <code>Max()+1</code> (confirmed in the prior audit). <span class="path">BillingRepository.cs:17–23</span></div>
+    </div>
+  </div>
+
+  <!-- ============ HIGH ============ -->
+  <h2 class="sec" id="high">High impact — these silently corrupt the books</h2>
+  <p class="sec-note">No exception is thrown; the data is just wrong. These deserve a decision before scale.</p>
+
+  <div class="finding crit">
+    <div class="f-head"><span class="badge crit">High · Accuracy</span><p class="f-title">1. Billing trusts the price the phone sends — it never re-checks the product master</p></div>
+    <div class="f-body">
+      <div class="f-row"><span class="f-label">Where</span><span class="path">Features/Billings/Services/BillingService.cs:190–234</span></div>
+      <p>The line-item builder takes <code>item.UnitPrice</code> straight from the request and stores it. The product's own <code>DealerPackPrice</code> / <code>DealerCasePrice</code> / <code>Mrp</code> are <b>never read</b> during billing.</p>
+      <pre><code>UnitPrice  = item.UnitPrice,                                    // client value, stored as-is
+totalPrice = Math.Round(item.Quantity * item.UnitPrice, 2);     // no comparison to Product price</code></pre>
+      <p>The math is perfect — but it's perfect math on an <b>unverified input</b>. The mobile app caches a price list and can bill offline. If that cache is a day (or a price-revision) stale, every bill writes the wrong revenue, and the system reports it as fact. This is the classic distribution-software failure: the totals all add up, but they add up to the wrong number, and you only discover it when the distributor's payment doesn't match your invoice.</p>
+      <div class="f-row"><span class="f-label">Impact</span> <span class="risk-flag risk-yes">Wrong revenue, silently</span> Affects every bill, not an edge case. No alarm.</div>
+      <div class="fix"><b>Fix (decide the policy first):</b> If reps <b>cannot</b> negotiate price → server re-fetches the current <code>Product</code> price and <b>overrides</b> the client value entirely; the phone's price becomes display-only. If reps <b>can</b> negotiate → keep the entered price but also <b>snapshot the master price onto the BillingItem</b> (e.g. <code>CatalogUnitPrice</code>) so you can report the variance and detect stale-list drift. Either way, the server — not the phone — must be the price source of truth.</div>
+      <div class="biscuit"><b>Business question to answer:</b> For Uswatte, is the dealer price fixed per product, or can a rep give a special price at the shop? That single answer decides "override" vs "snapshot &amp; flag."</div>
+    </div>
+  </div>
+
+  <div class="finding crit">
+    <div class="f-head"><span class="badge crit">High · Duplicates</span><p class="f-title">2. A reinstall or web re-submit can create a genuine duplicate bill</p></div>
+    <div class="f-body">
+      <div class="f-row"><span class="f-label">Where</span><span class="path">AppDbContext.cs:775</span> (only <code>ClientBillId</code> is unique)</div>
+      <p>Billing's only duplicate backstop is the filtered unique index on <code>ClientBillId</code> (the phone-generated UUID). That correctly stops double-taps and retry-after-timeout <b>from the same install</b>. It does <b>not</b> stop a duplicate when the key changes:</p>
+      <pre><code>e.HasIndex(x => x.ClientBillId).IsUnique().HasFilter("\"ClientBillId\" IS NOT NULL");</code></pre>
+      <p>Scenario: rep submits a bill → app is reinstalled / cache cleared / the same bill is re-entered from the web → a <b>new</b> <code>ClientBillId</code> is generated → the unique index does not fire → two bills for the same sale.</p>
+      <div class="f-row"><span class="f-label">Why a hard constraint is the WRONG fix</span> <span class="risk-flag risk-mid">Nuance</span> You cannot add a unique <code>(SalesRepId, OutletId, BillingDate)</code> index here — a rep legitimately bills the same shop twice a day (a morning order and an evening top-up are both real). NotBilling <i>can</i> have that hard index (<span class="path">AppDbContext.cs:920</span>) precisely because a shop is "not billed" at most once a day. Billing is different.</div>
+      <div class="fix"><b>Fix:</b> <b>Soft</b> duplicate detection, not a DB constraint. On create, look for an existing bill with the same rep + outlet + a near-identical total within the last N minutes; if found, return it (or require an explicit "yes, this is a second order" confirmation flag). This closes the reinstall/web gap without blocking legitimate repeat visits.</div>
+    </div>
+  </div>
+
+  <!-- ============ PRICING DEEP DIVE ============ -->
+  <h2 class="sec" id="pricing">Deep dive — the pricing architecture</h2>
+  <p class="sec-note">The single price-trust finding above is the tip of a larger issue: pricing is split across <b>two unrelated engines</b>, and which one applies depends on which channel the order comes through. This is where "consistent &amp; accurate" is most at risk.</p>
+
+  <div class="finding crit">
+    <div class="f-head"><span class="badge crit">High · Consistency</span><p class="f-title">11. Two pricing systems, no reconciliation — the same product has two official prices</p></div>
+    <div class="f-body">
+      <p>The same SKU is priced by two independent tables, maintained in two different admin screens, at two different precisions, consumed by two different channels. Nothing links them.</p>
+      <table class="priority-table">
+        <thead><tr><th></th><th>System A — flat dealer price</th><th>System B — category-tier price</th></tr></thead>
+        <tbody>
+          <tr><td><b>Stored in</b></td><td><code>Product.DealerPackPrice</code> / <code>DealerCasePrice</code> / <code>Mrp</code></td><td><code>ProductCategoryPrices</code> table (<code>Price</code> per A/B/C/D)</td></tr>
+          <tr><td><b>Precision</b></td><td><code>decimal(18,2)</code></td><td><code>decimal(18,4)</code></td></tr>
+          <tr><td><b>Varies by</b></td><td>nobody — one flat price for all</td><td><code>Distributor.Category</code> (A/B/C/D)</td></tr>
+          <tr><td><b>Set via</b></td><td>Product create/edit form</td><td><code>product-category-pricings</code> bulk-upsert grid</td></tr>
+          <tr><td><b>Pushed to</b></td><td><b>mobile</b> (<code>/api/v1/mobile/products</code>)</td><td><b>web portal</b> + PurchaseOrders</td></tr>
+          <tr><td><b>Prices…</b></td><td><b>sales reps' bills</b> (mobile)</td><td><b>distributor self-orders</b> (portal/PO)</td></tr>
+        </tbody>
+      </table>
+      <div class="f-row"><span class="f-label">Evidence</span> Rep bill: <span class="path">quantity_dialog.dart:106-107,227-243</span> reads <code>product.dealerPackPrice</code>. Distributor portal: <span class="path">ProductCategoryPricingService.cs:21-27</span> → <code>GetForCategoryAsync(distributor.Category)</code>. Mobile <b>never</b> calls a category-pricing endpoint (only <code>/api/v1/mobile/products</code>).</div>
+      <div class="f-row"><span class="f-label">Impact</span> <span class="risk-flag risk-yes">Silent drift</span> Admin updates the category grid; the rep's flat dealer price is untouched. A distributor self-ordering now pays the new price, but the rep billing that distributor's outlets still bills the old one — the same SKU, two regimes, in one revenue report.</div>
+      <div class="fix"><b>Fix:</b> Pick one engine as the source of truth. If tiered pricing is real, sync category prices to the phone (keyed by the outlet's distributor category) and derive/retire the flat dealer fields. If flat pricing is real, retire the category table. Running both indefinitely guarantees they diverge.</div>
+    </div>
+  </div>
+
+  <div class="finding crit">
+    <div class="f-head"><span class="badge crit">High · Accuracy / Fraud</span><p class="f-title">12. Return-line prices are freely editable on the phone, with no ceiling</p></div>
+    <div class="f-body">
+      <div class="f-row"><span class="f-label">Where</span><span class="path">cart_row.dart:392-457</span> (edit dialog) · <span class="path">create_bill_bloc.dart:189</span> (clamp)</div>
+      <p>Sale lines are locked to the catalog price — good. But for <b>return</b> lines the rep can type any unit price in a dialog, clamped only to <code>>= 0</code>:</p>
+      <pre><code>return l.copyWith(unitPrice: e.unitPrice.clamp(0.0, double.infinity));  // no upper bound</code></pre>
+      <p>Nothing ties a return price to the original sale price, the catalog price, or MRP. A rep can credit a return at Rs.10,000 for goods that sell at Rs.100 — directly reducing the bill total / issuing outsized credit. The server's only guard is the blanket <code>&lt;= 1,000,000</code> ceiling added in the security pass.</p>
+      <div class="f-row"><span class="f-label">Impact</span> <span class="risk-flag risk-yes">Most exploitable hole found</span> No policy decision needed to cap it — this is a clear correctness fix.</div>
+      <div class="fix"><b>Fix:</b> Cap a return line server-side at the product's current catalog price (or, ideally, the price it was actually sold at). Validate in the billing service, not just the UI.</div>
+    </div>
+  </div>
+
+  <div class="finding med">
+    <div class="f-head"><span class="badge med">Medium · Integrity</span><p class="f-title">13. MRP enforces nothing, and prices have no cross-field validation</p></div>
+    <div class="f-body">
+      <p><code>Mrp</code> (Maximum Retail Price — a legal ceiling in FMCG) is captured, synced to mobile, shown in the web grid… and used by <b>zero</b> code paths. Billing never checks the billed price against it; neither pricing engine does. Separately, the three price fields are each validated only as <code>0 ≤ x ≤ 1,000,000</code> — independently. Nothing asserts the natural invariants:</p>
+      <pre><code>DealerPackPrice  ≤  Mrp
+DealerCasePrice  ≈  DealerPackPrice × PiecesPerPack</code></pre>
+      <p>So <code>Mrp = 10, DealerCasePrice = 500</code> saves cleanly — nonsensical (you'd charge the dealer 50× the consumer's legal ceiling), and a fat-fingered entry passes straight through.</p>
+      <div class="f-row"><span class="f-label">Where</span><span class="path">CreateProductValidator.cs:29-39</span> · <span class="path">Product.cs:17-19</span></div>
+      <div class="biscuit"><b>Watch the default:</b> <code>Mrp = 0</code> passes <code>GreaterThanOrEqualTo(0)</code>. Any future "billed price ≤ MRP" rule would reject <i>all</i> billing for products still at the <code>0</code> default — so enforcement and making MRP required/non-zero are the same decision.</div>
+      <div class="fix"><b>Fix:</b> Add cross-field validators (<code>Mrp >= DealerPackPrice</code>, case≈pack×pieces) — a pure win regardless of policy. Then decide MRP's billing role: hard cap, soft warn, or explicitly display-only.</div>
+    </div>
+  </div>
+
+  <div class="finding low">
+    <div class="f-head"><span class="badge low">Low</span><p class="f-title">14. Pack-from-case price is derived with floating-point division — cents leak</p></div>
+    <div class="f-body">
+      <p>When a rep sells by the case, mobile derives the per-pack price as a Dart <code>double</code>: <span class="path">quantity_dialog.dart:238</span> <code>_casePrice / _packsPerCase</code>. Case Rs.100 ÷ 12 packs = 8.333… → stored to <code>decimal(18,2)</code> = 8.33 → 12 × 8.33 = <b>99.96 ≠ 100</b>. Every case sold as derived packs leaks a few cents that never reconcile back to the case price. <b>Fix:</b> compute in <code>decimal</code>, or send the case price + pack count and let the server do exact arithmetic.</p>
+    </div>
+  </div>
+
+  <div class="finding low">
+    <div class="f-head"><span class="badge low">Low</span><p class="f-title">15. Latent precision boundary: category price (18,4) vs billing price (18,2)</p></div>
+    <div class="f-body">
+      <p>Category prices are <code>decimal(18,4)</code>; <code>BillingItem.UnitPrice</code> and the dealer fields are <code>decimal(18,2)</code>. The two engines don't connect today, so this is dormant — but the moment anyone unifies pricing (finding #11), there's a silent rounding step at the boundary. <b>Fix:</b> settle on one precision for "a price" across both tables before merging them. <span class="path">ProductCategoryPrice.cs:12-13</span> · <span class="path">AppDbContext.cs:439</span></p>
+    </div>
+  </div>
+
+  <!-- ============ TIME & TIMEZONE ============ -->
+  <h2 class="sec" id="time">Time &amp; timezone</h2>
+  <p class="sec-note">The server runs in UTC; the business runs in Sri Lanka (UTC+5:30). Because Sri Lanka is <b>ahead</b> of UTC, the server clock is always <b>behind</b> the rep's — so the danger window is the early morning, <b>00:00–05:30 SL</b>, where the server's UTC date still reads <i>yesterday</i>. Outside that window the two dates agree.</p>
+
+  <div class="verdict" style="border-left-color:#1f9d6b; background:#e9f7f1; border-color:#b6e6d2;">
+    <h2 style="color:#1f9d6b;">✅ Remediated (2026-06-24) — all time findings fixed or accepted</h2>
+    <p>Root cause was scattered use of <code>DateTime.UtcNow</code> for <i>business</i> dates. Fixed by routing every business "today/this year" through one server helper, <code>SriLankaTime</code> (<span class="path">Common/Extensions/SriLankaTime.cs</span>); localizing the two mobile timestamp displays with <code>.toLocal()</code>; and pinning the web to <code>Asia/Colombo</code> via one helper (<span class="path">lib/utils/datetime.ts</span>) across ~34 files. API suite green: <b>873 unit + 500 integration</b> (1 known skip). Audit stamps, token expiry and cache TTLs were deliberately left on UTC — those are absolute instants, not business days.</p>
+  </div>
+
+  <table class="priority-table">
+    <thead><tr><th>#</th><th>Finding</th><th>Where</th><th>Wrong outcome (00:00–05:30 SL)</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>T1</td><td>7-day validation window computed in UTC</td><td><code>CreateBillingValidator</code>, <code>CreateNotBillingValidator</code> (+ ExpireDate check)</td><td>An early-morning bill dated "today" (SL) is rejected as <i>"cannot be in the future"</i> — rep literally can't submit</td><td><span class="risk-flag risk-no">Fixed</span></td></tr>
+      <tr><td>T2</td><td>Server-side "today" defaults in UTC</td><td><code>BillingService:255</code>, <code>NotBillingService:27</code>, <code>DailyRouteAssignmentRepository:136</code>, <code>SupervisorController:38</code></td><td>"Today's route" / dashboard / date fallback resolve to <b>yesterday</b></td><td><span class="risk-flag risk-no">Fixed</span></td></tr>
+      <tr><td>T3</td><td>Document-number year prefix from UTC year</td><td><code>BIL-</code>, <code>NBL-</code>, <code>GRN-</code>, <code>PO-</code>, <code>IMP-</code> (5 services)</td><td>A doc created Jan 1 early-morning SL gets the <b>previous year</b> — permanent, audit-visible</td><td><span class="risk-flag risk-no">Fixed</span></td></tr>
+      <tr><td>T4</td><td>Mobile shows UTC timestamps un-converted</td><td><code>bills_list_page.dart:284</code>, <code>bill_detail_page.dart:1089</code></td><td><code>createdAt</code> displays 5½h behind real local time</td><td><span class="risk-flag risk-no">Fixed</span></td></tr>
+      <tr><td>T5</td><td>Web uses the viewer's browser timezone</td><td>~34 files: filters + date columns/dialogs</td><td>Wrong dates if an admin travels, or under server-side rendering (Node runs UTC)</td><td><span class="risk-flag risk-no">Fixed</span></td></tr>
+      <tr><td>T6</td><td>Cleanup jobs run at an arbitrary wall-clock hour</td><td><code>IdempotencyCleanupService</code>, <code>AuditLogCleanupService</code></td><td><code>Task.Delay</code> from startup, not a scheduled time — harmless</td><td><span class="risk-flag risk-mid">Accepted</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="finding ok">
+    <div class="f-head"><span class="badge ok">OK</span><p class="f-title">What was already correct (and deliberately left alone)</p></div>
+    <div class="solid">
+      <div><b>Mobile sends the rep's local business date</b> for bills/not-billings — the server fallback rarely even fires.</div>
+      <div><b>Offline sync preserves the original creation date</b> when a bill syncs the next morning.</div>
+      <div><b>Location pings use <code>.toUtc()</code></b> — correct for absolute event instants.</div>
+      <div><b>Report date-range filters compare <code>DateOnly</code> to <code>DateOnly</code></b> consistently.</div>
+      <div><b>All audit stamps (<code>CreatedAt</code>/<code>UpdatedAt</code>), token expiry, cache TTLs stay UTC</b> — absolute instants, not business days.</div>
+      <div><b>Date-only mobile displays were not localized</b> — applying <code>.toLocal()</code> to a midnight date-only value would have shifted the day.</div>
+    </div>
+    <div class="biscuit"><b>The fix in one line:</b> a business date now has exactly one source of truth per tier — <code>SriLankaTime</code> on the API, <code>.toLocal()</code> at the mobile display edge, and <code>Asia/Colombo</code> via <code>datetime.ts</code> on the web. None of them can disagree with each other anymore.</div>
+  </div>
+
+  <!-- ============ MEDIUM ============ -->
+  <h2 class="sec" id="medium">Worth a deliberate decision</h2>
+  <p class="sec-note">Each of these is a business-policy call as much as a code change — but leaving them undecided is itself a (risky) decision.</p>
+
+  <div class="finding med">
+    <div class="f-head"><span class="badge med">Medium · Business rule</span><p class="f-title">3. Credit limit is stored but never enforced</p></div>
+    <div class="f-body">
+      <p><code>Outlet.CreditLimit</code> exists (<span class="path">Outlet.cs:22</span>) but a full-text search shows it is <b>never read</b> in the billing or order path — a rep can bill any amount to a shop that is already over its limit. For a distribution business running on credit, this is the difference between controlled and uncontrolled receivables.</p>
+      <div class="fix"><b>Fix:</b> Decide the policy — <b>block</b> over limit, <b>warn-and-allow</b>, or <b>allow-but-flag for supervisor</b>. Then compute the outlet's outstanding balance (sum of unpaid bills) and compare to <code>CreditLimit</code> at create time. Even "warn-and-flag" is a large improvement over silence.</div>
+    </div>
+  </div>
+
+  <div class="finding med">
+    <div class="f-head"><span class="badge med">Medium · Accuracy</span><p class="f-title">4. No automated stock reconciliation (GRN in − billed out vs on-hand)</p></div>
+    <div class="f-body">
+      <p>You have <b>StockTaking</b> (physical count vs system) which is great for catching shrinkage — but there is no <b>system-internal</b> reconciliation that proves the ledger is self-consistent: <code>opening + GRN received − billed − adjustments + returns = current QuantityOnHand</code>. If a bug ever mis-posts a stock transaction, nothing detects the drift until a human counts the warehouse.</p>
+      <div class="fix"><b>Fix:</b> A periodic (nightly or on-demand) reconciliation report per distributor+product that recomputes expected on-hand from the transaction ledger and flags any row where expected ≠ actual. It's read-only and cheap, and it turns silent data bugs into a dashboard line. (You already have the <code>BackgroundService</code> pattern from the cleanup jobs to host it.)</div>
+    </div>
+  </div>
+
+  <div class="finding med">
+    <div class="f-head"><span class="badge med">Medium · Accuracy</span><p class="f-title">5. "Today's sales" buckets by UTC date, not Sri Lanka business day</p></div>
+    <div class="f-body">
+      <p>Storage as UTC is correct. The risk is <b>bucketing</b>: when <code>BillingDate</code> falls back to <code>DateOnly.FromDateTime(DateTime.UtcNow)</code> (<span class="path">BillingService.cs:255</span>), a bill entered between midnight and 05:30 Sri Lanka time lands on the <b>previous</b> UTC day — because SL is UTC+5:30. Daily route totals and rep leaderboards would then attribute it to the wrong business day.</p>
+      <div class="f-row"><span class="f-label">Status</span> <span class="risk-flag risk-mid">Probably fine, verify</span> Mitigated <i>if</i> the mobile client always sends the local business date and never relies on the server default. Worth confirming, not assuming.</div>
+      <div class="fix"><b>Fix:</b> Make the business day explicit — either require the client to send the local <code>BillingDate</code> (and validate it), or convert <code>UtcNow</code> to <code>Asia/Colombo</code> server-side before taking the date. Pick one and apply it everywhere reports bucket "by day."</div>
+    </div>
+  </div>
+
+  <div class="finding med">
+    <div class="f-head"><span class="badge med">Medium · Business rule</span><p class="f-title">6. A rep can give a 100% discount (free goods) with no approval tier</p></div>
+    <div class="f-body">
+      <p>Discounts are correctly bounded to 0–100%, but 100% <i>is</i> allowed at both item and bill level — a rep can zero out a bill. There is no per-role ceiling and no approval threshold. Whether that's acceptable is a policy question, not a bug.</p>
+      <div class="fix"><b>Fix (if desired):</b> Cap discount by role (e.g. rep ≤ 5%, supervisor ≤ 15%), or require approval above a threshold. Enforce in the validator/service, not just the UI.</div>
+    </div>
+  </div>
+
+  <div class="finding med">
+    <div class="f-head"><span class="badge med">Medium · Accuracy</span><p class="f-title">7. Duplicate customer (outlet) master records are possible</p></div>
+    <div class="f-body">
+      <p>From the prior audit (#17, accepted): <code>Outlet.NicNo</code> has only a <b>non-unique</b> index (<span class="path">AppDbContext.cs:367</span>). Two reps registering the same shop create two outlet records — which then <b>split that shop's sales history in two</b>, quietly making per-customer analytics inaccurate. This is an accuracy concern even though it was acceptable from a security view.</p>
+      <div class="fix"><b>Fix:</b> A soft dedup check at outlet creation (same NIC / phone / very-close coordinates → surface "possible existing outlet" before saving). A hard unique index may be too strict if one owner runs several outlets — so make it a guided warning, like finding #2.</div>
+    </div>
+  </div>
+
+  <!-- ============ LOW ============ -->
+  <h2 class="sec" id="low">Hardening &amp; housekeeping</h2>
+
+  <div class="finding low">
+    <div class="f-head"><span class="badge low">Low</span><p class="f-title">8. RefreshTokens table grows forever</p></div>
+    <div class="f-body"><p>Idempotency keys and audit logs are purged on a schedule, but <code>RefreshTokens</code> has an <code>ExpiresAt</code> and <b>no cleanup job</b> — expired/consumed/revoked rows accumulate indefinitely. Not a correctness bug, but unbounded growth on an auth table. <b>Fix:</b> add a daily cleanup deleting tokens past expiry + a grace window, reusing the existing <code>BackgroundService</code> pattern.</p></div>
+  </div>
+
+  <div class="finding low">
+    <div class="f-head"><span class="badge low">Low</span><p class="f-title">9. Concurrent edits to master data are last-writer-wins</p></div>
+    <div class="f-body"><p>From the prior audit (#12, accepted): <code>Outlet</code>, <code>User</code>, <code>Distributor</code>, <code>Product</code> have no <code>xmin</code> rowversion (only the geo hierarchy does). Two managers editing the same outlet simultaneously = one silently overwrites the other. No financial impact (money/stock go through locks), but master-data edits can be lost. <b>Fix (if it bites):</b> add rowversion to those four, mirroring the Region/Territory pattern already in the codebase.</p></div>
+  </div>
+
+  <div class="finding low">
+    <div class="f-head"><span class="badge low">Low</span><p class="f-title">10. Reports don't state whether inactive entities are included</p></div>
+    <div class="f-body"><p>Deactivating a parent (distributor/product) does not cascade — children stay in the DB and the system relies on per-query <code>IsActive</code> filters. That's a reasonable design, but it means a report's number depends on whether each query remembered to filter. <b>Fix:</b> be explicit in reporting queries about active-vs-all, and document it, so "total products" and "total sales" can't disagree about what counts.</p></div>
+    </div>
+
+  <!-- ============ PRIORITY ============ -->
+  <h2 class="sec" id="priority">Suggested order (accuracy first, not security)</h2>
+  <table class="priority-table">
+    <thead><tr><th>#</th><th>Action</th><th>Type</th><th>Why this rank</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Make the server the price source of truth — and pick ONE pricing engine (flat dealer vs category-tier) so the two can't diverge</td><td>Code + policy</td><td>Affects every bill; wrong/divergent revenue is the worst silent failure</td></tr>
+      <tr><td>2</td><td>Bound return-line prices server-side (cap at catalog / as-sold price)</td><td>Code</td><td>Most exploitable hole; no policy decision needed</td></tr>
+      <tr><td>3</td><td>Add soft duplicate-bill detection (rep+outlet+near-total+time window)</td><td>Code</td><td>Closes the reinstall/web duplicate gap without blocking legit repeat visits</td></tr>
+      <tr><td>4</td><td>Enforce (or warn on) credit limit at billing time</td><td>Code + policy</td><td>Field already exists; controls receivables</td></tr>
+      <tr><td>5</td><td>Add cross-field price validation (Mrp ≥ dealer price; case ≈ pack × pieces)</td><td>Code</td><td>Catches data-entry nonsense at the source; pure win</td></tr>
+      <tr><td>6</td><td>Nightly internal stock reconciliation report (ledger vs on-hand)</td><td>Code</td><td>Turns silent stock bugs into a visible number; cheap, read-only</td></tr>
+      <tr><td>7</td><td>Pin the business-day timezone for all "by day" reporting</td><td>Code</td><td>Prevents early-morning bills landing on the wrong day</td></tr>
+      <tr><td>8</td><td>Decide MRP/discount policy; soft-dedup outlets; refresh-token cleanup; decimal pack-from-case</td><td>Mixed</td><td>Policy + housekeeping; lower urgency</td></tr>
+    </tbody>
+  </table>
+
+  <footer>
+    <p>Companion to <code>sfa_api_robustness_audit.html</code>. Where that report asked "can the wrong person touch the data," this one asks "will the data be right even when the right person touches it." All findings are cited to current source (<code>sfa_api</code>, surveyed 2026-06-24) via two parallel full-file code passes. This is an analysis document — no code was changed.</p>
+    <p>The single highest-value change is #1 (price source of truth). It is the one issue here that affects <i>every</i> transaction and produces <i>no</i> error when it goes wrong.</p>
+  </footer>
+
+</div>
+</body>
+</html>

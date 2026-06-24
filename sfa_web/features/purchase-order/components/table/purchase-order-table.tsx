@@ -14,13 +14,10 @@ import {
 } from '@/components/ui/select'
 import { usePurchaseOrderDataTable } from '../../hooks/purchase-order.hooks'
 import { getPurchaseOrderColumns } from '../columns/purchase-order-columns'
+import { toColomboDateStr } from '@/lib/utils/datetime'
 
 function toLocalDateStr(date: Date) {
-  return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, '0'),
-    String(date.getDate()).padStart(2, '0'),
-  ].join('-')
+  return toColomboDateStr(date)
 }
 
 function getCurrentMonthDateRange() {

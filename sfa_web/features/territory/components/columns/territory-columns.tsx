@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { TerritoryDto } from '../types/territory.types'
+import { formatColombo } from '@/lib/utils/datetime'
 
 export interface TerritoryColumnActions {
   openEdit: (id: number) => void
@@ -64,11 +65,7 @@ export function getTerritoryColumns(actions: TerritoryColumnActions): ColumnDef<
       size: 140,
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">
-          {new Date(row.original.createdAt).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          })}
+          {formatColombo(row.original.createdAt, 'd MMM yyyy')}
         </span>
       ),
     },

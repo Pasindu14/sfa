@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { SalesInvoiceListItem } from '../types/sales-invoice.types'
+import { formatColombo } from '@/lib/utils/datetime'
 
 export interface SalesInvoiceColumnActions {
   openDetail: (id: number) => void
@@ -58,11 +59,7 @@ export function getSalesInvoiceColumns(
       header: 'Date',
       cell: ({ row }) => (
         <span className="text-sm">
-          {new Date(row.original.invoiceDate).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          })}
+          {formatColombo(row.original.invoiceDate, 'd MMM yyyy')}
         </span>
       ),
     },

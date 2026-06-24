@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { GrnListItem, GrnStatus } from '../../schema/grn.schema'
+import { formatColombo } from '@/lib/utils/datetime'
 
 export interface GrnColumnActions {
   openConfirm: (id: number) => void
@@ -63,13 +64,7 @@ export function getGrnColumns(actions: GrnColumnActions): ColumnDef<GrnListItem>
       header: 'Received At',
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">
-          {row.original.receivedAt
-            ? new Date(row.original.receivedAt).toLocaleDateString('en-US', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-              })
-            : '—'}
+          {formatColombo(row.original.receivedAt, 'd MMM yyyy')}
         </span>
       ),
     },
@@ -87,11 +82,7 @@ export function getGrnColumns(actions: GrnColumnActions): ColumnDef<GrnListItem>
       header: 'Created',
       cell: ({ row }) => (
         <span className="text-xs text-muted-foreground">
-          {new Date(row.original.createdAt).toLocaleDateString('en-US', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-          })}
+          {formatColombo(row.original.createdAt, 'd MMM yyyy')}
         </span>
       ),
     },

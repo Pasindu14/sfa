@@ -1,4 +1,5 @@
 using sfa_api.Common.Errors;
+using sfa_api.Common.Extensions;
 using sfa_api.Features.GRNs.DTOs;
 using sfa_api.Features.GRNs.Entities;
 using sfa_api.Features.GRNs.Enums;
@@ -69,7 +70,7 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
 
         // 4. Generate GRN number
         var seqNo = await _repository.GetNextGrnNumberAsync(ct);
-        var grnNumber = $"GRN-{DateTime.UtcNow.Year}-{seqNo:D5}";
+        var grnNumber = $"GRN-{SriLankaTime.Year}-{seqNo:D5}";
 
         // 5. Build GRN + copy items as snapshot
         var grn = new GRN

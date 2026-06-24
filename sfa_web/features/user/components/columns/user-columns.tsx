@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { UserDto } from '../types/user.types'
+import { formatColombo } from '@/lib/utils/datetime'
 
 function getInitials(name: string) {
   return name
@@ -94,11 +95,7 @@ export function getUserColumns(actions: UserColumnActions): ColumnDef<UserDto>[]
       header: 'Joined',
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">
-          {new Date(row.original.createdAt).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          })}
+          {formatColombo(row.original.createdAt, 'd MMM yyyy')}
         </span>
       ),
     },

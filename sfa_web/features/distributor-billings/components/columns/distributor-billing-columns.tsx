@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Eye, ClipboardCheck, Banknote } from 'lucide-react'
 import type { DistributorBillingListItem } from '../../schema/distributor-billing.schema'
+import { formatColombo } from '@/lib/utils/datetime'
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('en-LK', {
@@ -47,11 +48,7 @@ export function getDistributorBillingColumns(
         <div>
           <p className="font-mono text-xs font-semibold">{row.original.billingNumber}</p>
           <p className="text-xs text-muted-foreground">
-            {new Date(row.original.billingDate).toLocaleDateString('en-US', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-            })}
+            {formatColombo(row.original.billingDate, 'd MMM yyyy')}
           </p>
         </div>
       ),
@@ -113,9 +110,7 @@ export function getDistributorBillingColumns(
       header: 'Billed Date',
       cell: ({ row }) => (
         <span className="text-sm tabular-nums">
-          {new Date(row.original.billingDate).toLocaleDateString('en-US', {
-            day: 'numeric', month: 'short', year: 'numeric',
-          })}
+          {formatColombo(row.original.billingDate, 'd MMM yyyy')}
         </span>
       ),
     },

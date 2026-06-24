@@ -15,6 +15,7 @@ import { Calendar, Banknote, Store, User } from 'lucide-react'
 import { useMyBillingDetail } from '../../hooks/distributor-billing.hooks'
 import { PaymentTypeBadge } from '../columns/distributor-billing-columns'
 import type { DistributorBillingDetail } from '../../schema/distributor-billing.schema'
+import { formatColombo } from '@/lib/utils/datetime'
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('en-LK', {
@@ -137,9 +138,7 @@ export function DistributorBillingDetailDialog({ id, onClose }: Props) {
                 iconBg="bg-blue-100"
                 iconColor="text-blue-600"
                 label="Billing Date"
-                value={new Date(billing.billingDate).toLocaleDateString('en-US', {
-                  day: 'numeric', month: 'short', year: 'numeric',
-                })}
+                value={formatColombo(billing.billingDate, 'd MMM yyyy')}
               />
               <StatCard
                 icon={Banknote}

@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using sfa_api.Common.Errors;
+using sfa_api.Common.Extensions;
 using sfa_api.Features.PurchaseOrders.Enums;
 using sfa_api.Features.SalesInvoices.DTOs;
 using sfa_api.Features.SalesInvoices.Entities;
@@ -69,7 +70,7 @@ public class SalesInvoiceService(
     {
         // ── Step 1: Create ImportBatch (Processing) ────────────────────────
         var seqNo = await _repository.GetNextBatchNumberAsync(ct);
-        var batchNumber = $"IMP-{DateTime.UtcNow.Year}-{seqNo:D5}";
+        var batchNumber = $"IMP-{SriLankaTime.Year}-{seqNo:D5}";
         var batch = new SalesInvoiceImportBatch
         {
             BatchNumber = batchNumber,

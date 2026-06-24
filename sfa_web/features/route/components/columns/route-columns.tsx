@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { RouteDto } from '../types/route.types'
+import { formatColombo } from '@/lib/utils/datetime'
 
 export interface RouteColumnActions {
   openEdit: (id: number) => void
@@ -84,11 +85,7 @@ export function getRouteColumns(actions: RouteColumnActions): ColumnDef<RouteDto
       header: 'Created',
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">
-          {new Date(row.original.createdAt).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          })}
+          {formatColombo(row.original.createdAt, 'd MMM yyyy')}
         </span>
       ),
     },

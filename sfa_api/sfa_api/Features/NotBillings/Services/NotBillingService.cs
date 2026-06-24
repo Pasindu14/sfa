@@ -1,4 +1,5 @@
 using sfa_api.Common.Errors;
+using sfa_api.Common.Extensions;
 using sfa_api.Features.NotBillings.DTOs;
 using sfa_api.Features.NotBillings.Entities;
 using sfa_api.Features.NotBillings.Enums;
@@ -24,7 +25,7 @@ public class NotBillingService(
         var outlet = await _notBillingRepository.GetOutletAsync(request.OutletId, ct)
             ?? throw new NotFoundException("Outlet", request.OutletId);
 
-        var date = request.NotBillingDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var date = request.NotBillingDate ?? SriLankaTime.Today;
 
         // ② Prevent duplicate not-billing for same rep + outlet + day
         var exists = await _notBillingRepository.ExistsForOutletTodayAsync(salesRepId, request.OutletId, date, ct);
@@ -57,7 +58,7 @@ public class NotBillingService(
 
         // ⑤ Generate number
         var seqNo = await _notBillingRepository.GetNextNotBillingNumberAsync(ct);
-        var notBillingNumber = $"NBL-{DateTime.UtcNow.Year}-{seqNo:D5}";
+        var notBillingNumber = $"NBL-{SriLankaTime.Year}-{seqNo:D5}";
 
         // ⑥ Build entity with full org + geo chain
         var notBilling = new NotBilling

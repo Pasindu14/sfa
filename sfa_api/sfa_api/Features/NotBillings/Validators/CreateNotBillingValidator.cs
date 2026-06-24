@@ -1,4 +1,5 @@
 using FluentValidation;
+using sfa_api.Common.Extensions;
 using sfa_api.Features.NotBillings.Requests;
 
 namespace sfa_api.Features.NotBillings.Validators;
@@ -18,9 +19,9 @@ public class CreateNotBillingValidator : AbstractValidator<CreateNotBillingReque
             .When(x => x.Notes is not null);
 
         RuleFor(x => x.NotBillingDate!.Value)
-            .LessThanOrEqualTo(_ => DateOnly.FromDateTime(DateTime.UtcNow))
+            .LessThanOrEqualTo(_ => SriLankaTime.Today)
                 .WithMessage("NotBillingDate cannot be in the future.")
-            .GreaterThanOrEqualTo(_ => DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7)))
+            .GreaterThanOrEqualTo(_ => SriLankaTime.Today.AddDays(-7))
                 .WithMessage("NotBillingDate cannot be more than 7 days in the past.")
             .When(x => x.NotBillingDate.HasValue);
     }

@@ -1,4 +1,5 @@
 using FluentValidation;
+using sfa_api.Common.Extensions;
 using sfa_api.Features.Billings.Enums;
 using sfa_api.Features.Billings.Requests;
 
@@ -15,9 +16,9 @@ public class CreateBillingValidator : AbstractValidator<CreateBillingRequest>
             .InclusiveBetween(0, 100).WithMessage("BillDiscountRate must be between 0 and 100.");
 
         RuleFor(x => x.BillingDate!.Value)
-            .LessThanOrEqualTo(_ => DateOnly.FromDateTime(DateTime.UtcNow))
+            .LessThanOrEqualTo(_ => SriLankaTime.Today)
                 .WithMessage("BillingDate cannot be in the future.")
-            .GreaterThanOrEqualTo(_ => DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7)))
+            .GreaterThanOrEqualTo(_ => SriLankaTime.Today.AddDays(-7))
                 .WithMessage("BillingDate cannot be more than 7 days in the past.")
             .When(x => x.BillingDate.HasValue);
 
@@ -80,7 +81,7 @@ public class CreateBillingValidator : AbstractValidator<CreateBillingRequest>
             // Expire items must include an expire date (must not be in the future — it's already expired)
             item.RuleFor(i => i.ExpireDate)
                 .NotNull().WithMessage("ExpireDate is required when ReturnType is Expire.")
-                .LessThanOrEqualTo(_ => DateOnly.FromDateTime(DateTime.UtcNow))
+                .LessThanOrEqualTo(_ => SriLankaTime.Today)
                     .WithMessage("ExpireDate must not be in the future.")
                 .When(i => i.ReturnType == ReturnType.Expire);
 
