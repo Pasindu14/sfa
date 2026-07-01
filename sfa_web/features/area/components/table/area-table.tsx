@@ -36,7 +36,7 @@ export function AreaTable() {
         enableColumnResizing: true,
         enableUrlState: false,
         columnResizingTableId: 'areas-table',
-        searchPlaceholder: 'Search areas...',
+        searchPlaceholder: 'Search by name, region, or code...',
       }}
       getColumns={getColumns}
       fetchDataFn={useAreaDataTable as any}

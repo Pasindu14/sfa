@@ -18,10 +18,13 @@ public class RegionRepository(AppDbContext context) : IRegionRepository
         var query = _context.Regions.IgnoreQueryFilters().Where(x => !x.IsDeleted).AsQueryable();
         if (!string.IsNullOrWhiteSpace(search))
         {
+            // Search by region name or exact "code" (numeric Id). Name substring rides the
+            // pg_trgm GIN index; the code branch is an exact PK lookup (parse to int).
             var pattern = $"%{search}%";
+            var isCode = int.TryParse(search.Trim(), out var codeId);
             query = _context.Database.ProviderName?.Contains("Npgsql") == true
-                ? query.Where(r => EF.Functions.ILike(r.Name, pattern))
-                : query.Where(r => EF.Functions.Like(r.Name, pattern));
+                ? query.Where(r => EF.Functions.ILike(r.Name, pattern) || (isCode && r.Id == codeId))
+                : query.Where(r => EF.Functions.Like(r.Name, pattern) || (isCode && r.Id == codeId));
         }
 
         var totalCount = await query.CountAsync(ct);

@@ -25,10 +25,20 @@ public class TerritoryRepository(AppDbContext context) : ITerritoryRepository
         if (isActive.HasValue) query = query.Where(t => t.IsActive == isActive.Value);
         if (!string.IsNullOrWhiteSpace(search))
         {
+            // Search by territory name, parent area/region name, or exact "code" (numeric Id).
+            // Name/area/region substring matches ride the pg_trgm GIN indexes; the code branch
+            // is an exact PK lookup (parse to int). Area→Region reuse the joins already Included.
             var pattern = $"%{search}%";
+            var isCode = int.TryParse(search.Trim(), out var codeId);
             query = _context.Database.ProviderName?.Contains("Npgsql") == true
-                ? query.Where(t => EF.Functions.ILike(t.Name, pattern))
-                : query.Where(t => EF.Functions.Like(t.Name, pattern));
+                ? query.Where(t => EF.Functions.ILike(t.Name, pattern)
+                                   || EF.Functions.ILike(t.Area!.Name, pattern)
+                                   || EF.Functions.ILike(t.Area!.Region!.Name, pattern)
+                                   || (isCode && t.Id == codeId))
+                : query.Where(t => EF.Functions.Like(t.Name, pattern)
+                                   || EF.Functions.Like(t.Area!.Name, pattern)
+                                   || EF.Functions.Like(t.Area!.Region!.Name, pattern)
+                                   || (isCode && t.Id == codeId));
         }
 
         var totalCount = await query.CountAsync(ct);

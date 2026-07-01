@@ -211,6 +211,24 @@ public class RegionsApiTests
         }
     }
 
+    [Fact]
+    public async Task GetAllRegions_SearchByCode_ReturnsRegionWithThatId()
+    {
+        SetToken(AuthHelper.AdminToken);
+        var resp = await _client.PostAsJsonAsync("/api/v1/regions", CreateRegionPayload("Region CodeSearch Target"));
+        var targetId = (await resp.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data").GetProperty("id").GetInt32();
+
+        // Searching the numeric code returns the region with that exact Id.
+        var response = await _client.GetAsync($"/api/v1/regions?search={targetId}&pageSize=1000");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var ids = (await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data").GetProperty("regions").EnumerateArray()
+            .Select(r => r.GetProperty("id").GetInt32()).ToList();
+        ids.Should().Contain(targetId);
+    }
+
     // ─────────────────────────────────────────────────
     // POST /api/v1/regions — Create + GET by ID
     // ─────────────────────────────────────────────────

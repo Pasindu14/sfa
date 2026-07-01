@@ -37,10 +37,18 @@ public class AreaRepository(AppDbContext context) : IAreaRepository
         if (isActive.HasValue) query = query.Where(a => a.IsActive == isActive.Value);
         if (!string.IsNullOrWhiteSpace(search))
         {
+            // Search by area name, parent region name, or exact "code" (numeric Id).
+            // Name/region substring matches ride the pg_trgm GIN indexes; the code branch
+            // is an exact PK lookup (parse to int) rather than a CAST+ILIKE seq-scan.
             var pattern = $"%{search}%";
+            var isCode = int.TryParse(search.Trim(), out var codeId);
             query = _context.Database.ProviderName?.Contains("Npgsql") == true
-                ? query.Where(a => EF.Functions.ILike(a.Name, pattern))
-                : query.Where(a => EF.Functions.Like(a.Name, pattern));
+                ? query.Where(a => EF.Functions.ILike(a.Name, pattern)
+                                   || EF.Functions.ILike(a.Region!.Name, pattern)
+                                   || (isCode && a.Id == codeId))
+                : query.Where(a => EF.Functions.Like(a.Name, pattern)
+                                   || EF.Functions.Like(a.Region!.Name, pattern)
+                                   || (isCode && a.Id == codeId));
         }
 
         var totalCount = await query.CountAsync(ct);

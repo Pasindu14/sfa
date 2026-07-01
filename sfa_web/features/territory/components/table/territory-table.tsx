@@ -36,7 +36,7 @@ export function TerritoryTable() {
         enableColumnResizing: true,
         enableUrlState: false,
         columnResizingTableId: "territories-table",
-        searchPlaceholder: "Search territories...",
+        searchPlaceholder: 'Search by name, area, region, or code...',
       }}
       getColumns={getColumns}
       fetchDataFn={useTerritoryDataTable}
