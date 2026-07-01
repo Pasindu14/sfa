@@ -91,6 +91,19 @@ public class RouteRepository(AppDbContext context) : IRouteRepository
     public async Task<bool> ExistsByNameAsync(string name, int divisionId, int excludeId, CancellationToken ct = default)
         => await _context.Routes.IgnoreQueryFilters().AnyAsync(r => r.Name == name && r.DivisionId == divisionId && r.Id != excludeId, ct);
 
+    public async Task<HashSet<string>> GetUsedPinColorsAsync(int? excludeRouteId = null, CancellationToken ct = default)
+    {
+        var query = _context.Routes
+            .IgnoreQueryFilters()
+            .Where(r => !r.IsDeleted && r.PinColor != "");
+
+        if (excludeRouteId.HasValue)
+            query = query.Where(r => r.Id != excludeRouteId.Value);
+
+        var colors = await query.Select(r => r.PinColor).ToListAsync(ct);
+        return new HashSet<string>(colors, StringComparer.OrdinalIgnoreCase);
+    }
+
     public async Task CreateAsync(RouteEntity route, CancellationToken ct = default)
         => await _context.Routes.AddAsync(route, ct);
 

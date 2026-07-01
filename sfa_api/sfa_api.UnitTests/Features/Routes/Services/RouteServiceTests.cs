@@ -368,6 +368,55 @@ public class RouteServiceTests
         captured.Description.Should().Be(request.Description);
     }
 
+    [Fact]
+    public async Task CreateAsync_RequestedColorAlreadyUsed_AssignsDifferentUniqueColor()
+    {
+        var request = CreateValidCreateRequest(); // PinColor = "#FF5733"
+        _repoMock.Setup(r => r.GetDivisionWithAncestorsAsync(request.DivisionId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(CreateFakeDivision(request.DivisionId));
+        _repoMock.Setup(r => r.ExistsByNameAsync(request.Name, request.DivisionId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(false);
+        // The caller's pick is already taken by another route.
+        _repoMock.Setup(r => r.GetUsedPinColorsAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(new HashSet<string>(new[] { "#FF5733" }, StringComparer.OrdinalIgnoreCase));
+        _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _repoMock.Setup(r => r.GetByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(CreateFakeRoute());
+        RouteEntity? captured = null;
+        _repoMock.Setup(r => r.CreateAsync(It.IsAny<RouteEntity>(), It.IsAny<CancellationToken>()))
+                 .Callback<RouteEntity, CancellationToken>((e, _) => captured = e)
+                 .Returns(Task.CompletedTask);
+
+        await _sut.CreateAsync(request, callerId: 1);
+
+        captured!.PinColor.Should().NotBe("#FF5733");
+        captured.PinColor.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task CreateAsync_BlankColor_AssignsFirstUnusedPaletteColor()
+    {
+        var request = CreateValidCreateRequest();
+        request.PinColor = "";
+        _repoMock.Setup(r => r.GetDivisionWithAncestorsAsync(request.DivisionId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(CreateFakeDivision(request.DivisionId));
+        _repoMock.Setup(r => r.ExistsByNameAsync(request.Name, request.DivisionId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(false);
+        _repoMock.Setup(r => r.GetUsedPinColorsAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+        _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _repoMock.Setup(r => r.GetByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(CreateFakeRoute());
+        RouteEntity? captured = null;
+        _repoMock.Setup(r => r.CreateAsync(It.IsAny<RouteEntity>(), It.IsAny<CancellationToken>()))
+                 .Callback<RouteEntity, CancellationToken>((e, _) => captured = e)
+                 .Returns(Task.CompletedTask);
+
+        await _sut.CreateAsync(request, callerId: 1);
+
+        captured!.PinColor.Should().Be(RouteColorPalette.Colors[0]);
+    }
+
     // ─────────────────────────────────────────────────
     // UpdateAsync
     // ─────────────────────────────────────────────────
@@ -698,6 +747,8 @@ public class RouteServiceTests
                  .ReturnsAsync(fakeDivision);
         _repoMock.Setup(r => r.ExistsByNameAsync(request.Name, request.DivisionId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(false);
+        _repoMock.Setup(r => r.GetUsedPinColorsAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(new HashSet<string>(StringComparer.OrdinalIgnoreCase));
         _repoMock.Setup(r => r.CreateAsync(It.IsAny<RouteEntity>(), It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
@@ -712,6 +763,8 @@ public class RouteServiceTests
                  .ReturnsAsync(CreateFakeDivision(request.DivisionId));
         _repoMock.Setup(r => r.ExistsByNameAsync(request.Name, request.DivisionId, routeId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(false);
+        _repoMock.Setup(r => r.GetUsedPinColorsAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(new HashSet<string>(StringComparer.OrdinalIgnoreCase));
         _repoMock.Setup(r => r.UpdateAsync(existingRoute, It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
@@ -722,6 +775,8 @@ public class RouteServiceTests
 
     private void SetupGetByIdAfterUpdate(int routeId, RouteEntity route)
     {
+        _repoMock.Setup(r => r.GetUsedPinColorsAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(new HashSet<string>(StringComparer.OrdinalIgnoreCase));
         _repoMock.Setup(r => r.UpdateAsync(route, It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))

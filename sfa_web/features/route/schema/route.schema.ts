@@ -5,10 +5,11 @@ export const createRouteSchema = z.object({
     .string()
     .min(1, 'Name is required')
     .max(100, 'Name must not exceed 100 characters'),
+  // Optional — the server assigns a unique colour when this is blank or already used.
   pinColor: z
     .string()
-    .min(1, 'Pin color is required')
-    .max(50, 'Pin color must not exceed 50 characters'),
+    .max(50, 'Pin color must not exceed 50 characters')
+    .optional(),
   description: z
     .string()
     .max(500, 'Description must not exceed 500 characters')
@@ -24,10 +25,11 @@ export const updateRouteSchema = z.object({
     .string()
     .min(1, 'Name is required')
     .max(100, 'Name must not exceed 100 characters'),
+  // Optional — the server assigns a unique colour when this is blank or already used.
   pinColor: z
     .string()
-    .min(1, 'Pin color is required')
-    .max(50, 'Pin color must not exceed 50 characters'),
+    .max(50, 'Pin color must not exceed 50 characters')
+    .optional(),
   description: z
     .string()
     .max(500, 'Description must not exceed 500 characters')

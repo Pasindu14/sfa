@@ -93,7 +93,7 @@ export function RouteForm({
           name="pinColor"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Pin Color</FormLabel>
+              <FormLabel>Pin Color (optional)</FormLabel>
               <FormControl>
                 <div className="flex items-center gap-3">
                   <input
@@ -111,6 +111,10 @@ export function RouteForm({
                   />
                 </div>
               </FormControl>
+              <p className="text-xs text-muted-foreground">
+                A unique colour is assigned automatically if this is left blank or already
+                used by another route.
+              </p>
               <FormMessage />
             </FormItem>
           )}

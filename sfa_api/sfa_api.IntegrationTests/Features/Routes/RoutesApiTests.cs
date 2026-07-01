@@ -344,7 +344,9 @@ public class RoutesApiTests
 
         var getBody = await getResponse.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
         getBody.GetProperty("data").GetProperty("name").GetString().Should().Be("Western Route");
-        getBody.GetProperty("data").GetProperty("pinColor").GetString().Should().Be("#FF5733");
+        // The server guarantees a unique colour, so it may differ from the requested one; assert shape.
+        getBody.GetProperty("data").GetProperty("pinColor").GetString()
+            .Should().NotBeNullOrWhiteSpace();
         getBody.GetProperty("data").GetProperty("divisionId").GetInt32().Should().Be(divisionId);
     }
 
@@ -431,14 +433,22 @@ public class RoutesApiTests
     }
 
     [Fact]
-    public async Task CreateRoute_EmptyPinColor_Returns400WithPinColorFieldError()
+    public async Task CreateRoute_EmptyPinColor_AutoAssignsUniqueColour()
     {
-        SetToken(AuthHelper.AdminToken);
-        var payload = new { name = "Valid Route Name", pinColor = "", divisionId = 1 };
+        // PinColor is optional now: when omitted/blank the server assigns a unique colour.
+        var regionId = await CreateRegionAsync("Region For Empty PinColor Route Test");
+        var areaId = await CreateAreaAsync("Area For Empty PinColor Route Test", regionId);
+        var territoryId = await CreateTerritoryAsync("Territory For Empty PinColor Route Test", areaId);
+        var divisionId = await CreateDivisionAsync("Division For Empty PinColor Route Test", territoryId);
+
+        var payload = new { name = "Auto Colour Route", pinColor = "", divisionId };
         var response = await _client.PostAsJsonAsync("/api/v1/routes", payload);
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
-        body.GetProperty("error").GetProperty("fields").TryGetProperty("PinColor", out _).Should().BeTrue();
+        var pinColor = body.GetProperty("data").GetProperty("pinColor").GetString();
+        pinColor.Should().NotBeNullOrWhiteSpace();
+        pinColor.Should().MatchRegex("^#[0-9A-Fa-f]{6}$");
     }
 
     [Fact]
@@ -536,7 +546,9 @@ public class RoutesApiTests
         var updateBody = await updateResponse.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
         updateBody.GetProperty("success").GetBoolean().Should().BeTrue();
         updateBody.GetProperty("data").GetProperty("name").GetString().Should().Be("After Update Route");
-        updateBody.GetProperty("data").GetProperty("pinColor").GetString().Should().Be("#0000FF");
+        // Colour is unique-enforced server-side; a valid colour must be present.
+        updateBody.GetProperty("data").GetProperty("pinColor").GetString()
+            .Should().NotBeNullOrWhiteSpace();
     }
 
     [Fact]
