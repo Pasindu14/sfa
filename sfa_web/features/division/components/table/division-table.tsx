@@ -36,7 +36,7 @@ export function DivisionTable() {
         enableColumnResizing: true,
         enableUrlState: false,
         columnResizingTableId: 'divisions-table',
-        searchPlaceholder: 'Search divisions...',
+        searchPlaceholder: 'Search by name, territory, or code...',
       }}
       getColumns={getColumns}
       fetchDataFn={useDivisionDataTable}

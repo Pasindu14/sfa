@@ -352,6 +352,84 @@ public class DivisionsApiTests
     }
 
     // ─────────────────────────────────────────────────
+    // GET /api/v1/divisions?search= — search by name / territory / code
+    // ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetAllDivisions_SearchByDivisionName_ReturnsMatchingDivision()
+    {
+        var regionId = await CreateRegionAsync("Region For Division Name Search");
+        var areaId = await CreateAreaAsync("Area For Division Name Search", regionId);
+        var territoryId = await CreateTerritoryAsync("Territory For Division Name Search", areaId);
+
+        var matchResp = await _client.PostAsJsonAsync("/api/v1/divisions",
+            CreateDivisionPayload("Division NameSearch UniqueQQ1", territoryId));
+        var matchId = (await matchResp.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data").GetProperty("id").GetInt32();
+        await _client.PostAsJsonAsync("/api/v1/divisions",
+            CreateDivisionPayload("Division Other NameSearch", territoryId));
+
+        var response = await _client.GetAsync("/api/v1/divisions?search=UniqueQQ1&pageSize=1000");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var ids = (await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data").GetProperty("divisions").EnumerateArray()
+            .Select(d => d.GetProperty("id").GetInt32()).ToList();
+        ids.Should().Contain(matchId);
+        ids.Should().OnlyContain(id => id == matchId);
+    }
+
+    [Fact]
+    public async Task GetAllDivisions_SearchByTerritoryName_ReturnsDivisionsUnderThatTerritory()
+    {
+        var regionId = await CreateRegionAsync("Region For Division TerritorySearch");
+        var areaId = await CreateAreaAsync("Area For Division TerritorySearch", regionId);
+        var matchTerritoryId = await CreateTerritoryAsync("Territory TerrSearch UniqueQQ2", areaId);
+        var otherTerritoryId = await CreateTerritoryAsync("Territory Plain For TerrSearch", areaId);
+
+        var underMatchResp = await _client.PostAsJsonAsync("/api/v1/divisions",
+            CreateDivisionPayload("Division Under Matching Territory", matchTerritoryId));
+        var underMatchId = (await underMatchResp.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data").GetProperty("id").GetInt32();
+        var underOtherResp = await _client.PostAsJsonAsync("/api/v1/divisions",
+            CreateDivisionPayload("Division Under Other Territory", otherTerritoryId));
+        var underOtherId = (await underOtherResp.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data").GetProperty("id").GetInt32();
+
+        // Search matches the parent territory's name, not the division's own name.
+        var response = await _client.GetAsync("/api/v1/divisions?search=UniqueQQ2&pageSize=1000");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var ids = (await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data").GetProperty("divisions").EnumerateArray()
+            .Select(d => d.GetProperty("id").GetInt32()).ToList();
+        ids.Should().Contain(underMatchId);
+        ids.Should().NotContain(underOtherId);
+    }
+
+    [Fact]
+    public async Task GetAllDivisions_SearchByCode_ReturnsDivisionWithThatId()
+    {
+        var regionId = await CreateRegionAsync("Region For Division CodeSearch");
+        var areaId = await CreateAreaAsync("Area For Division CodeSearch", regionId);
+        var territoryId = await CreateTerritoryAsync("Territory For Division CodeSearch", areaId);
+
+        var resp = await _client.PostAsJsonAsync("/api/v1/divisions",
+            CreateDivisionPayload("Division CodeSearch Target", territoryId));
+        var targetId = (await resp.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data").GetProperty("id").GetInt32();
+
+        // Searching the numeric code returns the division with that exact Id.
+        var response = await _client.GetAsync($"/api/v1/divisions?search={targetId}&pageSize=1000");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var ids = (await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data").GetProperty("divisions").EnumerateArray()
+            .Select(d => d.GetProperty("id").GetInt32()).ToList();
+        ids.Should().Contain(targetId);
+    }
+
+    // ─────────────────────────────────────────────────
     // POST /api/v1/divisions — Create
     // ─────────────────────────────────────────────────
 

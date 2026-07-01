@@ -34,10 +34,19 @@ public class DivisionRepository(AppDbContext context) : IDivisionRepository
         if (isActive.HasValue) query = query.Where(d => d.IsActive == isActive.Value);
         if (!string.IsNullOrWhiteSpace(search))
         {
+            // Search by division name, parent territory name, or exact "code" (numeric Id).
+            // Name/territory substring matches ride the pg_trgm GIN indexes
+            // (IX_Divisions_Name_Trgm / IX_Territories_Name_Trgm); the code branch is an
+            // exact PK lookup (parse to int) rather than a CAST+ILIKE that would seq-scan.
             var pattern = $"%{search}%";
+            var isCode = int.TryParse(search.Trim(), out var codeId);
             query = _context.Database.ProviderName?.Contains("Npgsql") == true
-                ? query.Where(d => EF.Functions.ILike(d.Name, pattern))
-                : query.Where(d => EF.Functions.Like(d.Name, pattern));
+                ? query.Where(d => EF.Functions.ILike(d.Name, pattern)
+                                   || EF.Functions.ILike(d.Territory!.Name, pattern)
+                                   || (isCode && d.Id == codeId))
+                : query.Where(d => EF.Functions.Like(d.Name, pattern)
+                                   || EF.Functions.Like(d.Territory!.Name, pattern)
+                                   || (isCode && d.Id == codeId));
         }
 
         var totalCount = await query.CountAsync(ct);
