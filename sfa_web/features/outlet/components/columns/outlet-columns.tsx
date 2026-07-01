@@ -33,10 +33,13 @@ export function getOutletColumns(actions: OutletColumnActions): ColumnDef<Outlet
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
               {name.substring(0, 2).toUpperCase()}
             </div>
-            <div>
+            <div className="flex flex-col gap-0.5">
               <div className="text-sm font-medium">{name}</div>
-              <div className="text-xs text-muted-foreground">
-                ID: {id} • {outletType}
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="w-fit rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium">
+                  #{id}
+                </span>
+                {outletType}
               </div>
             </div>
           </div>

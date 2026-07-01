@@ -34,7 +34,12 @@ export function getRegionColumns(actions: RegionColumnActions): ColumnDef<Region
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
             {row.original.name.substring(0, 2).toUpperCase()}
           </div>
-          <span className="text-sm font-medium">{row.original.name}</span>
+          <div className="flex flex-col">
+            <span className="text-sm font-medium">{row.original.name}</span>
+            <span className="w-fit rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              #{row.original.id}
+            </span>
+          </div>
         </div>
       ),
     },
