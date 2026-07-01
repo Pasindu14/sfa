@@ -223,6 +223,80 @@ public class TerritoriesApiTests
     // ─────────────────────────────────────────────────
 
     [Fact]
+    public async Task GetAllTerritories_SearchByAreaName_ReturnsTerritoriesUnderThatArea()
+    {
+        var regionId = await CreateRegionAsync("Region For Territory AreaSearch");
+        var matchAreaId = await CreateAreaAsync("Area AreaSearch UniqueTT1", regionId);
+        var otherAreaId = await CreateAreaAsync("Area Plain For AreaSearch", regionId);
+
+        var underMatchResp = await _client.PostAsJsonAsync("/api/v1/territories",
+            CreateTerritoryPayload("Territory Under Matching Area", matchAreaId));
+        var underMatchId = (await underMatchResp.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data").GetProperty("id").GetInt32();
+        var underOtherResp = await _client.PostAsJsonAsync("/api/v1/territories",
+            CreateTerritoryPayload("Territory Under Other Area", otherAreaId));
+        var underOtherId = (await underOtherResp.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data").GetProperty("id").GetInt32();
+
+        // Search matches the parent area's name, not the territory's own name.
+        var response = await _client.GetAsync("/api/v1/territories?search=UniqueTT1&pageSize=1000");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var ids = (await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data").GetProperty("territories").EnumerateArray()
+            .Select(t => t.GetProperty("id").GetInt32()).ToList();
+        ids.Should().Contain(underMatchId);
+        ids.Should().NotContain(underOtherId);
+    }
+
+    [Fact]
+    public async Task GetAllTerritories_SearchByRegionName_ReturnsTerritoriesUnderThatRegion()
+    {
+        var matchRegionId = await CreateRegionAsync("Region TerrRegSearch UniqueTT2");
+        var otherRegionId = await CreateRegionAsync("Region Plain For TerrRegSearch");
+        var matchAreaId = await CreateAreaAsync("Area In Matching Region", matchRegionId);
+        var otherAreaId = await CreateAreaAsync("Area In Other Region", otherRegionId);
+
+        var underMatchResp = await _client.PostAsJsonAsync("/api/v1/territories",
+            CreateTerritoryPayload("Territory Region Match", matchAreaId));
+        var underMatchId = (await underMatchResp.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data").GetProperty("id").GetInt32();
+        var underOtherResp = await _client.PostAsJsonAsync("/api/v1/territories",
+            CreateTerritoryPayload("Territory Region Other", otherAreaId));
+        var underOtherId = (await underOtherResp.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data").GetProperty("id").GetInt32();
+
+        // Search matches the grandparent region's name via the Area -> Region chain.
+        var response = await _client.GetAsync("/api/v1/territories?search=UniqueTT2&pageSize=1000");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var ids = (await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data").GetProperty("territories").EnumerateArray()
+            .Select(t => t.GetProperty("id").GetInt32()).ToList();
+        ids.Should().Contain(underMatchId);
+        ids.Should().NotContain(underOtherId);
+    }
+
+    [Fact]
+    public async Task GetAllTerritories_SearchByCode_ReturnsTerritoryWithThatId()
+    {
+        var regionId = await CreateRegionAsync("Region For Territory CodeSearch");
+        var areaId = await CreateAreaAsync("Area For Territory CodeSearch", regionId);
+        var resp = await _client.PostAsJsonAsync("/api/v1/territories",
+            CreateTerritoryPayload("Territory CodeSearch Target", areaId));
+        var targetId = (await resp.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data").GetProperty("id").GetInt32();
+
+        var response = await _client.GetAsync($"/api/v1/territories?search={targetId}&pageSize=1000");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var ids = (await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data").GetProperty("territories").EnumerateArray()
+            .Select(t => t.GetProperty("id").GetInt32()).ToList();
+        ids.Should().Contain(targetId);
+    }
+
+    [Fact]
     public async Task GetAllTerritories_StatusActive_ReturnsOnlyActiveTerritories()
     {
         var regionId = await CreateRegionAsync("Region For Territory Status Active Test");

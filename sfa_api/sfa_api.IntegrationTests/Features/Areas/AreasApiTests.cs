@@ -234,6 +234,50 @@ public class AreasApiTests
         }
     }
 
+    [Fact]
+    public async Task GetAllAreas_SearchByRegionName_ReturnsAreasUnderThatRegion()
+    {
+        var matchRegionId = await CreateRegionAsync("Region RegSearch UniqueRR1");
+        var otherRegionId = await CreateRegionAsync("Region Plain For RegSearch");
+
+        var underMatchResp = await _client.PostAsJsonAsync("/api/v1/areas",
+            CreateAreaPayload("Area Under Matching Region", matchRegionId));
+        var underMatchId = (await underMatchResp.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data").GetProperty("id").GetInt32();
+        var underOtherResp = await _client.PostAsJsonAsync("/api/v1/areas",
+            CreateAreaPayload("Area Under Other Region", otherRegionId));
+        var underOtherId = (await underOtherResp.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data").GetProperty("id").GetInt32();
+
+        // Search matches the parent region's name, not the area's own name.
+        var response = await _client.GetAsync("/api/v1/areas?search=UniqueRR1&pageSize=1000");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var ids = (await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data").GetProperty("areas").EnumerateArray()
+            .Select(a => a.GetProperty("id").GetInt32()).ToList();
+        ids.Should().Contain(underMatchId);
+        ids.Should().NotContain(underOtherId);
+    }
+
+    [Fact]
+    public async Task GetAllAreas_SearchByCode_ReturnsAreaWithThatId()
+    {
+        var regionId = await CreateRegionAsync("Region For Area CodeSearch");
+        var resp = await _client.PostAsJsonAsync("/api/v1/areas",
+            CreateAreaPayload("Area CodeSearch Target", regionId));
+        var targetId = (await resp.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data").GetProperty("id").GetInt32();
+
+        var response = await _client.GetAsync($"/api/v1/areas?search={targetId}&pageSize=1000");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var ids = (await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts))
+            .GetProperty("data").GetProperty("areas").EnumerateArray()
+            .Select(a => a.GetProperty("id").GetInt32()).ToList();
+        ids.Should().Contain(targetId);
+    }
+
     // ─────────────────────────────────────────────────
     // GET /api/v1/areas — status filter
     // ─────────────────────────────────────────────────

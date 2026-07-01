@@ -36,7 +36,7 @@ export function RegionTable() {
         enableColumnResizing: true,
         enableUrlState: false,
         columnResizingTableId: 'regions-table',
-        searchPlaceholder: 'Search regions...',
+        searchPlaceholder: 'Search by name or code...',
       }}
       getColumns={getColumns}
       fetchDataFn={useRegionDataTable as any}
