@@ -11,8 +11,8 @@ public class UpdateRouteValidator : AbstractValidator<UpdateRouteRequest>
             .NotEmpty().WithMessage("Name is required.")
             .MaximumLength(100).WithMessage("Name must not exceed 100 characters.");
 
+        // Optional: a unique colour is auto-assigned server-side when blank or duplicate.
         RuleFor(x => x.PinColor)
-            .NotEmpty().WithMessage("PinColor is required.")
             .MaximumLength(50).WithMessage("PinColor must not exceed 50 characters.");
 
         RuleFor(x => x.Description)

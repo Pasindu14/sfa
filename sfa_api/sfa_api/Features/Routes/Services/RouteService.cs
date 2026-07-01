@@ -68,10 +68,15 @@ public class RouteService(
         if (await _repo.ExistsByNameAsync(request.Name, request.DivisionId, ct))
             throw new DuplicateResourceException("Name");
 
+        // Colour is unique per route: honour the caller's pick only if it's valid and unused,
+        // otherwise auto-assign a unique colour from the curated palette (random fallback).
+        var usedColors = await _repo.GetUsedPinColorsAsync(null, ct);
+        var pinColor = RouteColorPalette.Resolve(request.PinColor, usedColors);
+
         var route = new RouteEntity
         {
             Name = request.Name,
-            PinColor = request.PinColor,
+            PinColor = pinColor,
             Description = request.Description,
             DivisionId = division.Id,
             TerritoryId = division.TerritoryId,
@@ -105,8 +110,12 @@ public class RouteService(
         if (await _repo.ExistsByNameAsync(request.Name, request.DivisionId, id, ct))
             throw new DuplicateResourceException("Name");
 
+        // Keep the colour unique across routes. Excluding this route's own id means an
+        // unchanged colour is preserved, while a duplicate/blank pick is re-assigned.
+        var usedColors = await _repo.GetUsedPinColorsAsync(id, ct);
+
         route.Name = request.Name;
-        route.PinColor = request.PinColor;
+        route.PinColor = RouteColorPalette.Resolve(request.PinColor, usedColors);
         route.Description = request.Description;
         route.DivisionId = division.Id;
         route.TerritoryId = division.TerritoryId;
