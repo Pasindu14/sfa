@@ -52,7 +52,7 @@ export function UserReportingLineTable() {
         enableSearch: true,
         enableDateFilter: false,
         enableExport: false,
-        enableColumnResizing: false,
+        enableColumnResizing: true,
         enableUrlState: false,
         columnResizingTableId: 'user-reporting-lines-table',
         searchPlaceholder: 'Search by name…',

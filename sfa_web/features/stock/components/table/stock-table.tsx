@@ -173,7 +173,7 @@ export function StockTable() {
             enableSearch: true,
             enableDateFilter: false,
             enableExport: false,
-            enableColumnResizing: false,
+            enableColumnResizing: true,
             enableUrlState: false,
             columnResizingTableId: 'stock-table',
             searchPlaceholder: 'Search by code or description...',

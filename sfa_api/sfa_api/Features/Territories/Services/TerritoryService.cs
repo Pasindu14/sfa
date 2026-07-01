@@ -132,6 +132,14 @@ public class TerritoryService(
         var territory = await _repo.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("Territory", id);
 
+        // Integrity guard: deactivating a parent with active children would leave them
+        // orphaned under an inactive territory. Block it, same as delete.
+        if (await _repo.HasActiveDivisionsAsync(id, ct))
+            throw new BusinessRuleException(
+                "TERRITORY_HAS_ACTIVE_DIVISIONS",
+                "Cannot deactivate a territory that still has active divisions. Deactivate or move them first.",
+                new { territoryId = id });
+
         territory.IsActive = false;
         territory.UpdatedBy = callerId;
         territory.UpdatedAt = DateTime.UtcNow;
@@ -140,6 +148,32 @@ public class TerritoryService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Territory {TerritoryId} deactivated", id);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
+    }
+
+    public async Task DeleteAsync(int id, int? callerId, CancellationToken ct = default)
+    {
+        var territory = await _repo.GetByIdAsync(id, ct)
+            ?? throw new NotFoundException("Territory", id);
+
+        // Integrity guard: refuse to delete a parent that still has active children.
+        if (await _repo.HasActiveDivisionsAsync(id, ct))
+            throw new BusinessRuleException(
+                "TERRITORY_HAS_ACTIVE_DIVISIONS",
+                "Cannot delete a territory that still has active divisions. Deactivate or move them first.",
+                new { territoryId = id });
+
+        // Soft-delete: IsDeleted is the audit flag for an explicit delete, distinct from
+        // deactivate (IsActive = false). Never hard-delete.
+        territory.IsActive = false;
+        territory.IsDeleted = true;
+        territory.UpdatedBy = callerId;
+        territory.UpdatedAt = DateTime.UtcNow;
+
+        await _repo.UpdateAsync(territory, ct);
+        await _repo.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Territory {TerritoryId} deleted by {CallerId}", id, callerId);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
     }
 

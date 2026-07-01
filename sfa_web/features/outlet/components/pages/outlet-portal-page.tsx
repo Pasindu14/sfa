@@ -24,7 +24,7 @@ export function OutletPortalPage() {
           enableSearch: true,
           enableDateFilter: false,
           enableExport: false,
-          enableColumnResizing: false,
+          enableColumnResizing: true,
           enableUrlState: false,
           columnResizingTableId: 'portal-outlets-table',
           searchPlaceholder: 'Search outlets...',

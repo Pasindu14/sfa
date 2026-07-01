@@ -64,7 +64,7 @@ export function getRegionColumns(actions: RegionColumnActions): ColumnDef<Region
     {
       id: 'actions',
       header: 'Actions',
-      size: 90,
+      size: 70,
       cell: ({ row }) => {
         const region = row.original
         return (

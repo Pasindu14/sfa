@@ -54,6 +54,7 @@ export function getProductCategoryColumns(
     },
     {
       id: 'actions',
+      size: 70,
       header: 'Actions',
       cell: ({ row }) => {
         const item = row.original

@@ -145,6 +145,25 @@ public class DivisionService(
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
     }
 
+    public async Task DeleteAsync(int id, int? callerId, CancellationToken ct = default)
+    {
+        var division = await _repo.GetByIdAsync(id, ct)
+            ?? throw new NotFoundException("Division", id);
+
+        // Soft-delete: IsDeleted is the audit flag for an explicit delete, distinct from
+        // deactivate (IsActive = false). Never hard-delete.
+        division.IsActive = false;
+        division.IsDeleted = true;
+        division.UpdatedBy = callerId;
+        division.UpdatedAt = DateTime.UtcNow;
+
+        await _repo.UpdateAsync(division, ct);
+        await _repo.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Division {DivisionId} deleted by {CallerId}", id, callerId);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
+    }
+
     private static DivisionDto MapToDto(Division d) => new(
         Id: d.Id,
         Name: d.Name,

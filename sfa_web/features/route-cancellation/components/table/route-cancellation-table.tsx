@@ -15,7 +15,7 @@ export function RouteCancellationTable() {
         enableSearch: true,
         enableDateFilter: false,
         enableExport: false,
-        enableColumnResizing: false,
+        enableColumnResizing: true,
         enableUrlState: false,
         searchPlaceholder: 'Search by rep name or route...',
       }}

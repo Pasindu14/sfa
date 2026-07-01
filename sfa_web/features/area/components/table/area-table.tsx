@@ -33,7 +33,7 @@ export function AreaTable() {
         enableSearch: true,
         enableDateFilter: false,
         enableExport: false,
-        enableColumnResizing: false,
+        enableColumnResizing: true,
         enableUrlState: false,
         columnResizingTableId: 'areas-table',
         searchPlaceholder: 'Search areas...',

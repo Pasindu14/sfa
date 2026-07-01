@@ -25,7 +25,7 @@ export function StockTakingTable() {
         enableSearch: true,
         enableDateFilter: false,
         enableExport: false,
-        enableColumnResizing: false,
+        enableColumnResizing: true,
         enableUrlState: false,
         searchPlaceholder: 'Search by year...',
       }}

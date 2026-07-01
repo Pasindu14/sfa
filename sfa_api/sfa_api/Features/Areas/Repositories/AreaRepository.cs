@@ -111,6 +111,11 @@ public class AreaRepository(AppDbContext context) : IAreaRepository
     public void ApplyConcurrencyToken(Area area, uint rowVersion)
         => _context.Entry(area).Property(x => x.RowVersion).OriginalValue = rowVersion;
 
+    public async Task<bool> HasActiveTerritoriesAsync(int areaId, CancellationToken ct = default)
+        => await _context.Territories
+            .IgnoreQueryFilters()
+            .AnyAsync(t => t.AreaId == areaId && t.IsActive && !t.IsDeleted, ct);
+
     public async Task SaveChangesAsync(CancellationToken ct = default)
     {
         try

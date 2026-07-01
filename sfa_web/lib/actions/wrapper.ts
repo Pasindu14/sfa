@@ -112,10 +112,22 @@ export function createAction<TInput extends any[], TOutput>(
 
       // Handle API errors — fields are already flattened to Record<string, string> by the interceptor
       if (error instanceof ApiError) {
+        // Log the full diagnostic context server-side so a developer can trace it even if
+        // the user only ever sees the friendly toast.
+        logger.error({
+          context: name,
+          code: error.code,
+          status: error.status,
+          traceId: error.traceId,
+          message: error.message,
+        }, `${name} failed with ApiError`)
+
         return {
           success: false,
           error: error.message,
           code: error.code,
+          status: error.status,
+          traceId: error.traceId,
           ...(error.fields && { fields: error.fields }),
         }
       }
@@ -124,7 +136,7 @@ export function createAction<TInput extends any[], TOutput>(
       console.error(`[${name}] Unhandled error:`, error)
       return {
         success: false,
-        error: 'An unexpected error occurred',
+        error: error instanceof Error ? error.message : 'An unexpected error occurred',
         code: 'INTERNAL_ERROR'
       }
     }

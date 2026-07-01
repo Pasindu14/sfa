@@ -72,7 +72,7 @@ export function getAreaColumns(actions: AreaColumnActions): ColumnDef<AreaDto>[]
     {
       id: 'actions',
       header: 'Actions',
-      size: 90,
+      size: 70,
       cell: ({ row }) => {
         const area = row.original
         return (

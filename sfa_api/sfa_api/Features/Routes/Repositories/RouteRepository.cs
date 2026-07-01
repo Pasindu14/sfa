@@ -100,6 +100,11 @@ public class RouteRepository(AppDbContext context) : IRouteRepository
         return Task.CompletedTask;
     }
 
+    public async Task<bool> HasActiveOutletsAsync(int routeId, CancellationToken ct = default)
+        => await _context.Outlets
+            .IgnoreQueryFilters()
+            .AnyAsync(o => o.RouteId == routeId && o.IsActive && !o.IsDeleted, ct);
+
     public async Task SaveChangesAsync(CancellationToken ct = default)
         => await _context.SaveChangesAsync(ct);
 }

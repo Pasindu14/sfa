@@ -50,7 +50,7 @@ export function DistributorBillingTable() {
           enableSearch: true,
           enableDateFilter: false,
           enableExport: false,
-          enableColumnResizing: false,
+          enableColumnResizing: true,
           enableUrlState: false,
           columnResizingTableId: 'distributor-billing-table',
           searchPlaceholder: 'Search by billing number or outlet...',

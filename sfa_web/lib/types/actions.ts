@@ -6,7 +6,16 @@
  */
 export type ActionResponse<T = void> =
   | { success: true; data: T }
-  | { success: false; error: string; code?: string; fields?: Record<string, string> }
+  | {
+      success: false
+      error: string
+      code?: string
+      fields?: Record<string, string>
+      /** HTTP status from the API (when the failure came from an ApiError) — aids diagnosis */
+      status?: number
+      /** Correlation/trace id — paste into Seq to find the exact server-side request */
+      traceId?: string
+    }
 
 /**
  * The failure variant of ActionResponse.

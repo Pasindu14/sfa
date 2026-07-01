@@ -14,5 +14,7 @@ public interface IRouteRepository
     Task<bool> ExistsByNameAsync(string name, int divisionId, int excludeId, CancellationToken ct = default);
     Task CreateAsync(RouteEntity route, CancellationToken ct = default);
     Task UpdateAsync(RouteEntity route, CancellationToken ct = default);
+    /// <summary>True if the route still has at least one active (not deleted) outlet under it.</summary>
+    Task<bool> HasActiveOutletsAsync(int routeId, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

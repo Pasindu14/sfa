@@ -152,6 +152,7 @@ export function getUserGeoAssignmentColumns(
     },
     {
       id: 'actions',
+      size: 70,
       header: 'Actions',
       cell: ({ row }) => {
         const item = row.original

@@ -77,6 +77,7 @@ export function getPurchaseOrderColumns(): ColumnDef<PurchaseOrderSummaryDto>[] 
     },
     {
       id: 'actions',
+      size: 70,
       cell: ({ row }) => {
         const order = row.original;
         return (

@@ -96,6 +96,11 @@ public class TerritoryRepository(AppDbContext context) : ITerritoryRepository
     public void ApplyConcurrencyToken(Territory territory, uint rowVersion)
         => _context.Entry(territory).Property(x => x.RowVersion).OriginalValue = rowVersion;
 
+    public async Task<bool> HasActiveDivisionsAsync(int territoryId, CancellationToken ct = default)
+        => await _context.Divisions
+            .IgnoreQueryFilters()
+            .AnyAsync(d => d.TerritoryId == territoryId && d.IsActive && !d.IsDeleted, ct);
+
     public async Task SaveChangesAsync(CancellationToken ct = default)
     {
         try

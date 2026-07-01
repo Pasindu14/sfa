@@ -36,7 +36,7 @@ export function UserTable() {
         enableSearch: true,
         enableDateFilter: false,
         enableExport: false,
-        enableColumnResizing: false,
+        enableColumnResizing: true,
         enableUrlState: false,
         columnResizingTableId: "users-table",
         searchPlaceholder: "Search users...",

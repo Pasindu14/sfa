@@ -76,6 +76,7 @@ export function getStockTakingColumns(actions: StockTakingColumnActions): Column
     },
     {
       id: 'actions',
+      size: 70,
       header: 'Actions',
       cell: function ActionsCell({ row }) {
         const item = row.original

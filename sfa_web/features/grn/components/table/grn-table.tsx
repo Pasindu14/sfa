@@ -231,7 +231,7 @@ export function GrnTable() {
             enableSearch: false,
             enableDateFilter: false,
             enableExport: false,
-            enableColumnResizing: false,
+            enableColumnResizing: true,
             enableUrlState: false,
             columnResizingTableId: 'grns-table',
             searchPlaceholder: 'Search GRNs…',

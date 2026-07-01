@@ -33,7 +33,7 @@ export function RouteTable() {
         enableSearch: true,
         enableDateFilter: false,
         enableExport: false,
-        enableColumnResizing: false,
+        enableColumnResizing: true,
         enableUrlState: false,
         columnResizingTableId: 'routes-table',
         searchPlaceholder: 'Search routes...',

@@ -127,6 +127,10 @@
     @apply font-sans;
   }
 }
+.resizable-table {
+  table-layout: fixed;
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   /* Width of the scrollbar */

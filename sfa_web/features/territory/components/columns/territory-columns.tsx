@@ -72,7 +72,7 @@ export function getTerritoryColumns(actions: TerritoryColumnActions): ColumnDef<
     {
       id: 'actions',
       header: 'Actions',
-      size: 90,
+      size: 70,
       cell: ({ row }) => {
         const territory = row.original
         return (

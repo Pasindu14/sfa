@@ -91,6 +91,7 @@ export function getRouteColumns(actions: RouteColumnActions): ColumnDef<RouteDto
     },
     {
       id: 'actions',
+      size: 70,
       header: 'Actions',
       cell: ({ row }) => {
         const route = row.original

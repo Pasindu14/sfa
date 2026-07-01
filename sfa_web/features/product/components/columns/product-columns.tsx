@@ -93,6 +93,7 @@ export function getProductColumns(actions: ProductColumnActions): ColumnDef<Prod
     },
     {
       id: 'actions',
+      size: 70,
       header: 'Actions',
       cell: ({ row }) => {
         const item = row.original

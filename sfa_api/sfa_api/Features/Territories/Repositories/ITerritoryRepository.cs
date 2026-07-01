@@ -15,5 +15,7 @@ public interface ITerritoryRepository
     Task CreateAsync(Territory territory, CancellationToken ct = default);
     Task UpdateAsync(Territory territory, CancellationToken ct = default);
     void ApplyConcurrencyToken(Territory territory, uint rowVersion);
+    /// <summary>True if the territory still has at least one active (not deleted) division under it.</summary>
+    Task<bool> HasActiveDivisionsAsync(int territoryId, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

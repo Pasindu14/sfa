@@ -174,6 +174,8 @@ client.interceptors.response.use(
           ? "FORBIDDEN_ACCESS"
           : status === 404
           ? "NOT_FOUND"
+          : status === 405
+          ? "METHOD_NOT_ALLOWED"
           : status === 409
           ? "CONFLICT"
           : status === 422

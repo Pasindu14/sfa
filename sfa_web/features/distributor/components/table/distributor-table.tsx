@@ -33,7 +33,7 @@ export function DistributorTable() {
         enableSearch: true,
         enableDateFilter: false,
         enableExport: false,
-        enableColumnResizing: false,
+        enableColumnResizing: true,
         enableUrlState: false,
         columnResizingTableId: "distributors-table",
         searchPlaceholder: "Search distributors...",

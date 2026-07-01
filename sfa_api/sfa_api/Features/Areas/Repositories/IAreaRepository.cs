@@ -15,5 +15,7 @@ public interface IAreaRepository
     Task CreateAsync(Area area, CancellationToken ct = default);
     Task UpdateAsync(Area area);
     void ApplyConcurrencyToken(Area area, uint rowVersion);
+    /// <summary>True if the area still has at least one active (not deleted) territory under it.</summary>
+    Task<bool> HasActiveTerritoriesAsync(int areaId, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

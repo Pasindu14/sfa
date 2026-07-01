@@ -63,7 +63,7 @@ export function OutletBillsPage() {
           enableSearch: true,
           enableDateFilter: false,
           enableExport: false,
-          enableColumnResizing: false,
+          enableColumnResizing: true,
           enableUrlState: false,
           columnResizingTableId: `outlet-bills-table-${outletId}`,
           searchPlaceholder: 'Search by billing number...',

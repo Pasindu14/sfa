@@ -22,7 +22,7 @@ export function DistributorStockTable() {
         enableSearch: true,
         enableDateFilter: false,
         enableExport: false,
-        enableColumnResizing: false,
+        enableColumnResizing: true,
         enableUrlState: false,
         columnResizingTableId: 'distributor-stock-table',
         searchPlaceholder: 'Search by code or description...',

@@ -111,6 +111,7 @@ export function getOutletColumns(actions: OutletColumnActions): ColumnDef<Outlet
     },
     {
       id: 'actions',
+      size: 70,
       header: 'Actions',
       cell: ({ row }) => {
         const item = row.original

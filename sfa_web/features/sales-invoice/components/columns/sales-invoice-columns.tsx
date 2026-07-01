@@ -98,6 +98,7 @@ export function getSalesInvoiceColumns(
     },
     {
       id: 'actions',
+      size: 70,
       header: '',
       cell: ({ row }) => {
         const item = row.original

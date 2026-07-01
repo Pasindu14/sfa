@@ -42,7 +42,7 @@ export function DistributorPurchaseOrderTable() {
         enableSearch: true,
         enableDateFilter: true,
         enableExport: false,
-        enableColumnResizing: false,
+        enableColumnResizing: true,
         enableUrlState: false,
         columnResizingTableId: 'distributor-purchase-orders-table',
         searchPlaceholder: 'Search by order number...',

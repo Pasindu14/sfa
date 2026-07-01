@@ -152,6 +152,14 @@ public class AreaService(
         var area = await _repo.GetByIdTrackedAsync(id, ct)
             ?? throw new NotFoundException("Area", id);
 
+        // Integrity guard: deactivating a parent with active children would leave them
+        // orphaned under an inactive area. Block it, same as delete.
+        if (await _repo.HasActiveTerritoriesAsync(id, ct))
+            throw new BusinessRuleException(
+                "AREA_HAS_ACTIVE_TERRITORIES",
+                "Cannot deactivate an area that still has active territories. Deactivate or move them first.",
+                new { areaId = id });
+
         var wasActive = area.IsActive;
         area.IsActive = false;
         area.UpdatedBy = callerId;
@@ -171,6 +179,13 @@ public class AreaService(
     {
         var area = await _repo.GetByIdTrackedAsync(id, ct)
             ?? throw new NotFoundException("Area", id);
+
+        // Integrity guard: refuse to delete a parent that still has active children.
+        if (await _repo.HasActiveTerritoriesAsync(id, ct))
+            throw new BusinessRuleException(
+                "AREA_HAS_ACTIVE_TERRITORIES",
+                "Cannot delete an area that still has active territories. Deactivate or move them first.",
+                new { areaId = id });
 
         area.IsActive = false;
         area.IsDeleted = true;

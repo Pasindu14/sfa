@@ -41,7 +41,7 @@ export function PurchaseOrderTable() {
         enableSearch: true,
         enableDateFilter: true,
         enableExport: false,
-        enableColumnResizing: false,
+        enableColumnResizing: true,
         enableUrlState: false,
         columnResizingTableId: 'purchase-orders-table',
         searchPlaceholder: 'Search orders...',

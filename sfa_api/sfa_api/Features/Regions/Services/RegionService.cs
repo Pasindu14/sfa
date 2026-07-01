@@ -116,6 +116,14 @@ public class RegionService(
         var region = await _repo.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("Region", id);
 
+        // Integrity guard: deactivating a parent with active children would leave them
+        // orphaned under an inactive region. Block it, same as delete.
+        if (await _repo.HasActiveAreasAsync(id, ct))
+            throw new BusinessRuleException(
+                "REGION_HAS_ACTIVE_AREAS",
+                "Cannot deactivate a region that still has active areas. Deactivate or move them first.",
+                new { regionId = id });
+
         region.IsActive = false;
         region.UpdatedBy = callerId;
         region.UpdatedAt = DateTime.UtcNow;
@@ -124,6 +132,33 @@ public class RegionService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Region {RegionId} deactivated", id);
+        await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
+    }
+
+    public async Task DeleteAsync(int id, int? callerId, CancellationToken ct = default)
+    {
+        var region = await _repo.GetByIdAsync(id, ct)
+            ?? throw new NotFoundException("Region", id);
+
+        // Integrity guard: refuse to delete a parent that still has active children,
+        // which would leave orphaned areas pointing at a deleted region.
+        if (await _repo.HasActiveAreasAsync(id, ct))
+            throw new BusinessRuleException(
+                "REGION_HAS_ACTIVE_AREAS",
+                "Cannot delete a region that still has active areas. Deactivate or move them first.",
+                new { regionId = id });
+
+        // Soft-delete: IsDeleted is the audit flag marking an explicit delete,
+        // distinct from deactivate (IsActive = false). Never hard-delete.
+        region.IsActive = false;
+        region.IsDeleted = true;
+        region.UpdatedBy = callerId;
+        region.UpdatedAt = DateTime.UtcNow;
+
+        await _repo.UpdateAsync(region, ct);
+        await _repo.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Region {RegionId} deleted by {CallerId}", id, callerId);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
     }
 

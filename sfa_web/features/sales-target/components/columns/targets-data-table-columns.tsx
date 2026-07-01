@@ -79,6 +79,7 @@ export function getTargetsColumns(
     },
     ...(onEdit ? [{
       id: 'actions',
+      size: 70,
       header: 'Actions',
       cell: ({ row }: { row: { original: SalesTargetDto } }) => (
         <DropdownMenu>

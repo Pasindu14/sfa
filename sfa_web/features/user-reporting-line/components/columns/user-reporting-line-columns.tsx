@@ -117,6 +117,7 @@ export function getUserReportingLineColumns(
     },
     {
       id: 'actions',
+      size: 70,
       header: 'Actions',
       cell: ({ row }) => {
         const line = row.original

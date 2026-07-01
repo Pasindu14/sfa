@@ -145,6 +145,14 @@ public class RouteService(
         var route = await _repo.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("Route", id);
 
+        // Integrity guard: deactivating a route with active outlets would leave them
+        // orphaned on an inactive route. Block it, same as delete.
+        if (await _repo.HasActiveOutletsAsync(id, ct))
+            throw new BusinessRuleException(
+                "ROUTE_HAS_ACTIVE_OUTLETS",
+                "Cannot deactivate a route that still has active outlets. Reassign or deactivate them first.",
+                new { routeId = id });
+
         route.IsActive = false;
         route.UpdatedBy = callerId;
         route.UpdatedAt = DateTime.UtcNow;
@@ -153,6 +161,31 @@ public class RouteService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Route {RouteId} deactivated", id);
+    }
+
+    public async Task DeleteAsync(int id, int? callerId, CancellationToken ct = default)
+    {
+        var route = await _repo.GetByIdAsync(id, ct)
+            ?? throw new NotFoundException("Route", id);
+
+        // Integrity guard: refuse to delete a route that still has active outlets on it.
+        if (await _repo.HasActiveOutletsAsync(id, ct))
+            throw new BusinessRuleException(
+                "ROUTE_HAS_ACTIVE_OUTLETS",
+                "Cannot delete a route that still has active outlets. Reassign or deactivate them first.",
+                new { routeId = id });
+
+        // Soft-delete: IsDeleted is the audit flag for an explicit delete, distinct from
+        // deactivate (IsActive = false). Never hard-delete.
+        route.IsActive = false;
+        route.IsDeleted = true;
+        route.UpdatedBy = callerId;
+        route.UpdatedAt = DateTime.UtcNow;
+
+        await _repo.UpdateAsync(route, ct);
+        await _repo.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Route {RouteId} deleted by {CallerId}", id, callerId);
     }
 
     private static RouteDto MapToDto(RouteEntity r) => new(

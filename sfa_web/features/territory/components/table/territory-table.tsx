@@ -33,7 +33,7 @@ export function TerritoryTable() {
         enableSearch: true,
         enableDateFilter: false,
         enableExport: false,
-        enableColumnResizing: false,
+        enableColumnResizing: true,
         enableUrlState: false,
         columnResizingTableId: "territories-table",
         searchPlaceholder: "Search territories...",

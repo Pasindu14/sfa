@@ -31,7 +31,7 @@ export function FleetTable() {
         enableSearch: true,
         enableDateFilter: false,
         enableExport: false,
-        enableColumnResizing: false,
+        enableColumnResizing: true,
         enableUrlState: false,
         columnResizingTableId: 'fleets-table',
         searchPlaceholder: 'Search fleets...',

@@ -128,4 +128,17 @@ public class DivisionsController(
         await _service.DeactivateAsync(id, callerId, ct);
         return NoContent();
     }
+
+    /// <summary>
+    /// DELETE /api/v1/divisions/{id}
+    /// Soft-delete (sets IsDeleted = true); never hard-deletes.
+    /// </summary>
+    [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Delete(int id, CancellationToken ct)
+    {
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
+        await _service.DeleteAsync(id, callerId, ct);
+        return NoContent();
+    }
 }

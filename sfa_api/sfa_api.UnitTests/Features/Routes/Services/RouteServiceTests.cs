@@ -618,6 +618,76 @@ public class RouteServiceTests
     }
 
     // ─────────────────────────────────────────────────
+    // DeleteAsync + child-integrity guard (route → outlets)
+    // ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task DeleteAsync_NonExistentRoute_ThrowsNotFoundException()
+    {
+        _repoMock.Setup(r => r.GetByIdAsync(99, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((RouteEntity?)null);
+
+        var act = () => _sut.DeleteAsync(99, callerId: 1);
+
+        var ex = await act.Should().ThrowAsync<NotFoundException>();
+        ex.Which.ErrorCode.Should().Be("ROUTE_NOT_FOUND");
+    }
+
+    [Fact]
+    public async Task DeleteAsync_RouteWithoutActiveOutlets_SoftDeletes()
+    {
+        var route = CreateFakeRoute(isActive: true);
+        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(route);
+        _repoMock.Setup(r => r.HasActiveOutletsAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(false);
+        _repoMock.Setup(r => r.UpdateAsync(route, It.IsAny<CancellationToken>()))
+                 .Returns(Task.CompletedTask);
+        _repoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
+                 .Returns(Task.CompletedTask);
+
+        await _sut.DeleteAsync(1, callerId: 3);
+
+        route.IsActive.Should().BeFalse();
+        route.IsDeleted.Should().BeTrue();
+        _repoMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_RouteWithActiveOutlets_ThrowsBusinessRuleAndDoesNotSave()
+    {
+        var route = CreateFakeRoute(isActive: true);
+        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(route);
+        _repoMock.Setup(r => r.HasActiveOutletsAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(true);
+
+        var act = () => _sut.DeleteAsync(1, callerId: 1);
+
+        var ex = await act.Should().ThrowAsync<BusinessRuleException>();
+        ex.Which.ErrorCode.Should().Be("ROUTE_HAS_ACTIVE_OUTLETS");
+        route.IsDeleted.Should().BeFalse();
+        _repoMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeactivateAsync_RouteWithActiveOutlets_ThrowsBusinessRuleAndDoesNotSave()
+    {
+        var route = CreateFakeRoute(isActive: true);
+        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(route);
+        _repoMock.Setup(r => r.HasActiveOutletsAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(true);
+
+        var act = () => _sut.DeactivateAsync(1, callerId: 1);
+
+        var ex = await act.Should().ThrowAsync<BusinessRuleException>();
+        ex.Which.ErrorCode.Should().Be("ROUTE_HAS_ACTIVE_OUTLETS");
+        route.IsActive.Should().BeTrue();
+        _repoMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // ─────────────────────────────────────────────────
     // Helpers
     // ─────────────────────────────────────────────────
 

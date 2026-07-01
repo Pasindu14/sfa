@@ -33,7 +33,7 @@ export function RegionTable() {
         enableSearch: true,
         enableDateFilter: false,
         enableExport: false,
-        enableColumnResizing: false,
+        enableColumnResizing: true,
         enableUrlState: false,
         columnResizingTableId: 'regions-table',
         searchPlaceholder: 'Search regions...',

@@ -33,7 +33,7 @@ export function DivisionTable() {
         enableSearch: true,
         enableDateFilter: false,
         enableExport: false,
-        enableColumnResizing: false,
+        enableColumnResizing: true,
         enableUrlState: false,
         columnResizingTableId: 'divisions-table',
         searchPlaceholder: 'Search divisions...',

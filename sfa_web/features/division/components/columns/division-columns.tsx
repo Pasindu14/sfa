@@ -88,7 +88,7 @@ export function getDivisionColumns(actions: DivisionColumnActions): ColumnDef<Di
     {
       id: 'actions',
       header: 'Actions',
-      size: 90,
+      size: 70,
       cell: ({ row }) => {
         const division = row.original
         return (

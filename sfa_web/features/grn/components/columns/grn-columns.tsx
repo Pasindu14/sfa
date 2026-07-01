@@ -88,6 +88,7 @@ export function getGrnColumns(actions: GrnColumnActions): ColumnDef<GrnListItem>
     },
     {
       id: 'actions',
+      size: 70,
       header: '',
       cell: ({ row }) => {
         const item = row.original

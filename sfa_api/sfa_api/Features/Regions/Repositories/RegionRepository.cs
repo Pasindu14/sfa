@@ -73,6 +73,11 @@ public class RegionRepository(AppDbContext context) : IRegionRepository
     public void ApplyConcurrencyToken(Region region, uint rowVersion)
         => _context.Entry(region).Property(x => x.RowVersion).OriginalValue = rowVersion;
 
+    public async Task<bool> HasActiveAreasAsync(int regionId, CancellationToken ct = default)
+        => await _context.Areas
+            .IgnoreQueryFilters()
+            .AnyAsync(a => a.RegionId == regionId && a.IsActive && !a.IsDeleted, ct);
+
     public async Task SaveChangesAsync(CancellationToken ct = default)
     {
         try

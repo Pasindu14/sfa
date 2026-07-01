@@ -52,6 +52,7 @@ export function getFleetColumns(actions: FleetColumnActions): ColumnDef<FleetDto
     },
     {
       id: 'actions',
+      size: 70,
       header: 'Actions',
       cell: ({ row }) => {
         const item = row.original

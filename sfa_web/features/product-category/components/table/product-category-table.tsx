@@ -31,7 +31,7 @@ export function ProductCategoryTable() {
         enableSearch: true,
         enableDateFilter: false,
         enableExport: false,
-        enableColumnResizing: false,
+        enableColumnResizing: true,
         enableUrlState: false,
         columnResizingTableId: 'product-categories-table',
         searchPlaceholder: 'Search categories...',

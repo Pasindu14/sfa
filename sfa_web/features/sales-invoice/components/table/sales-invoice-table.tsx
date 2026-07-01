@@ -262,7 +262,7 @@ export function SalesInvoiceTable() {
             enableSearch: true,
             enableDateFilter: false,
             enableExport: false,
-            enableColumnResizing: false,
+            enableColumnResizing: true,
             enableUrlState: false,
             columnResizingTableId: "sales-invoices-table",
             searchPlaceholder: "Search by bill no, distributor...",
