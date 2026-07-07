@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using OpenTelemetry.Resources;
@@ -51,6 +52,22 @@ Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger()
 try
 {
     var builder = WebApplication.CreateBuilder(args);
+
+    // ── Fail-fast secret validation ───────────────────────────────────────
+    // Secrets are injected at runtime — user-secrets/env vars locally, a secrets
+    // manager in prod — and are NEVER committed to source control. Refuse to boot
+    // with a missing or weak signing key rather than running with broken or
+    // forgeable auth. (Tests inject a dedicated test-only key via the factory.)
+    var jwtSecret = builder.Configuration["Jwt:SecretKey"];
+    if (string.IsNullOrWhiteSpace(jwtSecret) || Encoding.UTF8.GetByteCount(jwtSecret) < 32)
+        throw new InvalidOperationException(
+            "Jwt:SecretKey is missing or shorter than 32 bytes. Provide it via the environment " +
+            "variable 'Jwt__SecretKey' or user-secrets — it must never be committed to source control.");
+
+    if (string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("DefaultConnection")))
+        throw new InvalidOperationException(
+            "ConnectionStrings:DefaultConnection is missing. Provide it via the environment variable " +
+            "'ConnectionStrings__DefaultConnection' or user-secrets — connection strings must never be committed.");
 
     // ── Request body size limit ───────────────────────────────────────────
     builder.WebHost.ConfigureKestrel(options =>
@@ -231,6 +248,31 @@ try
 
     var app = builder.Build();
 
+    // ── Schema guard (finding #3) ─────────────────────────────────────────
+    // Refuse to start if the database is missing migrations this build expects. Without this the
+    // app boots green and then throws "column/relation does not exist" 500s the moment a query hits
+    // an un-applied schema change. Migrations must be applied as an explicit deploy step
+    // (dotnet ef database update / a migration bundle) BEFORE this build is rolled out. Skipped for
+    // local Development and for the SQLite test provider (which uses EnsureCreated, not migrations).
+    if (!app.Environment.IsDevelopment())
+    {
+        await using var schemaScope = app.Services.CreateAsyncScope();
+        var schemaDb = schemaScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        if (schemaDb.Database.IsNpgsql())
+        {
+            var pending = (await schemaDb.Database.GetPendingMigrationsAsync()).ToList();
+            if (pending.Count > 0)
+            {
+                Log.Fatal("Startup aborted: {Count} un-applied database migration(s): {Migrations}. " +
+                          "Apply migrations (dotnet ef database update / migration bundle) before deploying this build.",
+                          pending.Count, string.Join(", ", pending));
+                throw new InvalidOperationException(
+                    $"Database has {pending.Count} un-applied migration(s): {string.Join(", ", pending)}. " +
+                    "Run migrations before starting the API.");
+            }
+        }
+    }
+
     // ── Seed ──────────────────────────────────────────────────────────────
     if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
     {
@@ -244,10 +286,36 @@ try
     app.UseSerilogRequestLogging();                 // 3. Log every request (sees final status)
     app.UseHttpsRedirection();                      // 4. HTTPS only
     app.UseCors("SFAPolicy");                       // 5. CORS
-    app.UseForwardedHeaders(new ForwardedHeadersOptions // 6. Trust X-Forwarded-For from proxy
+    // 6. Trust X-Forwarded-For ONLY from explicitly configured proxies/load balancers.
+    //    Without this, an attacker could spoof the header to defeat the per-IP rate limiter
+    //    (finding #8). Configure the deployment's ingress IPs/CIDRs via
+    //    ForwardedHeaders:KnownProxies / ForwardedHeaders:KnownNetworks; if none are set, the
+    //    framework's secure loopback-only default stands (header ignored from public clients).
+    var forwardedOptions = new ForwardedHeadersOptions
     {
-        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-    });
+        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+        ForwardLimit = 1
+    };
+    var knownProxies = app.Configuration.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>() ?? [];
+    var knownNetworks = app.Configuration.GetSection("ForwardedHeaders:KnownNetworks").Get<string[]>() ?? [];
+    if (knownProxies.Length > 0 || knownNetworks.Length > 0)
+    {
+        forwardedOptions.KnownProxies.Clear();
+        forwardedOptions.KnownNetworks.Clear();
+        foreach (var proxy in knownProxies)
+            if (System.Net.IPAddress.TryParse(proxy, out var ip))
+                forwardedOptions.KnownProxies.Add(ip);
+        foreach (var network in knownNetworks)
+        {
+            var parts = network.Split('/');
+            if (parts.Length == 2
+                && System.Net.IPAddress.TryParse(parts[0], out var prefix)
+                && int.TryParse(parts[1], out var prefixLength))
+                forwardedOptions.KnownNetworks.Add(
+                    new Microsoft.AspNetCore.HttpOverrides.IPNetwork(prefix, prefixLength));
+        }
+    }
+    app.UseForwardedHeaders(forwardedOptions);
     app.UseRequestTimeouts();                        // 7. Request timeouts (before rate limiter)
     app.UseRateLimiter();                           // 8. Rate limiting
     app.UseAuthentication();                        // 9. Validate JWT

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using sfa_api.Infrastructure.Locking;
 using sfa_api.Infrastructure.Persistence;
 
 namespace sfa_api.Features.Auth.Services;
@@ -36,6 +37,18 @@ public class RefreshTokenCleanupService(
                 var cutoff = DateTime.UtcNow.AddDays(-graceDays);
 
                 using var scope = _scopeFactory.CreateScope();
+
+                // Single-instance guard (finding #10): non-blocking try-acquire; skip the tick if
+                // another instance holds it. The delete is idempotent, so a lock expiry is harmless.
+                var lockService = scope.ServiceProvider.GetRequiredService<IDistributedLockService>();
+                await using var handle = await lockService.AcquireAsync(
+                    "background:refresh-token-cleanup", stoppingToken);
+                if (handle is null)
+                {
+                    _logger.LogDebug("Refresh-token-cleanup lock held by another instance; skipping tick.");
+                    continue;
+                }
+
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
                 var deleted = await db.RefreshTokens

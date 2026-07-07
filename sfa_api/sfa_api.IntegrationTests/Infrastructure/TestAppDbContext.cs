@@ -1,10 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using sfa_api.Features.Areas.Entities;
+using sfa_api.Features.Billings.Entities;
 using sfa_api.Features.Distributors.Entities;
 using sfa_api.Features.Divisions.Entities;
+using sfa_api.Features.GRNs.Entities;
 using sfa_api.Features.Outlets.Entities;
 using sfa_api.Features.Products.Entities;
+using sfa_api.Features.PurchaseOrders.Entities;
 using sfa_api.Features.Regions.Entities;
+using sfa_api.Features.SalesInvoices.Entities;
 using sfa_api.Features.Territories.Entities;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Infrastructure.Persistence;
@@ -114,5 +118,21 @@ public class TestAppDbContext(DbContextOptions<AppDbContext> options) : AppDbCon
             .HasDefaultValue(1u)
             .ValueGeneratedOnAdd()
             .IsConcurrencyToken(false);
+
+        // Same xmin → INTEGER patch for the transactional document entities that now carry
+        // RowVersion (finding #7: Billing, SalesInvoice, GRN, PurchaseOrder). Concurrency is
+        // disabled under SQLite — the real 409-on-conflict behaviour only exists on PostgreSQL.
+        foreach (var patch in new Action[]
+        {
+            () => modelBuilder.Entity<Billing>().Property(x => x.RowVersion)
+                    .HasColumnType("INTEGER").HasDefaultValue(1u).ValueGeneratedOnAdd().IsConcurrencyToken(false),
+            () => modelBuilder.Entity<SalesInvoice>().Property(x => x.RowVersion)
+                    .HasColumnType("INTEGER").HasDefaultValue(1u).ValueGeneratedOnAdd().IsConcurrencyToken(false),
+            () => modelBuilder.Entity<GRN>().Property(x => x.RowVersion)
+                    .HasColumnType("INTEGER").HasDefaultValue(1u).ValueGeneratedOnAdd().IsConcurrencyToken(false),
+            () => modelBuilder.Entity<PurchaseOrder>().Property(x => x.RowVersion)
+                    .HasColumnType("INTEGER").HasDefaultValue(1u).ValueGeneratedOnAdd().IsConcurrencyToken(false),
+        })
+            patch();
     }
 }

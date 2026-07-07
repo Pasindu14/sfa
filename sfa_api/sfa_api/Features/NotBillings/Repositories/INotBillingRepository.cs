@@ -10,6 +10,7 @@ public interface INotBillingRepository
     Task<long> GetNextNotBillingNumberAsync(CancellationToken ct = default);
     Task<Outlet?> GetOutletAsync(int outletId, CancellationToken ct = default);
     Task<bool> ExistsForOutletTodayAsync(int salesRepId, int outletId, DateOnly date, CancellationToken ct = default);
+    Task<int?> FindIdByClientRecordIdAsync(string clientRecordId, CancellationToken ct = default);
 
     Task<NotBilling?> GetByIdAsync(int id, CancellationToken ct = default);
     Task<(List<NotBillingListDto> Items, int TotalCount)> GetListAsync(

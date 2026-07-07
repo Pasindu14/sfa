@@ -6,13 +6,16 @@ using Microsoft.IdentityModel.Tokens;
 namespace sfa_api.IntegrationTests.Infrastructure;
 
 /// <summary>
-/// Generates JWT tokens for integration tests using the same secret/issuer/audience
-/// as the real app (from appsettings.json).
+/// Generates JWT tokens for integration tests using a dedicated test-only signing key.
+/// The factory (<see cref="SfaWebApplicationFactory"/>) injects this same key as
+/// Jwt:SecretKey so the app under test validates these tokens. This key is NOT the
+/// production secret and must never be used outside tests.
 /// </summary>
 public static class AuthHelper
 {
-    // Must match appsettings.json values
-    private const string SecretKey = "a8F#9kLm2PqR7tVxY4zW!6nB@3cD$5Gh";
+    // Test-only signing key — injected into the test host via SfaWebApplicationFactory.
+    // Not a real secret; safe to commit. Must be >= 32 bytes for HMAC-SHA256.
+    public const string SecretKey = "integration-tests-only-signing-key-not-for-production-0123456789";
     private const string Issuer = "SFA.API";
     private const string Audience = "SFA.Clients";
 

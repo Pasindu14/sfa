@@ -179,7 +179,8 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
                 b.BillingNumber,
                 b.BillingDate,
                 b.TotalAmount,
-                b.RepStatus))
+                b.RepStatus,
+                b.DistributorStatus))
             .ToListAsync(ct);
 
     // Active-vs-all policy (finding #10) for every sales aggregate below:

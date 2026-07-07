@@ -9,6 +9,9 @@ public class GRN
 {
     public int Id { get; set; }
 
+    // Optimistic concurrency token — maps to PostgreSQL xmin (finding #7).
+    public uint RowVersion { get; set; }
+
     /// <summary>Auto-generated: GRN-2026-00001</summary>
     public string GrnNumber { get; set; } = string.Empty;
 

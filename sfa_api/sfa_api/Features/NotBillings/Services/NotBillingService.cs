@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using sfa_api.Common.Errors;
 using sfa_api.Common.Extensions;
 using sfa_api.Features.NotBillings.DTOs;
@@ -19,8 +20,23 @@ public class NotBillingService(
     private readonly IUserGeoAssignmentRepository _geoAssignmentRepository = geoAssignmentRepository;
     private readonly IUserReportingLineRepository _reportingLineRepository = reportingLineRepository;
 
-    public async Task<NotBillingDto> CreateAsync(CreateNotBillingRequest request, int salesRepId, CancellationToken ct = default)
+    public async Task<NotBillingDto> CreateAsync(CreateNotBillingRequest request, int salesRepId, string? clientRecordId = null, CancellationToken ct = default)
     {
+        // ⓪ Idempotent fast-path — a retry of a submission that already succeeded returns the
+        // existing record without redoing work or burning a not-billing-number sequence value.
+        // Unlike the (rep, outlet, date) natural key, this survives a retry that crosses midnight
+        // or arrives after the idempotency-cache TTL (finding #6).
+        if (!string.IsNullOrWhiteSpace(clientRecordId))
+        {
+            var existingId = await _notBillingRepository.FindIdByClientRecordIdAsync(clientRecordId, ct);
+            if (existingId is not null)
+            {
+                var existing = await _notBillingRepository.GetByIdAsync(existingId.Value, ct)
+                    ?? throw new DatabaseUnavailableException();
+                return ProjectToDto(existing);
+            }
+        }
+
         // ① Validate outlet
         var outlet = await _notBillingRepository.GetOutletAsync(request.OutletId, ct)
             ?? throw new NotFoundException("Outlet", request.OutletId);
@@ -64,6 +80,7 @@ public class NotBillingService(
         var notBilling = new NotBilling
         {
             NotBillingNumber  = notBillingNumber,
+            ClientRecordId    = string.IsNullOrWhiteSpace(clientRecordId) ? null : clientRecordId,
             NotBillingDate    = date,
             OutletId          = request.OutletId,
             SalesRepId        = salesRepId,
@@ -84,7 +101,20 @@ public class NotBillingService(
         };
 
         await _notBillingRepository.AddAsync(notBilling, ct);
-        await _notBillingRepository.SaveChangesAsync(ct);
+        try
+        {
+            await _notBillingRepository.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException) when (!string.IsNullOrWhiteSpace(clientRecordId))
+        {
+            // A concurrent request with the same client record id won the insert race; the unique
+            // index rejected ours. Return the winner so this retry is an idempotent success.
+            var winnerId = await _notBillingRepository.FindIdByClientRecordIdAsync(clientRecordId, ct);
+            if (winnerId is null) throw;
+            var winner = await _notBillingRepository.GetByIdAsync(winnerId.Value, ct)
+                ?? throw new DatabaseUnavailableException();
+            return ProjectToDto(winner);
+        }
 
         // ⑦ Re-fetch read-only for DTO projection
         var created = await _notBillingRepository.GetByIdAsync(notBilling.Id, ct)

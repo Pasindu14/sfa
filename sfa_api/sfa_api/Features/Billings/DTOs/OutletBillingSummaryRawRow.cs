@@ -9,5 +9,6 @@ public record OutletBillingSummaryRawRow(
     string BillingNumber,
     DateOnly BillingDate,
     decimal TotalAmount,
-    RepBillingStatus RepStatus
+    RepBillingStatus RepStatus,
+    DistributorBillingStatus DistributorStatus
 );

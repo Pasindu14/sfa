@@ -7,6 +7,9 @@ namespace sfa_api.Features.SalesInvoices.Entities;
 public class SalesInvoice
 {
     public int Id { get; set; }
+
+    // Optimistic concurrency token — maps to PostgreSQL xmin (finding #7).
+    public uint RowVersion { get; set; }
     public string VchBillNo { get; set; } = string.Empty;          // BIS/25/4752 — idempotency key
     public string? BusyOrderRequestNo { get; set; }                 // SOR-26-00010 — raw BUSY ref
     public string? SfaPoNumber { get; set; }                        // PO-2026-00001 — raw string for audit

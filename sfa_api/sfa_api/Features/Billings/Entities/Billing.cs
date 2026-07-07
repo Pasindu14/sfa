@@ -12,6 +12,9 @@ namespace sfa_api.Features.Billings.Entities;
 public class Billing
 {
     public int Id { get; set; }
+
+    // Optimistic concurrency token — maps to PostgreSQL xmin (finding #7).
+    public uint RowVersion { get; set; }
     public string BillingNumber { get; set; } = string.Empty;
 
     /// <summary>

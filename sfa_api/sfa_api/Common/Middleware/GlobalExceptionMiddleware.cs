@@ -49,6 +49,16 @@ public class GlobalExceptionMiddleware(RequestDelegate next,
                 nex.ErrorCode, nex.Message, null,
                 null, null, correlationId, DateTime.UtcNow)),
 
+            // Optimistic-concurrency conflict from an xmin RowVersion mismatch (finding #7).
+            // Must precede the DbUpdateException case below — DbUpdateConcurrencyException derives
+            // from it. Transactional entities (Billing/SalesInvoice/GRN/PurchaseOrder) rely on this
+            // mapping since, unlike the master-data repos, their transition paths don't convert it.
+            DbUpdateConcurrencyException => (409, new ApiError(
+                "CONCURRENCY_CONFLICT",
+                "Record was modified by another request.",
+                "Review the latest version before resubmitting.",
+                null, null, correlationId, DateTime.UtcNow)),
+
             DbUpdateException dbEx when dbEx.InnerException is PostgresException pgEx && pgEx.SqlState == "23505"
                 => (409, new ApiError(
                     "DUPLICATE_RESOURCE", "A record with the same unique value already exists.", null,

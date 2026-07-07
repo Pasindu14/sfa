@@ -1,4 +1,5 @@
 using sfa_api.Features.Stock.Repositories;
+using sfa_api.Infrastructure.Locking;
 
 namespace sfa_api.Features.Stock.Services;
 
@@ -24,6 +25,19 @@ public class StockReconciliationBackgroundService(
             try
             {
                 using var scope = _scopeFactory.CreateScope();
+
+                // Only one API instance should run the nightly reconciliation (finding #10) — otherwise
+                // each replica inserts a duplicate run row and re-reads the whole ledger. Non-blocking
+                // try-acquire; skip this tick if another instance already holds the lock.
+                var lockService = scope.ServiceProvider.GetRequiredService<IDistributedLockService>();
+                await using var handle = await lockService.AcquireAsync(
+                    "background:stock-reconciliation", stoppingToken);
+                if (handle is null)
+                {
+                    _logger.LogDebug("Stock-reconciliation lock held by another instance; skipping tick.");
+                    continue;
+                }
+
                 var service = scope.ServiceProvider.GetRequiredService<IStockReconciliationService>();
                 var repo    = scope.ServiceProvider.GetRequiredService<IStockReconciliationRepository>();
 

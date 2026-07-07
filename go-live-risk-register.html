@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SFA — Go-Live Risk Register</title>
+<style>
+  :root {
+    --bg: #f7f8fa; --card: #fff; --text: #1a1d21; --muted: #5c6370;
+    --border: #e3e6ea; --crit: #d1242f; --high: #d97706; --med: #ca8a04; --low: #6b7280; --safe: #16a34a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #14171a; --card: #1d2126; --text: #e6e9ed; --muted: #9aa2ac;
+      --border: #2c323a; --crit: #ff6b6b; --high: #f59e0b; --med: #eab308; --low: #9ca3af; --safe: #4ade80; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 32px 20px 64px; }
+  header h1 { font-size: 26px; margin: 0 0 4px; }
+  header p { color: var(--muted); margin: 0 0 24px; }
+  .summary { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 28px; }
+  .pill { padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600;
+    border: 1px solid var(--border); background: var(--card); }
+  .pill b { font-weight: 700; }
+  section { margin-bottom: 28px; }
+  .sec-head { display: flex; align-items: center; gap: 8px; font-size: 15px;
+    font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 12px; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .crit .dot { background: var(--crit); } .high .dot { background: var(--high); }
+  .med .dot { background: var(--med); } .low .dot { background: var(--low); }
+  .safe .dot { background: var(--safe); }
+  .card { background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--border);
+    border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; }
+  .crit .card { border-left-color: var(--crit); } .high .card { border-left-color: var(--high); }
+  .med .card { border-left-color: var(--med); } .low .card { border-left-color: var(--low); }
+  .safe .card { border-left-color: var(--safe); }
+  .card h3 { margin: 0 0 5px; font-size: 15px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card p { margin: 0 0 6px; color: var(--text); }
+  .fix { color: var(--muted); font-size: 13.5px; }
+  .fix b { color: var(--text); }
+  code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 12.5px;
+    background: var(--bg); padding: 1px 5px; border-radius: 4px; border: 1px solid var(--border); }
+  .safe .card p { color: var(--muted); }
+  footer { color: var(--muted); font-size: 12.5px; margin-top: 32px; border-top: 1px solid var(--border); padding-top: 14px; }
+  /* Status badges + remediation states */
+  .badge { font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .badge.fixed   { background: color-mix(in srgb, var(--safe) 18%, transparent); color: var(--safe); border: 1px solid var(--safe); }
+  .badge.partial { background: color-mix(in srgb, var(--high) 16%, transparent); color: var(--high); border: 1px solid var(--high); }
+  .badge.open    { background: color-mix(in srgb, var(--crit) 14%, transparent); color: var(--crit); border: 1px solid var(--crit); }
+  .card.done { opacity: .72; border-left-color: var(--safe) !important; }
+  .card.done h3 { text-decoration: none; }
+  .fixnote { color: var(--safe); font-size: 13px; }
+  .fixnote b { color: var(--safe); }
+  .progress { margin: 0 0 24px; padding: 12px 16px; border: 1px solid var(--border);
+    border-left: 3px solid var(--safe); border-radius: 8px; background: var(--card); font-size: 13.5px; }
+  .progress b { color: var(--safe); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>SFA System — Go-Live Risk Register</h1>
+    <p>Six-advisor code audit · 2026-07-07 · ranked by severity · remediation in progress</p>
+  </header>
+
+  <div class="summary">
+    <span class="pill" style="border-color:var(--crit)"><b>3</b> Critical</span>
+    <span class="pill" style="border-color:var(--high)"><b>7</b> High</span>
+    <span class="pill" style="border-color:var(--med)"><b>9</b> Medium</span>
+    <span class="pill" style="border-color:var(--low)"><b>3</b> Low</span>
+    <span class="pill" style="border-color:var(--safe)"><b>10</b> Verified safe</span>
+  </div>
+
+  <div class="progress">
+    <b>✓ Remediation status:</b> all 9 code-fixable top findings done &amp; verified
+    (<b>912 unit + 541 integration tests green</b>) — #2, #3, #4, #5, #6, #7, #8, #9, #10, plus the code half of #1.
+    Only remaining action is <b>ops</b>: rotate + purge the leaked secrets and set env vars (#1), and apply the migration tail on deploy (#3, now enforced by the startup guard).
+  </div>
+
+  <section class="crit">
+    <h2 class="sec-head"><span class="dot"></span>Critical — launch blockers</h2>
+
+    <div class="card">
+      <h3>1. Live production secrets committed to git <span class="badge partial">Code fixed · rotation pending</span></h3>
+      <p>Neon PostgreSQL password + JWT signing key in <code>appsettings.json:10,15</code>; Upstash token in <code>appsettings.Development.json:8-9</code>. The never-expiring admin token in <code>CLAUDE.md</code> is signed with that key = permanent backdoor. Confirmed by two independent advisors.</p>
+      <p class="fixnote"><b>Done in code:</b> secrets blanked in all committed files; fail-fast startup guard added (won't boot with an empty/weak JWT key or connection string); test suite decoupled to a dedicated test-only key; backdoor token removed from <code>CLAUDE.md</code>.</p>
+      <p class="fix"><b>Still required (manual/ops):</b> rotate the Neon password, JWT key &amp; Upstash token in their consoles; purge git history; set the new values as env vars / user-secrets. The leaked values stay live until rotated.</p>
+    </div>
+
+    <div class="card done">
+      <h3>2. Stock double-deduct via optional idempotency key <span class="badge fixed">✓ Fixed</span></h3>
+      <p>Billings dedupe is correct but keyed on the <em>optional</em> <code>X-Idempotency-Key</code> header (<code>BillingsController.cs:261</code>). Unique index is <code>WHERE ClientBillId IS NOT NULL</code>. Missing header → NULL id, no collision, <code>DeductStockAsync</code> runs twice. Stock deducted twice, no error.</p>
+      <p class="fixnote"><b>Fixed:</b> <code>X-Idempotency-Key</code> now mandatory on <code>POST /api/v1/billings</code> (400 if absent); added a regression test.</p>
+    </div>
+
+    <div class="card done">
+      <h3>3. Seven migrations stuck behind data-dependent unique indexes <span class="badge fixed">✓ Fixed</span></h3>
+      <p>Partial UNIQUE indexes over active rows (Routes <code>20260615113307</code>, Fleets/NotBillings <code>20260616062018</code>) throw on duplicate active data. No cleanup migration, no migrate-on-startup guard → deploy boots green then 500s on missing columns.</p>
+      <p class="fixnote"><b>Fixed:</b> prepended idempotent dedup SQL to those migrations' <code>Up()</code> (keep newest per group, deactivate/soft-delete older dups) that runs <em>before</em> each <code>CREATE UNIQUE INDEX</code> — verified via <code>ef migrations script</code>. Added a startup schema guard: the app now <b>refuses to boot</b> with pending migrations (Npgsql + non-Dev only) instead of 500-ing later.</p>
+      <p class="fix"><b>Still required (ops):</b> apply migrations as an explicit deploy step (<code>ef database update</code> / bundle) — now enforced by the guard. Review the auto-deactivated duplicate rows after first apply.</p>
+    </div>
+  </section>
+
+  <section class="high">
+    <h2 class="sec-head"><span class="dot"></span>High</h2>
+    <div class="card done"><h3>4. Bill grand total can go negative <span class="badge fixed">✓ Fixed</span></h3><p>Validator ignored the bill discount subtracted alongside returns. Added a service-level guard on the actual rounded figures: rejects with <code>422 BILL_TOTAL_NEGATIVE</code> before a billing number is burned. Added a regression test.</p></div>
+    <div class="card done"><h3>5. Cancelled/rejected bills counted as revenue <span class="badge fixed">✓ Fixed</span></h3><p>Outlet summary summed all bill states; now sums only revenue bills (<code>IsRevenueBill</code>: not Cancelled, not Rejected) while still listing cancelled ones. Reconciles with monthly totals.</p></div>
+    <div class="card done"><h3>6. NotBillings advertises idempotency it never wires up <span class="badge fixed">✓ Fixed</span></h3><p>Mirrored the Billings pattern: <code>ClientRecordId</code> column + filtered-unique index, fast-path + replay-catch, header now mandatory. Added service tests (feature had zero coverage).</p></div>
+    <div class="card done"><h3>7. Transactional entities have no concurrency token <span class="badge fixed">✓ Fixed</span></h3><p>Added <code>xmin</code> RowVersion to Billing/SalesInvoice/GRN/PurchaseOrder + a <code>DbUpdateConcurrencyException → 409</code> mapping. A status transition can no longer double-execute if the lock expires. (Stock already row-locked; ledger append-only.)</p></div>
+    <div class="card done"><h3>8. Login rate-limit bypassable <span class="badge fixed">✓ Fixed</span></h3><p>Limiter now partitions on framework-resolved <code>RemoteIpAddress</code>, not raw <code>X-Forwarded-For</code>; forwarded headers trusted only from configured known proxies.</p></div>
+    <div class="card done"><h3>9. Deactivated users keep access ≤7 days <span class="badge fixed">✓ Fixed</span></h3><p><code>AuthService.RefreshAsync</code> now checks <code>IsActive</code> and revokes the token family on a deactivated user — no more minting tokens after termination.</p></div>
+    <div class="card done"><h3>10. Background jobs run per-instance with no lock <span class="badge fixed">✓ Fixed</span></h3><p>All four <code>BackgroundService</code>s now acquire a distributed lock per tick (non-blocking; skip if another replica holds it).</p></div>
+  </section>
+
+  <section class="med">
+    <h2 class="sec-head"><span class="dot"></span>Medium</h2>
+    <div class="card"><p>Client-supplied unit price never validated against product price · Outlet <code>CreditLimit</code> stored but never enforced · banker's rounding penny drift · LocationPings batch has no dedupe · empty prod CORS breaks web app · "nightly" jobs are 24h-since-boot (reset on deploy) · reconciliation reads not snapshot-consistent. <span class="fixnote">(JWT-secret startup guard — done with #1; NotBillings 24h idempotency cliff — closed by #6.)</span></p></div>
+  </section>
+
+  <section class="low">
+    <h2 class="sec-head"><span class="dot"></span>Low / hardening</h2>
+    <div class="card"><p>Cross-product lock ordering can deadlock (not corrupt) · Seq logging silently dead in prod · <code>DeductStockAsync</code> row-lock precondition is a comment, not enforced.</p></div>
+  </section>
+
+  <section class="safe">
+    <h2 class="sec-head"><span class="dot"></span>Verified safe — don't re-check</h2>
+    <div class="card"><p>Document numbering (atomic sequences + unique indexes) · Billings transaction atomicity · GRN confirm race handling · StockTaking converge-to-target deltas · logout token revocation · service-layer IDOR checks · decimal money (no floats) · bill-line price snapshotting · no seed data in prod.</p></div>
+  </section>
+
+  <footer>
+    <b>Remaining launch gate (ops only):</b> (1) rotate + purge the leaked secrets and set env vars [#1] →
+    (2) apply the migration tail as an explicit deploy step — the migrations now self-dedup and the app
+    refuses to boot until they're applied [#3]. Every code-fixable top finding (#2, #4–#10, and the code of
+    #1 &amp; #3) is done and verified against <b>912 unit + 541 integration tests</b>. Medium/Low items remain as follow-ups.
+  </footer>
+</div>
+</body>
+</html>

@@ -13,6 +13,10 @@ public class NotBilling
     public int Id { get; set; }
     public string NotBillingNumber { get; set; } = string.Empty;
 
+    // Client-generated id (X-Idempotency-Key) — persisted so an offline retry / replay is deduped
+    // at the DB layer regardless of date or cache TTL. Filtered-unique. Null for non-mobile callers.
+    public string? ClientRecordId { get; set; }
+
     public DateOnly NotBillingDate { get; set; }
 
     // Core references

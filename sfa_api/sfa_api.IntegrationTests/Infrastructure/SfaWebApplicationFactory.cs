@@ -29,6 +29,18 @@ public class SfaWebApplicationFactory : WebApplicationFactory<Program>
 {
     private readonly SqliteConnection _connection;
 
+    // The app validates Jwt:SecretKey and the connection string at startup (fail-fast),
+    // reading them from the environment-variable config source — which, unlike the factory's
+    // ConfigureAppConfiguration, is visible during Program.cs's pre-Build() reads. Supply a
+    // dedicated test-only signing key (matching AuthHelper) and a dummy connection string here.
+    // The real DbContext is swapped to SQLite in ConfigureServices, so the value is only there
+    // to satisfy the startup guard.
+    static SfaWebApplicationFactory()
+    {
+        Environment.SetEnvironmentVariable("Jwt__SecretKey", AuthHelper.SecretKey);
+        Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", "DataSource=:memory:");
+    }
+
     public SfaWebApplicationFactory()
     {
         _connection = new SqliteConnection("DataSource=:memory:");

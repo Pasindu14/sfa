@@ -31,6 +31,13 @@ public class NotBillingRepository(AppDbContext db) : INotBillingRepository
                           && x.NotBillingDate == date
                           && !x.IsDeleted, ct);
 
+    public async Task<int?> FindIdByClientRecordIdAsync(string clientRecordId, CancellationToken ct = default)
+        => await _db.NotBillings
+                    .AsNoTracking()
+                    .Where(x => x.ClientRecordId == clientRecordId)
+                    .Select(x => (int?)x.Id)
+                    .FirstOrDefaultAsync(ct);
+
     public Task<NotBilling?> GetByIdAsync(int id, CancellationToken ct = default)
         => _db.NotBillings
               .AsNoTracking()

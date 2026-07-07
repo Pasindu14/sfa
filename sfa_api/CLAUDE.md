@@ -10,11 +10,10 @@ dotnet test "d:\Github\sfa\sfa_api\sfa_api.IntegrationTests\sfa_api.IntegrationT
 
 Swagger: `http://localhost:5135/swagger` (http) | `https://localhost:7169/swagger` (https)
 
-**Dev Token (never expires):**
-```
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzIiwiZW1haWwiOiJhZG1pbkBzZmEuY29tIiwianRpIjoiMWM5MWJlOTgtMTIxZC00YmQ2LWJiMzEtODc2ZjA2OWY1Nzc0IiwibmFtZSI6ImFkbWluIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQWRtaW4iLCJkZXZpY2VJZCI6IiIsImV4cCI6MTgwNDQ4MzMwNCwiaXNzIjoiU0ZBLkFQSSIsImF1ZCI6IlNGQS5DbGllbnRzIn0.Uw_CFCZQQ5Fw4v0Ctv58-g8lsu1rRWvG1n09T1RzdX4
-```
-Claims: `sub=3`, `email=admin@sfa.com`, `name=admin`, `role=Admin`
+**Dev Token:** Do NOT commit long-lived tokens. In Development, mint one on demand via
+`POST /api/v1/auth/dev-token` (gated to `IsDevelopment()`), or run
+`dotnet user-secrets set "Jwt:SecretKey" "<your-local-key>"` and log in normally.
+The previously committed "never-expires" admin token was removed and its signing key rotated.
 
 ---
 

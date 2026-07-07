@@ -133,6 +133,19 @@ public class AuthService(
         var user = storedToken.User
             ?? throw new InvalidTokenException();
 
+        // A deactivated user (IsActive == false — e.g. a terminated rep) must not be able to
+        // mint fresh access tokens via refresh (finding #9). Revoke the whole family so every
+        // outstanding refresh token for this session dies too, then reject.
+        if (!user.IsActive)
+        {
+            await _repo.RevokeTokenFamilyAsync(storedToken.FamilyId, ct);
+            await _repo.SaveChangesAsync(ct);
+            _logger.LogWarning(
+                "Refresh rejected for deactivated user {UserId}; token family {FamilyId} revoked.",
+                user.Id, storedToken.FamilyId);
+            throw new InvalidTokenException();
+        }
+
         // Issue new access token
         var newAccessToken = _jwtHelper.GenerateAccessToken(user, out _);
 

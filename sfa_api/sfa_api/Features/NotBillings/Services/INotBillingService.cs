@@ -6,7 +6,7 @@ namespace sfa_api.Features.NotBillings.Services;
 
 public interface INotBillingService
 {
-    Task<NotBillingDto> CreateAsync(CreateNotBillingRequest request, int salesRepId, CancellationToken ct = default);
+    Task<NotBillingDto> CreateAsync(CreateNotBillingRequest request, int salesRepId, string? clientRecordId = null, CancellationToken ct = default);
     Task<NotBillingDto?> GetByIdAsync(int id, CancellationToken ct = default);
     Task<(List<NotBillingListDto> Items, int TotalCount)> GetListAsync(
         int page, int pageSize,

@@ -491,6 +491,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Id).UseIdentityColumn();
             e.Property(x => x.OrderNumber).IsRequired().HasMaxLength(20);
             e.HasIndex(x => x.OrderNumber).IsUnique();
+            // Optimistic concurrency (finding #7) — maps to PostgreSQL's xmin so a status
+            // transition can't be double-applied if the distributed lock expires mid-commit.
+            e.Property(x => x.RowVersion).IsRowVersion().HasColumnName("xmin").HasColumnType("xid");
             e.Property(x => x.Status).HasConversion<string>();
             e.Property(x => x.Notes).HasMaxLength(1000);
             e.Property(x => x.CancelReason).HasMaxLength(500);
@@ -576,6 +579,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Id).UseIdentityColumn();
             e.Property(x => x.VchBillNo).IsRequired().HasMaxLength(50);
             e.HasIndex(x => x.VchBillNo).IsUnique();
+            // Optimistic concurrency (finding #7) — maps to PostgreSQL's xmin so a status
+            // transition can't be double-applied if the distributed lock expires mid-commit.
+            e.Property(x => x.RowVersion).IsRowVersion().HasColumnName("xmin").HasColumnType("xid");
             e.Property(x => x.BusyOrderRequestNo).HasMaxLength(50);
             e.Property(x => x.SfaPoNumber).HasMaxLength(50);
             e.Property(x => x.TotalAmount).HasColumnType("decimal(18,2)");
@@ -637,6 +643,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(x => x.Id);
             e.Property(x => x.GrnNumber).IsRequired().HasMaxLength(30);
             e.HasIndex(x => x.GrnNumber).IsUnique();
+            // Optimistic concurrency (finding #7) — maps to PostgreSQL's xmin so a status
+            // transition can't be double-applied if the distributed lock expires mid-commit.
+            e.Property(x => x.RowVersion).IsRowVersion().HasColumnName("xmin").HasColumnType("xid");
             e.HasIndex(x => x.IsDeleted);
             // Unique FK — enforces 1:1 with SalesInvoice (no double-GRN at DB level)
             e.HasIndex(x => x.SalesInvoiceId).IsUnique();
@@ -822,6 +831,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(x => x.Id);
             e.Property(x => x.BillingNumber).IsRequired().HasMaxLength(30);
             e.HasIndex(x => x.BillingNumber).IsUnique();
+            // Optimistic concurrency (finding #7) — maps to PostgreSQL's xmin so a status
+            // transition can't be double-applied if the distributed lock expires mid-commit.
+            e.Property(x => x.RowVersion).IsRowVersion().HasColumnName("xmin").HasColumnType("xid");
             e.Property(x => x.ClientBillId).HasMaxLength(64);
             // DB backstop for duplicate-bill prevention. The client-generated UUID (sent as the
             // X-Idempotency-Key header and persisted here) is globally unique per bill, so two
@@ -956,6 +968,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(x => x.Id);
             e.Property(x => x.NotBillingNumber).IsRequired().HasMaxLength(30);
             e.HasIndex(x => x.NotBillingNumber).IsUnique();
+            e.Property(x => x.ClientRecordId).HasMaxLength(64);
+            // Durable idempotency backstop (finding #6) — the client-generated UUID makes an offline
+            // replay a dedup no-op regardless of date or the 24h idempotency-cache TTL. Filtered to
+            // non-null so web/non-mobile callers (which send no key) are unaffected.
+            e.HasIndex(x => x.ClientRecordId).IsUnique().HasFilter("\"ClientRecordId\" IS NOT NULL");
             e.Property(x => x.Reason).HasConversion<string>().HasMaxLength(20);
             e.Property(x => x.Notes).HasMaxLength(500);
 

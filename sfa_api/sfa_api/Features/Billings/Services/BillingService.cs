@@ -239,6 +239,19 @@ public class BillingService(
         var totalAmount        = subTotal - billDiscountAmount - returnValue;
         var totalDiscount      = itemWiseTotalDiscount + billDiscountAmount;
 
+        // ⑧½ Guard against a negative grand total (finding #4). The bill-level discount plus market
+        // returns must not exceed the sale sub-total — otherwise TotalAmount goes negative and is
+        // persisted as negative revenue that then flows into sales aggregates. Checked here with the
+        // actual rounded figures (the request validator's return-vs-sale math ignores the bill
+        // discount) and BEFORE the billing-number sequence is burned.
+        if (totalAmount < 0m)
+            throw new BusinessRuleException(
+                "BILL_TOTAL_NEGATIVE",
+                $"Bill total would be negative ({totalAmount:F2}): sub-total {subTotal:F2} minus bill " +
+                $"discount {billDiscountAmount:F2} and returns {returnValue:F2}. Reduce the bill discount " +
+                $"or return quantities.",
+                new { subTotal, billDiscountAmount, returnValue, totalAmount });
+
         // ⑨ Acquire advisory lock scoped to sales rep (BillingId not yet known)
         await using var advisoryLock = await _lockService.AcquireAsync($"billing:create:{salesRepId}", ct)
             ?? throw new ConcurrencyConflictException(
@@ -540,13 +553,21 @@ public class BillingService(
         var rows = await _billingRepository.GetOutletSummaryRawAsync(
             salesRepId, routeId, dateFrom, dateTo, ct);
 
+        // Cancelled (rep) and Rejected (distributor) bills are still returned in the line list
+        // so the UI can show them, but they must NOT inflate revenue (finding #5). The per-outlet
+        // TotalAmount, BillingCount, and the GrandTotal count only revenue-contributing bills, so
+        // this report reconciles with the monthly/daily aggregates (which already filter state).
+        static bool IsRevenueBill(OutletBillingSummaryRawRow r)
+            => r.RepStatus != RepBillingStatus.Cancelled
+            && r.DistributorStatus != DistributorBillingStatus.Rejected;
+
         var outletSummaries = rows
             .GroupBy(r => new { r.OutletId, r.OutletName })
             .Select(g => new OutletBillingSummaryDto(
                 g.Key.OutletId,
                 g.Key.OutletName,
-                g.Count(),
-                g.Sum(r => r.TotalAmount),
+                g.Count(IsRevenueBill),
+                g.Where(IsRevenueBill).Sum(r => r.TotalAmount),
                 g.OrderByDescending(r => r.BillingDate)
                  .Select(r => new BillLineDto(r.Id, r.BillingNumber, r.BillingDate, r.TotalAmount, r.RepStatus.ToString()))
                  .ToList()))

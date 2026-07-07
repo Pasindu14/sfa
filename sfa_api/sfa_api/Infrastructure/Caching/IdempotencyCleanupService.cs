@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using sfa_api.Infrastructure.Locking;
 using sfa_api.Infrastructure.Persistence;
 
 namespace sfa_api.Infrastructure.Caching;
@@ -17,6 +18,19 @@ public class IdempotencyCleanupService(IServiceScopeFactory scopeFactory,
             try
             {
                 using var scope = _scopeFactory.CreateScope();
+
+                // Only one API instance should run this sweep per tick (finding #10). The lock is a
+                // non-blocking try-acquire; if another instance holds it, skip this tick. The delete
+                // is idempotent, so even a lock expiry mid-run cannot corrupt anything.
+                var lockService = scope.ServiceProvider.GetRequiredService<IDistributedLockService>();
+                await using var handle = await lockService.AcquireAsync(
+                    "background:idempotency-cleanup", stoppingToken);
+                if (handle is null)
+                {
+                    _logger.LogDebug("Idempotency-cleanup lock held by another instance; skipping tick.");
+                    continue;
+                }
+
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 var deleted = await db.IdempotencyKeys
                     .Where(x => x.ExpiresAt < DateTime.UtcNow)

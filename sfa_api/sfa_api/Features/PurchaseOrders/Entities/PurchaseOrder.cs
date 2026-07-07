@@ -6,6 +6,9 @@ namespace sfa_api.Features.PurchaseOrders.Entities;
 public class PurchaseOrder
 {
     public int Id { get; set; }
+
+    // Optimistic concurrency token — maps to PostgreSQL xmin (finding #7).
+    public uint RowVersion { get; set; }
     public string OrderNumber { get; set; } = string.Empty;   // PO-2026-00001 (auto-generated)
     public int DistributorId { get; set; }
     public Distributor Distributor { get; set; } = null!;

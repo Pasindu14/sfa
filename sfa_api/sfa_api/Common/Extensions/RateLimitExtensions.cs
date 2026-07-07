@@ -13,6 +13,15 @@ public static class RateLimitExtensions
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
+    // Partition key for per-client rate limiting. We read Connection.RemoteIpAddress, which
+    // UseForwardedHeaders has already rewritten from X-Forwarded-For *only* when the request
+    // arrived through a trusted proxy (configured KnownProxies/KnownNetworks). We must NOT parse
+    // the raw X-Forwarded-For header ourselves: an attacker could then set an arbitrary value per
+    // request, land in a fresh partition every time, and bypass the limit entirely (credential
+    // stuffing on /auth/login). See finding #8.
+    private static string ClientIpKey(HttpContext ctx)
+        => ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
     public static IServiceCollection AddSFARateLimiting(
         this IServiceCollection services, IConfiguration config)
     {
@@ -44,9 +53,7 @@ public static class RateLimitExtensions
 
             options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
             {
-                var ip = ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault()?.Split(',')[0].Trim()
-                         ?? ctx.Connection.RemoteIpAddress?.ToString()
-                         ?? "unknown";
+                var ip = ClientIpKey(ctx);
                 return RateLimitPartition.GetSlidingWindowLimiter(ip,
                     _ => new SlidingWindowRateLimiterOptions
                     {
@@ -64,9 +71,7 @@ public static class RateLimitExtensions
             // "auth" — per-IP sliding window (brute-force protection on login/refresh)
             options.AddPolicy("auth", ctx =>
             {
-                var ip = ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault()?.Split(',')[0].Trim()
-                         ?? ctx.Connection.RemoteIpAddress?.ToString()
-                         ?? "unknown";
+                var ip = ClientIpKey(ctx);
                 return RateLimitPartition.GetSlidingWindowLimiter(ip,
                     _ => new SlidingWindowRateLimiterOptions
                     {

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using sfa_api.Infrastructure.Locking;
 using sfa_api.Infrastructure.Persistence;
 
 namespace sfa_api.Infrastructure.Audit;
@@ -23,6 +24,18 @@ public class AuditLogCleanupService(
                 var cutoff = DateTime.UtcNow.AddDays(-retentionDays);
 
                 using var scope = _scopeFactory.CreateScope();
+
+                // Single-instance guard (finding #10): non-blocking try-acquire; skip the tick if
+                // another instance holds it. The delete is idempotent, so a lock expiry is harmless.
+                var lockService = scope.ServiceProvider.GetRequiredService<IDistributedLockService>();
+                await using var handle = await lockService.AcquireAsync(
+                    "background:audit-log-cleanup", stoppingToken);
+                if (handle is null)
+                {
+                    _logger.LogDebug("Audit-log-cleanup lock held by another instance; skipping tick.");
+                    continue;
+                }
+
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
                 var deleted = await db.AuditLogs

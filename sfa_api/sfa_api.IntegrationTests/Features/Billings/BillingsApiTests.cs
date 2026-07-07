@@ -177,7 +177,14 @@ public class BillingsApiTests
 
     private async Task<(HttpStatusCode Status, JsonElement Data, string Raw)> PostBillingAsync(object payload)
     {
-        var resp = await _client.PostAsJsonAsync(BaseUrl, payload);
+        // POST /billings requires an X-Idempotency-Key (the client-generated bill id);
+        // a fresh key per call mirrors a real client creating distinct bills.
+        var req = new HttpRequestMessage(HttpMethod.Post, BaseUrl)
+        {
+            Content = JsonContent.Create(payload)
+        };
+        req.Headers.Add("X-Idempotency-Key", Guid.NewGuid().ToString());
+        var resp = await _client.SendAsync(req);
         var raw  = await resp.Content.ReadAsStringAsync();
         if (resp.StatusCode != HttpStatusCode.Created)
             return (resp.StatusCode, default, raw);
@@ -265,6 +272,63 @@ public class BillingsApiTests
         data.GetProperty("itemWiseTotalDiscount").GetDecimal().Should().Be(0m);
         data.GetProperty("totalDiscount").GetDecimal().Should().Be(0m);
         data.GetProperty("totalAmount").GetDecimal().Should().Be(100m);
+    }
+
+    [Fact]
+    public async Task CreateBilling_WithoutIdempotencyKeyHeader_Returns400()
+    {
+        // The X-Idempotency-Key header is mandatory: without it the duplicate-bill /
+        // double-stock-deduction guard cannot engage, so the request must be rejected
+        // up front rather than silently creating an unguarded bill.
+        await EnsureSeededAsync();
+        SetToken(_repToken);
+
+        var payload = new
+        {
+            outletId = _outletId,
+            billDiscountRate = 0m,
+            billingDate = Today(),
+            items = new object[]
+            {
+                new { productId = _productAId, quantity = 1m, unitPrice = 100m, discountRate = 0m, billingItemType = 0 }
+            }
+        };
+
+        // Deliberately POST without the header (bypasses the PostBillingAsync helper).
+        var resp = await _client.PostAsJsonAsync(BaseUrl, payload);
+        var raw  = await resp.Content.ReadAsStringAsync();
+
+        resp.StatusCode.Should().Be(HttpStatusCode.BadRequest, raw);
+        raw.Should().Contain("X-Idempotency-Key");
+    }
+
+    [Fact]
+    public async Task CreateBilling_ReturnsPlusBillDiscountExceedSubtotal_Rejected()
+    {
+        // finding #4: a full-value market return PLUS a bill-level discount drives the grand total
+        // negative. The request passes the validator's return<=sale check (1000 <= 1000), so the
+        // service-level guard must catch it — otherwise negative revenue is persisted.
+        await EnsureSeededAsync();
+        SetToken(_repToken);
+
+        // Sale 10×100 = 1000 subtotal; MarketResell return 10×100 = 1000; 10% bill discount = 100.
+        // totalAmount = 1000 − 100 − 1000 = −100.
+        var payload = new
+        {
+            outletId = _outletId,
+            billDiscountRate = 10m,
+            billingDate = Today(),
+            items = new object[]
+            {
+                new { productId = _productAId, quantity = 10m, unitPrice = 100m, discountRate = 0m, billingItemType = 0 },
+                new { productId = _productBId, quantity = 10m, unitPrice = 100m, discountRate = 0m, billingItemType = 1, returnType = 0 }
+            }
+        };
+
+        var (status, _, raw) = await PostBillingAsync(payload);
+
+        status.Should().Be(HttpStatusCode.UnprocessableEntity, raw);
+        raw.Should().Contain("BILL_TOTAL_NEGATIVE");
     }
 
     // ─────────────────────────────────────────────────

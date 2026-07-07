@@ -86,8 +86,10 @@ public class NotBillingsController(
     ///
     /// <para><b>Offline-sync contract (mobile):</b></para>
     /// <list type="bullet">
-    ///   <item>Send the header <c>X-Idempotency-Key: {UUID}</c> — the client-generated record id.
-    ///   The same key may be retried any number of times without creating duplicate records.</item>
+    ///   <item><b>Required.</b> Send the header <c>X-Idempotency-Key: {UUID}</c> — the client-generated
+    ///   record id. It is mandatory: a request without it is rejected with <c>400 VALIDATION_FAILED</c>.
+    ///   The same key may be retried any number of times without creating duplicate records — the
+    ///   server returns the original record even across a day boundary or after the cache TTL.</item>
     ///   <item>Send <c>notBillingDate</c> in the body to preserve the date the rep logged the visit
     ///   offline. Must be within the last 7 days.</item>
     /// </list>
@@ -100,7 +102,21 @@ public class NotBillingsController(
 
         await _createValidator.ValidateOrThrowAsync(request, ct);
 
-        var notBilling = await _notBillingService.CreateAsync(request, GetCallerId(), ct);
+        // Mandatory client-generated id — the durable duplicate guard (fast-path + filtered unique
+        // index) keys on it, so a missing key would let an offline replay duplicate a compliance
+        // record. Reject up front (finding #6), matching the billings contract.
+        var clientRecordId = Request.Headers["X-Idempotency-Key"].FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(clientRecordId))
+            throw new sfa_api.Common.Errors.ValidationException(new Dictionary<string, string[]>
+            {
+                ["X-Idempotency-Key"] = new[]
+                {
+                    "The X-Idempotency-Key header is required. Send your client-generated record id " +
+                    "(a UUID) so retries and offline replays cannot create duplicate records."
+                }
+            });
+
+        var notBilling = await _notBillingService.CreateAsync(request, GetCallerId(), clientRecordId, ct);
         return CreatedAtAction(nameof(GetById), new { id = notBilling.Id }, ResponseHelper.Ok(notBilling, correlationId));
     }
 }

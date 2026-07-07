@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using sfa_api.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using sfa_api.Infrastructure.Persistence;
 namespace sfa_api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260707061854_AddRowVersionToTransactionalEntities")]
+    partial class AddRowVersionToTransactionalEntities
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -968,10 +971,6 @@ namespace sfa_api.Migrations
                     b.Property<int?>("AsmUserId")
                         .HasColumnType("integer");
 
-                    b.Property<string>("ClientRecordId")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1035,10 +1034,6 @@ namespace sfa_api.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ClientRecordId")
-                        .IsUnique()
-                        .HasFilter("\"ClientRecordId\" IS NOT NULL");
 
                     b.HasIndex("DivisionId");
 

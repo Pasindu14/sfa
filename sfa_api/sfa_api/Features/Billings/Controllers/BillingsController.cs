@@ -236,9 +236,11 @@ public class BillingsController(
     ///
     /// <para><b>Offline-sync contract (mobile):</b></para>
     /// <list type="bullet">
-    ///   <item>Send the header <c>X-Idempotency-Key: {UUID}</c> — the client-generated bill id.
-    ///   The same key may be retried any number of times; the server caches the response and
-    ///   returns it verbatim, so a flaky connection can't create duplicate bills.</item>
+    ///   <item><b>Required.</b> Send the header <c>X-Idempotency-Key: {UUID}</c> — the client-generated
+    ///   bill id. It is mandatory: a request without it is rejected with <c>400 VALIDATION_FAILED</c>,
+    ///   because the entire duplicate-bill (double stock deduction) defense keys on it. The same key may
+    ///   be retried any number of times; the server returns the original bill, so a flaky connection
+    ///   can't create duplicate bills or deduct stock twice.</item>
     ///   <item>Send <c>billingDate</c> in the body to preserve the date the rep wrote the bill
     ///   offline (otherwise the server stamps the sync time). Must be within the last 7 days.</item>
     /// </list>
@@ -258,7 +260,21 @@ public class BillingsController(
         // The mobile sends its client-generated bill id as X-Idempotency-Key; persist it so a
         // duplicate submission (retry / offline replay) is rejected at the DB layer, not just
         // by the best-effort idempotency-cache middleware.
+        //
+        // This header is MANDATORY: the fast-path lookup, the filtered unique index, and the
+        // DbUpdateException replay-catch all key on it, and the unique index is filtered to
+        // WHERE ClientBillId IS NOT NULL — so a missing key would bypass every duplicate guard
+        // and let the same physical sale deduct stock twice. Reject it up front.
         var clientBillId = Request.Headers["X-Idempotency-Key"].FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(clientBillId))
+            throw new sfa_api.Common.Errors.ValidationException(new Dictionary<string, string[]>
+            {
+                ["X-Idempotency-Key"] = new[]
+                {
+                    "The X-Idempotency-Key header is required. Send your client-generated bill id " +
+                    "(a UUID) so retries and offline replays cannot create duplicate bills."
+                }
+            });
 
         var billing = await _billingService.CreateAsync(request, GetCallerId(), clientBillId, ct);
         return CreatedAtAction(nameof(GetById), new { id = billing.Id }, ResponseHelper.Ok(billing, correlationId));
