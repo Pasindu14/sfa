@@ -21,13 +21,8 @@ export function handleErrorToast(
   // Get the error message from ApiError.message or from data.error.message
   const errorMessage = error.error || 'An error occurred'
 
-  // Diagnostic footer for technical/unexpected errors: the error code plus the traceId,
-  // which a developer can paste straight into Seq to find the exact server-side request.
-  // Kept out of business-rule toasts so end users see a clean message there.
-  const diag = [error.code, error.traceId && `trace: ${error.traceId}`]
-    .filter(Boolean)
-    .join(' · ')
-  const diagOpts = diag ? { description: diag } : undefined
+  // The error code + traceId are logged to the console above for engineers to
+  // correlate with Seq — end users only ever see a plain human-readable message.
 
   switch (error.code) {
     case 'UNAUTHORIZED':
@@ -37,7 +32,6 @@ export function handleErrorToast(
 
     case 'VALIDATION_FAILED':
       if (error.fields && Object.keys(error.fields).length > 0) {
-        // Surface specific field messages e.g. "Name is required. Region is required."
         toast.error(Object.values(error.fields).join('. '))
       } else {
         toast.error(errorMessage)
@@ -92,20 +86,16 @@ export function handleErrorToast(
 
     case 'METHOD_NOT_ALLOWED':
       // A 405 is almost always a wiring bug (UI calling a verb/route the API doesn't expose),
-      // not something the user did. Say so plainly and carry the diagnostics.
-      toast.error(`This action isn't available (${resourceCapitalized}).`, {
-        description: `Not supported by the server · ${diag || 'HTTP 405'}`,
-      })
+      // not something the user did. Say so plainly.
+      toast.error(`This action isn't available (${resourceCapitalized}).`)
       break
 
     case 'INTERNAL_ERROR':
       // Show the real message when the API gave us one instead of a hardcoded blank.
-      // Fall back to the generic line only when there is genuinely nothing to show,
-      // and always attach the code + traceId so it's diagnosable.
-      toast.error(errorMessage || 'An unexpected error occurred. Please try again.', diagOpts)
+      toast.error(errorMessage || 'An unexpected error occurred. Please try again.')
       break
 
     default:
-      toast.error(errorMessage || `Failed to ${action} ${resource}`, diagOpts)
+      toast.error(errorMessage || `Failed to ${action} ${resource}`)
   }
 }
