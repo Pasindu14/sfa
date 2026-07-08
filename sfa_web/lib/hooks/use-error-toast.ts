@@ -32,6 +32,7 @@ export function handleErrorToast(
 
     case 'VALIDATION_FAILED':
       if (error.fields && Object.keys(error.fields).length > 0) {
+        // Surface specific field messages e.g. "Name is required. Region is required."
         toast.error(Object.values(error.fields).join('. '))
       } else {
         toast.error(errorMessage)
