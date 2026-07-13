@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using sfa_api.Common.Errors;
 using sfa_api.Features.GeoConsistency;
 using sfa_api.Features.GeoConsistency.Services;
@@ -111,12 +112,18 @@ public class TerritoryService(
         {
             // Re-parent: the territory's AreaId/RegionId are denormalized onto every live descendant
             // (divisions → routes → outlets, plus distributors). Persist the move and fan the new
-            // AreaId + RegionId down in ONE transaction.
-            await using var tx = await _repo.BeginTransactionAsync(ct);
-            await _repo.UpdateAsync(territory, ct);
-            await _repo.SaveChangesAsync(ct);   // territory's own xmin concurrency check happens here
-            var cascaded = await _cascade.CascadeTerritoryAreaChangeAsync(id, area.Id, area.RegionId, ct);
-            await tx.CommitAsync(ct);
+            // AreaId + RegionId down in ONE transaction, wrapped in an execution strategy because
+            // EnableRetryOnFailure is on.
+            var cascaded = 0;
+            var strategy = _repo.CreateExecutionStrategy();
+            await strategy.ExecuteAsync(async () =>
+            {
+                await using var tx = await _repo.BeginTransactionAsync(ct);
+                await _repo.UpdateAsync(territory, ct);
+                await _repo.SaveChangesAsync(ct);   // territory's own xmin concurrency check happens here
+                cascaded = await _cascade.CascadeTerritoryAreaChangeAsync(id, area.Id, area.RegionId, ct);
+                await tx.CommitAsync(ct);
+            });
             _logger.LogInformation(
                 "Territory {TerritoryId} moved from Area {OldAreaId} to {NewAreaId} (Region {RegionId}); cascaded {Count} descendant rows",
                 id, oldAreaId, area.Id, area.RegionId, cascaded);

@@ -11,6 +11,7 @@ using sfa_api.Features.GeoConsistency.Services;
 using sfa_api.Features.Regions.Entities;
 using sfa_api.Features.Territories.Entities;
 using sfa_api.Infrastructure.Caching;
+using sfa_api.UnitTests.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace sfa_api.UnitTests.Features.Divisions.Services;
@@ -30,6 +31,7 @@ public class DivisionServiceTests
         // A territory move opens a transaction around the cascade — hand back a usable transaction mock.
         _repoMock.Setup(r => r.BeginTransactionAsync(It.IsAny<CancellationToken>()))
                  .ReturnsAsync(Mock.Of<IDbContextTransaction>());
+        _repoMock.Setup(r => r.CreateExecutionStrategy()).Returns(new ImmediateExecutionStrategy());
         _sut = new DivisionService(_repoMock.Object, _cacheMock.Object, _cascadeMock.Object, NullLogger<DivisionService>.Instance);
     }
 

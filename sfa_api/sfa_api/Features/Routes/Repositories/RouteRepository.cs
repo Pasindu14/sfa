@@ -122,6 +122,9 @@ public class RouteRepository(AppDbContext context) : IRouteRepository
     public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct = default)
         => _context.Database.BeginTransactionAsync(ct);
 
+    public IExecutionStrategy CreateExecutionStrategy()
+        => _context.Database.CreateExecutionStrategy();
+
     public async Task SaveChangesAsync(CancellationToken ct = default)
         => await _context.SaveChangesAsync(ct);
 }

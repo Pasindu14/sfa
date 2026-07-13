@@ -20,5 +20,7 @@ public interface IAreaRepository
     Task<bool> HasActiveTerritoriesAsync(int areaId, CancellationToken ct = default);
     /// <summary>Opens an explicit transaction so a re-parent + its geo cascade commit atomically.</summary>
     Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct = default);
+    /// <summary>Execution strategy to wrap the manual transaction — required because EnableRetryOnFailure is on.</summary>
+    IExecutionStrategy CreateExecutionStrategy();
     Task SaveChangesAsync(CancellationToken ct = default);
 }
