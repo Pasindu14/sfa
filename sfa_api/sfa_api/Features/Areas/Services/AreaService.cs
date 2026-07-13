@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using sfa_api.Common.Errors;
 using sfa_api.Features.Areas.DTOs;
 using sfa_api.Features.Areas.Entities;
@@ -123,12 +124,18 @@ public class AreaService(
         {
             // Re-parent: the area's RegionId is denormalized onto every live descendant
             // (territories → divisions → routes → outlets, plus distributors). Persist the area move
-            // and fan the new RegionId down in ONE transaction so they can't diverge.
-            await using var tx = await _repo.BeginTransactionAsync(ct);
-            await _repo.UpdateAsync(area);
-            await _repo.SaveChangesAsync(ct);   // area's own xmin concurrency check happens here
-            var cascaded = await _cascade.CascadeAreaRegionChangeAsync(id, request.RegionId, ct);
-            await tx.CommitAsync(ct);
+            // and fan the new RegionId down in ONE transaction so they can't diverge. The manual
+            // transaction must run inside an execution strategy because EnableRetryOnFailure is on.
+            var cascaded = 0;
+            var strategy = _repo.CreateExecutionStrategy();
+            await strategy.ExecuteAsync(async () =>
+            {
+                await using var tx = await _repo.BeginTransactionAsync(ct);
+                await _repo.UpdateAsync(area);
+                await _repo.SaveChangesAsync(ct);   // area's own xmin concurrency check happens here
+                cascaded = await _cascade.CascadeAreaRegionChangeAsync(id, request.RegionId, ct);
+                await tx.CommitAsync(ct);
+            });
             _logger.LogInformation(
                 "Area {AreaId} moved from Region {OldRegionId} to {NewRegionId} by {CallerId}; cascaded {Count} descendant rows",
                 id, oldRegionId, request.RegionId, callerId, cascaded);

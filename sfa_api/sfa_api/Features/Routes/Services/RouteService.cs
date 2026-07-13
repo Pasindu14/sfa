@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using sfa_api.Common.Errors;
 using sfa_api.Features.GeoConsistency;
 using sfa_api.Features.GeoConsistency.Services;
@@ -137,13 +138,19 @@ public class RouteService(
         if (oldDivisionId != division.Id)
         {
             // Re-parent: the route's full geo chain is denormalized onto its live outlets. Persist the
-            // move and fan the new Division/Territory/Area/Region down to those outlets atomically.
-            await using var tx = await _repo.BeginTransactionAsync(ct);
-            await _repo.UpdateAsync(route, ct);
-            await _repo.SaveChangesAsync(ct);
-            var cascaded = await _cascade.CascadeRouteDivisionChangeAsync(
-                id, division.Id, division.TerritoryId, division.AreaId, division.RegionId, ct);
-            await tx.CommitAsync(ct);
+            // move and fan the new Division/Territory/Area/Region down to those outlets atomically,
+            // wrapped in an execution strategy because EnableRetryOnFailure is on.
+            var cascaded = 0;
+            var strategy = _repo.CreateExecutionStrategy();
+            await strategy.ExecuteAsync(async () =>
+            {
+                await using var tx = await _repo.BeginTransactionAsync(ct);
+                await _repo.UpdateAsync(route, ct);
+                await _repo.SaveChangesAsync(ct);
+                cascaded = await _cascade.CascadeRouteDivisionChangeAsync(
+                    id, division.Id, division.TerritoryId, division.AreaId, division.RegionId, ct);
+                await tx.CommitAsync(ct);
+            });
             _logger.LogInformation(
                 "Route {RouteId} moved from Division {OldDivisionId} to {NewDivisionId}; cascaded {Count} outlets",
                 id, oldDivisionId, division.Id, cascaded);

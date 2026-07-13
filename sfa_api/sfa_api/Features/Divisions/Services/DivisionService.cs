@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using sfa_api.Common.Errors;
 using sfa_api.Features.Divisions.DTOs;
 using sfa_api.Features.Divisions.Entities;
@@ -112,13 +113,19 @@ public class DivisionService(
         if (oldTerritoryId != territory.Id)
         {
             // Re-parent: the division's TerritoryId/AreaId/RegionId are denormalized onto its live
-            // descendants (routes → outlets). Persist the move and fan the new chain down atomically.
-            await using var tx = await _repo.BeginTransactionAsync(ct);
-            await _repo.UpdateAsync(division, ct);
-            await _repo.SaveChangesAsync(ct);   // division's own xmin concurrency check happens here
-            var cascaded = await _cascade.CascadeDivisionTerritoryChangeAsync(
-                id, territory.Id, territory.AreaId, territory.RegionId, ct);
-            await tx.CommitAsync(ct);
+            // descendants (routes → outlets). Persist the move and fan the new chain down atomically,
+            // wrapped in an execution strategy because EnableRetryOnFailure is on.
+            var cascaded = 0;
+            var strategy = _repo.CreateExecutionStrategy();
+            await strategy.ExecuteAsync(async () =>
+            {
+                await using var tx = await _repo.BeginTransactionAsync(ct);
+                await _repo.UpdateAsync(division, ct);
+                await _repo.SaveChangesAsync(ct);   // division's own xmin concurrency check happens here
+                cascaded = await _cascade.CascadeDivisionTerritoryChangeAsync(
+                    id, territory.Id, territory.AreaId, territory.RegionId, ct);
+                await tx.CommitAsync(ct);
+            });
             _logger.LogInformation(
                 "Division {DivisionId} moved from Territory {OldTerritoryId} to {NewTerritoryId}; cascaded {Count} descendant rows",
                 id, oldTerritoryId, territory.Id, cascaded);

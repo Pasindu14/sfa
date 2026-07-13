@@ -126,6 +126,9 @@ public class DivisionRepository(AppDbContext context) : IDivisionRepository
     public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct = default)
         => _context.Database.BeginTransactionAsync(ct);
 
+    public IExecutionStrategy CreateExecutionStrategy()
+        => _context.Database.CreateExecutionStrategy();
+
     public async Task SaveChangesAsync(CancellationToken ct = default)
     {
         try
