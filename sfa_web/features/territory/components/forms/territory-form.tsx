@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import {
   createTerritorySchema,
   updateTerritorySchema,
-  type CreateTerritoryInput,
+  type UpdateTerritoryInput,
 } from '../../schema/territory.schema'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,10 +21,11 @@ import {
 import { Spinner } from '@/components/ui/spinner'
 import { AreaSelect } from '@/features/area/components/selects/area-select'
 
+// UpdateTerritoryInput is a superset of CreateTerritoryInput (adds rowVersion).
 interface TerritoryFormProps {
   mode: 'create' | 'edit'
-  defaultValues?: Partial<CreateTerritoryInput>
-  onSubmit: (data: CreateTerritoryInput) => void
+  defaultValues?: Partial<UpdateTerritoryInput>
+  onSubmit: (data: UpdateTerritoryInput) => void
   isLoading: boolean
   fieldErrors?: Record<string, string> | null
 }
@@ -38,11 +39,12 @@ export function TerritoryForm({
 }: TerritoryFormProps) {
   const schema = mode === 'create' ? createTerritorySchema : updateTerritorySchema
 
-  const form = useForm<CreateTerritoryInput>({
-    resolver: zodResolver(schema as typeof createTerritorySchema),
+  const form = useForm<UpdateTerritoryInput>({
+    resolver: zodResolver(schema as typeof updateTerritorySchema),
     defaultValues: {
       name: '',
       areaId: 0,
+      rowVersion: 0,
       ...defaultValues,
     },
   })
@@ -52,7 +54,7 @@ export function TerritoryForm({
   useEffect(() => {
     if (fieldErrors) {
       Object.entries(fieldErrors).forEach(([field, message]) => {
-        setError(field as keyof CreateTerritoryInput, { message })
+        setError(field as keyof UpdateTerritoryInput, { message })
       })
     }
   }, [fieldErrors, setError])
@@ -91,6 +93,27 @@ export function TerritoryForm({
             </FormItem>
           )}
         />
+
+        {/* Hidden concurrency token — edit mode only */}
+        {mode === 'edit' && (
+          <FormField
+            control={form.control}
+            name="rowVersion"
+            render={({ field }) => (
+              <FormItem className="hidden">
+                <FormControl>
+                  <input
+                    type="hidden"
+                    {...field}
+                    onChange={(e) => field.onChange(Number(e.target.value))}
+                    value={field.value ?? 0}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading ? (

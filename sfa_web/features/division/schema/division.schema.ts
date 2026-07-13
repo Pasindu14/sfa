@@ -20,6 +20,11 @@ export const updateDivisionSchema = z.object({
     .number({ error: 'Territory is required' })
     .int()
     .min(1, 'Territory is required'),
+  // Optimistic concurrency token (PostgreSQL xmin) read on GET, echoed back on update.
+  rowVersion: z
+    .number()
+    .int()
+    .min(1, 'Row version is required'),
 })
 
 export const filterSchema = z.object({
@@ -42,6 +47,7 @@ export type DivisionDto = {
   regionId: number
   regionName: string
   isActive: boolean
+  rowVersion: number
   createdAt: string
   updatedAt: string
 }
