@@ -21,7 +21,7 @@ export class AppError extends Error {
     this.statusCode = statusCode
     this.isOperational = isOperational
 
-    // Maintains proper stack trace for where our error was thrown (only available on V8)
+    // Maintains proper stack trace for where our error was thrown (only available on V9)
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, this.constructor)
     }
