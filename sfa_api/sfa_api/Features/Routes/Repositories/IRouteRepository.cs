@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore.Storage;
 using sfa_api.Features.Divisions.Entities;
 using RouteEntity = sfa_api.Features.Routes.Entities.Route;
 
@@ -22,5 +23,7 @@ public interface IRouteRepository
     Task UpdateAsync(RouteEntity route, CancellationToken ct = default);
     /// <summary>True if the route still has at least one active (not deleted) outlet under it.</summary>
     Task<bool> HasActiveOutletsAsync(int routeId, CancellationToken ct = default);
+    /// <summary>Opens an explicit transaction so a re-parent + its geo cascade commit atomically.</summary>
+    Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

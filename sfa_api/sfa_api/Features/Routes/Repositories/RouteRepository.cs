@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using sfa_api.Features.Divisions.Entities;
 using sfa_api.Infrastructure.Persistence;
 using RouteEntity = sfa_api.Features.Routes.Entities.Route;
@@ -117,6 +118,9 @@ public class RouteRepository(AppDbContext context) : IRouteRepository
         => await _context.Outlets
             .IgnoreQueryFilters()
             .AnyAsync(o => o.RouteId == routeId && o.IsActive && !o.IsDeleted, ct);
+
+    public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct = default)
+        => _context.Database.BeginTransactionAsync(ct);
 
     public async Task SaveChangesAsync(CancellationToken ct = default)
         => await _context.SaveChangesAsync(ct);

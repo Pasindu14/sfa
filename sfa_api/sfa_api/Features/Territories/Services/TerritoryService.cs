@@ -1,4 +1,6 @@
 using sfa_api.Common.Errors;
+using sfa_api.Features.GeoConsistency;
+using sfa_api.Features.GeoConsistency.Services;
 using sfa_api.Features.Territories.DTOs;
 using sfa_api.Features.Territories.Entities;
 using sfa_api.Features.Territories.Repositories;
@@ -10,10 +12,12 @@ namespace sfa_api.Features.Territories.Services;
 public class TerritoryService(
     ITerritoryRepository repo,
     ICacheService cache,
+    IGeoCascadeService cascade,
     ILogger<TerritoryService> logger) : ITerritoryService
 {
     private readonly ITerritoryRepository _repo = repo;
     private readonly ICacheService _cache = cache;
+    private readonly IGeoCascadeService _cascade = cascade;
     private readonly ILogger<TerritoryService> _logger = logger;
 
     private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
@@ -93,6 +97,9 @@ public class TerritoryService(
         if (await _repo.ExistsByNameAsync(request.Name, request.AreaId, id, ct))
             throw new DuplicateResourceException("Name");
 
+        // Capture the pre-change parent so we only cascade on an actual area MOVE (not a rename).
+        var oldAreaId = territory.AreaId;
+
         _repo.ApplyConcurrencyToken(territory, request.RowVersion);
         territory.Name = request.Name;
         territory.AreaId = area.Id;
@@ -100,10 +107,28 @@ public class TerritoryService(
         territory.UpdatedBy = callerId;
         territory.UpdatedAt = DateTime.UtcNow;
 
-        await _repo.UpdateAsync(territory, ct);
-        await _repo.SaveChangesAsync(ct);
+        if (oldAreaId != area.Id)
+        {
+            // Re-parent: the territory's AreaId/RegionId are denormalized onto every live descendant
+            // (divisions → routes → outlets, plus distributors). Persist the move and fan the new
+            // AreaId + RegionId down in ONE transaction.
+            await using var tx = await _repo.BeginTransactionAsync(ct);
+            await _repo.UpdateAsync(territory, ct);
+            await _repo.SaveChangesAsync(ct);   // territory's own xmin concurrency check happens here
+            var cascaded = await _cascade.CascadeTerritoryAreaChangeAsync(id, area.Id, area.RegionId, ct);
+            await tx.CommitAsync(ct);
+            _logger.LogInformation(
+                "Territory {TerritoryId} moved from Area {OldAreaId} to {NewAreaId} (Region {RegionId}); cascaded {Count} descendant rows",
+                id, oldAreaId, area.Id, area.RegionId, cascaded);
+            await InvalidateDescendantCachesAsync(ct);
+        }
+        else
+        {
+            await _repo.UpdateAsync(territory, ct);
+            await _repo.SaveChangesAsync(ct);
+            _logger.LogInformation("Territory {TerritoryId} updated", id);
+        }
 
-        _logger.LogInformation("Territory {TerritoryId} updated", id);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
 
         var updated = await _repo.GetByIdAsync(id, ct)
@@ -175,6 +200,13 @@ public class TerritoryService(
 
         _logger.LogInformation("Territory {TerritoryId} deleted by {CallerId}", id, callerId);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
+    }
+
+    // Clears the live descendants' list caches after a re-parent cascade.
+    private async Task InvalidateDescendantCachesAsync(CancellationToken ct)
+    {
+        foreach (var prefix in GeoCacheKeys.DescendantListPrefixes)
+            await _cache.RemoveByPrefixAsync(prefix, ct);
     }
 
     private static TerritoryDto MapToDto(Territory territory) => new(

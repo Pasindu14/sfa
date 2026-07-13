@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore.Storage;
 using sfa_api.Features.Areas.DTOs;
 using sfa_api.Features.Areas.Entities;
 
@@ -17,5 +18,7 @@ public interface IAreaRepository
     void ApplyConcurrencyToken(Area area, uint rowVersion);
     /// <summary>True if the area still has at least one active (not deleted) territory under it.</summary>
     Task<bool> HasActiveTerritoriesAsync(int areaId, CancellationToken ct = default);
+    /// <summary>Opens an explicit transaction so a re-parent + its geo cascade commit atomically.</summary>
+    Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

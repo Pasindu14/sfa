@@ -3,6 +3,8 @@ using sfa_api.Features.Divisions.DTOs;
 using sfa_api.Features.Divisions.Entities;
 using sfa_api.Features.Divisions.Repositories;
 using sfa_api.Features.Divisions.Requests;
+using sfa_api.Features.GeoConsistency;
+using sfa_api.Features.GeoConsistency.Services;
 using sfa_api.Infrastructure.Caching;
 
 namespace sfa_api.Features.Divisions.Services;
@@ -10,10 +12,12 @@ namespace sfa_api.Features.Divisions.Services;
 public class DivisionService(
     IDivisionRepository repo,
     ICacheService cache,
+    IGeoCascadeService cascade,
     ILogger<DivisionService> logger) : IDivisionService
 {
     private readonly IDivisionRepository _repo = repo;
     private readonly ICacheService _cache = cache;
+    private readonly IGeoCascadeService _cascade = cascade;
     private readonly ILogger<DivisionService> _logger = logger;
 
     private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
@@ -94,6 +98,9 @@ public class DivisionService(
         if (await _repo.ExistsByNameAsync(request.Name, request.TerritoryId, id, ct))
             throw new DuplicateResourceException("Name");
 
+        // Capture the pre-change parent so we only cascade on an actual territory MOVE (not a rename).
+        var oldTerritoryId = division.TerritoryId;
+
         _repo.ApplyConcurrencyToken(division, request.RowVersion);
         division.Name = request.Name;
         division.TerritoryId = territory.Id;
@@ -102,10 +109,28 @@ public class DivisionService(
         division.UpdatedBy = callerId;
         division.UpdatedAt = DateTime.UtcNow;
 
-        await _repo.UpdateAsync(division, ct);
-        await _repo.SaveChangesAsync(ct);
+        if (oldTerritoryId != territory.Id)
+        {
+            // Re-parent: the division's TerritoryId/AreaId/RegionId are denormalized onto its live
+            // descendants (routes → outlets). Persist the move and fan the new chain down atomically.
+            await using var tx = await _repo.BeginTransactionAsync(ct);
+            await _repo.UpdateAsync(division, ct);
+            await _repo.SaveChangesAsync(ct);   // division's own xmin concurrency check happens here
+            var cascaded = await _cascade.CascadeDivisionTerritoryChangeAsync(
+                id, territory.Id, territory.AreaId, territory.RegionId, ct);
+            await tx.CommitAsync(ct);
+            _logger.LogInformation(
+                "Division {DivisionId} moved from Territory {OldTerritoryId} to {NewTerritoryId}; cascaded {Count} descendant rows",
+                id, oldTerritoryId, territory.Id, cascaded);
+            await InvalidateDescendantCachesAsync(ct);
+        }
+        else
+        {
+            await _repo.UpdateAsync(division, ct);
+            await _repo.SaveChangesAsync(ct);
+            _logger.LogInformation("Division {DivisionId} updated", id);
+        }
 
-        _logger.LogInformation("Division {DivisionId} updated", id);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
 
         var updated = await _repo.GetByIdAsync(id, ct)
@@ -162,6 +187,13 @@ public class DivisionService(
 
         _logger.LogInformation("Division {DivisionId} deleted by {CallerId}", id, callerId);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
+    }
+
+    // Clears the live descendants' list caches after a re-parent cascade.
+    private async Task InvalidateDescendantCachesAsync(CancellationToken ct)
+    {
+        foreach (var prefix in GeoCacheKeys.DescendantListPrefixes)
+            await _cache.RemoveByPrefixAsync(prefix, ct);
     }
 
     private static DivisionDto MapToDto(Division d) => new(
