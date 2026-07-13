@@ -11,6 +11,7 @@ using sfa_api.Common.Extensions;
 using sfa_api.Common.Middleware;
 using sfa_api.Features.Auth;
 using sfa_api.Features.Areas;
+using sfa_api.Features.GeoConsistency;
 using sfa_api.Features.Distributors;
 using sfa_api.Features.Divisions;
 using sfa_api.Features.Outlets;
@@ -118,6 +119,9 @@ try
     // ── Nightly Stock Reconciliation ──────────────────────────────────────
     builder.Services.AddHostedService<sfa_api.Features.Stock.Services.StockReconciliationBackgroundService>();
 
+    // ── Nightly Geo-Consistency Check ─────────────────────────────────────
+    builder.Services.AddHostedService<sfa_api.Features.GeoConsistency.Services.GeoConsistencyBackgroundService>();
+
     // ── JWT Revocation ────────────────────────────────────────────────────
     builder.Services.AddScoped<ITokenRevocationService, PostgresTokenRevocationService>();
 
@@ -222,6 +226,7 @@ try
     builder.Services.AddDistributorsFeature();
     builder.Services.AddFleetsFeature();
     builder.Services.AddRegionsFeature();
+    builder.Services.AddGeoConsistencyFeature();   // cascade + reconciliation (consumed by the geo features below)
     builder.Services.AddAreasFeature();
     builder.Services.AddTerritoriesFeature();
     builder.Services.AddDivisionsFeature();

@@ -8,7 +8,10 @@ using sfa_api.Features.Regions.Entities;
 using sfa_api.Features.Routes.Repositories;
 using sfa_api.Features.Routes.Requests;
 using sfa_api.Features.Routes.Services;
+using sfa_api.Features.GeoConsistency.Services;
 using sfa_api.Features.Territories.Entities;
+using sfa_api.Infrastructure.Caching;
+using Microsoft.EntityFrameworkCore.Storage;
 using RouteEntity = sfa_api.Features.Routes.Entities.Route;
 
 namespace sfa_api.UnitTests.Features.Routes.Services;
@@ -16,12 +19,19 @@ namespace sfa_api.UnitTests.Features.Routes.Services;
 public class RouteServiceTests
 {
     private readonly Mock<IRouteRepository> _repoMock;
+    private readonly Mock<ICacheService> _cacheMock;
+    private readonly Mock<IGeoCascadeService> _cascadeMock;
     private readonly RouteService _sut;
 
     public RouteServiceTests()
     {
         _repoMock = new Mock<IRouteRepository>();
-        _sut = new RouteService(_repoMock.Object, NullLogger<RouteService>.Instance);
+        _cacheMock = new Mock<ICacheService>();
+        _cascadeMock = new Mock<IGeoCascadeService>();
+        // A division move opens a transaction around the cascade — hand back a usable transaction mock.
+        _repoMock.Setup(r => r.BeginTransactionAsync(It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(Mock.Of<IDbContextTransaction>());
+        _sut = new RouteService(_repoMock.Object, _cacheMock.Object, _cascadeMock.Object, NullLogger<RouteService>.Instance);
     }
 
     private static Region CreateFakeRegion(int id = 10, string name = "Test Region") => new()

@@ -3,6 +3,8 @@ using sfa_api.Features.Areas.DTOs;
 using sfa_api.Features.Areas.Entities;
 using sfa_api.Features.Areas.Repositories;
 using sfa_api.Features.Areas.Requests;
+using sfa_api.Features.GeoConsistency;
+using sfa_api.Features.GeoConsistency.Services;
 using sfa_api.Infrastructure.Caching;
 
 namespace sfa_api.Features.Areas.Services;
@@ -10,10 +12,12 @@ namespace sfa_api.Features.Areas.Services;
 public class AreaService(
     IAreaRepository repo,
     ICacheService cache,
+    IGeoCascadeService cascade,
     ILogger<AreaService> logger) : IAreaService
 {
     private readonly IAreaRepository _repo = repo;
     private readonly ICacheService _cache = cache;
+    private readonly IGeoCascadeService _cascade = cascade;
     private readonly ILogger<AreaService> _logger = logger;
 
     private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
@@ -104,6 +108,9 @@ public class AreaService(
         if (await _repo.ExistsByNameAsync(request.Name, request.RegionId, id, ct))
             throw new DuplicateResourceException("Name");
 
+        // Capture the pre-change parent so we only cascade on an actual region MOVE (not a rename).
+        var oldRegionId = area.RegionId;
+
         // Tell EF to use the client's RowVersion as the OriginalValue in the WHERE xmin = $token clause.
         // Setting area.RowVersion directly only changes CurrentValue — OriginalValue is what EF checks.
         _repo.ApplyConcurrencyToken(area, request.RowVersion);
@@ -112,10 +119,27 @@ public class AreaService(
         area.UpdatedBy = callerId;
         area.UpdatedAt = DateTime.UtcNow;
 
-        await _repo.UpdateAsync(area);
-        await _repo.SaveChangesAsync(ct);
-
-        _logger.LogInformation("Area {AreaId} updated by {CallerId}", id, callerId);
+        if (oldRegionId != request.RegionId)
+        {
+            // Re-parent: the area's RegionId is denormalized onto every live descendant
+            // (territories → divisions → routes → outlets, plus distributors). Persist the area move
+            // and fan the new RegionId down in ONE transaction so they can't diverge.
+            await using var tx = await _repo.BeginTransactionAsync(ct);
+            await _repo.UpdateAsync(area);
+            await _repo.SaveChangesAsync(ct);   // area's own xmin concurrency check happens here
+            var cascaded = await _cascade.CascadeAreaRegionChangeAsync(id, request.RegionId, ct);
+            await tx.CommitAsync(ct);
+            _logger.LogInformation(
+                "Area {AreaId} moved from Region {OldRegionId} to {NewRegionId} by {CallerId}; cascaded {Count} descendant rows",
+                id, oldRegionId, request.RegionId, callerId, cascaded);
+            await InvalidateDescendantCachesAsync(ct);
+        }
+        else
+        {
+            await _repo.UpdateAsync(area);
+            await _repo.SaveChangesAsync(ct);
+            _logger.LogInformation("Area {AreaId} updated by {CallerId}", id, callerId);
+        }
 
         // Invalidate caches after write — prefix covers both "areas:active" and "areas:active:{regionId}" variants
         await _cache.RemoveByPrefixAsync(ActiveCacheKey, ct);
@@ -199,6 +223,14 @@ public class AreaService(
 
         await _cache.RemoveByPrefixAsync(ActiveCacheKey, ct);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
+    }
+
+    // Clears the live descendants' list caches after a re-parent cascade so no stale region survives
+    // in a cached territory/division/distributor/outlet list.
+    private async Task InvalidateDescendantCachesAsync(CancellationToken ct)
+    {
+        foreach (var prefix in GeoCacheKeys.DescendantListPrefixes)
+            await _cache.RemoveByPrefixAsync(prefix, ct);
     }
 
     private static AreaDto MapToDto(Area area) => new(

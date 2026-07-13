@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore.Storage;
 using sfa_api.Features.Divisions.Entities;
 using sfa_api.Features.Territories.Entities;
 
@@ -15,5 +16,7 @@ public interface IDivisionRepository
     Task CreateAsync(Division division, CancellationToken ct = default);
     Task UpdateAsync(Division division, CancellationToken ct = default);
     void ApplyConcurrencyToken(Division division, uint rowVersion);
+    /// <summary>Opens an explicit transaction so a re-parent + its geo cascade commit atomically.</summary>
+    Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

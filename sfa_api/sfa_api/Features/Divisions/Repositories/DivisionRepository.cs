@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using sfa_api.Common.Errors;
 using sfa_api.Features.Divisions.Entities;
 using sfa_api.Features.Territories.Entities;
@@ -121,6 +122,9 @@ public class DivisionRepository(AppDbContext context) : IDivisionRepository
     // WHERE xmin = $token clause — this is what detects cross-request staleness.
     public void ApplyConcurrencyToken(Division division, uint rowVersion)
         => _context.Entry(division).Property(x => x.RowVersion).OriginalValue = rowVersion;
+
+    public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct = default)
+        => _context.Database.BeginTransactionAsync(ct);
 
     public async Task SaveChangesAsync(CancellationToken ct = default)
     {

@@ -1,16 +1,23 @@
 using sfa_api.Common.Errors;
+using sfa_api.Features.GeoConsistency;
+using sfa_api.Features.GeoConsistency.Services;
 using sfa_api.Features.Routes.DTOs;
 using sfa_api.Features.Routes.Repositories;
 using sfa_api.Features.Routes.Requests;
+using sfa_api.Infrastructure.Caching;
 using RouteEntity = sfa_api.Features.Routes.Entities.Route;
 
 namespace sfa_api.Features.Routes.Services;
 
 public class RouteService(
     IRouteRepository repo,
+    ICacheService cache,
+    IGeoCascadeService cascade,
     ILogger<RouteService> logger) : IRouteService
 {
     private readonly IRouteRepository _repo = repo;
+    private readonly ICacheService _cache = cache;
+    private readonly IGeoCascadeService _cascade = cascade;
     private readonly ILogger<RouteService> _logger = logger;
 
     public async Task<RouteDto> GetByIdAsync(int id, CancellationToken ct = default)
@@ -114,6 +121,9 @@ public class RouteService(
         // unchanged colour is preserved, while a duplicate/blank pick is re-assigned.
         var usedColors = await _repo.GetUsedPinColorsAsync(id, ct);
 
+        // Capture the pre-change parent so we only cascade on an actual division MOVE (not a rename).
+        var oldDivisionId = route.DivisionId;
+
         route.Name = request.Name;
         route.PinColor = RouteColorPalette.Resolve(request.PinColor, usedColors);
         route.Description = request.Description;
@@ -124,10 +134,27 @@ public class RouteService(
         route.UpdatedBy = callerId;
         route.UpdatedAt = DateTime.UtcNow;
 
-        await _repo.UpdateAsync(route, ct);
-        await _repo.SaveChangesAsync(ct);
-
-        _logger.LogInformation("Route {RouteId} updated", id);
+        if (oldDivisionId != division.Id)
+        {
+            // Re-parent: the route's full geo chain is denormalized onto its live outlets. Persist the
+            // move and fan the new Division/Territory/Area/Region down to those outlets atomically.
+            await using var tx = await _repo.BeginTransactionAsync(ct);
+            await _repo.UpdateAsync(route, ct);
+            await _repo.SaveChangesAsync(ct);
+            var cascaded = await _cascade.CascadeRouteDivisionChangeAsync(
+                id, division.Id, division.TerritoryId, division.AreaId, division.RegionId, ct);
+            await tx.CommitAsync(ct);
+            _logger.LogInformation(
+                "Route {RouteId} moved from Division {OldDivisionId} to {NewDivisionId}; cascaded {Count} outlets",
+                id, oldDivisionId, division.Id, cascaded);
+            await _cache.RemoveByPrefixAsync("outlets:route:", ct);
+        }
+        else
+        {
+            await _repo.UpdateAsync(route, ct);
+            await _repo.SaveChangesAsync(ct);
+            _logger.LogInformation("Route {RouteId} updated", id);
+        }
 
         var updated = await _repo.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("Route", id);

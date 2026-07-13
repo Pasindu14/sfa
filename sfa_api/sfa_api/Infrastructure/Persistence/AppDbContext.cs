@@ -22,6 +22,7 @@ using sfa_api.Features.SalesInvoices.Entities;
 using sfa_api.Features.SalesInvoices.Enums;
 using sfa_api.Features.Stock.Entities;
 using sfa_api.Features.Stock.Enums;
+using sfa_api.Features.GeoConsistency.Entities;
 using sfa_api.Features.DailyRouteAssignments.Entities;
 using sfa_api.Features.DailyRouteAssignments.Enums;
 using sfa_api.Features.UserGeoAssignments.Entities;
@@ -69,6 +70,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<StockTransaction> StockTransactions => Set<StockTransaction>();
     public DbSet<StockReconciliationRun> StockReconciliationRuns => Set<StockReconciliationRun>();
     public DbSet<StockReconciliationFlag> StockReconciliationFlags => Set<StockReconciliationFlag>();
+    public DbSet<GeoConsistencyRun> GeoConsistencyRuns => Set<GeoConsistencyRun>();
+    public DbSet<GeoConsistencyFlag> GeoConsistencyFlags => Set<GeoConsistencyFlag>();
     public DbSet<UserReportingLine> UserReportingLines => Set<UserReportingLine>();
     public DbSet<UserGeoAssignment> UserGeoAssignments => Set<UserGeoAssignment>();
     public DbSet<DailyRouteAssignment> DailyRouteAssignments => Set<DailyRouteAssignment>();
@@ -783,6 +786,30 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Delta).HasColumnType("decimal(18,4)");
             e.HasIndex(x => x.RunId);
             e.HasIndex(x => new { x.DistributorId, x.ProductId });
+        });
+
+        // ── GeoConsistencyRun (geo re-parent cascade companion) ───────────────
+        modelBuilder.Entity<GeoConsistencyRun>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.Property(x => x.TriggeredBy).IsRequired().HasMaxLength(40);
+            // Latest-run lookup and retention purge both order/filter by RunAt.
+            e.HasIndex(x => x.RunAt);
+            e.HasMany(x => x.Flags)
+             .WithOne(f => f.Run)
+             .HasForeignKey(f => f.RunId)
+             .OnDelete(DeleteBehavior.Cascade);   // purging a run drops its flags
+        });
+
+        // ── GeoConsistencyFlag (geo re-parent cascade companion) ──────────────
+        modelBuilder.Entity<GeoConsistencyFlag>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.Property(x => x.EntityType).IsRequired().HasMaxLength(20);
+            e.Property(x => x.Detail).IsRequired().HasMaxLength(200);
+            e.HasIndex(x => x.RunId);
         });
 
         // DailyRouteAssignment

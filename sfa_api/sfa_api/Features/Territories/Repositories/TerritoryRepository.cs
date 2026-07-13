@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using sfa_api.Common.Errors;
 using sfa_api.Features.Areas.Entities;
 using sfa_api.Features.Territories.Entities;
@@ -110,6 +111,9 @@ public class TerritoryRepository(AppDbContext context) : ITerritoryRepository
         => await _context.Divisions
             .IgnoreQueryFilters()
             .AnyAsync(d => d.TerritoryId == territoryId && d.IsActive && !d.IsDeleted, ct);
+
+    public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct = default)
+        => _context.Database.BeginTransactionAsync(ct);
 
     public async Task SaveChangesAsync(CancellationToken ct = default)
     {

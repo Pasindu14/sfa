@@ -7,9 +7,11 @@ using sfa_api.Features.Divisions.Entities;
 using sfa_api.Features.Divisions.Repositories;
 using sfa_api.Features.Divisions.Requests;
 using sfa_api.Features.Divisions.Services;
+using sfa_api.Features.GeoConsistency.Services;
 using sfa_api.Features.Regions.Entities;
 using sfa_api.Features.Territories.Entities;
 using sfa_api.Infrastructure.Caching;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace sfa_api.UnitTests.Features.Divisions.Services;
 
@@ -17,13 +19,18 @@ public class DivisionServiceTests
 {
     private readonly Mock<IDivisionRepository> _repoMock;
     private readonly Mock<ICacheService> _cacheMock;
+    private readonly Mock<IGeoCascadeService> _cascadeMock;
     private readonly DivisionService _sut;
 
     public DivisionServiceTests()
     {
         _repoMock = new Mock<IDivisionRepository>();
         _cacheMock = new Mock<ICacheService>();
-        _sut = new DivisionService(_repoMock.Object, _cacheMock.Object, NullLogger<DivisionService>.Instance);
+        _cascadeMock = new Mock<IGeoCascadeService>();
+        // A territory move opens a transaction around the cascade — hand back a usable transaction mock.
+        _repoMock.Setup(r => r.BeginTransactionAsync(It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(Mock.Of<IDbContextTransaction>());
+        _sut = new DivisionService(_repoMock.Object, _cacheMock.Object, _cascadeMock.Object, NullLogger<DivisionService>.Instance);
     }
 
     private static Region CreateFakeRegion(int id = 10, string name = "Test Region") => new()
