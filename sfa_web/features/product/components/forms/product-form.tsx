@@ -51,43 +51,43 @@ export function ProductForm({
   const form = useForm<UpdateProductFormInput, unknown, UpdateProductInput>({
     resolver: zodResolver(schema as typeof updateProductSchema),
     defaultValues: {
-      code: '',
-      itemDescription: '',
-      printDescription: '',
+      code: "",
+      itemDescription: "",
+      printDescription: "",
       piecesPerPack: 0,
-      imageUrl: '',
-      remarks: '',
+      imageUrl: "",
+      remarks: "",
       fleetId: undefined,
       categoryId: undefined,
-      dealerPackPrice: 0,
-      dealerCasePrice: 0,
-      mrp: 0,
+      dealerPackPrice: undefined,
+      dealerCasePrice: undefined,
+      mrp: undefined,
       rowVersion: 0,
       ...defaultValues,
     },
-  })
+  });
 
-  const { setError, reset } = form
+  const { setError, reset } = form;
 
   useEffect(() => {
     if (defaultValues) {
       reset({
-        code: '',
-        itemDescription: '',
-        printDescription: '',
+        code: "",
+        itemDescription: "",
+        printDescription: "",
         piecesPerPack: 0,
-        imageUrl: '',
-        remarks: '',
+        imageUrl: "",
+        remarks: "",
         fleetId: undefined,
         categoryId: undefined,
-        dealerPackPrice: 0,
-        dealerCasePrice: 0,
-        mrp: 0,
+        dealerPackPrice: undefined,
+        dealerCasePrice: undefined,
+        mrp: undefined,
         rowVersion: 0,
         ...defaultValues,
-      })
+      });
     }
-  }, [defaultValues, reset])
+  }, [defaultValues, reset]);
 
   useEffect(() => {
     if (fieldErrors) {
