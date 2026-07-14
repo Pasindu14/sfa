@@ -15,7 +15,8 @@ export const createProductSchema = z.object({
   piecesPerPack: z
     .number()
     .int('Pieces per pack must be a whole number')
-    .min(0, 'Pieces per pack must be 0 or greater'),
+    .min(0, 'Pieces per pack must be 0 or greater')
+    .default(0),
   imageUrl: z
     .string()
     .max(500, 'Image URL must not exceed 500 characters')
@@ -24,9 +25,9 @@ export const createProductSchema = z.object({
   remarks: z.string().optional().or(z.literal('')),
   fleetId: z.number().int().positive('Must select a valid fleet').optional(),
   categoryId: z.number().int().positive('Must select a valid category').optional(),
-  dealerPackPrice: z.number().min(0, 'Dealer pack price must be 0 or greater'),
-  dealerCasePrice: z.number().min(0, 'Dealer case price must be 0 or greater'),
-  mrp: z.number().min(0, 'MRP must be 0 or greater'),
+  dealerPackPrice: z.number().min(0, 'Dealer pack price must be 0 or greater').default(0),
+  dealerCasePrice: z.number().min(0, 'Dealer case price must be 0 or greater').default(0),
+  mrp: z.number().min(0, 'MRP must be 0 or greater').default(0),
 })
 
 // Update schema (create shape + concurrency token)
@@ -41,9 +42,14 @@ export const filterSchema = z.object({
   pageSize: z.number().default(10),
 })
 
-// Infer TypeScript types from schemas
+// Infer TypeScript types from schemas.
+// `*Input` are the parsed OUTPUT types (numbers guaranteed, defaults applied).
+// `*FormInput` are the raw INPUT types — numeric fields are optional here because
+// `.default(0)` lets a cleared field be transiently `undefined` before parsing.
 export type CreateProductInput = z.infer<typeof createProductSchema>
 export type UpdateProductInput = z.infer<typeof updateProductSchema>
+export type CreateProductFormInput = z.input<typeof createProductSchema>
+export type UpdateProductFormInput = z.input<typeof updateProductSchema>
 export type ProductFilterInput = z.infer<typeof filterSchema>
 
 // DTO type (matches API response)

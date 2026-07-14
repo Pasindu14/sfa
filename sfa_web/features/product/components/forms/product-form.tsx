@@ -6,8 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import {
   createProductSchema,
   updateProductSchema,
-  type CreateProductInput,
   type UpdateProductInput,
+  type UpdateProductFormInput,
 } from '../../schema/product.schema'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -45,7 +45,10 @@ export function ProductForm({
 }: ProductFormProps) {
   const schema = mode === 'create' ? createProductSchema : updateProductSchema
 
-  const form = useForm<UpdateProductInput>({
+  // Three-generic useForm: fields work in the INPUT type (numeric fields may be
+  // transiently empty/undefined while typing), handleSubmit yields the parsed
+  // OUTPUT type (UpdateProductInput) with `.default(0)` applied.
+  const form = useForm<UpdateProductFormInput, unknown, UpdateProductInput>({
     resolver: zodResolver(schema as typeof updateProductSchema),
     defaultValues: {
       code: '',
@@ -89,7 +92,7 @@ export function ProductForm({
   useEffect(() => {
     if (fieldErrors) {
       Object.entries(fieldErrors).forEach(([field, message]) => {
-        setError(field as keyof UpdateProductInput, { message })
+        setError(field as keyof UpdateProductFormInput, { message })
       })
     }
   }, [fieldErrors, setError])
@@ -124,8 +127,11 @@ export function ProductForm({
                     min="0"
                     placeholder="0"
                     {...field}
+                    value={field.value ?? ''}
                     onChange={(e) =>
-                      field.onChange(e.target.value !== '' ? parseInt(e.target.value, 10) : 0)
+                      field.onChange(
+                        e.target.value === '' ? undefined : parseInt(e.target.value, 10),
+                      )
                     }
                   />
                 </FormControl>
@@ -160,6 +166,8 @@ export function ProductForm({
                   placeholder="Uppercase label used on print/reports"
                   {...field}
                   value={field.value ?? ''}
+                  // Force uppercase for every input path — typing, paste, drop, autofill.
+                  onChange={(e) => field.onChange(e.target.value.toUpperCase())}
                 />
               </FormControl>
               <FormMessage />
@@ -220,8 +228,11 @@ export function ProductForm({
                       step="0.01"
                       placeholder="0.00"
                       {...field}
+                      value={field.value ?? ''}
                       onChange={(e) =>
-                        field.onChange(e.target.value !== '' ? parseFloat(e.target.value) : 0)
+                        field.onChange(
+                          e.target.value === '' ? undefined : parseFloat(e.target.value),
+                        )
                       }
                     />
                   </FormControl>
@@ -243,8 +254,11 @@ export function ProductForm({
                       step="0.01"
                       placeholder="0.00"
                       {...field}
+                      value={field.value ?? ''}
                       onChange={(e) =>
-                        field.onChange(e.target.value !== '' ? parseFloat(e.target.value) : 0)
+                        field.onChange(
+                          e.target.value === '' ? undefined : parseFloat(e.target.value),
+                        )
                       }
                     />
                   </FormControl>
@@ -266,8 +280,11 @@ export function ProductForm({
                       step="0.01"
                       placeholder="0.00"
                       {...field}
+                      value={field.value ?? ''}
                       onChange={(e) =>
-                        field.onChange(e.target.value !== '' ? parseFloat(e.target.value) : 0)
+                        field.onChange(
+                          e.target.value === '' ? undefined : parseFloat(e.target.value),
+                        )
                       }
                     />
                   </FormControl>
