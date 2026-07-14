@@ -13,6 +13,8 @@ public interface IDivisionRepository
     Task<bool> ExistsByNameAsync(string name, int territoryId, CancellationToken ct = default);
     Task<bool> ExistsByNameAsync(string name, int territoryId, int excludeId, CancellationToken ct = default);
     Task<bool> TerritoryExistsAsync(int territoryId, CancellationToken ct = default);
+    /// <summary>True if the division still has at least one active, non-deleted route — blocks deactivate/delete.</summary>
+    Task<bool> HasActiveRoutesAsync(int divisionId, CancellationToken ct = default);
     Task CreateAsync(Division division, CancellationToken ct = default);
     Task UpdateAsync(Division division, CancellationToken ct = default);
     void ApplyConcurrencyToken(Division division, uint rowVersion);

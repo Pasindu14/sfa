@@ -526,6 +526,43 @@ public class DivisionServiceTests
         division.UpdatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(2));
     }
 
+    [Fact]
+    public async Task DeactivateAsync_WithActiveRoutes_ThrowsBusinessRuleException_AndDoesNotSave()
+    {
+        var division = CreateFakeDivision(isActive: true);
+        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(division);
+        _repoMock.Setup(r => r.HasActiveRoutesAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(true);
+
+        var act = () => _sut.DeactivateAsync(1, callerId: 1);
+
+        var ex = await act.Should().ThrowAsync<BusinessRuleException>();
+        ex.Which.ErrorCode.Should().Be("DIVISION_HAS_ACTIVE_ROUTES");
+        // Guard must short-circuit before any mutation.
+        division.IsActive.Should().BeTrue();
+        _repoMock.Verify(r => r.UpdateAsync(It.IsAny<Division>(), It.IsAny<CancellationToken>()), Times.Never);
+        _repoMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_WithActiveRoutes_ThrowsBusinessRuleException_AndDoesNotSave()
+    {
+        var division = CreateFakeDivision(isActive: true);
+        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(division);
+        _repoMock.Setup(r => r.HasActiveRoutesAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(true);
+
+        var act = () => _sut.DeleteAsync(1, callerId: 1);
+
+        var ex = await act.Should().ThrowAsync<BusinessRuleException>();
+        ex.Which.ErrorCode.Should().Be("DIVISION_HAS_ACTIVE_ROUTES");
+        division.IsDeleted.Should().BeFalse();
+        _repoMock.Verify(r => r.UpdateAsync(It.IsAny<Division>(), It.IsAny<CancellationToken>()), Times.Never);
+        _repoMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     // ─────────────────────────────────────────────────
     // Helpers
     // ─────────────────────────────────────────────────

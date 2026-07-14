@@ -166,6 +166,14 @@ public class DivisionService(
         var division = await _repo.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("Division", id);
 
+        // Integrity guard: deactivating a parent with active children would leave them
+        // orphaned under an inactive division. Block it, same as delete.
+        if (await _repo.HasActiveRoutesAsync(id, ct))
+            throw new BusinessRuleException(
+                "DIVISION_HAS_ACTIVE_ROUTES",
+                "Cannot deactivate a division that still has active routes. Deactivate or move them first.",
+                new { divisionId = id });
+
         division.IsActive = false;
         division.UpdatedBy = callerId;
         division.UpdatedAt = DateTime.UtcNow;
@@ -181,6 +189,13 @@ public class DivisionService(
     {
         var division = await _repo.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("Division", id);
+
+        // Integrity guard: refuse to delete a parent that still has active children.
+        if (await _repo.HasActiveRoutesAsync(id, ct))
+            throw new BusinessRuleException(
+                "DIVISION_HAS_ACTIVE_ROUTES",
+                "Cannot delete a division that still has active routes. Deactivate or move them first.",
+                new { divisionId = id });
 
         // Soft-delete: IsDeleted is the audit flag for an explicit delete, distinct from
         // deactivate (IsActive = false). Never hard-delete.

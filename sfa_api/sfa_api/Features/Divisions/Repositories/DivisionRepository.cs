@@ -109,6 +109,13 @@ public class DivisionRepository(AppDbContext context) : IDivisionRepository
     public async Task<bool> TerritoryExistsAsync(int territoryId, CancellationToken ct = default)
         => await _context.Territories.IgnoreQueryFilters().AnyAsync(t => t.Id == territoryId, ct);
 
+    // Mirrors AreaRepository.HasActiveTerritoriesAsync: count active, non-deleted routes directly
+    // (IgnoreQueryFilters so intent is explicit and not coupled to the soft-delete global filter).
+    public async Task<bool> HasActiveRoutesAsync(int divisionId, CancellationToken ct = default)
+        => await _context.Routes
+            .IgnoreQueryFilters()
+            .AnyAsync(r => r.DivisionId == divisionId && r.IsActive && !r.IsDeleted, ct);
+
     public async Task CreateAsync(Division division, CancellationToken ct = default)
         => await _context.Divisions.AddAsync(division, ct);
 
