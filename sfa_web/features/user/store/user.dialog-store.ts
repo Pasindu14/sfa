@@ -5,7 +5,7 @@ interface UserDialogState {
   isCreateOpen: boolean
   isEditOpen: boolean
   isDeleteOpen: boolean
-  isChangePasswordOpen: boolean
+  isResetPasswordOpen: boolean
   isActivateOpen: boolean
   isDeactivateOpen: boolean
   selectedUserId: number | null
@@ -15,8 +15,8 @@ interface UserDialogState {
   closeEdit: () => void
   openDelete: (id: number) => void
   closeDelete: () => void
-  openChangePassword: (id: number) => void
-  closeChangePassword: () => void
+  openResetPassword: (id: number) => void
+  closeResetPassword: () => void
   openActivate: (id: number) => void
   closeActivate: () => void
   openDeactivate: (id: number) => void
@@ -29,7 +29,7 @@ export const useUserDialogStore = create<UserDialogState>()(
       isCreateOpen: false,
       isEditOpen: false,
       isDeleteOpen: false,
-      isChangePasswordOpen: false,
+      isResetPasswordOpen: false,
       isActivateOpen: false,
       isDeactivateOpen: false,
       selectedUserId: null,
@@ -39,10 +39,10 @@ export const useUserDialogStore = create<UserDialogState>()(
       closeEdit: () => set({ isEditOpen: false, selectedUserId: null }),
       openDelete: (id) => set({ isDeleteOpen: true, selectedUserId: id }),
       closeDelete: () => set({ isDeleteOpen: false, selectedUserId: null }),
-      openChangePassword: (id) =>
-        set({ isChangePasswordOpen: true, selectedUserId: id }),
-      closeChangePassword: () =>
-        set({ isChangePasswordOpen: false, selectedUserId: null }),
+      openResetPassword: (id) =>
+        set({ isResetPasswordOpen: true, selectedUserId: id }),
+      closeResetPassword: () =>
+        set({ isResetPasswordOpen: false, selectedUserId: null }),
       openActivate: (id) => set({ isActivateOpen: true, selectedUserId: id }),
       closeActivate: () => set({ isActivateOpen: false, selectedUserId: null }),
       openDeactivate: (id) =>

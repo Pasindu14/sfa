@@ -6,7 +6,7 @@ import 'package:sqflite/sqflite.dart';
 /// [onUpgrade] when schema changes.
 class DatabaseHelper {
   static const _dbName = 'sfa_local.db';
-  static const _dbVersion = 18;
+  static const _dbVersion = 19;
 
   DatabaseHelper._private();
   static final DatabaseHelper instance = DatabaseHelper._private();
@@ -87,6 +87,14 @@ class DatabaseHelper {
     if (oldVersion < 16) await _migrateProductPricesAndDropPricingV16(db);
     if (oldVersion < 17) await _migrateBillItemsPriceTypeV17(db);
     if (oldVersion < 18) await _createLocationPingsTable(db);
+    if (oldVersion < 19) await _migrateDistributorStocksFleetV19(db);
+  }
+
+  /// Fleet is denormalized onto each stock row server-side. No backfill needed —
+  /// distributor_stocks is a cache that is fully replaced on the next sync.
+  Future<void> _migrateDistributorStocksFleetV19(Database db) async {
+    await db.execute('ALTER TABLE distributor_stocks ADD COLUMN fleet_id INTEGER');
+    await db.execute('ALTER TABLE distributor_stocks ADD COLUMN fleet_name TEXT');
   }
 
   Future<void> _migrateBillItemsPriceTypeV17(Database db) async {
@@ -264,6 +272,8 @@ class DatabaseHelper {
         stock_type       TEXT    NOT NULL,
         quantity_on_hand REAL    NOT NULL DEFAULT 0,
         last_updated_at  TEXT    NOT NULL,
+        fleet_id         INTEGER,
+        fleet_name       TEXT,
         PRIMARY KEY (product_id, stock_type)
       )
     ''');

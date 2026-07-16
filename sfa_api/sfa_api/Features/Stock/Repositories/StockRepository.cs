@@ -23,6 +23,7 @@ public class StockRepository(AppDbContext db) : IStockRepository
             .AsNoTracking()
             .Include(x => x.Product)
             .Include(x => x.Distributor)
+            .Include(x => x.Fleet)
             .OrderBy(x => x.Product.Code)
             .Skip(skip)
             .Take(take)
@@ -36,6 +37,7 @@ public class StockRepository(AppDbContext db) : IStockRepository
               .AsNoTracking()
               .Include(x => x.Product)
               .Include(x => x.Distributor)
+              .Include(x => x.Fleet)
               .Where(x => x.DistributorId == distributorId)
               .OrderBy(x => x.Product.Code)
               .ToListAsync(ct);
@@ -91,11 +93,13 @@ public class StockRepository(AppDbContext db) : IStockRepository
         stock.QuantityOnHand = quantityAfter;
         stock.LastUpdatedAt  = DateTime.UtcNow;
 
-        // Append immutable ledger entry — never update or delete
+        // Append immutable ledger entry — never update or delete.
+        // FleetId is snapshotted off the (already denormalized) stock row, so no extra query.
         _db.StockTransactions.Add(new StockTransaction
         {
             DistributorId   = distributorId,
             ProductId       = productId,
+            FleetId         = stock.FleetId,
             StockType       = stockType,
             TransactionType = transactionType,
             Direction       = StockTransactionDirection.Out,
@@ -151,6 +155,7 @@ public class StockRepository(AppDbContext db) : IStockRepository
                 DistributorId  = distributorId,
                 ProductId      = productId,
                 StockType      = stockType,
+                FleetId        = await GetDistributorFleetIdAsync(distributorId, ct),
                 QuantityOnHand = 0m,
                 LastUpdatedAt  = DateTime.UtcNow
             };
@@ -167,6 +172,7 @@ public class StockRepository(AppDbContext db) : IStockRepository
         {
             DistributorId   = distributorId,
             ProductId       = productId,
+            FleetId         = stock.FleetId,
             StockType       = stockType,
             TransactionType = transactionType,
             Direction       = StockTransactionDirection.In,
@@ -180,6 +186,25 @@ public class StockRepository(AppDbContext db) : IStockRepository
             Notes           = notes
         });
     }
+
+    /// <inheritdoc/>
+    public Task<int> CascadeDistributorFleetChangeAsync(
+        int distributorId, int? newFleetId, CancellationToken ct = default)
+        => _db.DistributorStocks
+              .Where(x => x.DistributorId == distributorId)
+              .ExecuteUpdateAsync(s => s.SetProperty(x => x.FleetId, newFleetId), ct);
+
+    /// <summary>
+    /// Reads the distributor's current fleet for denormalizing onto a new stock row.
+    /// IgnoreQueryFilters so a soft-deleted distributor still resolves its fleet — the same
+    /// reasoning as GeoCascadeService: a row that comes back must already be consistent.
+    /// </summary>
+    private async Task<int?> GetDistributorFleetIdAsync(int distributorId, CancellationToken ct)
+        => await _db.Distributors
+                    .IgnoreQueryFilters()
+                    .Where(d => d.Id == distributorId)
+                    .Select(d => d.FleetId)
+                    .FirstOrDefaultAsync(ct);
 
     public Task SaveChangesAsync(CancellationToken ct = default)
         => _db.SaveChangesAsync(ct);

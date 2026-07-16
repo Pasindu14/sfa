@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { changePasswordSchema, type ChangePasswordInput } from '../../schema/user.schema'
+import { resetPasswordSchema, type ResetPasswordInput } from '../../schema/user.schema'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -16,20 +16,20 @@ import {
 } from '@/components/ui/form'
 import { Spinner } from '@/components/ui/spinner'
 
-interface ChangePasswordFormProps {
-  onSubmit: (data: ChangePasswordInput) => void
+interface ResetPasswordFormProps {
+  onSubmit: (data: ResetPasswordInput) => void
   isLoading: boolean
   fieldErrors?: Record<string, string> | null
 }
 
-export function ChangePasswordForm({
+export function ResetPasswordForm({
   onSubmit,
   isLoading,
   fieldErrors,
-}: ChangePasswordFormProps) {
-  const form = useForm<ChangePasswordInput>({
-    resolver: zodResolver(changePasswordSchema),
-    defaultValues: { currentPassword: '', newPassword: '', confirmPassword: '' },
+}: ResetPasswordFormProps) {
+  const form = useForm<ResetPasswordInput>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: { newPassword: '', confirmPassword: '' },
   })
 
   const { setError } = form
@@ -37,7 +37,7 @@ export function ChangePasswordForm({
   useEffect(() => {
     if (fieldErrors) {
       Object.entries(fieldErrors).forEach(([field, message]) => {
-        setError(field as keyof ChangePasswordInput, { message })
+        setError(field as keyof ResetPasswordInput, { message })
       })
     }
   }, [fieldErrors, setError])
@@ -45,20 +45,6 @@ export function ChangePasswordForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="currentPassword"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Current Password</FormLabel>
-              <FormControl>
-                <Input type="password" placeholder="Current password" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
         <FormField
           control={form.control}
           name="newPassword"
@@ -88,7 +74,7 @@ export function ChangePasswordForm({
         />
 
         <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? <Spinner className="mr-2" /> : 'Change Password'}
+          {isLoading ? <Spinner className="mr-2" /> : 'Reset Password'}
         </Button>
       </form>
     </Form>

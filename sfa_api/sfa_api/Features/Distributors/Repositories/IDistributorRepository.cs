@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore.Storage;
 using sfa_api.Features.Distributors.Entities;
 
 namespace sfa_api.Features.Distributors.Repositories;
@@ -20,5 +21,9 @@ public interface IDistributorRepository
     Task UpdateAsync(Distributor distributor, CancellationToken ct = default);
     void ApplyConcurrencyToken(Distributor distributor, uint rowVersion);
     Task DeleteAsync(int id, CancellationToken ct = default);
+    /// <summary>Opens an explicit transaction so a fleet change + its stock cascade commit atomically.</summary>
+    Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct = default);
+    /// <summary>Execution strategy to wrap the manual transaction — required because EnableRetryOnFailure is on.</summary>
+    IExecutionStrategy CreateExecutionStrategy();
     Task SaveChangesAsync(CancellationToken ct = default);
 }

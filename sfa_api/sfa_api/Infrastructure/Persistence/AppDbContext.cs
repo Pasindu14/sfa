@@ -701,10 +701,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .HasConversion<string>()
              .HasMaxLength(10)
              .HasDefaultValue(StockType.Normal);
-            // Composite unique — one row per distributor+product+stockType
+            // Composite unique — one row per distributor+product+stockType.
+            // FleetId is deliberately NOT in this key: it is denormalized from the distributor (which
+            // has exactly one fleet), so it adds no uniqueness — and being nullable it would let
+            // Postgres (NULLs compare distinct) admit duplicate rows for fleet-less distributors.
             e.HasIndex(x => new { x.DistributorId, x.ProductId, x.StockType }).IsUnique();
             // Simple index for full-catalog fetch (GET /stock/my-distributor)
             e.HasIndex(x => x.DistributorId);
+            // Non-unique — supports fleet-filtered stock listing/reporting.
+            e.HasIndex(x => x.FleetId);
             e.HasOne(x => x.Distributor)
              .WithMany()
              .HasForeignKey(x => x.DistributorId)
@@ -712,6 +717,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(x => x.Product)
              .WithMany()
              .HasForeignKey(x => x.ProductId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Fleet)
+             .WithMany()
+             .HasForeignKey(x => x.FleetId)
+             .IsRequired(false)
              .OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -741,6 +751,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             // Composite covering index for transaction history queries (DistributorId + ProductId, sorted by date desc)
             e.HasIndex(x => new { x.DistributorId, x.ProductId, x.TransactedAt })
              .IsDescending(false, false, true);
+            // Non-unique — supports fleet-scoped ledger reporting.
+            e.HasIndex(x => x.FleetId);
             e.HasOne(x => x.Distributor)
              .WithMany()
              .HasForeignKey(x => x.DistributorId)
@@ -752,6 +764,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(x => x.TransactedByUser)
              .WithMany()
              .HasForeignKey(x => x.TransactedBy)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Fleet)
+             .WithMany()
+             .HasForeignKey(x => x.FleetId)
+             .IsRequired(false)
              .OnDelete(DeleteBehavior.Restrict);
         });
 

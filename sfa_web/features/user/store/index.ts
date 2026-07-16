@@ -35,13 +35,13 @@ export const useDeleteDialog = () =>
     }))
   )
 
-export const useChangePasswordDialog = () =>
+export const useResetPasswordDialog = () =>
   useUserDialogStore(
     useShallow((s) => ({
-      isOpen: s.isChangePasswordOpen,
+      isOpen: s.isResetPasswordOpen,
       selectedId: s.selectedUserId,
-      open: s.openChangePassword,
-      close: s.closeChangePassword,
+      open: s.openResetPassword,
+      close: s.closeResetPassword,
     }))
   )
 

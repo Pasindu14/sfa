@@ -57,9 +57,8 @@ export const updateUserSchema = baseUserObject
   })
   .superRefine(distributorRoleRefinement)
 
-export const changePasswordSchema = z
+export const resetPasswordSchema = z
   .object({
-    currentPassword: z.string().min(1, 'Current password is required'),
     newPassword: passwordRules,
     confirmPassword: z.string().min(1, 'Please confirm your password'),
   })
@@ -83,7 +82,7 @@ export const filterSchema = z.object({
 
 export type CreateUserInput = z.infer<typeof createUserSchema>
 export type UpdateUserInput = z.infer<typeof updateUserSchema>
-export type ChangePasswordInput = z.infer<typeof changePasswordSchema>
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>
 export type UserFilterInput = z.infer<typeof filterSchema>
 
 export type UserDto = {

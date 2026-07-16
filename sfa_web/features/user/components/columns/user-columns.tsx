@@ -32,13 +32,13 @@ const roleLabels: Record<string, string> = {
 export interface UserColumnActions {
   openEdit: (id: number) => void
   openDelete: (id: number) => void
-  openChangePassword: (id: number) => void
+  openResetPassword: (id: number) => void
   openActivate: (id: number) => void
   openDeactivate: (id: number) => void
 }
 
 export function getUserColumns(actions: UserColumnActions): ColumnDef<UserDto>[] {
-  const { openEdit, openDelete, openChangePassword, openActivate, openDeactivate } = actions
+  const { openEdit, openDelete, openResetPassword, openActivate, openDeactivate } = actions
 
   return [
     {
@@ -115,7 +115,7 @@ export function getUserColumns(actions: UserColumnActions): ColumnDef<UserDto>[]
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => openEdit(user.id)}>Edit</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => openChangePassword(user.id)}>Change Password</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openResetPassword(user.id)}>Reset Password</DropdownMenuItem>
               {user.isActive ? (
                 <DropdownMenuItem onClick={() => openDeactivate(user.id)}>Deactivate</DropdownMenuItem>
               ) : (

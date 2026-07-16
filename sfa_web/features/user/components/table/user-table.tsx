@@ -13,7 +13,7 @@ export function UserTable() {
   const openCreate = useUserDialogStore((s) => s.openCreate);
   const openEdit = useUserDialogStore((s) => s.openEdit);
   const openDelete = useUserDialogStore((s) => s.openDelete);
-  const openChangePassword = useUserDialogStore((s) => s.openChangePassword);
+  const openResetPassword = useUserDialogStore((s) => s.openResetPassword);
   const openActivate = useUserDialogStore((s) => s.openActivate);
   const openDeactivate = useUserDialogStore((s) => s.openDeactivate);
 
@@ -22,11 +22,11 @@ export function UserTable() {
       getUserColumns({
         openEdit,
         openDelete,
-        openChangePassword,
+        openResetPassword,
         openActivate,
         openDeactivate,
       }),
-    [openEdit, openDelete, openChangePassword, openActivate, openDeactivate],
+    [openEdit, openDelete, openResetPassword, openActivate, openDeactivate],
   );
 
   return (
@@ -87,8 +87,12 @@ export function UserTable() {
           <SelectContent>
             <SelectItem value="all">All Roles</SelectItem>
             <SelectItem value="Admin">Admin</SelectItem>
-            <SelectItem value="Manager">Manager</SelectItem>
+            <SelectItem value="NSM">NSM</SelectItem>
+            <SelectItem value="RSM">RSM</SelectItem>
+            <SelectItem value="ASM">ASM</SelectItem>
+            <SelectItem value="Supervisor">Supervisor</SelectItem>
             <SelectItem value="SalesRep">Sales Rep</SelectItem>
+            <SelectItem value="Distributor">Distributor</SelectItem>
           </SelectContent>
         </Select>
       )}

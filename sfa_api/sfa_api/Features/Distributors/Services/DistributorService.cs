@@ -1,9 +1,11 @@
+using Microsoft.EntityFrameworkCore;
 using sfa_api.Common.Errors;
 using sfa_api.Features.Distributors.DTOs;
 using sfa_api.Features.Distributors.Entities;
 using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.Distributors.Requests;
 using sfa_api.Features.Fleets.Repositories;
+using sfa_api.Features.Stock.Repositories;
 using sfa_api.Features.Territories.Repositories;
 using sfa_api.Infrastructure.Caching;
 using sfa_api.Infrastructure.Locking;
@@ -14,6 +16,7 @@ public class DistributorService(
     IDistributorRepository repo,
     ITerritoryRepository territoryRepo,
     IFleetRepository fleetRepo,
+    IStockRepository stockRepo,
     ICacheService cache,
     IDistributedLockService lockService,
     ILogger<DistributorService> logger) : IDistributorService
@@ -21,6 +24,7 @@ public class DistributorService(
     private readonly IDistributorRepository _repo = repo;
     private readonly ITerritoryRepository _territoryRepo = territoryRepo;
     private readonly IFleetRepository _fleetRepo = fleetRepo;
+    private readonly IStockRepository _stockRepo = stockRepo;
     private readonly ICacheService _cache = cache;
     private readonly IDistributedLockService _lockService = lockService;
     private readonly ILogger<DistributorService> _logger = logger;
@@ -153,7 +157,8 @@ public class DistributorService(
             }
         }
 
-        if (request.FleetId != distributor.FleetId)
+        var fleetChanged = request.FleetId != distributor.FleetId;
+        if (fleetChanged)
         {
             if (request.FleetId.HasValue && !await _fleetRepo.ExistsByIdAsync(request.FleetId.Value, ct))
                 throw new NotFoundException("Fleet", request.FleetId.Value);
@@ -175,8 +180,32 @@ public class DistributorService(
         distributor.UpdatedBy = callerId;
         distributor.UpdatedAt = DateTime.UtcNow;
 
-        await _repo.UpdateAsync(distributor, ct);
-        await _repo.SaveChangesAsync(ct);
+        if (fleetChanged)
+        {
+            // The distributor's FleetId is denormalized onto its DistributorStock rows. Persist the
+            // change and re-tag the stock in ONE transaction so the two can't diverge. The manual
+            // transaction must run inside an execution strategy because EnableRetryOnFailure is on.
+            // StockTransaction rows are deliberately NOT re-tagged — the ledger is a historical
+            // record of the fleet that held the stock at the time of each movement.
+            var cascaded = 0;
+            var strategy = _repo.CreateExecutionStrategy();
+            await strategy.ExecuteAsync(async () =>
+            {
+                await using var tx = await _repo.BeginTransactionAsync(ct);
+                await _repo.UpdateAsync(distributor, ct);
+                await _repo.SaveChangesAsync(ct);   // distributor's own xmin concurrency check happens here
+                cascaded = await _stockRepo.CascadeDistributorFleetChangeAsync(id, distributor.FleetId, ct);
+                await tx.CommitAsync(ct);
+            });
+            _logger.LogInformation(
+                "Distributor {DistributorId} fleet changed to {FleetId} — re-tagged {Cascaded} stock row(s)",
+                id, distributor.FleetId, cascaded);
+        }
+        else
+        {
+            await _repo.UpdateAsync(distributor, ct);
+            await _repo.SaveChangesAsync(ct);
+        }
 
         _logger.LogInformation("Distributor {DistributorId} updated", id);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
