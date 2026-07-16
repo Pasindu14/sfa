@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using sfa_api.Features.Distributors.Entities;
 using sfa_api.Infrastructure.Persistence;
 
@@ -105,6 +106,12 @@ public class DistributorRepository(AppDbContext context) : IDistributorRepositor
                 .SetProperty(d => d.IsActive, false)
                 .SetProperty(d => d.IsDeleted, true)
                 .SetProperty(d => d.UpdatedAt, DateTime.UtcNow), ct);
+
+    public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct = default)
+        => _context.Database.BeginTransactionAsync(ct);
+
+    public IExecutionStrategy CreateExecutionStrategy()
+        => _context.Database.CreateExecutionStrategy();
 
     public async Task SaveChangesAsync(CancellationToken ct = default)
     {

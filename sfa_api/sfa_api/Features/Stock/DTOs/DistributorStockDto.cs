@@ -9,7 +9,9 @@ public record DistributorStockDto(
     string   ProductDescription,
     string   StockType,
     decimal  QuantityOnHand,
-    DateTime LastUpdatedAt
+    DateTime LastUpdatedAt,
+    int?     FleetId,
+    string?  FleetName
 );
 
 public record StockTransactionDto(

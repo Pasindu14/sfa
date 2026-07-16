@@ -12,6 +12,10 @@ export const distributorStockItemSchema = z.object({
   stockType: z.enum(['Normal', 'FreeIssue']),
   quantityOnHand: z.number(),
   lastUpdatedAt: z.string(),
+  // Denormalized from the distributor. Nullable: the distributor may have no fleet, and a
+  // deactivated fleet resolves to a null name while the id stays set.
+  fleetId: z.number().nullable(),
+  fleetName: z.string().nullable(),
 })
 
 // ── Stock Transactions (for product drill-down) ────────────────────────────

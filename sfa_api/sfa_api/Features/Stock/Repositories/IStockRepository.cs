@@ -61,5 +61,15 @@ public interface IStockRepository
         string? notes = null,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Re-tags every <see cref="DistributorStock"/> row of a distributor with a new fleet, after the
+    /// distributor's own <c>FleetId</c> changed. <see cref="DistributorStock.FleetId"/> is denormalized
+    /// current state, so it must follow the distributor; <see cref="StockTransaction.FleetId"/> is a
+    /// historical fact and is deliberately left frozen.
+    /// Caller must run this in the same transaction as the distributor update so the two cannot diverge.
+    /// Returns the number of stock rows re-tagged.
+    /// </summary>
+    Task<int> CascadeDistributorFleetChangeAsync(int distributorId, int? newFleetId, CancellationToken ct = default);
+
     Task SaveChangesAsync(CancellationToken ct = default);
 }

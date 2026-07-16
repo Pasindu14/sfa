@@ -1,4 +1,5 @@
 using sfa_api.Features.Distributors.Entities;
+using sfa_api.Features.Fleets.Entities;
 using sfa_api.Features.Products.Entities;
 using sfa_api.Features.Stock.Enums;
 using sfa_api.Features.Users.Entities;
@@ -15,6 +16,13 @@ public class StockTransaction
 
     public int DistributorId { get; set; }
     public int ProductId { get; set; }
+
+    /// <summary>
+    /// The distributor's fleet AT THE TIME OF THIS TRANSACTION. A historical fact — frozen on write
+    /// and never rewritten, so a later fleet re-assignment cannot retroactively change what the
+    /// ledger says. This is why the fleet cascade touches DistributorStock but never this table.
+    /// </summary>
+    public int? FleetId { get; set; }
 
     public StockTransactionType TransactionType { get; set; }
     public StockTransactionDirection Direction { get; set; }
@@ -44,4 +52,5 @@ public class StockTransaction
     public Distributor Distributor { get; set; } = null!;
     public Product Product { get; set; } = null!;
     public User TransactedByUser { get; set; } = null!;
+    public Fleet? Fleet { get; set; }
 }

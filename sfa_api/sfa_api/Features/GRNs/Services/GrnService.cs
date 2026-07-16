@@ -146,6 +146,11 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
                 $"Cannot confirm GRN with status '{grn.Status}'. Only Pending GRNs can be confirmed.",
                 new { grnId, currentStatus = grn.Status.ToString() });
 
+        // 3a. The distributor's fleet — denormalized onto any stock row this receipt creates, and
+        //     snapshotted onto every ledger entry it appends. Read off the already-Included
+        //     Distributor nav rather than re-queried.
+        var distributorFleetId = grn.Distributor?.FleetId;
+
         // 4. Wrap in execution strategy — required because NpgsqlRetryingExecutionStrategy
         //    does not allow user-initiated transactions unless wrapped this way
         var strategy = _db.Database.CreateExecutionStrategy();
@@ -182,6 +187,7 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
                             DistributorId  = grn.DistributorId,
                             ProductId      = item.ProductId,
                             StockType      = stockType,
+                            FleetId        = distributorFleetId,
                             QuantityOnHand = 0m,
                             LastUpdatedAt  = DateTime.UtcNow,
                         };
@@ -208,6 +214,7 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
                     {
                         DistributorId   = grn.DistributorId,
                         ProductId       = item.ProductId,
+                        FleetId         = stock.FleetId,
                         StockType       = stockType,
                         TransactionType = StockTransactionType.GRNReceipt,
                         Direction       = StockTransactionDirection.In,

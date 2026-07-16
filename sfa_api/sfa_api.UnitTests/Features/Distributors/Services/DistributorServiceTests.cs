@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using sfa_api.Common.Errors;
@@ -7,9 +8,11 @@ using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.Distributors.Requests;
 using sfa_api.Features.Distributors.Services;
 using sfa_api.Features.Fleets.Repositories;
+using sfa_api.Features.Stock.Repositories;
 using sfa_api.Features.Territories.Repositories;
 using sfa_api.Infrastructure.Caching;
 using sfa_api.Infrastructure.Locking;
+using sfa_api.UnitTests.Infrastructure;
 
 namespace sfa_api.UnitTests.Features.Distributors.Services;
 
@@ -18,8 +21,10 @@ public class DistributorServiceTests
     private readonly Mock<IDistributorRepository> _repoMock;
     private readonly Mock<ITerritoryRepository> _territoryRepoMock;
     private readonly Mock<IFleetRepository> _fleetRepoMock;
+    private readonly Mock<IStockRepository> _stockRepoMock;
     private readonly Mock<ICacheService> _cacheMock;
     private readonly Mock<IDistributedLockService> _lockServiceMock;
+    private readonly Mock<IDbContextTransaction> _txMock;
     private readonly DistributorService _sut;
 
     public DistributorServiceTests()
@@ -27,15 +32,22 @@ public class DistributorServiceTests
         _repoMock          = new Mock<IDistributorRepository>();
         _territoryRepoMock = new Mock<ITerritoryRepository>();
         _fleetRepoMock     = new Mock<IFleetRepository>();
+        _stockRepoMock     = new Mock<IStockRepository>();
         _cacheMock         = new Mock<ICacheService>();
         _lockServiceMock   = new Mock<IDistributedLockService>();
         _lockServiceMock
             .Setup(l => l.AcquireAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Mock<IAsyncDisposable>().Object);
+        // A fleet change opens a transaction around the stock cascade — hand back usable doubles.
+        _txMock = new Mock<IDbContextTransaction>();
+        _repoMock.Setup(r => r.BeginTransactionAsync(It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(_txMock.Object);
+        _repoMock.Setup(r => r.CreateExecutionStrategy()).Returns(new ImmediateExecutionStrategy());
         _sut = new DistributorService(
             _repoMock.Object,
             _territoryRepoMock.Object,
             _fleetRepoMock.Object,
+            _stockRepoMock.Object,
             _cacheMock.Object,
             _lockServiceMock.Object,
             NullLogger<DistributorService>.Instance);
@@ -526,6 +538,118 @@ public class DistributorServiceTests
 
         distributor.UpdatedBy.Should().Be(6);
         distributor.UpdatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(2));
+    }
+
+    // ─────────────────────────────────────────────────
+    // Fleet → stock cascade
+    //
+    // DistributorStock.FleetId is denormalized from the distributor, so a fleet change must fan out
+    // to the distributor's stock rows in the same transaction. StockTransaction rows are NOT re-tagged
+    // — the ledger records the fleet that held the stock at the time of each movement.
+    // ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task UpdateAsync_FleetChanged_CascadesNewFleetToStockRows()
+    {
+        var distributor = CreateFakeDistributor();
+        distributor.FleetId = 3;
+        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(distributor);
+        SetupNoDuplicatesForUpdate(1);
+        _fleetRepoMock.Setup(f => f.ExistsByIdAsync(7, It.IsAny<CancellationToken>()))
+                      .ReturnsAsync(true);
+
+        var request = CreateValidUpdateRequest();
+        request.FleetId = 7;
+
+        await _sut.UpdateAsync(1, request, callerId: 2);
+
+        _stockRepoMock.Verify(
+            s => s.CascadeDistributorFleetChangeAsync(1, 7, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_FleetChanged_CommitsCascadeAndDistributorTogether()
+    {
+        var distributor = CreateFakeDistributor();
+        distributor.FleetId = 3;
+        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(distributor);
+        SetupNoDuplicatesForUpdate(1);
+        _fleetRepoMock.Setup(f => f.ExistsByIdAsync(7, It.IsAny<CancellationToken>()))
+                      .ReturnsAsync(true);
+
+        var request = CreateValidUpdateRequest();
+        request.FleetId = 7;
+
+        await _sut.UpdateAsync(1, request, callerId: 2);
+
+        // One transaction, committed once — the distributor row and its stock cannot diverge.
+        _repoMock.Verify(r => r.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _txMock.Verify(t => t.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_FleetCleared_CascadesNullToStockRows()
+    {
+        var distributor = CreateFakeDistributor();
+        distributor.FleetId = 3;
+        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(distributor);
+        SetupNoDuplicatesForUpdate(1);
+
+        var request = CreateValidUpdateRequest();
+        request.FleetId = null;   // un-assigning the fleet must clear it on the stock rows too
+
+        await _sut.UpdateAsync(1, request, callerId: 2);
+
+        _stockRepoMock.Verify(
+            s => s.CascadeDistributorFleetChangeAsync(1, null, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_FleetUnchanged_DoesNotCascadeToStockRows()
+    {
+        var distributor = CreateFakeDistributor();
+        distributor.FleetId = 3;
+        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(distributor);
+        SetupNoDuplicatesForUpdate(1);
+
+        var request = CreateValidUpdateRequest();
+        request.FleetId = 3;   // same fleet — nothing to fan out
+
+        await _sut.UpdateAsync(1, request, callerId: 2);
+
+        _stockRepoMock.Verify(
+            s => s.CascadeDistributorFleetChangeAsync(It.IsAny<int>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        // No fleet move means no cascade, so the update stays on the plain non-transactional path.
+        _repoMock.Verify(r => r.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_FleetDoesNotExist_ThrowsNotFoundAndDoesNotCascade()
+    {
+        var distributor = CreateFakeDistributor();
+        distributor.FleetId = 3;
+        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(distributor);
+        SetupNoDuplicatesForUpdate(1);
+        _fleetRepoMock.Setup(f => f.ExistsByIdAsync(999, It.IsAny<CancellationToken>()))
+                      .ReturnsAsync(false);
+
+        var request = CreateValidUpdateRequest();
+        request.FleetId = 999;
+
+        var act = () => _sut.UpdateAsync(1, request, callerId: 2);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+        _stockRepoMock.Verify(
+            s => s.CascadeDistributorFleetChangeAsync(It.IsAny<int>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     // ─────────────────────────────────────────────────

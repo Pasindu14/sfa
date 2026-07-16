@@ -64,7 +64,9 @@ public class StockController(
             s.Product?.ItemDescription ?? string.Empty,
             s.StockType.ToString(),
             s.QuantityOnHand,
-            s.LastUpdatedAt
+            s.LastUpdatedAt,
+            s.FleetId,
+            s.Fleet?.Name
         )).ToList();
 
         return Ok(ResponseHelper.Ok(dtos, correlationId));
@@ -95,7 +97,9 @@ public class StockController(
             s.Product?.ItemDescription ?? string.Empty,
             s.StockType.ToString(),
             s.QuantityOnHand,
-            s.LastUpdatedAt
+            s.LastUpdatedAt,
+            s.FleetId,
+            s.Fleet?.Name
         )).ToList();
         return Ok(ResponseHelper.Paged(dtos, page, pageSize, total, correlationId));
     }
@@ -127,7 +131,9 @@ public class StockController(
             s.Product?.ItemDescription ?? string.Empty,
             s.StockType.ToString(),
             s.QuantityOnHand,
-            s.LastUpdatedAt
+            s.LastUpdatedAt,
+            s.FleetId,
+            s.Fleet?.Name
         )).ToList();
 
         return Ok(ResponseHelper.Ok(dtos, correlationId));

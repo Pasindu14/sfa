@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Moq;
 using sfa_api.Common.Errors;
+using sfa_api.Features.Distributors.Entities;
 using sfa_api.Features.GRNs.Entities;
 using sfa_api.Features.GRNs.Enums;
 using sfa_api.Features.GRNs.Repositories;
@@ -612,5 +613,111 @@ public class GrnServiceTests
 
         await act.Should().ThrowAsync<NotFoundException>()
             .WithMessage("*GRN*");
+    }
+
+    // ─────────────────────────────────────────────────
+    // Fleet stamping
+    //
+    // A GRN receipt is one of the two write paths that create stock. New stock rows take the
+    // distributor's fleet (denormalized current state); every ledger entry snapshots the fleet that
+    // held the stock at the time of the movement (a frozen historical fact).
+    // ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ConfirmAsync_NewStockEntry_StampsDistributorFleetOnStockRowAndLedger()
+    {
+        var grn = PendingGrn();
+        grn.Distributor = new Distributor { Id = DistributorId, FleetId = 9 };
+        SetupConfirmHappyPath(grn, existingStock: null);
+
+        DistributorStock? capturedStock = null;
+        _repoMock
+            .Setup(r => r.AddStockAsync(It.IsAny<DistributorStock>(), It.IsAny<CancellationToken>()))
+            .Callback<DistributorStock, CancellationToken>((s, _) => capturedStock = s)
+            .Returns(Task.CompletedTask);
+
+        int stockLockCallCount = 0;
+        _repoMock
+            .Setup(r => r.GetStockForUpdateAsync(DistributorId, ProductId, It.IsAny<StockType>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() =>
+            {
+                stockLockCallCount++;
+                return stockLockCallCount == 1 ? null : capturedStock;
+            });
+
+        StockTransaction? capturedTx = null;
+        _repoMock
+            .Setup(r => r.AddStockTransactionAsync(It.IsAny<StockTransaction>(), It.IsAny<CancellationToken>()))
+            .Callback<StockTransaction, CancellationToken>((tx, _) => capturedTx = tx)
+            .Returns(Task.CompletedTask);
+
+        SetupConfirmReloadAfterCommit(grn);
+
+        await _sut.ConfirmAsync(grn.Id, new ConfirmGrnRequest(DateTime.UtcNow), CallerId);
+
+        capturedStock!.FleetId.Should().Be(9);
+        capturedTx!.FleetId.Should().Be(9);
+    }
+
+    [Fact]
+    public async Task ConfirmAsync_ExistingStock_SnapshotsStockRowsFleetOntoLedger()
+    {
+        var grn = PendingGrn();
+        grn.Distributor = new Distributor { Id = DistributorId, FleetId = 9 };
+
+        // The stock row already carries its own (denormalized) fleet — the ledger must snapshot
+        // THAT, not re-derive it, so the entry reflects the fleet the stock actually sat under.
+        var existingStock = new DistributorStock
+        {
+            Id             = 1,
+            DistributorId  = DistributorId,
+            ProductId      = ProductId,
+            FleetId        = 4,
+            QuantityOnHand = 50m,
+            LastUpdatedAt  = DateTime.UtcNow
+        };
+        SetupConfirmHappyPath(grn, existingStock);
+
+        StockTransaction? capturedTx = null;
+        _repoMock
+            .Setup(r => r.AddStockTransactionAsync(It.IsAny<StockTransaction>(), It.IsAny<CancellationToken>()))
+            .Callback<StockTransaction, CancellationToken>((tx, _) => capturedTx = tx)
+            .Returns(Task.CompletedTask);
+
+        SetupConfirmReloadAfterCommit(grn);
+
+        await _sut.ConfirmAsync(grn.Id, new ConfirmGrnRequest(DateTime.UtcNow), CallerId);
+
+        capturedTx!.FleetId.Should().Be(4);
+    }
+
+    [Fact]
+    public async Task ConfirmAsync_DistributorHasNoFleet_LeavesFleetNullRatherThanFailing()
+    {
+        var grn = PendingGrn();
+        grn.Distributor = new Distributor { Id = DistributorId, FleetId = null };
+        SetupConfirmHappyPath(grn, existingStock: null);
+
+        DistributorStock? capturedStock = null;
+        _repoMock
+            .Setup(r => r.AddStockAsync(It.IsAny<DistributorStock>(), It.IsAny<CancellationToken>()))
+            .Callback<DistributorStock, CancellationToken>((s, _) => capturedStock = s)
+            .Returns(Task.CompletedTask);
+
+        int stockLockCallCount = 0;
+        _repoMock
+            .Setup(r => r.GetStockForUpdateAsync(DistributorId, ProductId, It.IsAny<StockType>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() =>
+            {
+                stockLockCallCount++;
+                return stockLockCallCount == 1 ? null : capturedStock;
+            });
+
+        SetupConfirmReloadAfterCommit(grn);
+
+        await _sut.ConfirmAsync(grn.Id, new ConfirmGrnRequest(DateTime.UtcNow), CallerId);
+
+        // Fleet is optional — a fleet-less distributor must still be able to receive stock.
+        capturedStock!.FleetId.Should().BeNull();
     }
 }

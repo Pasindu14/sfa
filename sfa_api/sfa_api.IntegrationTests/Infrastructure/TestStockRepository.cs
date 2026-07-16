@@ -49,6 +49,10 @@ public sealed class TestStockRepository(IStockRepository inner) : IStockReposito
         => inner.CreditStockAsync(distributorId, productId, quantity, stockType, transactionType,
             referenceType, referenceId, transactedBy, notes, ct);
 
+    public Task<int> CascadeDistributorFleetChangeAsync(
+        int distributorId, int? newFleetId, CancellationToken ct = default)
+        => inner.CascadeDistributorFleetChangeAsync(distributorId, newFleetId, ct);
+
     public Task SaveChangesAsync(CancellationToken ct = default)
         => inner.SaveChangesAsync(ct);
 }

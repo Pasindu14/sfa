@@ -41,6 +41,15 @@ export function getStockColumns(): ColumnDef<DistributorStockItem>[] {
       cell: ({ row }) => <StockTypeBadge type={row.original.stockType} />,
     },
     {
+      accessorKey: 'fleetName',
+      header: 'Fleet',
+      cell: ({ row }) => (
+        <span className="text-sm">
+          {row.original.fleetName ?? <span className="text-muted-foreground">—</span>}
+        </span>
+      ),
+    },
+    {
       accessorKey: 'quantityOnHand',
       header: 'Qty on Hand',
       cell: ({ row }) => {
