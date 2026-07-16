@@ -106,9 +106,9 @@ export class UsersPage {
     await this.page.getByRole('menuitem', { name: 'Delete' }).click()
   }
 
-  async clickChangePassword(username: string) {
+  async clickResetPassword(username: string) {
     await this.openRowActions(username)
-    await this.page.getByRole('menuitem', { name: 'Change Password' }).click()
+    await this.page.getByRole('menuitem', { name: 'Reset Password' }).click()
   }
 
   async clickDeactivate(username: string) {

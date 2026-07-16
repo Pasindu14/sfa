@@ -9,7 +9,7 @@ import {
   createUserAction,
   updateUserAction,
   deleteUserAction,
-  changePasswordAction,
+  resetPasswordAction,
   activateUserAction,
   deactivateUserAction,
 } from '../actions/user.actions'
@@ -17,13 +17,13 @@ import {
   useCreateDialog,
   useEditDialog,
   useDeleteDialog,
-  useChangePasswordDialog,
+  useResetPasswordDialog,
   useActivateDialog,
   useDeactivateDialog,
 } from '../store'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { ActionFailure } from '@/lib/types/actions'
-import type { CreateUserInput, UpdateUserInput, ChangePasswordInput } from '../schema/user.schema'
+import type { CreateUserInput, UpdateUserInput, ResetPasswordInput } from '../schema/user.schema'
 
 // --- Query key factory ---
 
@@ -175,24 +175,24 @@ export function useDeleteUser() {
   })
 }
 
-export function useChangePassword() {
-  const { close } = useChangePasswordDialog()
+export function useResetPassword() {
+  const { close } = useResetPasswordDialog()
   const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null)
 
   const mutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: ChangePasswordInput }) => {
-      const result = await changePasswordAction(id, data)
+    mutationFn: async ({ id, data }: { id: number; data: ResetPasswordInput }) => {
+      const result = await resetPasswordAction(id, data)
       if (!result.success) throw result
       return result.data
     },
     onSuccess: () => {
       setFieldErrors(null)
       close()
-      toast.success('Password changed successfully')
+      toast.success('Password reset successfully')
     },
     onError: (error: ActionFailure) => {
       if (error.fields) setFieldErrors(error.fields)
-      handleErrorToast(error, 'user', 'change password')
+      handleErrorToast(error, 'user', 'reset password')
     },
   })
 

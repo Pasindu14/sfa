@@ -6,7 +6,7 @@ import client from '@/lib/api/client'
 import type {
   CreateUserInput,
   UpdateUserInput,
-  ChangePasswordInput,
+  ResetPasswordInput,
   UserDto,
 } from '../schema/user.schema'
 
@@ -59,10 +59,13 @@ export const deleteUserAction = createAction(
   }
 )
 
-export const changePasswordAction = createAction(
-  { name: 'changePasswordAction', requireAuth: true, requiredRole: 'Admin' },
-  async (id: number, data: ChangePasswordInput) => {
-    const res = await client.post(`/api/v1/users/${id}/change-password`, data)
+export const resetPasswordAction = createAction(
+  { name: 'resetPasswordAction', requireAuth: true, requiredRole: 'Admin' },
+  async (id: number, data: ResetPasswordInput) => {
+    // The API's ResetPasswordRequest only binds newPassword; confirmPassword is client-side only.
+    const res = await client.post(`/api/v1/users/${id}/reset-password`, {
+      newPassword: data.newPassword,
+    })
     revalidatePath('/users')
     return res.data.data as string
   }

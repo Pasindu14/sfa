@@ -22,7 +22,7 @@ import {
   useCreateDialog,
   useEditDialog,
   useDeleteDialog,
-  useChangePasswordDialog,
+  useResetPasswordDialog,
   useActivateDialog,
   useDeactivateDialog,
 } from '../../store'
@@ -30,14 +30,14 @@ import {
   useCreateUser,
   useUpdateUser,
   useDeleteUser,
-  useChangePassword,
+  useResetPassword,
   useActivateUser,
   useDeactivateUser,
   useUser,
 } from '../../hooks/user.hooks'
 import { UserForm } from '../forms/user-form'
-import { ChangePasswordForm } from '../forms/change-password-form'
-import type { CreateUserInput, UpdateUserInput, ChangePasswordInput } from '../../schema/user.schema'
+import { ResetPasswordForm } from '../forms/reset-password-form'
+import type { CreateUserInput, UpdateUserInput, ResetPasswordInput } from '../../schema/user.schema'
 
 // --- Create ---
 
@@ -139,11 +139,11 @@ function DeleteUserDialog() {
   )
 }
 
-// --- Change Password ---
+// --- Reset Password ---
 
-function ChangePasswordDialog() {
-  const { isOpen, selectedId, close } = useChangePasswordDialog()
-  const { mutate, isPending, fieldErrors, clearFieldErrors } = useChangePassword()
+function ResetPasswordDialog() {
+  const { isOpen, selectedId, close } = useResetPasswordDialog()
+  const { mutate, isPending, fieldErrors, clearFieldErrors } = useResetPassword()
 
   return (
     <Dialog
@@ -154,11 +154,13 @@ function ChangePasswordDialog() {
     >
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Change Password</DialogTitle>
-          <DialogDescription>Set a new password for this user.</DialogDescription>
+          <DialogTitle>Reset Password</DialogTitle>
+          <DialogDescription>
+            Set a new password for this user. They will need to use it on their next login.
+          </DialogDescription>
         </DialogHeader>
-        <ChangePasswordForm
-          onSubmit={(data: ChangePasswordInput) => {
+        <ResetPasswordForm
+          onSubmit={(data: ResetPasswordInput) => {
             if (!selectedId) return
             mutate({ id: selectedId, data })
           }}
@@ -239,7 +241,7 @@ export function UserDialogs() {
       <CreateUserDialog />
       <EditUserDialog />
       <DeleteUserDialog />
-      <ChangePasswordDialog />
+      <ResetPasswordDialog />
       <ActivateDialog />
       <DeactivateDialog />
     </>
