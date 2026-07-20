@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Feature 360 — Users</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700&display=swap');
+:root{
+  --primary:#ff4d00;
+  --crit:#ff4d00; --high:#f59e0b; --med:#3b82f6; --low:#9ca3af;
+  --ok:#16a34a; --ink:#1f2328; --muted:#6b7280; --line:#e5e7eb; --bg:#fafafa; --card:#fff;
+}
+*{box-sizing:border-box;}
+body{font-family:'Jost',system-ui,-apple-system,sans-serif;color:var(--ink);background:var(--bg);margin:0;font-size:15px;line-height:1.55;}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 80px;}
+header.top{background:var(--primary);color:#fff;padding:34px 0;margin-bottom:8px;}
+header.top .wrap{padding-top:0;padding-bottom:0;}
+header.top h1{margin:0;font-weight:600;font-size:30px;letter-spacing:.3px;}
+header.top .sub{opacity:.95;font-weight:300;margin-top:4px;font-size:15px;}
+.badge-verdict{display:inline-block;background:#fff;color:var(--primary);font-weight:700;font-size:18px;padding:8px 20px;border-radius:6px;margin-top:16px;letter-spacing:.5px;}
+.meta{font-size:13px;opacity:.9;margin-top:12px;font-weight:300;}
+h2{font-weight:600;font-size:21px;margin:44px 0 6px;padding-bottom:8px;border-bottom:3px solid var(--primary);}
+h2 .n{color:var(--muted);font-weight:400;font-size:15px;}
+p.lead{color:var(--muted);margin:6px 0 18px;}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin:14px 0;box-shadow:0 1px 2px rgba(0,0,0,.03);}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+@media(max-width:820px){.grid{grid-template-columns:1fr;}}
+.appcard{border-left:4px solid var(--primary);}
+.appcard h3{margin:0 0 4px;font-size:17px;font-weight:600;}
+.present{color:var(--ok);font-weight:600;}
+.absent{color:var(--muted);font-weight:600;}
+table{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0;}
+.scroll{overflow-x:auto;}
+th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top;}
+th{background:#f6f6f6;font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px;color:#444;}
+tr:hover td{background:#fcfcfc;}
+code{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px;background:#f3f3f3;padding:1px 5px;border-radius:4px;color:#b3360a;}
+.chip{display:inline-block;color:#fff;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;letter-spacing:.4px;white-space:nowrap;}
+.c-crit{background:var(--crit);} .c-high{background:var(--high);} .c-med{background:var(--med);} .c-low{background:var(--low);}
+.ok{color:var(--ok);font-weight:600;} .warn{color:var(--primary);font-weight:600;}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:3px 10px;border-radius:6px;}
+.pill-pass{background:#dcfce7;color:#166534;} .pill-fail{background:#ffe4d6;color:#b3360a;} .pill-nr{background:#f0f0f0;color:#666;}
+ul.impact{margin:6px 0;padding-left:20px;}
+ul.impact li{margin:7px 0;}
+.kv{font-size:13px;color:var(--muted);}
+.foot{margin-top:50px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px;}
+.tag{font-size:11px;background:#eef;color:#334;padding:1px 7px;border-radius:4px;margin-left:6px;}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <h1>Feature 360 Analyzer — <span style="font-weight:300">Users</span></h1>
+    <div class="sub">User CRUD · roles · reset/change password · activate/deactivate · FCM token — across API, Web &amp; Mobile</div>
+    <div class="badge-verdict">VERDICT: FAIL</div>
+    <div class="meta">Generated 2026-07-20 09:57:14 · Bitlabs SFA monorepo · 1 Critical · 1 Medium · 2 Low · Users tests green (155)</div>
+  </div>
+</header>
+<div class="wrap">
+
+<h2>Presence Map</h2>
+<p class="lead">The Users concept is fully present on API and Web; on Mobile it exists only as a consumer surface (JWT role + FCM token registration) — there is no mobile user-management screen.</p>
+<div class="grid">
+  <div class="card appcard">
+    <h3>API <span class="present">PRESENT</span></h3>
+    <div class="kv"><code>sfa_api/Features/Users/</code></div>
+    <div class="kv">21 files — Controller, Service(+iface), Repository(+iface), 4 Requests, 4 Validators, 2 DTOs, User entity, UserRole enum. Owns all business logic.</div>
+  </div>
+  <div class="card appcard">
+    <h3>Web <span class="present">PRESENT</span></h3>
+    <div class="kv"><code>features/user/</code> + <code>app/(protected)/users/</code></div>
+    <div class="kv">14 files — schema, actions, hooks, 2 stores, form, reset-password form, columns, table, dialogs, page. Reference feature.</div>
+  </div>
+  <div class="card appcard">
+    <h3>Mobile <span class="warn">CONSUMER ONLY</span></h3>
+    <div class="kv"><code>lib/features/auth/</code> + <code>core/notifications/fcm_service.dart</code></div>
+    <div class="kv">No user-CRUD. Reads <code>UserRole</code> from JWT; registers/clears FCM token via <code>PATCH/DELETE /users/me/fcm-token</code>.</div>
+  </div>
+</div>
+<p class="kv"><strong>Affected apps to test:</strong> API (unit + integration). Web E2E requires a running dev server. Mobile footprint has no Users-specific tests.</p>
+
+<h2>What it does</h2>
+<div class="card">
+<p><strong>API</strong> — Admin-gated CRUD over <code>User</code> (Id/Name/Username/Email/Phone/Role/DistributorId/DeviceId/IsActive + xmin). Self-or-Admin read/update, owner-only change-password, Admin-only reset-password/activate/deactivate/delete (soft). Username &amp; Email lowercased on write; filtered unique indexes on Email/Username/Phone. Distributor role must carry a valid DistributorId; SalesRep must carry a DeviceId.</p>
+<p><strong>Web</strong> — TanStack Query + Zustand reference feature. Server-side paginated table with search + role filter, create/edit dialog, reset-password dialog, activate/deactivate/delete confirmations. Zod mirrors the API validators; edit form round-trips <code>rowVersion</code>.</p>
+<p><strong>Mobile</strong> — no management UI. Decodes the role claim from the JWT (safe fallback to <code>salesRep</code>) and pushes the FCM device token to <code>/users/me/fcm-token</code>.</p>
+</div>
+
+<h2>Data Integrity <span class="n">— the business runs on this</span></h2>
+<div class="card" style="border-left:4px solid var(--crit);">
+<p><span class="chip c-crit">CRITICAL</span> &nbsp;<strong>The web edit form silently destroys / cannot preserve <code>DeviceId</code>.</strong></p>
+<p>The API read DTO <code>UserDto</code> (<code>DTOs/UserDto.cs:3-16</code>) does <em>not</em> include <code>DeviceId</code>, yet the web <code>UserDto</code> type declares <code>deviceId?: string</code> (<code>schema.ts:97</code>) and the edit form binds it (<code>user-form.tsx:202-214</code>). Because the field is never returned, the edit form always loads it as empty and submits <code>deviceId: ""</code>, and the API update path then writes that empty value straight onto the entity (<code>UserService.cs:123</code> — <code>user.DeviceId = request.DeviceId</code>). Two concrete failures:</p>
+<ul class="impact">
+<li><strong>Non-rep edit → silent data loss:</strong> every edit of any Admin/NSM/RSM/ASM/Supervisor/Distributor user overwrites their stored <code>DeviceId</code> with empty — the real value is destroyed without warning.</li>
+<li><strong>SalesRep edit → hard block / corruption:</strong> <code>UpdateUserValidator.cs:36-38</code> requires <code>DeviceId</code> for SalesReps, so editing any of the ~500 field reps returns 400 unless the admin types a device ID they can never see — and any value they invent overwrites the rep's genuine device binding. The web <code>updateUserSchema</code> (<code>schema.ts:54-58</code>) has no matching rep-required rule, so the failure only surfaces server-side.</li>
+</ul>
+<p><strong>Fix:</strong> add <code>DeviceId</code> to <code>UserDto</code> + <code>MapToDto</code> so the form can round-trip it; mirror the SalesRep-required rule in <code>updateUserSchema</code>. (Contract fix — API + web in one pass.)</p>
+</div>
+<div class="card">
+<p><span class="chip c-med">MEDIUM</span> &nbsp;<strong>Case-sensitive duplicate pre-check vs. lowercased storage.</strong> <code>UserService.cs:40,43,90,93</code> checks <code>ExistsByUsername/EmailAsync(request.Username/Email)</code> with the raw mixed-case input, but persists <code>.ToLowerInvariant()</code> (lines 64-65, 119-120). A mixed-case duplicate slips past the friendly check and instead trips the DB unique index → generic <code>DUPLICATE_RESOURCE</code> 409 with <code>fields:null</code> rather than the field-specific "Username already exists". No duplicate row is created — the filtered unique index (<code>AppDbContext.cs:115-117</code>) protects data — so this is error-quality degradation, not corruption.</p>
+</div>
+<div class="card">
+<p class="kv"><strong>Verified safe:</strong> soft-delete correct (<code>UserRepository.cs:91-100</code> sets <code>IsDeleted=true</code>+<code>IsActive=false</code>, no <code>context.Remove()</code>); global query filter <code>!IsDeleted</code> (<code>AppDbContext.cs:124</code>); filtered unique indexes free email/username/phone on delete; optimistic concurrency round-tripped on the update path (<code>ApplyConcurrencyToken</code>, <code>UserService.cs:116</code> + <code>updateUserSchema.rowVersion</code>); no double-submit (submit button disabled on <code>isPending</code>); mobile <code>userRoleFromString</code> has a safe default (no <code>fromJson</code> crash on unknown role).</p>
+</div>
+
+<h2>Findings <span class="n">— severity-sorted</span></h2>
+<div class="scroll">
+<table>
+<thead><tr><th>#</th><th>Severity</th><th>Category</th><th>Location</th><th>Issue</th><th>Fix</th></tr></thead>
+<tbody>
+<tr>
+<td>1</td><td><span class="chip c-crit">CRITICAL</span></td><td>Data integrity / Contract</td>
+<td><code>UserDto.cs:3-16</code><br><code>user.schema.ts:97</code><br><code>user-form.tsx:202</code><br><code>UpdateUserValidator.cs:36</code></td>
+<td>API never returns <code>DeviceId</code>, so the web edit form wipes it (non-reps) or is blocked/corrupts it (SalesReps) on every edit.</td>
+<td>Add <code>DeviceId</code> to <code>UserDto</code>+<code>MapToDto</code>; round-trip it in the form; mirror the rep-required rule in Zod.</td>
+</tr>
+<tr>
+<td>2</td><td><span class="chip c-med">MEDIUM</span></td><td>Correctness / Error quality</td>
+<td><code>UserService.cs:40,43,90,93</code></td>
+<td>Duplicate pre-check uses raw mixed-case input while storage lowercases → mixed-case dup returns generic 409 with no field mapping (DB index still blocks the row).</td>
+<td>Lowercase username/email before the <code>ExistsBy…</code> checks.</td>
+</tr>
+<tr>
+<td>3</td><td><span class="chip c-low">LOW</span></td><td>Correctness (edge)</td>
+<td><code>UsersController.cs:54</code><br><code>UserService.cs:28</code></td>
+<td><code>page</code> is not clamped; <code>page&lt;=0</code> yields a negative <code>Skip()</code> and an EF/PG error.</td>
+<td><code>page = Math.Max(1, page)</code> before computing skip.</td>
+</tr>
+<tr>
+<td>4</td><td><span class="chip c-low">LOW</span></td><td>UI / stale data</td>
+<td><code>user-columns.tsx:26-30</code></td>
+<td><code>roleLabels</code> maps only Admin/Manager/SalesRep; "Manager" is not a real role and NSM/RSM/ASM/Supervisor/Distributor fall through to the raw enum.</td>
+<td>Replace with the full 7-role label map used in the filter/select.</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<h2>Contract Alignment <span class="n">— camelCase ApiResponse&lt;T&gt; seam</span></h2>
+<div class="scroll">
+<table>
+<thead><tr><th>API DTO field (type)</th><th>Web Zod / type (type)</th><th>Mobile model (type)</th><th>Aligned?</th></tr></thead>
+<tbody>
+<tr><td>id (int)</td><td>id (number)</td><td>— (role from JWT only)</td><td class="ok">✅</td></tr>
+<tr><td>name (string)</td><td>name (string)</td><td>name (from JWT)</td><td class="ok">✅</td></tr>
+<tr><td>username (string)</td><td>username (string)</td><td>—</td><td class="ok">✅</td></tr>
+<tr><td>email (string)</td><td>email (string)</td><td>—</td><td class="ok">✅</td></tr>
+<tr><td>phone (string)</td><td>phone (string)</td><td>—</td><td class="ok">✅</td></tr>
+<tr><td>role (string enum ×7)</td><td>roleEnum ×7</td><td>UserRole ×7 (+safe default)</td><td class="ok">✅</td></tr>
+<tr><td>distributorId (int?)</td><td>distributorId (number?)</td><td>—</td><td class="ok">✅</td></tr>
+<tr><td>distributorName (string?)</td><td>distributorName (string?)</td><td>—</td><td class="ok">✅</td></tr>
+<tr><td><strong>(absent)</strong></td><td><strong>deviceId (string?)</strong></td><td>—</td><td class="warn">⚠️ Finding #1</td></tr>
+<tr><td>isActive (bool)</td><td>isActive (boolean)</td><td>—</td><td class="ok">✅</td></tr>
+<tr><td>rowVersion (uint)</td><td>rowVersion (number)</td><td>—</td><td class="ok">✅</td></tr>
+<tr><td>createdAt/updatedAt (DateTime)</td><td>createdAt/updatedAt (string)</td><td>—</td><td class="ok">✅</td></tr>
+<tr><td>UpdateFcmTokenRequest.fcmToken (string)</td><td>—</td><td><code>{'fcmToken': token}</code></td><td class="ok">✅ fcm_service.dart:42</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>Cross-Impact Analysis <span class="n">— if the contract changes, what breaks</span></h2>
+<ul class="impact">
+<li><strong>Adding <code>DeviceId</code> to <code>UserDto</code> (the fix):</strong> non-breaking — web form gains the value it needs to preserve; mobile unaffected. Update <code>MapToDto</code> (<code>UserService.cs:215</code>) in the same change.</li>
+<li><strong>Renaming/retyping the <code>role</code> enum values:</strong> breaks web <code>roleEnum</code> (<code>schema.ts:3</code>), the table role selector (<code>user-table.tsx:88-95</code>), the columns label map, and mobile <code>userRoleFromString</code> (<code>user_role.dart:3</code>). Mobile fails <em>silently</em> — an unknown value defaults to <code>salesRep</code>, a privilege downgrade rather than an error.</li>
+<li><strong>Retyping <code>rowVersion</code>:</strong> breaks <code>updateUserSchema.rowVersion</code> (<code>schema.ts:56</code>) and the hidden form field (<code>user-form.tsx:233-251</code>) → optimistic concurrency protection lost on edits.</li>
+<li><strong>Entity/migration:</strong> User carries no denormalized ancestor IDs, so geo re-parent cascades do not touch it. The filtered unique indexes on Email/Username/Phone (<code>AppDbContext.cs:115-117</code>) are the only integrity guard behind the app-level duplicate checks — do not drop them.</li>
+<li><strong>One-sided validation drift:</strong> the SalesRep-<code>DeviceId</code> rule and the Distributor-<code>DistributorId</code> rule live in the API validator; only the Distributor rule is mirrored in Zod. The DeviceId rule is not — that gap is the root of Finding #1.</li>
+</ul>
+
+<h2>Tests <span class="n">— affected apps, run in parallel</span></h2>
+<div class="scroll">
+<table>
+<thead><tr><th>Suite</th><th>Scope</th><th>Result</th><th>Detail</th></tr></thead>
+<tbody>
+<tr><td>API Unit</td><td><code>--filter ~Users</code></td><td><span class="pill pill-pass">PASS</span></td><td>Failed: 0, Passed: 133, Skipped: 0 (UserService, Create/Update/Reset/ChangePassword validators). Duration 6s.</td></tr>
+<tr><td>API Integration</td><td><code>--filter ~Users</code></td><td><span class="pill pill-pass">PASS</span></td><td>Failed: 0, Passed: 22, Skipped: 0 (UsersApiTests). Duration 11s.</td></tr>
+<tr><td>Web E2E (Playwright)</td><td>users specs</td><td><span class="pill pill-nr">NOT RUN</span></td><td>Requires a running Next.js dev server; none active — not executed (not faked).</td></tr>
+<tr><td>Mobile (flutter)</td><td>Users footprint</td><td><span class="pill pill-nr">N/A</span></td><td>No Users-specific mobile tests; footprint is JWT-role decode + FCM token only. Full suite not scoped to this feature.</td></tr>
+</tbody>
+</table>
+</div>
+<p class="kv">Note: the first parallel unit run reported a false <code>CS2012</code> build-lock (both suites building the shared <code>sfa_api.dll</code> at once); re-run in isolation → 133 passed. No test logic failed.</p>
+
+<h2>Verdict</h2>
+<div class="card" style="border-left:4px solid var(--crit);">
+<p><strong class="warn">FAIL</strong> — driven by one Critical data-integrity finding, not by tests (all 155 Users tests are green).</p>
+<p>Finding #1 (<code>DeviceId</code> contract gap) silently destroys or blocks device-binding data on every web user edit, hitting the ~500 field reps hardest. Under this system's zero-tolerance-for-incorrect-data bar it must be fixed before this feature can be considered production-clean. Findings #2-#4 are quality/edge issues that can follow.</p>
+<p class="kv">No fixes have been applied. Reply <code>fix #1</code> / <code>fix all</code> (or "yes, fix …") to authorize edits — the API + web sides of the contract fix will be changed together and the affected tests re-run.</p>
+</div>
+
+<div class="foot">
+Feature 360 Analyzer · Bitlabs SFA · report is read-only analysis — no code was modified.<br>
+Path: <code>D:\Github\sfa\reports\feature-360-users-20260720-095714.html</code>
+</div>
+
+</div>
+</body>
+</html>

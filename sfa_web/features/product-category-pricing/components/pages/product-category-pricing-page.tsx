@@ -1,6 +1,13 @@
 'use client'
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  DoubleArrowLeftIcon,
+  DoubleArrowRightIcon,
+  MagnifyingGlassIcon,
+} from "@radix-ui/react-icons";
 import {
   useProductCategoryPricings,
   useBulkUpsertProductCategoryPricings,
@@ -10,6 +17,15 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+
+const PAGE_SIZE_OPTIONS = [10, 20, 30, 40, 50];
 
 type PriceFields = { priceA: number; priceB: number; priceC: number; priceD: number }
 
@@ -37,6 +53,31 @@ export function ProductCategoryPricingPage() {
   const { data: rows = [], isLoading } = useProductCategoryPricings()
   const { mutate: bulkUpsert, isPending } = useBulkUpsertProductCategoryPricings()
   const [edits, setEdits] = useState<EditState>({})
+
+  // Client-side search + pagination. These are pure *view* concerns — they never
+  // touch `edits` (keyed by productId), so unsaved changes survive filtering/paging.
+  const [search, setSearch] = useState("")
+  const [page, setPage] = useState(0) // zero-based
+  const [pageSize, setPageSize] = useState(20)
+
+  // Filter by code or description (case-insensitive).
+  const filteredRows = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return rows
+    return rows.filter(
+      (r) =>
+        r.productCode.toLowerCase().includes(q) ||
+        r.itemDescription.toLowerCase().includes(q),
+    )
+  }, [rows, search])
+
+  const pageCount = Math.max(1, Math.ceil(filteredRows.length / pageSize))
+  // Clamp: a shrinking filter can leave `page` past the end.
+  const safePage = Math.min(page, pageCount - 1)
+  const pagedRows = useMemo(
+    () => filteredRows.slice(safePage * pageSize, safePage * pageSize + pageSize),
+    [filteredRows, safePage, pageSize],
+  )
 
   const updatePrice = (
     productId: number,
@@ -96,6 +137,23 @@ export function ProductCategoryPricingPage() {
         )}
       </div>
 
+      {/* Search bar */}
+      {!isLoading && rows.length > 0 && (
+        <div className="relative w-full sm:max-w-sm">
+          <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search by code or description..."
+            className="pl-9"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value)
+              setPage(0) // jump back to first page on a new query
+            }}
+          />
+        </div>
+      )}
+
       {/* Loading */}
       {isLoading && (
         <div className="flex items-center justify-center py-24">
@@ -113,6 +171,11 @@ export function ProductCategoryPricingPage() {
                 <p className="text-xs">
                   Add products first, then set their category prices here.
                 </p>
+              </div>
+            ) : filteredRows.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-2 text-muted-foreground">
+                <p className="text-sm font-medium">No products match your search.</p>
+                <p className="text-xs">Try a different code or description.</p>
               </div>
             ) : (
               /* Horizontal scroll on narrow viewports — table never compresses below 700px */
@@ -155,7 +218,7 @@ export function ProductCategoryPricingPage() {
                   </thead>
 
                   <tbody className="divide-y divide-border">
-                    {rows.map((row, idx) => {
+                    {pagedRows.map((row, idx) => {
                       const edit = edits[row.productId];
                       const dirty = edit ? isDirty(row, edit) : false;
                       return (
@@ -210,6 +273,85 @@ export function ProductCategoryPricingPage() {
               </div>
             )}
           </div>
+
+          {/* Pagination controls — client-side over the filtered set */}
+          {filteredRows.length > 0 && (
+            <div className="flex w-full flex-col items-center justify-between gap-4 px-2 sm:flex-row sm:gap-8">
+              <div className="flex-1 text-sm text-muted-foreground">
+                {filteredRows.length} row(s).
+              </div>
+              <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6 lg:gap-8">
+                <div className="flex items-center space-x-2">
+                  <p className="whitespace-nowrap text-sm font-medium">
+                    Rows per page
+                  </p>
+                  <Select
+                    value={`${pageSize}`}
+                    onValueChange={(value) => {
+                      setPageSize(parseInt(value, 10))
+                      setPage(0)
+                    }}
+                  >
+                    <SelectTrigger className="cursor-pointer" size="sm">
+                      <SelectValue placeholder={pageSize} />
+                    </SelectTrigger>
+                    <SelectContent side="top" className="cursor-pointer">
+                      {PAGE_SIZE_OPTIONS.map((size) => (
+                        <SelectItem
+                          key={size}
+                          value={`${size}`}
+                          className="cursor-pointer"
+                        >
+                          {size}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center justify-center text-sm font-medium">
+                  Page {safePage + 1} of {pageCount}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    aria-label="Go to first page"
+                    variant="outline"
+                    className="hidden size-8 p-0 lg:flex cursor-pointer"
+                    onClick={() => setPage(0)}
+                    disabled={safePage === 0}
+                  >
+                    <DoubleArrowLeftIcon className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                  <Button
+                    aria-label="Go to previous page"
+                    variant="outline"
+                    className="size-8 p-0 cursor-pointer"
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={safePage === 0}
+                  >
+                    <ChevronLeftIcon className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                  <Button
+                    aria-label="Go to next page"
+                    variant="outline"
+                    className="size-8 p-0 cursor-pointer"
+                    onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                    disabled={safePage >= pageCount - 1}
+                  >
+                    <ChevronRightIcon className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                  <Button
+                    aria-label="Go to last page"
+                    variant="outline"
+                    className="hidden size-8 p-0 lg:flex cursor-pointer"
+                    onClick={() => setPage(pageCount - 1)}
+                    disabled={safePage >= pageCount - 1}
+                  >
+                    <DoubleArrowRightIcon className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Bottom action bar — sticky, stacks on mobile */}
           <div className="sticky bottom-0 z-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-background/95 backdrop-blur border-t px-4 py-3 -mx-4 md:-mx-6">
