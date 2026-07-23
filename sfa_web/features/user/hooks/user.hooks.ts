@@ -1,7 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { queryOptions, useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
+import {
+  queryOptions,
+  useQuery,
+  useMutation,
+  useQueryClient,
+  keepPreviousData,
+  type QueryClient,
+} from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   getUsersAction,
@@ -22,6 +29,7 @@ import {
   useDeactivateDialog,
 } from '../store'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
+import { allUserSelectKeys } from '@/lib/api/query-keys'
 import type { ActionFailure } from '@/lib/types/actions'
 import type { CreateUserInput, UpdateUserInput, ResetPasswordInput } from '../schema/user.schema'
 
@@ -33,6 +41,15 @@ export const userKeys = {
   list: (filters: object) => [...userKeys.lists(), filters] as const,
   details: () => [...userKeys.all, 'detail'] as const,
   detail: (id: number) => [...userKeys.details(), id] as const,
+}
+
+// Other features cache their own copy of the user list to back AsyncSelect dropdowns
+// (reporting lines, geo assignments). Those keys sit outside userKeys.all, so a
+// deactivated user would linger in their dropdowns until the 5-minute stale time
+// expired — invalidate them alongside the users list on every user mutation.
+function invalidateUserCaches(queryClient: QueryClient) {
+  queryClient.invalidateQueries({ queryKey: userKeys.all })
+  allUserSelectKeys.forEach((queryKey) => queryClient.invalidateQueries({ queryKey }))
 }
 
 // --- Query options factory ---
@@ -115,7 +132,7 @@ export function useCreateUser() {
       return result.data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: userKeys.all })
+      invalidateUserCaches(queryClient)
       setFieldErrors(null)
       close()
       toast.success('User created successfully')
@@ -141,7 +158,7 @@ export function useUpdateUser() {
       return result.data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: userKeys.all })
+      invalidateUserCaches(queryClient)
       setFieldErrors(null)
       close()
       toast.success('User updated successfully')
@@ -165,7 +182,7 @@ export function useDeleteUser() {
       if (!result.success) throw result
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: userKeys.all })
+      invalidateUserCaches(queryClient)
       close()
       toast.success('User deleted successfully')
     },
@@ -209,7 +226,7 @@ export function useActivateUser() {
       if (!result.success) throw result
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: userKeys.all })
+      invalidateUserCaches(queryClient)
       close()
       toast.success('User activated successfully')
     },
@@ -229,7 +246,7 @@ export function useDeactivateUser() {
       if (!result.success) throw result
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: userKeys.all })
+      invalidateUserCaches(queryClient)
       close()
       toast.success('User deactivated successfully')
     },

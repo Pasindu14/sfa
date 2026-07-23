@@ -26,6 +26,7 @@ import {
 import { useCreateDialog, useEditDialog, useDeactivateDialog, useActivateDialog } from '../store'
 import { useUserGeoAssignmentFilterStore } from '../store/user-geo-assignment.filter-store'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
+import { userSelectKeys } from '@/lib/api/query-keys'
 import type { ActionFailure } from '@/lib/types/actions'
 import type {
   CreateUserGeoAssignmentInput,
@@ -41,7 +42,9 @@ export const userGeoAssignmentKeys = {
   details: () => [...userGeoAssignmentKeys.all, 'detail'] as const,
   detail: (id: number) => [...userGeoAssignmentKeys.details(), id] as const,
   stats: ['user-geo-assignments', 'stats'] as const,
-  usersForSelect: ['geo-users-for-select'] as const,
+  // Shared key — invalidated by the Users feature's mutations so a deactivated
+  // user drops out of the user picker immediately.
+  usersForSelect: userSelectKeys.geoAssignment,
   regionsForSelect: ['geo-regions-for-select'] as const,
   areasForSelect: ['geo-areas-for-select'] as const,
   territoriesForSelect: ['geo-territories-for-select'] as const,

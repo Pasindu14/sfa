@@ -244,6 +244,8 @@ public class UserReportingLineServiceTests
         var request = CreateValidRequest(userId: 10, managerId: 20);
         _repoMock.Setup(r => r.UserExistsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
                  .ReturnsAsync(true);
+        _repoMock.Setup(r => r.IsUserActiveAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(true);
         _repoMock.Setup(r => r.IsAdminOrDistributorAsync(10, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(true);
 
@@ -251,6 +253,40 @@ public class UserReportingLineServiceTests
 
         var ex = await act.Should().ThrowAsync<BusinessRuleException>();
         ex.Which.ErrorCode.Should().Be("USER_ROLE_NOT_ASSIGNABLE");
+    }
+
+    [Fact]
+    public async Task CreateAsync_DeactivatedUser_ThrowsBusinessRuleException()
+    {
+        var request = CreateValidRequest(userId: 10, managerId: 20);
+        _repoMock.Setup(r => r.UserExistsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(true);
+        _repoMock.Setup(r => r.IsUserActiveAsync(10, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(false);
+        _repoMock.Setup(r => r.IsUserActiveAsync(20, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(true);
+
+        var act = () => _sut.CreateAsync(request, callerId: 1);
+
+        var ex = await act.Should().ThrowAsync<BusinessRuleException>();
+        ex.Which.ErrorCode.Should().Be("USER_INACTIVE");
+    }
+
+    [Fact]
+    public async Task CreateAsync_DeactivatedManager_ThrowsBusinessRuleException()
+    {
+        var request = CreateValidRequest(userId: 10, managerId: 20);
+        _repoMock.Setup(r => r.UserExistsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(true);
+        _repoMock.Setup(r => r.IsUserActiveAsync(10, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(true);
+        _repoMock.Setup(r => r.IsUserActiveAsync(20, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(false);
+
+        var act = () => _sut.CreateAsync(request, callerId: 1);
+
+        var ex = await act.Should().ThrowAsync<BusinessRuleException>();
+        ex.Which.ErrorCode.Should().Be("MANAGER_INACTIVE");
     }
 
     [Fact]
@@ -359,12 +395,50 @@ public class UserReportingLineServiceTests
                  .ReturnsAsync(line);
         _repoMock.Setup(r => r.UserExistsAsync(10, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(true);
+        _repoMock.Setup(r => r.IsUserActiveAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(true);
 
         var request = new UpdateUserReportingLineRequest { ReportsToUserId = 10, EffectiveFrom = new DateOnly(2026, 4, 1) };
         var act = () => _sut.UpdateAsync(1, request, callerId: 1);
 
         var ex = await act.Should().ThrowAsync<BusinessRuleException>();
         ex.Which.ErrorCode.Should().Be("SELF_REPORTING_NOT_ALLOWED");
+    }
+
+    [Fact]
+    public async Task UpdateAsync_DeactivatedManager_ThrowsBusinessRuleException()
+    {
+        var line = CreateFakeLine(userId: 10, managerId: 20);
+        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(line);
+        _repoMock.Setup(r => r.UserExistsAsync(20, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(true);
+        _repoMock.Setup(r => r.IsUserActiveAsync(10, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(true);
+        _repoMock.Setup(r => r.IsUserActiveAsync(20, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(false);
+
+        var act = () => _sut.UpdateAsync(1, CreateValidUpdateRequest(managerId: 20), callerId: 1);
+
+        var ex = await act.Should().ThrowAsync<BusinessRuleException>();
+        ex.Which.ErrorCode.Should().Be("MANAGER_INACTIVE");
+    }
+
+    [Fact]
+    public async Task UpdateAsync_DeactivatedSubordinate_ThrowsBusinessRuleException()
+    {
+        var line = CreateFakeLine(userId: 10, managerId: 20);
+        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(line);
+        _repoMock.Setup(r => r.UserExistsAsync(20, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(true);
+        _repoMock.Setup(r => r.IsUserActiveAsync(10, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(false);
+
+        var act = () => _sut.UpdateAsync(1, CreateValidUpdateRequest(managerId: 20), callerId: 1);
+
+        var ex = await act.Should().ThrowAsync<BusinessRuleException>();
+        ex.Which.ErrorCode.Should().Be("USER_INACTIVE");
     }
 
     [Fact]
@@ -488,6 +562,8 @@ public class UserReportingLineServiceTests
     {
         _repoMock.Setup(r => r.UserExistsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
                  .ReturnsAsync(true);
+        _repoMock.Setup(r => r.IsUserActiveAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(true);
         _repoMock.Setup(r => r.IsAdminOrDistributorAsync(request.UserId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(false);
         _repoMock.Setup(r => r.GetActiveByUserIdAsync(request.UserId, It.IsAny<CancellationToken>()))
@@ -506,6 +582,8 @@ public class UserReportingLineServiceTests
     private void SetupSuccessfulUpdate(UserReportingLine line, UpdateUserReportingLineRequest request, int lineId)
     {
         _repoMock.Setup(r => r.UserExistsAsync(request.ReportsToUserId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(true);
+        _repoMock.Setup(r => r.IsUserActiveAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
                  .ReturnsAsync(true);
         _repoMock.Setup(r => r.UpdateAsync(line, It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);

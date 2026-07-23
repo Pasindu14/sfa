@@ -15,6 +15,55 @@ const apiClient = axios.create({
 // How many seconds before expiry to proactively refresh
 const REFRESH_BUFFER_SECONDS = 60;
 
+type RefreshResult = {
+  accessToken: string;
+  refreshToken?: string;
+  accessTokenExpiry?: string;
+};
+
+/**
+ * In-flight refresh requests, keyed by the refresh token being spent.
+ *
+ * The jwt callback below runs on every `auth()` call, and `auth()` is invoked by the axios
+ * request interceptor on every single API request. A page render — especially the first one
+ * after a user returns to an idle tab, when SessionProvider's focus refetch and the user's
+ * first click land together — fires several of these at once. Without de-duplication each
+ * would POST /auth/refresh with the same token; the first rotates it and the rest arrive
+ * holding a value the API has already consumed, which used to revoke the whole token family
+ * and sign the user out mid-session.
+ *
+ * Collapsing them onto one promise means a given refresh token is spent exactly once per
+ * process. The API's grace window covers what this cannot: races across separate Next.js
+ * instances, which do not share this map.
+ */
+const inFlightRefreshes = new Map<string, Promise<RefreshResult>>();
+
+async function requestRefresh(refreshToken: string): Promise<RefreshResult> {
+  const response = await apiClient.post(
+    `${env.SFA_API_DOMAIN}/api/v1/auth/refresh`,
+    { refreshToken, deviceId: "test-device-001" },
+    { headers: { "Content-Type": "application/json" } },
+  );
+
+  const data = response.data?.data;
+  if (!data?.accessToken) {
+    throw new Error("Refresh response missing accessToken");
+  }
+  return data as RefreshResult;
+}
+
+function refreshAccessToken(refreshToken: string): Promise<RefreshResult> {
+  const existing = inFlightRefreshes.get(refreshToken);
+  if (existing) return existing;
+
+  const pending = requestRefresh(refreshToken).finally(() => {
+    inFlightRefreshes.delete(refreshToken);
+  });
+
+  inFlightRefreshes.set(refreshToken, pending);
+  return pending;
+}
+
 declare module "next-auth" {
   interface User {
     id: string;
@@ -167,21 +216,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       // Access token expired or expiring soon — try to refresh
       try {
-        const response = await apiClient.post(
-          `${env.SFA_API_DOMAIN}/api/v1/auth/refresh`,
-          {
-            refreshToken: token.refreshToken,
-            deviceId: "test-device-001",
-          },
-          {
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-
-        const data = response.data?.data;
-        if (!data?.accessToken) {
-          throw new Error("Refresh response missing accessToken");
+        if (!token.refreshToken) {
+          throw new Error("No refresh token on session");
         }
+
+        const data = await refreshAccessToken(token.refreshToken as string);
 
         token.accessToken = data.accessToken;
         token.refreshToken = data.refreshToken ?? token.refreshToken;

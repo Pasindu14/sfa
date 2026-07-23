@@ -67,12 +67,15 @@ public class UserReportingLineRepository(AppDbContext context) : IUserReportingL
         => await _context.UserReportingLines
             .Include(rl => rl.User)
             .Include(rl => rl.ReportsToUser)
-            .Where(rl => rl.ReportsToUserId == managerId && rl.IsActive)
+            .Where(rl => rl.ReportsToUserId == managerId && rl.IsActive && rl.User!.IsActive)
             .AsNoTracking()
             .ToListAsync(ct);
 
     public async Task<bool> UserExistsAsync(int userId, CancellationToken ct = default)
         => await _context.Users.AnyAsync(u => u.Id == userId && !u.IsDeleted, ct);
+
+    public async Task<bool> IsUserActiveAsync(int userId, CancellationToken ct = default)
+        => await _context.Users.AnyAsync(u => u.Id == userId && u.IsActive && !u.IsDeleted, ct);
 
     public async Task<bool> IsAdminOrDistributorAsync(int userId, CancellationToken ct = default)
         => await _context.Users.AnyAsync(

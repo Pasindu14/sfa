@@ -26,6 +26,9 @@ public class AuthService(
         { "DeviceId", new[] { "This device is not registered for your account. Contact your administrator." } }
     };
 
+    /// <summary>Window in which a replayed refresh token counts as a race, not theft.</summary>
+    private const int DefaultReuseGraceSeconds = 60;
+
     private readonly IAuthRepository _repo = repo;
     private readonly IJwtTokenHelper _jwtHelper = jwtHelper;
     private readonly ITokenRevocationService _revocationService = revocationService;
@@ -104,21 +107,32 @@ public class AuthService(
         var storedToken = await _repo.GetRefreshTokenByHashAsync(tokenHash, ct)
             ?? throw new InvalidTokenException();
 
-        // Reuse detected — potential theft, revoke entire family
-        if (storedToken.IsConsumed)
-        {
-            _logger.LogCritical(
-                "Refresh token reuse detected. UserId: {UserId} FamilyId: {FamilyId}. " +
-                "Revoking entire token family.",
-                storedToken.UserId, storedToken.FamilyId);
-
-            await _repo.RevokeTokenFamilyAsync(storedToken.FamilyId, ct);
-            await _repo.SaveChangesAsync(ct);
-            throw new InvalidTokenException();
-        }
-
+        // A revoked family is terminal — logout, deactivation or an earlier theft already
+        // killed it. Checked ahead of the reuse branch so a stale token replayed after a
+        // normal logout is a plain rejection rather than a CRITICAL theft alert.
         if (storedToken.IsRevoked)
             throw new InvalidTokenException();
+
+        if (storedToken.IsConsumed)
+        {
+            // Reuse is only theft if the session is not demonstrably mid-refresh.
+            if (!await IsConcurrentRefreshAsync(storedToken, ct))
+            {
+                _logger.LogCritical(
+                    "Refresh token reuse detected. UserId: {UserId} FamilyId: {FamilyId}. " +
+                    "Revoking entire token family.",
+                    storedToken.UserId, storedToken.FamilyId);
+
+                await _repo.RevokeTokenFamilyAsync(storedToken.FamilyId, ct);
+                await _repo.SaveChangesAsync(ct);
+                throw new InvalidTokenException();
+            }
+
+            _logger.LogInformation(
+                "Concurrent refresh for user {UserId} family {FamilyId} — token already " +
+                "rotated within the grace window; issuing a fresh pair instead of revoking.",
+                storedToken.UserId, storedToken.FamilyId);
+        }
 
         if (storedToken.ExpiresAt < DateTime.UtcNow)
             throw new TokenExpiredException();
@@ -126,7 +140,7 @@ public class AuthService(
         if (storedToken.DeviceId != request.DeviceId)
             throw new InvalidTokenException();
 
-        // Consume old token
+        // Consume old token (already true on the concurrent-refresh path)
         storedToken.IsConsumed = true;
 
         // Guard: user may have been deactivated or deleted since token was issued
@@ -210,6 +224,41 @@ public class AuthService(
     }
 
     // ── Private Helpers ────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Distinguishes a benign concurrent refresh from genuine token theft.
+    /// </summary>
+    /// <remarks>
+    /// A refresh token rotates on every use, so two callers that legitimately hold the same
+    /// token race: the first consumes it, the second arrives moments later with a value that
+    /// is now marked consumed. At the level of a single token that is indistinguishable from
+    /// replay, which is why the naive check logged users out mid-session — the web app calls
+    /// <c>auth()</c> on every server request, and a returning user's focus refetch plus their
+    /// first click fire two refreshes at once.
+    /// <para>
+    /// Widening the question to the family resolves it: if this family minted a token within
+    /// the grace window and has not been revoked, the session is provably alive and rotating
+    /// right now, so the replay is a race artifact. Outside that window a consumed token is
+    /// still treated as theft and the whole family dies.
+    /// </para>
+    /// Set <c>Jwt:RefreshReuseGraceSeconds</c> to 0 to disable the grace period and restore
+    /// strict single-use rotation.
+    /// </remarks>
+    private async Task<bool> IsConcurrentRefreshAsync(
+        RefreshToken storedToken, CancellationToken ct)
+    {
+        var graceSeconds = _config.GetValue<int?>("Jwt:RefreshReuseGraceSeconds")
+                           ?? DefaultReuseGraceSeconds;
+
+        if (graceSeconds <= 0)
+            return false;
+
+        var latest = await _repo.GetLatestTokenInFamilyAsync(storedToken.FamilyId, ct);
+
+        return latest is not null
+            && !latest.IsRevoked
+            && latest.CreatedAt >= DateTime.UtcNow.AddSeconds(-graceSeconds);
+    }
 
     private AuthResponseDto BuildAuthResponse(
         string accessToken,

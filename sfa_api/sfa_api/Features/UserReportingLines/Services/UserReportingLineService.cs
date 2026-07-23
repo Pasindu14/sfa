@@ -87,6 +87,19 @@ public class UserReportingLineService(
         if (!await _repo.UserExistsAsync(request.ReportsToUserId, ct))
             throw new NotFoundException("User", request.ReportsToUserId);
 
+        // Deactivated users are not part of the org structure — reject both ends.
+        // Guards against a stale client-side dropdown offering a user who was
+        // deactivated after the list was cached.
+        if (!await _repo.IsUserActiveAsync(request.UserId, ct))
+            throw new BusinessRuleException(
+                "USER_INACTIVE",
+                "This user is deactivated and cannot be assigned a reporting line.");
+
+        if (!await _repo.IsUserActiveAsync(request.ReportsToUserId, ct))
+            throw new BusinessRuleException(
+                "MANAGER_INACTIVE",
+                "The selected manager is deactivated and cannot be assigned as a manager.");
+
         // Admin and Distributor roles are not assignable as subordinates
         if (await _repo.IsAdminOrDistributorAsync(request.UserId, ct))
             throw new BusinessRuleException(
@@ -147,6 +160,18 @@ public class UserReportingLineService(
 
         if (!await _repo.UserExistsAsync(request.ReportsToUserId, ct))
             throw new NotFoundException("User", request.ReportsToUserId);
+
+        // Deactivated users are not part of the org structure — re-checked on update
+        // too, since either party may have been deactivated since creation.
+        if (!await _repo.IsUserActiveAsync(line.UserId, ct))
+            throw new BusinessRuleException(
+                "USER_INACTIVE",
+                "This user is deactivated and cannot be assigned a reporting line.");
+
+        if (!await _repo.IsUserActiveAsync(request.ReportsToUserId, ct))
+            throw new BusinessRuleException(
+                "MANAGER_INACTIVE",
+                "The selected manager is deactivated and cannot be assigned as a manager.");
 
         // Admin and Distributor roles are not assignable as subordinates — re-check on
         // update too, since the subordinate's role may have changed since creation.

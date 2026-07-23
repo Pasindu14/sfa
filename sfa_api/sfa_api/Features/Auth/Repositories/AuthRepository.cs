@@ -33,6 +33,15 @@ public class AuthRepository(AppDbContext db) : IAuthRepository
             .Include(x => x.User)
             .FirstOrDefaultAsync(x => x.TokenHash == tokenHash, ct);
 
+    public async Task<RefreshToken?> GetLatestTokenInFamilyAsync(
+        Guid familyId, CancellationToken ct = default)
+        => await _db.RefreshTokens
+            .AsNoTracking()
+            .Where(x => x.FamilyId == familyId)
+            .OrderByDescending(x => x.CreatedAt)
+            .ThenByDescending(x => x.Id)   // deterministic when two tokens share a timestamp
+            .FirstOrDefaultAsync(ct);
+
     public async Task AddRefreshTokenAsync(
         RefreshToken token, CancellationToken ct = default)
         => await _db.RefreshTokens.AddAsync(token, ct);

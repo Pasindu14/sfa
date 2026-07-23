@@ -14,6 +14,7 @@ import {
 } from '../actions/user-reporting-line.actions'
 import { useCreateDialog, useEditDialog, useDeactivateDialog, useActivateDialog } from '../store'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
+import { userSelectKeys } from '@/lib/api/query-keys'
 import type { ActionFailure } from '@/lib/types/actions'
 import type {
   CreateUserReportingLineInput,
@@ -28,7 +29,9 @@ export const userReportingLineKeys = {
   list: (filters: object) => [...userReportingLineKeys.lists(), filters] as const,
   details: () => [...userReportingLineKeys.all, 'detail'] as const,
   detail: (id: number) => [...userReportingLineKeys.details(), id] as const,
-  usersForSelect: ['users-for-select'] as const,
+  // Shared key — invalidated by the Users feature's mutations so a deactivated
+  // user drops out of the subordinate/manager pickers immediately.
+  usersForSelect: userSelectKeys.reportingLine,
 }
 
 // --- Query options factory ---
