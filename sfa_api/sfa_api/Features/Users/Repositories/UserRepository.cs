@@ -41,7 +41,7 @@ public class UserRepository(AppDbContext context) : IUserRepository
     public async Task<bool> ExistsByPhoneAsync(string phone, int excludeUserId, CancellationToken ct = default)
         => await _context.Users.AnyAsync(u => u.Phone == phone && u.Id != excludeUserId, ct);
 
-    public async Task<(IEnumerable<User> Users, int TotalCount)> GetAllUsersAsync(int skip, int take, string? search = null, string? role = null, CancellationToken ct = default)
+    public async Task<(IEnumerable<User> Users, int TotalCount)> GetAllUsersAsync(int skip, int take, string? search = null, string? role = null, bool? isActive = null, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, 200);
         var query = _context.Users.Include(u => u.Distributor).AsQueryable();
@@ -54,6 +54,8 @@ public class UserRepository(AppDbContext context) : IUserRepository
         }
         if (!string.IsNullOrWhiteSpace(role) && Enum.TryParse<UserRole>(role, out var parsedRole))
             query = query.Where(u => u.Role == parsedRole);
+        if (isActive.HasValue)
+            query = query.Where(u => u.IsActive == isActive.Value);
 
         var totalCount = await query.CountAsync(ct);
         var users = await query
