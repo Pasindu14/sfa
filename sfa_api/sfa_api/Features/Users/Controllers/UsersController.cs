@@ -55,10 +55,11 @@ public class UsersController(
         [FromQuery] int pageSize = 10,
         [FromQuery] string? search = null,
         [FromQuery] string? role = null,
+        [FromQuery] bool? isActive = null,
         CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
-        var result = await _userService.GetAllUsersAsync(page, pageSize, search, role, ct);
+        var result = await _userService.GetAllUsersAsync(page, pageSize, search, role, isActive, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 

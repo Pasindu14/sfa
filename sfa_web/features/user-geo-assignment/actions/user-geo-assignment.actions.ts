@@ -116,7 +116,7 @@ export const activateUserAssignmentAction = createAction(
 export const getUsersForGeoSelectAction = createAction(
   { name: 'getUsersForGeoSelectAction', requireAuth: true, requiredRole: 'Admin' },
   async () => {
-    const res = await client.get('/api/v1/users', { params: { page: 1, pageSize: 200 } })
+    const res = await client.get('/api/v1/users', { params: { page: 1, pageSize: 200, isActive: true } })
     return (res.data.data as UsersListResponse).users
   },
 )

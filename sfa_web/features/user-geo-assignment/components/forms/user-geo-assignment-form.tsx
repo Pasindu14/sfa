@@ -165,7 +165,7 @@ function useAssignableUserFetcher(cacheRef: ReturnType<typeof useRef<Map<number,
   return useCallback(
     async (query?: string): Promise<UserDto[]> => {
       if (!query || query.trim().length === 0) return [];
-      const result = await getUsersAction(1, 50, query.trim());
+      const result = await getUsersAction(1, 50, query.trim(), undefined, true);
       if (!result.success) return [];
       const users = result.data.users.filter((u) =>
         ASSIGNABLE_ROLES.includes(u.role),

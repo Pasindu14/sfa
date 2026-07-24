@@ -23,10 +23,10 @@ public class UserService(
         return MapToDto(user);
     }
 
-    public async Task<UserListDto> GetAllUsersAsync(int page, int pageSize, string? search = null, string? role = null, CancellationToken ct = default)
+    public async Task<UserListDto> GetAllUsersAsync(int page, int pageSize, string? search = null, string? role = null, bool? isActive = null, CancellationToken ct = default)
     {
         var skip = (page - 1) * pageSize;
-        var (users, totalCount) = await _repo.GetAllUsersAsync(skip, pageSize, search, role, ct);
+        var (users, totalCount) = await _repo.GetAllUsersAsync(skip, pageSize, search, role, isActive, ct);
         return new UserListDto(
             Users: users.Select(MapToDto),
             TotalCount: totalCount,
