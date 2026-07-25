@@ -15,18 +15,12 @@ import { AsyncSelect } from '@/components/async-select'
 import { useStockFilters } from '../../store'
 import { useStockDataTable, useStockIsFetching } from '../../hooks/stock.hooks'
 import { getStockColumns } from '../columns/stock-columns'
-import { getDistributorsAction } from '@/features/distributor/actions/distributor.actions'
+import { fetchActiveDistributorsForSelect } from '@/features/distributor/actions/distributor.actions'
 import type { DistributorDto } from '@/features/distributor/schema/distributor.schema'
 import type { StockTypeFilter } from '../../store/stock.filter-store'
 
 // ── Distributor fetcher ───────────────────────────────────────────────────
 
-async function fetchDistributors(search?: string): Promise<DistributorDto[]> {
-  if (!search || search.trim().length === 0) return []
-  const result = await getDistributorsAction(1, 50, search.trim())
-  if (!result.success) return []
-  return result.data.distributors
-}
 
 // ── Filter form ───────────────────────────────────────────────────────────
 
@@ -59,7 +53,7 @@ function StockFilterForm({
         <AsyncSelect<DistributorDto>
           label="Distributor"
           placeholder="Search distributor..."
-          fetcher={fetchDistributors}
+          fetcher={fetchActiveDistributorsForSelect}
           value={distributorId?.toString() ?? ''}
           onChange={(val) => onDistributorChange(val ? Number(val) : null)}
           getOptionValue={(d) => d.id.toString()}

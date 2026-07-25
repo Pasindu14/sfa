@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
 import { AsyncSelect } from '@/components/async-select'
-import { getDistributorsAction } from '@/features/distributor/actions/distributor.actions'
+import { fetchActiveDistributorsForSelect } from '@/features/distributor/actions/distributor.actions'
 import type { DistributorDto } from '@/features/distributor/schema/distributor.schema'
 import { usePeriod, useSubmissionForAdmin } from '../../hooks/stock-taking.hooks'
 import { useAdjustDialog } from '../../store'
@@ -19,12 +19,6 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
 
-async function fetchDistributors(search?: string): Promise<DistributorDto[]> {
-  if (!search || search.trim().length === 0) return []
-  const result = await getDistributorsAction(1, 50, search.trim())
-  if (!result.success) return []
-  return result.data.distributors
-}
 
 // ── Stat chip ─────────────────────────────────────────────────────────────
 
@@ -231,7 +225,7 @@ export function StockTakingReviewPage({ periodId }: StockTakingReviewPageProps) 
             <AsyncSelect<DistributorDto>
               label="Distributor"
               placeholder="Search by name..."
-              fetcher={fetchDistributors}
+              fetcher={fetchActiveDistributorsForSelect}
               value={selectedDistributorId?.toString() ?? ''}
               onChange={(val) => setSelectedDistributorId(val ? Number(val) : null)}
               getOptionValue={(d) => d.id.toString()}

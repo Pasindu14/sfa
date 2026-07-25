@@ -25,18 +25,12 @@ import { useGrnDataTable } from '../../hooks/grn.hooks'
 import { getGrnColumns } from '../columns/grn-columns'
 import { GrnConfirmDialog } from '../dialogs/grn-confirm-dialog'
 import { GrnDeleteDialog } from '../dialogs/grn-delete-dialog'
-import { getDistributorsAction } from '@/features/distributor/actions/distributor.actions'
+import { fetchActiveDistributorsForSelect } from '@/features/distributor/actions/distributor.actions'
 import type { DistributorDto } from '@/features/distributor/schema/distributor.schema'
 import { toColomboDateStr } from '@/lib/utils/datetime'
 
 // ── Distributor fetcher ───────────────────────────────────────────────────
 
-async function fetchDistributors(search?: string): Promise<DistributorDto[]> {
-  if (!search || search.trim().length === 0) return []
-  const result = await getDistributorsAction(1, 50, search.trim())
-  if (!result.success) return []
-  return result.data.distributors
-}
 
 // ── Date picker ───────────────────────────────────────────────────────────
 
@@ -136,7 +130,7 @@ function GrnFilterForm({
         <AsyncSelect<DistributorDto>
           label="Distributor"
           placeholder="All distributors"
-          fetcher={fetchDistributors}
+          fetcher={fetchActiveDistributorsForSelect}
           value={distributorId?.toString() ?? ''}
           onChange={(val) => onDistributorChange(val ? Number(val) : null)}
           getOptionValue={(d) => d.id.toString()}

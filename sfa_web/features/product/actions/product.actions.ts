@@ -80,9 +80,8 @@ export const getAllActiveProductsAction = createAction(
   { name: 'getAllActiveProductsAction', requireAuth: true, requiredRole: 'Admin' },
   async () => {
     const res = await client.get('/api/v1/products', {
-      params: { page: 1, pageSize: 1000 },
+      params: { page: 1, pageSize: 1000, isActive: true },
     })
-    const data = res.data.data as ProductsListResponse
-    return data.products.filter((p) => p.isActive)
+    return (res.data.data as ProductsListResponse).products
   }
 )

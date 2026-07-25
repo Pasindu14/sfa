@@ -64,7 +64,7 @@ export const searchSalesRepsAction = createAction(
   { name: 'searchSalesRepsAction', requireAuth: true, requiredRole: 'Admin' },
   async (search: string) => {
     const res = await client.get('/api/v1/users', {
-      params: { page: 1, pageSize: 100, search, role: 'SalesRep' },
+      params: { page: 1, pageSize: 100, search, role: 'SalesRep', isActive: true },
     })
     return (res.data.data as { users: UserDto[] }).users
   }

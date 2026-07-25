@@ -60,7 +60,9 @@ export const searchActiveRoutesAction = createAction(
   { name: 'searchActiveRoutesAction', requireAuth: true, requiredRole: 'Admin' },
   async (search: string) => {
     const res = await client.get('/api/v1/routes', {
-      params: { page: 1, pageSize: 20, search, isActive: true },
+      // GET /api/v1/routes filters on `status` ('active' | 'inactive'), not `isActive` —
+      // an `isActive` param is silently ignored and leaks inactive routes into the picker.
+      params: { page: 1, pageSize: 20, search, status: 'Active' },
     })
     return (res.data.data as RoutesListResponse).routes
   }

@@ -24,6 +24,24 @@ export const getDistributorsAction = createAction(
   }
 )
 
+/**
+ * Shared search-as-you-type fetcher for distributor dropdowns.
+ *
+ * Dropdowns must only offer distributors that are still selectable, so this
+ * pins `status: 'Active'` — the API maps that to `IsActive = true` and its
+ * repository already excludes soft-deleted rows. Never call
+ * `getDistributorsAction` directly from a picker: that endpoint backs the
+ * admin list and deliberately returns inactive distributors too.
+ */
+export const fetchActiveDistributorsForSelect = async (
+  search?: string,
+): Promise<DistributorDto[]> => {
+  if (!search || search.trim().length === 0) return []
+  const result = await getDistributorsAction(1, 50, search.trim(), 'Active')
+  if (!result.success) return []
+  return result.data.distributors
+}
+
 export const getDistributorByIdAction = createAction(
   { name: 'getDistributorByIdAction', requireAuth: true, requiredRole: 'Admin' },
   async (id: number) => {

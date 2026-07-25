@@ -68,9 +68,11 @@ export function useDistributor(id: number | null) {
 
 export function useDistributorsForSelect() {
   const { data, isLoading } = useQuery({
-    queryKey: [...distributorKeys.all, 'select'] as const,
+    // 'active' is in the key so this dropdown cache can never be confused with a
+    // full (active + inactive) distributor list cached under the same prefix.
+    queryKey: [...distributorKeys.all, 'select', 'active'] as const,
     queryFn: async () => {
-      const result = await getDistributorsAction(1, 1000)
+      const result = await getDistributorsAction(1, 1000, undefined, 'Active')
       if (!result.success) throw new Error(result.error)
       return result.data.distributors
     },

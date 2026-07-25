@@ -110,7 +110,7 @@ public class ProductServiceTests
     public async Task GetAllAsync_ReturnsPaginatedList()
     {
         var products = new[] { CreateFakeProduct(1), CreateFakeProduct(2) };
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((products.AsEnumerable(), 2));
 
         var result = await _sut.GetAllAsync(1, 10);
@@ -124,19 +124,19 @@ public class ProductServiceTests
     [Fact]
     public async Task GetAllAsync_Page2_CalculatesCorrectSkip()
     {
-        _repoMock.Setup(r => r.GetAllAsync(10, 10, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(10, 10, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<Product>(), 0));
 
         await _sut.GetAllAsync(2, 10);
 
         // skip = (page-1) * pageSize = (2-1) * 10 = 10
-        _repoMock.Verify(r => r.GetAllAsync(10, 10, null, It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.GetAllAsync(10, 10, null, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task GetAllAsync_EmptyResult_ReturnsEmptyList()
     {
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<Product>(), 0));
 
         var result = await _sut.GetAllAsync(1, 10);
@@ -148,12 +148,23 @@ public class ProductServiceTests
     [Fact]
     public async Task GetAllAsync_WithSearch_ForwardsSearchToRepo()
     {
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, "widget", It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, "widget", null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<Product>(), 0));
 
         await _sut.GetAllAsync(1, 10, search: "widget");
 
-        _repoMock.Verify(r => r.GetAllAsync(0, 10, "widget", It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.GetAllAsync(0, 10, "widget", null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_WithIsActive_PassesFilterToRepository()
+    {
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, true, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((Enumerable.Empty<Product>(), 0));
+
+        await _sut.GetAllAsync(1, 10, isActive: true);
+
+        _repoMock.Verify(r => r.GetAllAsync(0, 10, null, true, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     // ─────────────────────────────────────────────────

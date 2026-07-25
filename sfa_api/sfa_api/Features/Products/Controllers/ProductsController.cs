@@ -41,10 +41,11 @@ public class ProductsController(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
         [FromQuery] string? search = null,
+        [FromQuery] bool? isActive = null,
         CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
-        var result = await _productService.GetAllAsync(page, pageSize, search, ct);
+        var result = await _productService.GetAllAsync(page, pageSize, search, isActive, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 

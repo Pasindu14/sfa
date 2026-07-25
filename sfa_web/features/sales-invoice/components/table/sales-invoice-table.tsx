@@ -37,7 +37,7 @@ import {
 import { useSalesInvoiceDataTable } from "../../hooks/sales-invoice.hooks";
 import { getSalesInvoiceColumns } from "../columns/sales-invoice-columns";
 import { SalesInvoiceCreateGrnDialog } from "../dialogs/sales-invoice-create-grn-dialog";
-import { getDistributorsAction } from "@/features/distributor/actions/distributor.actions";
+import { fetchActiveDistributorsForSelect } from "@/features/distributor/actions/distributor.actions";
 import type { DistributorDto } from "@/features/distributor/schema/distributor.schema";
 import { toColomboDateStr } from "@/lib/utils/datetime";
 
@@ -45,12 +45,6 @@ import { toColomboDateStr } from "@/lib/utils/datetime";
 // Returns [] until user types at least 1 character — avoids loading all
 // distributors on mount and is consistent with server-side search.
 
-async function fetchDistributors(search?: string): Promise<DistributorDto[]> {
-  if (!search || search.trim().length === 0) return []
-  const result = await getDistributorsAction(1, 50, search.trim())
-  if (!result.success) return []
-  return result.data.distributors
-}
 
 // ── Date picker ───────────────────────────────────────────────────────────
 
@@ -154,7 +148,7 @@ function SalesInvoiceFilterForm({
         <AsyncSelect<DistributorDto>
           label="Distributor"
           placeholder="All distributors"
-          fetcher={fetchDistributors}
+          fetcher={fetchActiveDistributorsForSelect}
           value={distributorId?.toString() ?? ""}
           onChange={(val) => onDistributorChange(val ? Number(val) : null)}
           getOptionValue={(d) => d.id.toString()}

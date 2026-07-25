@@ -6,17 +6,11 @@ import { Input } from '@/components/ui/input'
 import { AsyncSelect } from '@/components/async-select'
 import { useBinCardFilters } from '../store'
 import { useBinCardIsFetching } from '../hooks/bin-card.hooks'
-import { getDistributorsAction } from '@/features/distributor/actions/distributor.actions'
+import { fetchActiveDistributorsForSelect } from '@/features/distributor/actions/distributor.actions'
 import type { DistributorDto } from '@/features/distributor/schema/distributor.schema'
 import type { BinCardResponse } from '../schema/bin-card.schema'
 import { exportBinCardExcel, exportBinCardPdf } from '../lib/bin-card-export'
 
-async function fetchDistributors(search?: string): Promise<DistributorDto[]> {
-  if (!search || search.trim().length === 0) return []
-  const result = await getDistributorsAction(1, 50, search.trim())
-  if (!result.success) return []
-  return result.data.distributors
-}
 
 export function BinCardCriteria({ data }: { data?: BinCardResponse }) {
   const {
@@ -45,7 +39,7 @@ export function BinCardCriteria({ data }: { data?: BinCardResponse }) {
         <AsyncSelect<DistributorDto>
           label="Distributor"
           placeholder="Search distributor..."
-          fetcher={fetchDistributors}
+          fetcher={fetchActiveDistributorsForSelect}
           value={distributorId?.toString() ?? ''}
           onChange={(val) => setDistributorId(val ? Number(val) : null)}
           getOptionValue={(d) => d.id.toString()}

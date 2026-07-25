@@ -32,15 +32,17 @@ public class ProductService(
         return MapToDto(product);
     }
 
-    public async Task<ProductListDto> GetAllAsync(int page, int pageSize, string? search = null, CancellationToken ct = default)
+    public async Task<ProductListDto> GetAllAsync(int page, int pageSize, string? search = null, bool? isActive = null, CancellationToken ct = default)
     {
         (page, pageSize) = sfa_api.Common.Extensions.PaginationHelper.Clamp(page, pageSize);
-        var cacheKey = $"products:list:{page}:{pageSize}:{search}";
+        // isActive is part of the key — the active-only dropdown and the admin list
+        // hit the same endpoint and must not share a cache entry.
+        var cacheKey = $"products:list:{page}:{pageSize}:{search}:{isActive}";
         var cached = await _cache.GetAsync<ProductListDto>(cacheKey, ct);
         if (cached is not null) return cached;
 
         var skip = (page - 1) * pageSize;
-        var (products, totalCount) = await _repo.GetAllAsync(skip, pageSize, search, ct);
+        var (products, totalCount) = await _repo.GetAllAsync(skip, pageSize, search, isActive, ct);
         var result = new ProductListDto(
             Products: products.Select(MapToDto),
             TotalCount: totalCount,

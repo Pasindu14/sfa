@@ -5,7 +5,7 @@ namespace sfa_api.Features.Products.Repositories;
 public interface IProductRepository
 {
     Task<Product?> GetByIdAsync(int id, CancellationToken ct = default);
-    Task<(IEnumerable<Product> Products, int TotalCount)> GetAllAsync(int skip, int take, string? search = null, CancellationToken ct = default);
+    Task<(IEnumerable<Product> Products, int TotalCount)> GetAllAsync(int skip, int take, string? search = null, bool? isActive = null, CancellationToken ct = default);
     Task<HashSet<int>> GetActiveProductIdsInSetAsync(IEnumerable<int> ids, CancellationToken ct = default);
 
     /// <summary>Returns Id → (Code, ItemDescription, PacksPerCase) for the requested IDs (no IsActive filter).

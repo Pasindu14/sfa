@@ -17,10 +17,13 @@ public class ProductRepository(AppDbContext context) : IProductRepository
             .Include(p => p.Category)
             .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct);
 
-    public async Task<(IEnumerable<Product> Products, int TotalCount)> GetAllAsync(int skip, int take, string? search = null, CancellationToken ct = default)
+    public async Task<(IEnumerable<Product> Products, int TotalCount)> GetAllAsync(int skip, int take, string? search = null, bool? isActive = null, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, 200);
         var query = _context.Products.IgnoreQueryFilters().Where(x => !x.IsDeleted).AsQueryable();
+
+        if (isActive.HasValue)
+            query = query.Where(p => p.IsActive == isActive.Value);
 
         if (!string.IsNullOrWhiteSpace(search))
         {

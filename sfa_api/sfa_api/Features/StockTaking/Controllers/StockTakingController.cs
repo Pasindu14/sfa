@@ -188,7 +188,7 @@ public class StockTakingController(
         CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
-        var (products, _) = await _productRepository.GetAllAsync(0, pageSize, search, ct);
+        var (products, _) = await _productRepository.GetAllAsync(0, pageSize, search, isActive: true, ct);
         var dtos = products.Select(p => new
         {
             p.Id,

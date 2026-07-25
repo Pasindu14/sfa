@@ -57,9 +57,12 @@ function useDistributors() {
   return useQuery({
     queryKey: ['distributors', 'list', { pageSize: 1000, activeOnly: true }],
     queryFn: async () => {
-      const result = await getDistributorsAction(1, 1000)
+      // Filtered server-side: the old client-side .filter(d => d.isActive) ran
+      // *after* the 1000-row page cap, so inactive rows consumed slots that
+      // active distributors needed.
+      const result = await getDistributorsAction(1, 1000, undefined, 'Active')
       if (!result.success) throw new Error(result.error)
-      return result.data.distributors.filter((d) => d.isActive)
+      return result.data.distributors
     },
     staleTime: 5 * 60 * 1000,
   })
