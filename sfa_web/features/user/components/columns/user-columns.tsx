@@ -33,12 +33,20 @@ export interface UserColumnActions {
   openEdit: (id: number) => void
   openDelete: (id: number) => void
   openResetPassword: (id: number) => void
+  openResetDevice: (id: number) => void
   openActivate: (id: number) => void
   openDeactivate: (id: number) => void
 }
 
 export function getUserColumns(actions: UserColumnActions): ColumnDef<UserDto>[] {
-  const { openEdit, openDelete, openResetPassword, openActivate, openDeactivate } = actions
+  const {
+    openEdit,
+    openDelete,
+    openResetPassword,
+    openResetDevice,
+    openActivate,
+    openDeactivate,
+  } = actions
 
   return [
     {
@@ -116,6 +124,13 @@ export function getUserColumns(actions: UserColumnActions): ColumnDef<UserDto>[]
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => openEdit(user.id)}>Edit</DropdownMenuItem>
               <DropdownMenuItem onClick={() => openResetPassword(user.id)}>Reset Password</DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => openResetDevice(user.id)}
+                disabled={!user.deviceId}
+                title={user.deviceId ? undefined : 'No device is registered for this user'}
+              >
+                Reset Device ID
+              </DropdownMenuItem>
               {user.isActive ? (
                 <DropdownMenuItem onClick={() => openDeactivate(user.id)}>Deactivate</DropdownMenuItem>
               ) : (

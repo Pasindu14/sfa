@@ -17,6 +17,7 @@ import {
   updateUserAction,
   deleteUserAction,
   resetPasswordAction,
+  resetDeviceIdAction,
   activateUserAction,
   deactivateUserAction,
 } from '../actions/user.actions'
@@ -25,6 +26,7 @@ import {
   useEditDialog,
   useDeleteDialog,
   useResetPasswordDialog,
+  useResetDeviceDialog,
   useActivateDialog,
   useDeactivateDialog,
 } from '../store'
@@ -214,6 +216,27 @@ export function useResetPassword() {
   })
 
   return { ...mutation, fieldErrors, clearFieldErrors: () => setFieldErrors(null) }
+}
+
+export function useResetDeviceId() {
+  const queryClient = useQueryClient()
+  const { close } = useResetDeviceDialog()
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const result = await resetDeviceIdAction(id)
+      if (!result.success) throw result
+    },
+    onSuccess: () => {
+      // The user detail cache holds deviceId, which the menu item keys off — invalidate it.
+      invalidateUserCaches(queryClient)
+      close()
+      toast.success('Device ID reset successfully')
+    },
+    onError: (error: ActionFailure) => {
+      handleErrorToast(error, 'user', 'reset device ID')
+    },
+  })
 }
 
 export function useActivateUser() {

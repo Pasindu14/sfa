@@ -4,6 +4,7 @@ export type UserTableMeta = {
   onEdit: (id: number) => void
   onDelete: (id: number) => void
   onResetPassword: (id: number) => void
+  onResetDevice: (id: number) => void
   onActivate: (id: number) => void
   onDeactivate: (id: number) => void
 }

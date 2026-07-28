@@ -9,6 +9,7 @@ public record UserDto(
     string Role,
     int? DistributorId,
     string? DistributorName,
+    string? DeviceId,
     bool IsActive,
     uint RowVersion,
     DateTime CreatedAt,

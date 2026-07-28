@@ -185,6 +185,20 @@ public class UsersController(
     }
 
     /// <summary>
+    /// POST /api/v1/users/{id}/reset-device
+    /// Admin only — clears the Sales Rep's bound device so the next login registers a new one
+    /// (TOFU re-binding), and revokes their refresh tokens so the old device is signed out.
+    /// </summary>
+    [HttpPost("{id:int}/reset-device")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> ResetDeviceId(int id, CancellationToken ct)
+    {
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var callerId);
+        await _userService.ResetDeviceIdAsync(id, callerId, ct);
+        return NoContent();
+    }
+
+    /// <summary>
     /// PATCH /api/v1/users/me/fcm-token
     /// Any authenticated user — registers or updates their FCM push notification token (last-write-wins).
     /// Call this after login and on token refresh.

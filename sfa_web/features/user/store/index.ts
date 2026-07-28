@@ -45,6 +45,16 @@ export const useResetPasswordDialog = () =>
     }))
   )
 
+export const useResetDeviceDialog = () =>
+  useUserDialogStore(
+    useShallow((s) => ({
+      isOpen: s.isResetDeviceOpen,
+      selectedId: s.selectedUserId,
+      open: s.openResetDevice,
+      close: s.closeResetDevice,
+    }))
+  )
+
 export const useActivateDialog = () =>
   useUserDialogStore(
     useShallow((s) => ({

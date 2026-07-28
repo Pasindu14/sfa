@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using sfa_api.Common.Errors;
+using sfa_api.Features.Auth.Repositories;
 using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.Users.DTOs;
 using sfa_api.Features.Users.Entities;
@@ -15,15 +16,18 @@ public class UserServiceTests
 {
     private readonly Mock<IUserRepository> _repoMock;
     private readonly Mock<IDistributorRepository> _distributorRepoMock;
+    private readonly Mock<IAuthRepository> _authRepoMock;
     private readonly UserService _sut;
 
     public UserServiceTests()
     {
         _repoMock = new Mock<IUserRepository>();
         _distributorRepoMock = new Mock<IDistributorRepository>();
+        _authRepoMock = new Mock<IAuthRepository>();
         _sut = new UserService(
             _repoMock.Object,
             _distributorRepoMock.Object,
+            _authRepoMock.Object,
             NullLogger<UserService>.Instance);
     }
 
@@ -605,6 +609,80 @@ public class UserServiceTests
         await _sut.ActivateUserAsync(1, callerId: 8);
 
         user.UpdatedBy.Should().Be(8);
+        user.UpdatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(2));
+    }
+
+    // ─────────────────────────────────────────────────
+    // ResetDeviceIdAsync
+    // ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ResetDeviceIdAsync_BoundUser_ClearsDeviceId()
+    {
+        var user = CreateFakeUser(role: "SalesRep");
+        user.DeviceId = "old-handset-123";
+        _repoMock.Setup(r => r.GetUserByIdAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(user);
+
+        await _sut.ResetDeviceIdAsync(1, callerId: 1);
+
+        user.DeviceId.Should().BeNull();
+        _repoMock.Verify(r => r.UpdateUserAsync(user, It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ResetDeviceIdAsync_BoundUser_RevokesRefreshTokens()
+    {
+        // Without this the old handset keeps refreshing: RefreshAsync compares the token's
+        // own DeviceId, which survives clearing User.DeviceId.
+        var user = CreateFakeUser(role: "SalesRep");
+        user.DeviceId = "old-handset-123";
+        _repoMock.Setup(r => r.GetUserByIdAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(user);
+
+        await _sut.ResetDeviceIdAsync(1, callerId: 1);
+
+        _authRepoMock.Verify(r => r.RevokeAllUserTokensAsync(1, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ResetDeviceIdAsync_UnboundUser_IsIdempotent()
+    {
+        var user = CreateFakeUser(role: "SalesRep");
+        user.DeviceId = null;
+        _repoMock.Setup(r => r.GetUserByIdAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(user);
+
+        await _sut.ResetDeviceIdAsync(1, callerId: 1);
+
+        user.DeviceId.Should().BeNull();
+        _repoMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ResetDeviceIdAsync_NonExistentUser_ThrowsNotFoundException()
+    {
+        _repoMock.Setup(r => r.GetUserByIdAsync(99, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((User?)null);
+
+        var act = () => _sut.ResetDeviceIdAsync(99, callerId: 1);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+        _authRepoMock.Verify(r => r.RevokeAllUserTokensAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ResetDeviceIdAsync_SetsAuditFields()
+    {
+        var user = CreateFakeUser(role: "SalesRep");
+        user.DeviceId = "old-handset-123";
+        _repoMock.Setup(r => r.GetUserByIdAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(user);
+
+        await _sut.ResetDeviceIdAsync(1, callerId: 12);
+
+        user.UpdatedBy.Should().Be(12);
         user.UpdatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(2));
     }
 

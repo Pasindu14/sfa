@@ -14,6 +14,7 @@ export function UserTable() {
   const openEdit = useUserDialogStore((s) => s.openEdit);
   const openDelete = useUserDialogStore((s) => s.openDelete);
   const openResetPassword = useUserDialogStore((s) => s.openResetPassword);
+  const openResetDevice = useUserDialogStore((s) => s.openResetDevice);
   const openActivate = useUserDialogStore((s) => s.openActivate);
   const openDeactivate = useUserDialogStore((s) => s.openDeactivate);
 
@@ -23,10 +24,11 @@ export function UserTable() {
         openEdit,
         openDelete,
         openResetPassword,
+        openResetDevice,
         openActivate,
         openDeactivate,
       }),
-    [openEdit, openDelete, openResetPassword, openActivate, openDeactivate],
+    [openEdit, openDelete, openResetPassword, openResetDevice, openActivate, openDeactivate],
   );
 
   return (
