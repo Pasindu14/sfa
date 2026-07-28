@@ -23,6 +23,7 @@ import {
   useEditDialog,
   useDeleteDialog,
   useResetPasswordDialog,
+  useResetDeviceDialog,
   useActivateDialog,
   useDeactivateDialog,
 } from '../../store'
@@ -31,6 +32,7 @@ import {
   useUpdateUser,
   useDeleteUser,
   useResetPassword,
+  useResetDeviceId,
   useActivateUser,
   useDeactivateUser,
   useUser,
@@ -172,6 +174,48 @@ function ResetPasswordDialog() {
   )
 }
 
+// --- Reset Device ID ---
+
+function ResetDeviceDialog() {
+  const { isOpen, selectedId, close } = useResetDeviceDialog()
+  const { data: user } = useUser(isOpen ? selectedId : null)
+  const { mutate, isPending } = useResetDeviceId()
+
+  return (
+    <AlertDialog open={isOpen} onOpenChange={(open) => !open && close()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Reset Device ID</AlertDialogTitle>
+          <AlertDialogDescription>
+            {user?.deviceId ? (
+              <>
+                This unbinds device <span className="font-mono">{user.deviceId}</span> from{' '}
+                {user.name} and signs it out. The next device they log in from becomes their
+                registered device.
+              </>
+            ) : (
+              <>
+                This unbinds the current device and signs it out. The next device the user logs in
+                from becomes their registered device.
+              </>
+            )}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={isPending}
+            onClick={() => selectedId && mutate(selectedId)}
+          >
+            {isPending ? <Spinner className="mr-2" /> : null}
+            Reset Device ID
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
 // --- Activate ---
 
 function ActivateDialog() {
@@ -242,6 +286,7 @@ export function UserDialogs() {
       <EditUserDialog />
       <DeleteUserDialog />
       <ResetPasswordDialog />
+      <ResetDeviceDialog />
       <ActivateDialog />
       <DeactivateDialog />
     </>

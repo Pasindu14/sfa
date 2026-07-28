@@ -33,9 +33,10 @@ public class UpdateUserValidator : AbstractValidator<UpdateUserRequest>
             .NotEmpty().WithMessage("Role is required.")
             .Must(role => Enum.TryParse<UserRole>(role, out _)).WithMessage("Invalid role.");
 
-        RuleFor(x => x.DeviceId)
-            .NotEmpty().When(x => x.Role.Equals("SalesRep", StringComparison.OrdinalIgnoreCase))
-            .WithMessage("Device ID is required for Sales Reps.");
+        // DeviceId is deliberately optional here. Binding is Trust-On-First-Use: LoginAsync
+        // registers the handset itself, and POST /users/{id}/reset-device clears it. Requiring
+        // a value on update would make a just-reset Sales Rep uneditable until an admin invented
+        // a device ID by hand.
 
         RuleFor(x => x.DistributorId)
             .NotNull().When(x => x.Role.Equals("Distributor", StringComparison.OrdinalIgnoreCase))

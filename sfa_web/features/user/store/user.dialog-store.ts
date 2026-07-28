@@ -6,6 +6,7 @@ interface UserDialogState {
   isEditOpen: boolean
   isDeleteOpen: boolean
   isResetPasswordOpen: boolean
+  isResetDeviceOpen: boolean
   isActivateOpen: boolean
   isDeactivateOpen: boolean
   selectedUserId: number | null
@@ -17,6 +18,8 @@ interface UserDialogState {
   closeDelete: () => void
   openResetPassword: (id: number) => void
   closeResetPassword: () => void
+  openResetDevice: (id: number) => void
+  closeResetDevice: () => void
   openActivate: (id: number) => void
   closeActivate: () => void
   openDeactivate: (id: number) => void
@@ -30,6 +33,7 @@ export const useUserDialogStore = create<UserDialogState>()(
       isEditOpen: false,
       isDeleteOpen: false,
       isResetPasswordOpen: false,
+      isResetDeviceOpen: false,
       isActivateOpen: false,
       isDeactivateOpen: false,
       selectedUserId: null,
@@ -43,6 +47,10 @@ export const useUserDialogStore = create<UserDialogState>()(
         set({ isResetPasswordOpen: true, selectedUserId: id }),
       closeResetPassword: () =>
         set({ isResetPasswordOpen: false, selectedUserId: null }),
+      openResetDevice: (id) =>
+        set({ isResetDeviceOpen: true, selectedUserId: id }),
+      closeResetDevice: () =>
+        set({ isResetDeviceOpen: false, selectedUserId: null }),
       openActivate: (id) => set({ isActivateOpen: true, selectedUserId: id }),
       closeActivate: () => set({ isActivateOpen: false, selectedUserId: null }),
       openDeactivate: (id) =>

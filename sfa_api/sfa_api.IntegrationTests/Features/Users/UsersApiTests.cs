@@ -418,6 +418,61 @@ public class UsersApiTests
     }
 
     // ─────────────────────────────────────────────────
+    // POST /api/v1/users/{id}/reset-device
+    // ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ResetDevice_AsAdmin_ClearsDeviceId()
+    {
+        SetToken(AuthHelper.AdminToken);
+
+        var payload = CreateUserPayload(
+            name: "Device Reset Rep",
+            username: "device_reset_rep",
+            email: "devicereset@test.com",
+            phone: "5551110001",
+            role: "SalesRep",
+            deviceId: "handset-abc-123");
+
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/users", payload);
+        var createBody = await createResponse.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
+        var userId = createBody.GetProperty("data").GetProperty("id").GetInt32();
+
+        // Bound before the reset
+        var beforeResponse = await _client.GetAsync($"/api/v1/users/{userId}");
+        var beforeBody = await beforeResponse.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
+        beforeBody.GetProperty("data").GetProperty("deviceId").GetString().Should().Be("handset-abc-123");
+
+        var resetResponse = await _client.PostAsync($"/api/v1/users/{userId}/reset-device", null);
+        resetResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // Unbound after — the next login re-registers whatever handset connects first
+        var afterResponse = await _client.GetAsync($"/api/v1/users/{userId}");
+        var afterBody = await afterResponse.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
+        afterBody.GetProperty("data").GetProperty("deviceId").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task ResetDevice_AsManager_Returns403()
+    {
+        SetToken(AuthHelper.ManagerToken);
+
+        var response = await _client.PostAsync("/api/v1/users/1/reset-device", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task ResetDevice_UnknownUser_Returns404()
+    {
+        SetToken(AuthHelper.AdminToken);
+
+        var response = await _client.PostAsync("/api/v1/users/999999/reset-device", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // ─────────────────────────────────────────────────
     // POST /api/v1/users/{id}/reset-password
     // ─────────────────────────────────────────────────
 

@@ -184,18 +184,19 @@ public class UpdateUserValidatorTests
     }
 
     // ─────────────────────────────────────────────────
-    // DeviceId — conditional on SalesRep role
+    // DeviceId — optional on update (TOFU binding / reset-device)
     // ─────────────────────────────────────────────────
 
     [Fact]
-    public void DeviceId_SalesRepWithoutDeviceId_Fails()
+    public void DeviceId_SalesRepWithoutDeviceId_Passes()
     {
+        // A Sales Rep whose device was just reset has no DeviceId until their next login
+        // re-binds it — an update must not demand one back.
         var req = ValidRequest();
         req.Role = "SalesRep";
         req.DeviceId = null;
         var result = _validator.TestValidate(req);
-        result.ShouldHaveValidationErrorFor(x => x.DeviceId)
-              .WithErrorMessage("Device ID is required for Sales Reps.");
+        result.ShouldNotHaveValidationErrorFor(x => x.DeviceId);
     }
 
     [Fact]

@@ -71,6 +71,14 @@ export const resetPasswordAction = createAction(
   }
 )
 
+export const resetDeviceIdAction = createAction(
+  { name: 'resetDeviceIdAction', requireAuth: true, requiredRole: 'Admin' },
+  async (id: number) => {
+    await client.post(`/api/v1/users/${id}/reset-device`)
+    revalidatePath('/users')
+  }
+)
+
 export const activateUserAction = createAction(
   { name: 'activateUserAction', requireAuth: true, requiredRole: 'Admin' },
   async (id: number) => {

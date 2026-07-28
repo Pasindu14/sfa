@@ -1,4 +1,5 @@
 using sfa_api.Common.Errors;
+using sfa_api.Features.Auth.Repositories;
 using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.Users.DTOs;
 using sfa_api.Features.Users.Entities;
@@ -10,10 +11,12 @@ namespace sfa_api.Features.Users.Services;
 public class UserService(
     IUserRepository repo,
     IDistributorRepository distributorRepo,
+    IAuthRepository authRepo,
     ILogger<UserService> logger) : IUserService
 {
     private readonly IUserRepository _repo = repo;
     private readonly IDistributorRepository _distributorRepo = distributorRepo;
+    private readonly IAuthRepository _authRepo = authRepo;
     private readonly ILogger<UserService> _logger = logger;
 
     public async Task<UserDto> GetUserByIdAsync(int userId, CancellationToken ct = default)
@@ -206,6 +209,31 @@ public class UserService(
         _logger.LogInformation("User {UserId} activated", userId);
     }
 
+    public async Task ResetDeviceIdAsync(int userId, int? callerId, CancellationToken ct = default)
+    {
+        var user = await _repo.GetUserByIdAsync(userId, ct)
+            ?? throw new NotFoundException("User", userId);
+
+        var previousDeviceId = user.DeviceId;
+
+        // Revoke before clearing: a refresh token carries its own DeviceId and RefreshAsync
+        // compares against that copy, not User.DeviceId — so the old handset would keep
+        // refreshing its session even after the binding is cleared.
+        await _authRepo.RevokeAllUserTokensAsync(userId, ct);
+
+        // Null (not empty) is what LoginAsync treats as "unbound" and re-registers on next login.
+        user.DeviceId = null;
+        user.UpdatedBy = callerId;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _repo.UpdateUserAsync(user, ct);
+        await _repo.SaveChangesAsync(ct);
+
+        _logger.LogInformation(
+            "Device binding reset for user {UserId} by {CallerId} (previous device {PreviousDeviceId})",
+            userId, callerId, previousDeviceId ?? "none");
+    }
+
     public Task UpdateFcmTokenAsync(int userId, string token, CancellationToken ct = default)
         => _repo.UpdateFcmTokenAsync(userId, token, ct);
 
@@ -221,6 +249,7 @@ public class UserService(
         Role: user.Role.ToString(),
         DistributorId: user.DistributorId,
         DistributorName: user.Distributor?.Name,
+        DeviceId: user.DeviceId,
         IsActive: user.IsActive,
         RowVersion: user.RowVersion,
         CreatedAt: user.CreatedAt,
