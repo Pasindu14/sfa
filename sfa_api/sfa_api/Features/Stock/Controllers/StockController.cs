@@ -105,13 +105,19 @@ public class StockController(
     }
 
     /// <summary>
-    /// GET /api/v1/stock/portal
+    /// GET /api/v1/stock/portal?includeZeroStock=true
     /// Returns all stock levels for the currently logged-in Distributor user.
     /// Resolves the distributor from the JWT sub claim → User.DistributorId.
+    /// With <paramref name="includeZeroStock"/> the response also carries every active product the
+    /// distributor has never held, as a zero-quantity placeholder (Id = 0, lastUpdatedAt = null),
+    /// so the stock balance screen can list the full catalogue. Off by default — callers that
+    /// count held SKUs (the portal dashboard summary, mobile sync) must not see placeholders.
     /// </summary>
     [HttpGet("portal")]
     [Authorize(Roles = "Distributor")]
-    public async Task<IActionResult> GetPortalStock(CancellationToken ct)
+    public async Task<IActionResult> GetPortalStock(
+        [FromQuery] bool includeZeroStock = false,
+        CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId);
@@ -121,7 +127,10 @@ public class StockController(
             throw new BusinessRuleException("NO_DISTRIBUTOR_LINKED",
                 "Your account is not linked to a distributor.");
 
-        var stocks = await _stockRepository.GetAllStockByDistributorAsync(user.DistributorId.Value, ct);
+        var stocks = includeZeroStock
+            ? await _stockRepository.GetAllStockByDistributorWithZeroFillAsync(user.DistributorId.Value, ct)
+            : await _stockRepository.GetAllStockByDistributorAsync(user.DistributorId.Value, ct);
+
         var dtos = stocks.Select(s => new DistributorStockDto(
             s.Id,
             s.DistributorId,
@@ -131,7 +140,8 @@ public class StockController(
             s.Product?.ItemDescription ?? string.Empty,
             s.StockType.ToString(),
             s.QuantityOnHand,
-            s.LastUpdatedAt,
+            // Id == 0 is a zero-fill placeholder — it has no movement history to date-stamp.
+            s.Id == 0 ? null : s.LastUpdatedAt,
             s.FleetId,
             s.Fleet?.Name
         )).ToList();

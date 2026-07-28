@@ -42,6 +42,49 @@ public class StockRepository(AppDbContext db) : IStockRepository
               .OrderBy(x => x.Product.Code)
               .ToListAsync(ct);
 
+    /// <inheritdoc/>
+    public async Task<List<DistributorStock>> GetAllStockByDistributorWithZeroFillAsync(
+        int distributorId, CancellationToken ct = default)
+    {
+        var stocks = await GetAllStockByDistributorAsync(distributorId, ct);
+
+        // NOT EXISTS rather than a NOT IN over the ids we just read — the product catalogue is
+        // independent of how many SKUs this distributor happens to hold, so keep the filter in SQL.
+        var unstocked = await _db.Products
+            .AsNoTracking()
+            .Where(p => p.IsActive
+                     && !p.IsDeleted
+                     && !_db.DistributorStocks.Any(s => s.DistributorId == distributorId && s.ProductId == p.Id))
+            .ToListAsync(ct);
+
+        if (unstocked.Count == 0)
+            return stocks;
+
+        // Placeholders carry the distributor's own name/fleet so they map to the same DTO shape.
+        var distributor = await _db.Distributors
+            .AsNoTracking()
+            .Include(d => d.Fleet)
+            .FirstOrDefaultAsync(d => d.Id == distributorId, ct);
+
+        var placeholders = unstocked.Select(p => new DistributorStock
+        {
+            Id             = 0,
+            DistributorId  = distributorId,
+            Distributor    = distributor!,
+            ProductId      = p.Id,
+            Product        = p,
+            StockType      = StockType.Normal,
+            FleetId        = distributor?.FleetId,
+            Fleet          = distributor?.Fleet,
+            QuantityOnHand = 0m,
+            LastUpdatedAt  = default,
+        });
+
+        return stocks.Concat(placeholders)
+                     .OrderBy(x => x.Product.Code)
+                     .ToList();
+    }
+
     public Task<List<StockTransaction>> GetTransactionsByDistributorAndProductAsync(
         int distributorId, int productId, int page, int pageSize, CancellationToken ct = default)
     {

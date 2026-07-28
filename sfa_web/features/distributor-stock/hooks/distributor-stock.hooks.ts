@@ -23,10 +23,15 @@ export function useMyStockDataTable(
   return useQuery({
     queryKey: myStockKeys.list({ page, pageSize, search, stockType }),
     queryFn: async () => {
-      const result = await getMyDistributorStockAction()
+      // Zero-fill: the balance sheet lists every active product, not just the SKUs holding stock.
+      const result = await getMyDistributorStockAction(true)
       if (!result.success) throw new Error(result.error)
 
-      let items = result.data
+      // Placeholders all come back with id 0. DataTable keys rows off `id`, so give each one a
+      // unique synthetic key — negative to keep it distinct from any real stock row id.
+      let items = result.data.map((item) =>
+        item.id === 0 ? { ...item, id: -item.productId } : item,
+      )
 
       if (stockType) {
         items = items.filter((item) => item.stockType === stockType)

@@ -21,18 +21,27 @@ test.describe('Product Category Pricing — List', () => {
 
     const thead = pricingPage.table.locator('thead')
     await expect(thead.getByText('Code', { exact: true })).toBeVisible()
-    await expect(thead.getByText('Item Description', { exact: true })).toBeVisible()
-    // A/B/C/D price column headers (each rendered inside a <span>)
-    await expect(thead.getByText('A').first()).toBeVisible()
-    await expect(thead.getByText('B').first()).toBeVisible()
-    await expect(thead.getByText('C').first()).toBeVisible()
-    await expect(thead.getByText('D').first()).toBeVisible()
+    await expect(thead.getByText('Item', { exact: true })).toBeVisible()
+    // A/B/C/D tier badges (each rendered inside a <span>)
+    await expect(thead.getByText('A', { exact: true }).first()).toBeVisible()
+    await expect(thead.getByText('B', { exact: true }).first()).toBeVisible()
+    await expect(thead.getByText('C', { exact: true }).first()).toBeVisible()
+    await expect(thead.getByText('D', { exact: true }).first()).toBeVisible()
   })
 
-  test('should display the Save All button', async ({ page }) => {
+  test('should keep Save disabled until a price is edited', async ({ page }) => {
     const pricingPage = new ProductCategoryPricingPage(page)
     await pricingPage.goto()
-    await expect(pricingPage.saveAllButton).toBeVisible()
+    await pricingPage.expectTableHasRows()
+
+    await expect(pricingPage.saveButton).toBeVisible()
+    await pricingPage.expectNoUnsavedChanges()
+
+    const code = await pricingPage.getFirstRowCode()
+    const originalValue = await pricingPage.getPriceValue(code, 'priceA')
+    await pricingPage.setPrice(code, 'priceA', originalValue + 1)
+
+    await expect(pricingPage.saveButton).toBeEnabled()
   })
 
   test('should show number inputs for each price field in the first row', async ({ page }) => {

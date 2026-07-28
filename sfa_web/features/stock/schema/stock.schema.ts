@@ -11,7 +11,9 @@ export const distributorStockItemSchema = z.object({
   productDescription: z.string(),
   stockType: z.enum(['Normal', 'FreeIssue']),
   quantityOnHand: z.number(),
-  lastUpdatedAt: z.string(),
+  // Null on zero-fill placeholders — an active product with no stock row yet, so nothing has
+  // ever moved. Real stock rows always carry a timestamp.
+  lastUpdatedAt: z.string().nullable(),
   // Denormalized from the distributor. Nullable: the distributor may have no fleet, and a
   // deactivated fleet resolves to a null name while the id stays set.
   fleetId: z.number().nullable(),

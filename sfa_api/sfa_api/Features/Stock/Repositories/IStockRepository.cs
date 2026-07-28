@@ -7,6 +7,17 @@ public interface IStockRepository
 {
     Task<(List<DistributorStock> Items, int TotalCount)> GetStockByDistributorAsync(int distributorId, int skip, int take, CancellationToken ct = default);
     Task<List<DistributorStock>> GetAllStockByDistributorAsync(int distributorId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Same as <see cref="GetAllStockByDistributorAsync"/>, but zero-fills the product catalogue:
+    /// every active, non-deleted <c>Product</c> the distributor has never held comes back as a
+    /// synthetic <see cref="DistributorStock"/> (<c>Id = 0</c>, <c>StockType = Normal</c>,
+    /// <c>QuantityOnHand = 0</c>, <c>LastUpdatedAt = default</c>). Lets the stock balance screen list
+    /// the full catalogue instead of only the SKUs that happen to have a row.
+    /// Placeholders are built in memory and are never tracked or persisted — <c>Id = 0</c> is the
+    /// marker callers use to tell them apart from real rows.
+    /// </summary>
+    Task<List<DistributorStock>> GetAllStockByDistributorWithZeroFillAsync(int distributorId, CancellationToken ct = default);
     Task<List<StockTransaction>> GetTransactionsByDistributorAndProductAsync(
         int distributorId, int productId, int page, int pageSize, CancellationToken ct = default);
     Task<int> GetTransactionCountAsync(int distributorId, int productId, CancellationToken ct = default);

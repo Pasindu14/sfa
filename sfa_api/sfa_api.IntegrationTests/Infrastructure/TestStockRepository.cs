@@ -26,6 +26,9 @@ public sealed class TestStockRepository(IStockRepository inner) : IStockReposito
     public Task<List<DistributorStock>> GetAllStockByDistributorAsync(int distributorId, CancellationToken ct = default)
         => inner.GetAllStockByDistributorAsync(distributorId, ct);
 
+    public Task<List<DistributorStock>> GetAllStockByDistributorWithZeroFillAsync(int distributorId, CancellationToken ct = default)
+        => inner.GetAllStockByDistributorWithZeroFillAsync(distributorId, ct);
+
     public Task<List<StockTransaction>> GetTransactionsByDistributorAndProductAsync(
         int distributorId, int productId, int page, int pageSize, CancellationToken ct = default)
         => inner.GetTransactionsByDistributorAndProductAsync(distributorId, productId, page, pageSize, ct);

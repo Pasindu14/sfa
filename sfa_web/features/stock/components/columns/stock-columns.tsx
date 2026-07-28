@@ -67,7 +67,9 @@ export function getStockColumns(): ColumnDef<DistributorStockItem>[] {
       header: 'Last Updated',
       cell: ({ row }) => (
         <span className="text-xs text-muted-foreground">
-          {formatColombo(row.original.lastUpdatedAt, 'd MMM yyyy, HH:mm')}
+          {row.original.lastUpdatedAt
+            ? formatColombo(row.original.lastUpdatedAt, 'd MMM yyyy, HH:mm')
+            : '—'}
         </span>
       ),
     },
