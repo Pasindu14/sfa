@@ -52,7 +52,7 @@ function CreateDistributorDialog() {
         }
       }}
     >
-      <DialogContent className="min-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="min-w-2xl">
         <DialogHeader>
           <DialogTitle>Create Distributor</DialogTitle>
           <DialogDescription>
@@ -87,7 +87,7 @@ function EditDistributorDialog() {
         }
       }}
     >
-      <DialogContent className="min-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="min-w-2xl">
         <DialogHeader>
           <DialogTitle>Edit Distributor</DialogTitle>
           <DialogDescription>Update distributor information.</DialogDescription>

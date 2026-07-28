@@ -56,7 +56,7 @@ function CreateOutletDialog() {
         }
       }}
     >
-      <DialogContent className="min-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="min-w-4xl">
         <DialogHeader>
           <DialogTitle>Create Outlet</DialogTitle>
           <DialogDescription>Add a new outlet to the system.</DialogDescription>
@@ -90,7 +90,7 @@ function EditOutletDialog() {
         }
       }}
     >
-      <DialogContent className="min-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="min-w-4xl">
         <DialogHeader>
           <DialogTitle>Edit Outlet</DialogTitle>
           <DialogDescription>Update outlet information.</DialogDescription>

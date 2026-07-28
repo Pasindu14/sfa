@@ -53,7 +53,7 @@ function CreateProductDialog() {
         }
       }}
     >
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Create Product</DialogTitle>
           <DialogDescription>Add a new product to the catalogue.</DialogDescription>
@@ -107,7 +107,7 @@ function EditProductDialog() {
         }
       }}
     >
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Edit Product</DialogTitle>
           <DialogDescription>Update product information.</DialogDescription>

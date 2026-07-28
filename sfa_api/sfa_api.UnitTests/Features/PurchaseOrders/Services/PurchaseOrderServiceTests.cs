@@ -5,10 +5,12 @@ using Moq;
 using sfa_api.Common.Errors;
 using sfa_api.Features.PurchaseOrders.Entities;
 using sfa_api.Features.PurchaseOrders.Enums;
+using sfa_api.Features.Distributors.Entities;
 using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.PurchaseOrders.Repositories;
 using sfa_api.Features.PurchaseOrders.Requests;
 using sfa_api.Features.PurchaseOrders.Services;
+using sfa_api.Features.ProductCategoryPricings.Repositories;
 using sfa_api.Features.UserGeoAssignments.Repositories;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Features.Users.Repositories;
@@ -24,6 +26,7 @@ public class PurchaseOrderServiceTests
     private readonly Mock<IUserRepository> _userRepoMock;
     private readonly Mock<IUserGeoAssignmentRepository> _geoRepoMock;
     private readonly Mock<IDistributorRepository> _distributorRepoMock;
+    private readonly Mock<IProductCategoryPricingRepository> _pricingRepoMock;
     private readonly Mock<IDistributedLockService> _lockMock;
     private readonly Mock<INotificationService> _notificationMock;
     private readonly AppDbContext _dbContext;
@@ -35,6 +38,20 @@ public class PurchaseOrderServiceTests
         _userRepoMock = new Mock<IUserRepository>();
         _geoRepoMock = new Mock<IUserGeoAssignmentRepository>();
         _distributorRepoMock = new Mock<IDistributorRepository>();
+
+        // Server-side price derivation defaults: a category-A distributor and a price
+        // configured for every requested product. Individual tests override these to
+        // exercise the unpriced-product and tier-resolution paths.
+        _distributorRepoMock
+            .Setup(r => r.GetByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Distributor { Id = 10, Category = "A" });
+
+        _pricingRepoMock = new Mock<IProductCategoryPricingRepository>();
+        _pricingRepoMock
+            .Setup(r => r.GetPriceMapForCategoryAsync(
+                It.IsAny<string>(), It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string _, IEnumerable<int> ids, CancellationToken _) =>
+                ids.Distinct().ToDictionary(id => id, _ => 100m));
 
         // Always grant the lock — unit tests don't test locking behaviour
         _lockMock = new Mock<IDistributedLockService>();
@@ -58,6 +75,7 @@ public class PurchaseOrderServiceTests
             _userRepoMock.Object,
             _geoRepoMock.Object,
             _distributorRepoMock.Object,
+            _pricingRepoMock.Object,
             _dbContext,
             _lockMock.Object,
             _notificationMock.Object,
@@ -201,6 +219,154 @@ public class PurchaseOrderServiceTests
         result.Should().NotBeNull();
         result.Status.Should().Be(PurchaseOrderStatus.Draft);
         result.DistributorId.Should().Be(distributorId);
+    }
+
+    // ─────────────────────────────────────────────────
+    // Server-side price derivation
+    // ─────────────────────────────────────────────────
+
+    /// <summary>Arranges a Distributor caller and captures the items handed to the repo.</summary>
+    private List<PurchaseOrderItem> ArrangeDistributorCreate(int callerId, int distributorId, string category = "A")
+    {
+        _userRepoMock.Setup(r => r.GetUserByIdAsync(callerId, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(CreateFakeUser(id: callerId, role: UserRole.Distributor, distributorId));
+        _distributorRepoMock.Setup(r => r.GetByIdAsync(distributorId, It.IsAny<CancellationToken>()))
+                            .ReturnsAsync(new Distributor { Id = distributorId, Category = category });
+        SetupOrderForCreate(callerId, distributorId);
+
+        var captured = new List<PurchaseOrderItem>();
+        _repoMock.Setup(r => r.AddItemsAsync(It.IsAny<IEnumerable<PurchaseOrderItem>>(), It.IsAny<CancellationToken>()))
+                 .Callback<IEnumerable<PurchaseOrderItem>, CancellationToken>((items, _) => captured.AddRange(items))
+                 .Returns(Task.CompletedTask);
+        return captured;
+    }
+
+    [Fact]
+    public async Task CreateAsync_Distributor_IgnoresClientUnitPriceAndUsesCategoryPrice()
+    {
+        const int callerId = 200;
+        const int distributorId = 10;
+        var captured = ArrangeDistributorCreate(callerId, distributorId);
+        _pricingRepoMock.Setup(r => r.GetPriceMapForCategoryAsync(
+                            "A", It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()))
+                        .ReturnsAsync(new Dictionary<int, decimal> { [5] = 250m });
+
+        // Request carries UnitPrice = 100m — it must be discarded.
+        await _sut.CreateAsync(CreateValidRequest(), callerId, UserRole.Distributor);
+
+        captured.Should().ContainSingle();
+        captured[0].UnitPrice.Should().Be(250m);
+    }
+
+    [Fact]
+    public async Task CreateAsync_Distributor_ResolvesPriceForOwnCategoryTier()
+    {
+        const int callerId = 200;
+        const int distributorId = 10;
+        var captured = ArrangeDistributorCreate(callerId, distributorId, category: "C");
+        _pricingRepoMock.Setup(r => r.GetPriceMapForCategoryAsync(
+                            "C", It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()))
+                        .ReturnsAsync(new Dictionary<int, decimal> { [5] = 75m });
+
+        await _sut.CreateAsync(CreateValidRequest(), callerId, UserRole.Distributor);
+
+        captured[0].UnitPrice.Should().Be(75m);
+        _pricingRepoMock.Verify(r => r.GetPriceMapForCategoryAsync(
+            "C", It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateAsync_Distributor_ProductWithNoConfiguredPrice_ThrowsValidationException()
+    {
+        const int callerId = 200;
+        const int distributorId = 10;
+        ArrangeDistributorCreate(callerId, distributorId);
+        _pricingRepoMock.Setup(r => r.GetPriceMapForCategoryAsync(
+                            It.IsAny<string>(), It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()))
+                        .ReturnsAsync(new Dictionary<int, decimal>());
+
+        Func<Task> act = () => _sut.CreateAsync(CreateValidRequest(), callerId, UserRole.Distributor);
+
+        await act.Should().ThrowAsync<ValidationException>();
+    }
+
+    [Fact]
+    public async Task CreateAsync_Distributor_ProductPricedAtZero_ThrowsValidationException()
+    {
+        const int callerId = 200;
+        const int distributorId = 10;
+        ArrangeDistributorCreate(callerId, distributorId);
+        _pricingRepoMock.Setup(r => r.GetPriceMapForCategoryAsync(
+                            It.IsAny<string>(), It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()))
+                        .ReturnsAsync(new Dictionary<int, decimal> { [5] = 0m });
+
+        Func<Task> act = () => _sut.CreateAsync(CreateValidRequest(), callerId, UserRole.Distributor);
+
+        await act.Should().ThrowAsync<ValidationException>();
+    }
+
+    [Fact]
+    public async Task CreateAsync_Distributor_UnpricedProduct_DoesNotConsumeAnOrderNumber()
+    {
+        const int callerId = 200;
+        const int distributorId = 10;
+        ArrangeDistributorCreate(callerId, distributorId);
+        _pricingRepoMock.Setup(r => r.GetPriceMapForCategoryAsync(
+                            It.IsAny<string>(), It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()))
+                        .ReturnsAsync(new Dictionary<int, decimal>());
+
+        Func<Task> act = () => _sut.CreateAsync(CreateValidRequest(), callerId, UserRole.Distributor);
+        await act.Should().ThrowAsync<ValidationException>();
+
+        // Pricing is validated before the sequence is drawn, so no PO number gap.
+        _repoMock.Verify(r => r.GetNextOrderNumberAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateAsync_Admin_KeepsClientSuppliedUnitPrice()
+    {
+        const int distributorId = 10;
+        SetupOrderForCreate(callerId: 100, distributorId);
+        var captured = new List<PurchaseOrderItem>();
+        _repoMock.Setup(r => r.AddItemsAsync(It.IsAny<IEnumerable<PurchaseOrderItem>>(), It.IsAny<CancellationToken>()))
+                 .Callback<IEnumerable<PurchaseOrderItem>, CancellationToken>((items, _) => captured.AddRange(items))
+                 .Returns(Task.CompletedTask);
+
+        await _sut.CreateAsync(CreateValidRequest(distributorId), callerId: 100, UserRole.Admin);
+
+        // Staff UIs price from Product.DealerCasePrice/DealerPackPrice — category pricing
+        // must not be substituted for them.
+        captured[0].UnitPrice.Should().Be(100m);
+        _pricingRepoMock.Verify(r => r.GetPriceMapForCategoryAsync(
+            It.IsAny<string>(), It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_Distributor_IgnoresClientUnitPriceAndUsesCategoryPrice()
+    {
+        const int callerId = 200;
+        const int distributorId = 10;
+        var order = CreateFakeOrder(id: 1, PurchaseOrderStatus.Draft, distributorId);
+        SetupOrderForTransition(order);
+        _userRepoMock.Setup(r => r.GetUserByIdAsync(callerId, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(CreateFakeUser(id: callerId, role: UserRole.Distributor, distributorId));
+        _distributorRepoMock.Setup(r => r.GetByIdAsync(distributorId, It.IsAny<CancellationToken>()))
+                            .ReturnsAsync(new Distributor { Id = distributorId, Category = "B" });
+        _pricingRepoMock.Setup(r => r.GetPriceMapForCategoryAsync(
+                            "B", It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()))
+                        .ReturnsAsync(new Dictionary<int, decimal> { [5] = 310m });
+        _repoMock.Setup(r => r.RemoveItemsAsync(order.Id, It.IsAny<CancellationToken>()))
+                 .Returns(Task.CompletedTask);
+
+        var captured = new List<PurchaseOrderItem>();
+        _repoMock.Setup(r => r.AddItemsAsync(It.IsAny<IEnumerable<PurchaseOrderItem>>(), It.IsAny<CancellationToken>()))
+                 .Callback<IEnumerable<PurchaseOrderItem>, CancellationToken>((items, _) => captured.AddRange(items))
+                 .Returns(Task.CompletedTask);
+
+        await _sut.UpdateAsync(order.Id, CreateValidUpdateRequest(), callerId, UserRole.Distributor);
+
+        captured.Should().ContainSingle();
+        captured[0].UnitPrice.Should().Be(310m);
     }
 
     // ─────────────────────────────────────────────────

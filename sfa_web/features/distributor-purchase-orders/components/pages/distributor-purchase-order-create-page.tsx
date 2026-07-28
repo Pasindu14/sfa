@@ -128,17 +128,14 @@ export function DistributorPurchaseOrderCreatePage() {
 
   const watchedItems = useWatch({ control: form.control, name: 'items' })
 
+  // The portal endpoint already resolves the caller's category tier server-side,
+  // so each row carries a single `unitPrice` — profile.category is display-only here.
   const getCategoryPrice = useCallback(
     (productId: number): number => {
-      if (!profile?.category || !productId) return 0
-      const row = categoryPricings.find((r) => r.productId === productId)
-      if (!row) return 0
-      const fieldMap: Record<string, keyof typeof row> = {
-        A: 'priceA', B: 'priceB', C: 'priceC', D: 'priceD',
-      }
-      return (row[fieldMap[profile.category]] as number) ?? 0
+      if (!productId) return 0
+      return categoryPricings.find((r) => r.productId === productId)?.unitPrice ?? 0
     },
-    [categoryPricings, profile?.category]
+    [categoryPricings]
   )
 
   const handleProductChange = useCallback((index: number, productId: number) => {

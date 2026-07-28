@@ -75,6 +75,18 @@ public class ProductCategoryPricingRepository(AppDbContext context) : IProductCa
         ));
     }
 
+    public async Task<Dictionary<int, decimal>> GetPriceMapForCategoryAsync(
+        string category, IEnumerable<int> productIds, CancellationToken ct = default)
+    {
+        var ids = productIds.Distinct().ToList();
+        if (ids.Count == 0) return [];
+
+        return await _context.ProductCategoryPrices
+            .AsNoTracking()
+            .Where(x => ids.Contains(x.ProductId) && x.Category == category)
+            .ToDictionaryAsync(x => x.ProductId, x => x.Price, ct);
+    }
+
     public async Task BulkUpsertAsync(IEnumerable<PricingRowRequest> items, int callerId, CancellationToken ct = default)
     {
         var itemList = items.ToList();

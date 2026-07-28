@@ -12,7 +12,10 @@ import type {
   MyPurchaseOrderStatsDto,
   MyDistributorProfileDto,
 } from '../schema/distributor-purchase-order.schema'
-import type { ProductCategoryPricingRow } from '@/features/product-category-pricing/schema/product-category-pricing.schema'
+import {
+  distributorProductPriceSchema,
+  type DistributorProductPrice,
+} from '@/features/product-category-pricing/schema/product-category-pricing.schema'
 
 // ── Read ───────────────────────────────────────────────────────────────────
 
@@ -71,9 +74,11 @@ export const getMyDistributorProfileAction = createAction(
 
 export const getMyProductCategoryPricingsAction = createAction(
   { name: 'getMyProductCategoryPricingsAction', requireAuth: true, requiredRole: 'Distributor' },
-  async () => {
+  async (): Promise<DistributorProductPrice[]> => {
     const res = await client.get('/api/v1/product-category-pricings/portal')
-    return res.data.data as ProductCategoryPricingRow[]
+    // Parse rather than cast — a silent contract drift here renders every line as
+    // "No price" instead of failing, so make the mismatch loud.
+    return distributorProductPriceSchema.array().parse(res.data.data)
   }
 )
 

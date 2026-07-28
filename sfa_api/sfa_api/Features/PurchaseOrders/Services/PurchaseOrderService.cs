@@ -8,6 +8,7 @@ using sfa_api.Features.PurchaseOrders.Entities;
 using sfa_api.Features.PurchaseOrders.Enums;
 using sfa_api.Features.PurchaseOrders.Repositories;
 using sfa_api.Features.PurchaseOrders.Requests;
+using sfa_api.Features.ProductCategoryPricings.Repositories;
 using sfa_api.Features.UserGeoAssignments.Repositories;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Features.Users.Repositories;
@@ -22,6 +23,7 @@ public class PurchaseOrderService(
     IUserRepository userRepo,
     IUserGeoAssignmentRepository geoRepo,
     IDistributorRepository distributorRepo,
+    IProductCategoryPricingRepository pricingRepo,
     AppDbContext context,
     IDistributedLockService lockService,
     INotificationService notificationService,
@@ -31,7 +33,39 @@ public class PurchaseOrderService(
     private readonly IUserRepository _userRepo = userRepo;
     private readonly IUserGeoAssignmentRepository _geoRepo = geoRepo;
     private readonly IDistributorRepository _distributorRepo = distributorRepo;
+    private readonly IProductCategoryPricingRepository _pricingRepo = pricingRepo;
     private readonly AppDbContext _context = context;
+
+    /// <summary>
+    /// Re-derives line prices server-side so a Distributor cannot dictate what they pay.
+    /// Returns a productId → price map for Distributor callers (client-supplied UnitPrice
+    /// is ignored), or null for staff roles, whose UI prices from Product.DealerCasePrice /
+    /// DealerPackPrice — a different basis that must not be silently overwritten here.
+    /// Throws if any requested product has no configured price for the distributor's tier,
+    /// so a zero-priced line can never be persisted.
+    /// </summary>
+    private async Task<Dictionary<int, decimal>?> ResolveDistributorPricesAsync(
+        UserRole callerRole, int distributorId, IEnumerable<int> productIds, CancellationToken ct)
+    {
+        if (callerRole != UserRole.Distributor) return null;
+
+        var distributor = await _distributorRepo.GetByIdAsync(distributorId, ct)
+            ?? throw new NotFoundException("Distributor", distributorId);
+
+        var ids = productIds.Distinct().ToList();
+        var priceMap = await _pricingRepo.GetPriceMapForCategoryAsync(distributor.Category, ids, ct);
+
+        // Treat "no row" and "row priced at 0" alike — the portal UI already blocks both,
+        // and accepting either would persist a free line item.
+        var unpriced = ids.Where(id => !priceMap.TryGetValue(id, out var p) || p <= 0m).ToList();
+        if (unpriced.Count > 0)
+            throw new Common.Errors.ValidationException(new Dictionary<string, string[]>
+            {
+                ["items"] = [$"No category {distributor.Category} price is configured for product ID(s): {string.Join(", ", unpriced)}."]
+            });
+
+        return priceMap;
+    }
     private readonly IDistributedLockService _lockService = lockService;
     private readonly INotificationService _notificationService = notificationService;
     private readonly ILogger<PurchaseOrderService> _logger = logger;
@@ -145,6 +179,11 @@ public class PurchaseOrderService(
 
         PurchaseOrder? order = null;
 
+        // Resolve prices BEFORE reserving an order number so a pricing validation failure
+        // doesn't leave a gap in the PO sequence.
+        var priceMap = await ResolveDistributorPricesAsync(
+            callerRole, distributorId, request.Items.Select(i => i.ProductId), ct);
+
         // Generate the order number OUTSIDE the retried transaction so a transient retry of the
         // execution strategy doesn't burn a sequence value and leave a gap in PO numbers (#19).
         var seq = await _repo.GetNextOrderNumberAsync(ct);
@@ -177,13 +216,20 @@ public class PurchaseOrderService(
                     PurchaseOrderId = order.Id,
                     ProductId = i.ProductId,
                     Quantity = i.Quantity,
-                    UnitPrice = i.UnitPrice,
+                    UnitPrice = priceMap is null ? i.UnitPrice : priceMap[i.ProductId],
                     Discount = i.Discount
                 }).ToList();
 
                 await _repo.AddItemsAsync(items, ct);
 
-                var snapshot = JsonSerializer.Serialize(request.Items);
+                // Snapshot the prices actually persisted, not the client's proposal.
+                var snapshot = JsonSerializer.Serialize(items.Select(i => new
+                {
+                    i.ProductId,
+                    i.Quantity,
+                    i.UnitPrice,
+                    i.Discount
+                }));
                 await _repo.AddHistoryAsync(new PurchaseOrderHistory
                 {
                     PurchaseOrderId = order.Id,
@@ -241,6 +287,9 @@ public class PurchaseOrderService(
                 throw new AuthorizationException("this purchase order");
         }
 
+        var priceMap = await ResolveDistributorPricesAsync(
+            callerRole, order.DistributorId, request.Items.Select(i => i.ProductId), ct);
+
         var updateStrategy = _context.Database.CreateExecutionStrategy();
         await updateStrategy.ExecuteAsync(async () =>
         {
@@ -267,12 +316,19 @@ public class PurchaseOrderService(
                     PurchaseOrderId = id,
                     ProductId = i.ProductId,
                     Quantity = i.Quantity,
-                    UnitPrice = i.UnitPrice,
+                    UnitPrice = priceMap is null ? i.UnitPrice : priceMap[i.ProductId],
                     Discount = i.Discount
                 }).ToList();
                 await _repo.AddItemsAsync(newItems, ct);
 
-                var afterSnapshot = JsonSerializer.Serialize(request.Items);
+                // Snapshot the prices actually persisted, not the client's proposal.
+                var afterSnapshot = JsonSerializer.Serialize(newItems.Select(i => new
+                {
+                    i.ProductId,
+                    i.Quantity,
+                    i.UnitPrice,
+                    i.Discount
+                }));
                 await _repo.AddHistoryAsync(new PurchaseOrderHistory
                 {
                     PurchaseOrderId = id,

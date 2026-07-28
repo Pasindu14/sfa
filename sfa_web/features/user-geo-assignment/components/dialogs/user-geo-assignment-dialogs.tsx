@@ -54,7 +54,7 @@ function CreateUserGeoAssignmentDialog() {
         }
       }}
     >
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Add geo assignment</DialogTitle>
           <DialogDescription>
@@ -95,7 +95,7 @@ function EditUserGeoAssignmentDialog() {
         }
       }}
     >
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Edit Geo Assignment</DialogTitle>
           <DialogDescription>
