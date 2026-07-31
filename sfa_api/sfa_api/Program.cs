@@ -187,7 +187,8 @@ try
                     .ToDictionary(
                         k => k.Key,
                         v => v.Value!.Errors
-                            .Select(e => string.IsNullOrEmpty(e.ErrorMessage) ? "Invalid value." : e.ErrorMessage)
+                            .Select(ModelErrorFormatter.Describe)
+                            .Distinct()
                             .ToArray());
 
                 var correlationId = ctx.HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
