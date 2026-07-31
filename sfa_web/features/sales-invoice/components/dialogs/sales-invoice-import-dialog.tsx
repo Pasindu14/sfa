@@ -32,7 +32,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { parseExcelFile } from "../../lib/parse-excel";
+import { parseExcelFile, type ParseIssue } from "../../lib/parse-excel";
 import { InvoicePreview } from "./invoice-preview";
 import { useImportDialog } from "../../store";
 import { useImportSalesInvoices } from '../../hooks/sales-invoice.hooks';
@@ -209,6 +209,40 @@ function BatchResultView({
   );
 }
 
+// ── Skipped-row banner ────────────────────────────────────────────────────
+// Rows the parser could not read are never imported silently — a financial import that
+// quietly drops vouchers is how bad data gets in unnoticed. Each issue names its Excel row.
+
+function ParseIssuesBanner({ issues }: { issues: ParseIssue[] }) {
+  if (issues.length === 0) return null;
+
+  return (
+    <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 overflow-hidden">
+      <div className="flex items-center gap-2 border-b border-amber-300/60 px-3 py-2">
+        <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+        <span className="text-xs font-semibold text-amber-700 dark:text-amber-500">
+          {issues.length} row{issues.length === 1 ? "" : "s"} skipped — not included in this import
+        </span>
+      </div>
+      <div className="divide-y divide-amber-200/60">
+        {issues.map((issue, i) => (
+          <div key={i} className="flex items-start gap-3 px-3 py-1.5 text-xs">
+            <code className="shrink-0 rounded bg-amber-100 dark:bg-amber-900/40 px-1.5 py-0.5 font-mono font-medium text-amber-800 dark:text-amber-400">
+              Row {issue.row}
+            </code>
+            {issue.vchBillNo && (
+              <code className="shrink-0 truncate rounded bg-background/60 px-1.5 py-0.5 font-mono max-w-[10rem]">
+                {issue.vchBillNo}
+              </code>
+            )}
+            <span className="text-muted-foreground leading-relaxed">{issue.message}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── File picker view ──────────────────────────────────────────────────────
 
 const STEPS = [
@@ -241,11 +275,12 @@ const COLUMNS = [
 function FilePicker({
   onParsed,
 }: {
-  onParsed: (payload: ImportSalesInvoicesPayload) => void;
+  onParsed: (payload: ImportSalesInvoicesPayload, issues: ParseIssue[]) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
+  const [parseIssues, setParseIssues] = useState<ParseIssue[]>([]);
   const [isParsing, setIsParsing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -254,16 +289,28 @@ function FilePicker({
     if (!file) return;
     setIsParsing(true);
     setParseError(null);
+    setParseIssues([]);
     try {
       const buffer = await file.arrayBuffer();
-      const payload = parseExcelFile(buffer, file.name);
+      const { payload, issues } = parseExcelFile(buffer, file.name);
       if (payload.invoices.length === 0) {
-        setParseError("No invoices found — check the file format or sheet layout.");
+        setParseError(
+          issues.length > 0
+            ? `No usable invoices found — every voucher row had a problem. Fix the rows listed below and upload again.`
+            : "No invoices found — check the file format or sheet layout.",
+        );
+        setParseIssues(issues);
         return;
       }
-      onParsed(payload);
-    } catch {
-      setParseError("Failed to parse file. Make sure this is a valid BUSY ERP Excel export.");
+      onParsed(payload, issues);
+    } catch (err) {
+      // Show what actually went wrong (bad zip, no sheets, …) instead of one blanket line.
+      const detail = err instanceof Error ? err.message : "";
+      setParseError(
+        detail
+          ? `Could not read this file: ${detail}`
+          : "Failed to parse file. Make sure this is a valid BUSY ERP Excel export.",
+      );
     } finally {
       setIsParsing(false);
     }
@@ -358,6 +405,8 @@ function FilePicker({
         </div>
       )}
 
+      <ParseIssuesBanner issues={parseIssues} />
+
       {/* ── Steps + Columns in a two-column layout ── */}
       <div className="grid grid-cols-2 gap-3">
 
@@ -430,9 +479,11 @@ export function SalesInvoiceImportDialog() {
   const [payload, setPayload] = useState<ImportSalesInvoicesPayload | null>(
     null,
   );
+  const [issues, setIssues] = useState<ParseIssue[]>([]);
 
-  function handleParsed(p: ImportSalesInvoicesPayload) {
+  function handleParsed(p: ImportSalesInvoicesPayload, parseIssues: ParseIssue[]) {
     setPayload(p);
+    setIssues(parseIssues);
     setView("preview");
   }
 
@@ -448,6 +499,7 @@ export function SalesInvoiceImportDialog() {
       closeAndReset();
       setView("picker");
       setPayload(null);
+      setIssues([]);
     }
   }
 
@@ -485,7 +537,8 @@ export function SalesInvoiceImportDialog() {
 
         {view === "preview" && payload && (
           <div className="flex min-h-0 flex-1 flex-col gap-4">
-            <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
+              <ParseIssuesBanner issues={issues} />
               <InvoicePreview payload={payload} />
             </div>
             <DialogFooter className="shrink-0 border-t pt-4">
@@ -517,6 +570,7 @@ export function SalesInvoiceImportDialog() {
               closeAndReset();
               setView("picker");
               setPayload(null);
+              setIssues([]);
             }}
           />
         )}
