@@ -13,6 +13,12 @@ const _channelName = 'SFA Location Tracking';
 const _notificationId = 888;
 const _maxAccuracyMetres = 100.0;
 
+/// Delay before this isolate first touches SQLite. The UI isolate creates and
+/// migrates the schema on launch, and this isolate opening the same file
+/// mid-transaction makes sqflite force a ROLLBACK on the shared native
+/// connection — leaving a half-built schema. See [DatabaseHelper].
+const _firstTickDelay = Duration(seconds: 20);
+
 // ── Background isolate entry points ────────────────────────────────────────
 // Must be top-level functions with @pragma so the VM keeps them in release builds.
 
@@ -21,15 +27,24 @@ void locationServiceEntry(ServiceInstance service) async {
   WidgetsFlutterBinding.ensureInitialized();
   await configureDependencies();
 
-  // Capture + flush immediately on start, then repeat every 5 minutes.
-  await _tick();
-  final timer = Timer.periodic(const Duration(minutes: 5), (_) async {
-    await _tick();
+  // Listen for stop before the stagger below, so a stop arriving during the
+  // delay is still honoured.
+  Timer? timer;
+  var stopped = false;
+  service.on('stop').listen((_) {
+    stopped = true;
+    timer?.cancel();
+    service.stopSelf();
   });
 
-  service.on('stop').listen((_) {
-    timer.cancel();
-    service.stopSelf();
+  // Stagger the first DB access past app startup — see [_firstTickDelay].
+  await Future<void>.delayed(_firstTickDelay);
+  if (stopped) return;
+
+  // Capture + flush, then repeat every 5 minutes.
+  await _tick();
+  timer = Timer.periodic(const Duration(minutes: 5), (_) async {
+    await _tick();
   });
 }
 

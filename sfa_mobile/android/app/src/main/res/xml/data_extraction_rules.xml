@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The local SQLite file (sfa_local.db) is a device-scoped cache plus an offline
+  outbox tied to the JWT's device binding. Restoring it onto a reinstalled or
+  different device brings back stale/half-built schema and replays another
+  device's unsynced bills, so it is excluded from both cloud backup and
+  device-to-device transfer.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="database" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="database" />
+    </device-transfer>
+</data-extraction-rules>
