@@ -37,6 +37,11 @@ class AppUpdateService {
     }
   }
 
+  /// Patch number currently running, or null on the release baseline.
+  /// Exposed as a plain int so presentation need not import the Shorebird
+  /// package just to render a diagnostic.
+  Future<int?> currentPatchNumber() async => (await currentPatch())?.number;
+
   /// Downloads a pending patch if one is available.
   ///
   /// Returns true when a patch is staged and the app must restart to run it.
