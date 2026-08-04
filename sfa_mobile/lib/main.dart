@@ -12,6 +12,7 @@ import 'package:uswatte/core/di/injection.dart';
 import 'package:uswatte/core/network/session_expired_notifier.dart';
 import 'package:uswatte/core/router/app_router.dart';
 import 'package:uswatte/core/connectivity/connectivity_service.dart';
+import 'package:uswatte/core/db/database_helper.dart';
 import 'package:uswatte/core/sync/bill_sync_service.dart';
 import 'package:uswatte/features/stock/domain/usecases/sync_distributor_stock_usecase.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
@@ -48,6 +49,12 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await configureDependencies();
+
+  // Create/migrate the SQLite schema here, on the UI isolate, BEFORE any
+  // background isolate can open the same file. Two isolates opening it
+  // concurrently makes sqflite force a ROLLBACK on the shared native
+  // connection, aborting the schema transaction half-way. See DatabaseHelper.
+  await DatabaseHelper.instance.database;
 
   // Register the 4-hour background sync task. ExistingWorkPolicy.keep means
   // relaunching the app does not reset the timer for an already-queued task.
