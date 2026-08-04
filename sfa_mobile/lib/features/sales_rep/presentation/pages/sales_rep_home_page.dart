@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/update/app_update_service.dart';
 import 'package:uswatte/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:uswatte/features/bills/domain/entities/bill.dart';
 import 'package:uswatte/features/bills/presentation/bloc/bills_list_bloc.dart';
@@ -365,13 +366,7 @@ class _TopBar extends StatelessWidget {
                 Image.asset('assets/images/uswatte-logo.png',
                     height: 32.h, fit: BoxFit.contain),
                 SizedBox(width: 10.w),
-                Text('SFA',
-                    style: GoogleFonts.barlowCondensed(
-                      fontSize: 11.sp,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 4,
-                      color: AppColors.foregroundMuted,
-                    )),
+                const _AppLabel(),
                 const Spacer(),
                 Text(_dateLabel,
                     style: GoogleFonts.barlowCondensed(
@@ -1675,6 +1670,35 @@ class _SecondaryAction extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// App name with the running Shorebird patch appended, e.g. "SFA · P3".
+///
+/// Falls back to a plain "SFA" on the release baseline, and on builds without
+/// the Shorebird engine (debug runs, plain `flutter build`). Exists so it is
+/// possible to tell at a glance which code a phone in the field is actually
+/// running — otherwise patch delivery is completely invisible.
+class _AppLabel extends StatelessWidget {
+  const _AppLabel();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<int?>(
+      future: AppUpdateService.instance.currentPatchNumber(),
+      builder: (context, snapshot) {
+        final patch = snapshot.data;
+        return Text(
+          patch == null ? 'SFA' : 'SFA · P$patch',
+          style: GoogleFonts.barlowCondensed(
+            fontSize: 11.sp,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 4,
+            color: AppColors.foregroundMuted,
+          ),
+        );
+      },
     );
   }
 }
