@@ -401,39 +401,50 @@ class _LegendBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Scaffold.body gets no automatic bottom inset — only appBar /
+    // bottomNavigationBar do. Without this SafeArea the legend renders under
+    // the system navigation bar on devices that have one. The colour sits
+    // outside it so the bar's white background still fills that strip.
     return Container(
       color: Colors.white,
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              _LegendItem(
-                color: const Color(0xFF4CAF50),
-                label: 'Billed',
-                count: billedCount,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _LegendItem(
+                    color: const Color(0xFF4CAF50),
+                    label: 'Billed',
+                    count: billedCount,
+                  ),
+                  Container(
+                      width: 1, height: 24.h, color: AppColors.surfaceVariant),
+                  _LegendItem(
+                    color: const Color(0xFFFF9800),
+                    label: 'Not Billed',
+                    count: notBilledCount,
+                  ),
+                  Container(
+                      width: 1, height: 24.h, color: AppColors.surfaceVariant),
+                  _LegendItem(
+                    color: const Color(0xFFF44336),
+                    label: 'Pending',
+                    count: pendingCount,
+                  ),
+                ],
               ),
-              Container(width: 1, height: 24.h, color: AppColors.surfaceVariant),
-              _LegendItem(
-                color: const Color(0xFFFF9800),
-                label: 'Not Billed',
-                count: notBilledCount,
-              ),
-              Container(width: 1, height: 24.h, color: AppColors.surfaceVariant),
-              _LegendItem(
-                color: const Color(0xFFF44336),
-                label: 'Pending',
-                count: pendingCount,
-              ),
+              if (unmappedCount > 0) ...[
+                SizedBox(height: 8.h),
+                _UnmappedBanner(count: unmappedCount),
+              ],
             ],
           ),
-          if (unmappedCount > 0) ...[
-            SizedBox(height: 8.h),
-            _UnmappedBanner(count: unmappedCount),
-          ],
-        ],
+        ),
       ),
     );
   }
