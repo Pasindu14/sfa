@@ -1091,6 +1091,11 @@ class _MapViewState extends State<_MapView> {
 
     return Column(
       children: [
+        _LegendBar(
+          billedCount: billedCount,
+          notBilledCount: notBilledCount,
+          pendingCount: pendingCount,
+        ),
         Expanded(
           child: GoogleMap(
             initialCameraPosition: widget.defaultCamera,
@@ -1099,12 +1104,10 @@ class _MapViewState extends State<_MapView> {
             myLocationButtonEnabled: true,
             zoomControlsEnabled: true,
             onMapCreated: _onMapCreated,
+            // The map now runs to the bottom of the screen, so inset its own
+            // controls (my-location, zoom) clear of the system navigation bar.
+            padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
           ),
-        ),
-        _LegendBar(
-          billedCount: billedCount,
-          notBilledCount: notBilledCount,
-          pendingCount: pendingCount,
         ),
       ],
     );
@@ -1126,41 +1129,33 @@ class _LegendBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Scaffold.body gets no automatic bottom inset — only appBar /
-    // bottomNavigationBar do. Without this SafeArea the legend renders under
-    // the system navigation bar on devices that have one. The colour sits
-    // outside it so the bar's white background still fills that strip.
+    // No SafeArea here: the bar sits directly under the header, not against a
+    // screen edge. SafeArea is position-unaware — it reads MediaQuery padding
+    // wherever it is — so keeping it would inject a phantom nav-bar-sized gap.
     return Container(
       color: Colors.white,
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _LegendItem(
-                color: const Color(0xFF4CAF50),
-                label: 'Billed',
-                count: billedCount,
-              ),
-              Container(
-                  width: 1, height: 24.h, color: AppColors.surfaceVariant),
-              _LegendItem(
-                color: const Color(0xFFFF9800),
-                label: 'Not Billed',
-                count: notBilledCount,
-              ),
-              Container(
-                  width: 1, height: 24.h, color: AppColors.surfaceVariant),
-              _LegendItem(
-                color: const Color(0xFFF44336),
-                label: 'Pending',
-                count: pendingCount,
-              ),
-            ],
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _LegendItem(
+            color: const Color(0xFF4CAF50),
+            label: 'Billed',
+            count: billedCount,
           ),
-        ),
+          Container(width: 1, height: 24.h, color: AppColors.surfaceVariant),
+          _LegendItem(
+            color: const Color(0xFFFF9800),
+            label: 'Not Billed',
+            count: notBilledCount,
+          ),
+          Container(width: 1, height: 24.h, color: AppColors.surfaceVariant),
+          _LegendItem(
+            color: const Color(0xFFF44336),
+            label: 'Pending',
+            count: pendingCount,
+          ),
+        ],
       ),
     );
   }
