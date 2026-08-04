@@ -13,6 +13,7 @@ import 'package:uswatte/core/network/session_expired_notifier.dart';
 import 'package:uswatte/core/router/app_router.dart';
 import 'package:uswatte/core/connectivity/connectivity_service.dart';
 import 'package:uswatte/core/db/database_helper.dart';
+import 'package:uswatte/core/update/app_update_service.dart';
 import 'package:uswatte/core/sync/bill_sync_service.dart';
 import 'package:uswatte/features/stock/domain/usecases/sync_distributor_stock_usecase.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
@@ -114,6 +115,53 @@ class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
               getIt<SyncDistributorStockUseCase>()().catchError((_) {}),
             ));
     _setupNotificationHandlers();
+    // Staggered so the check doesn't compete with launch work (schema open,
+    // auth restore, first sync).
+    Future.delayed(const Duration(seconds: 8), _checkForPatch);
+  }
+
+  // ── Shorebird patch prompt ──────────────────────────────────────────────────
+
+  bool _updateBannerVisible = false;
+
+  /// Downloads any pending patch and, if one is staged, offers a restart.
+  ///
+  /// Without this the rep has no way to know a patch is waiting: Shorebird only
+  /// applies patches at process start, and the location foreground service keeps
+  /// this app's process alive across swipe-away. See [AppUpdateService].
+  Future<void> _checkForPatch() async {
+    if (_updateBannerVisible) return;
+    final needsRestart = await getIt<AppUpdateService>().checkAndDownload();
+    if (!needsRestart || !mounted) return;
+
+    final ctx = _router.routerDelegate.navigatorKey.currentContext;
+    if (ctx == null) return;
+    // ignore: use_build_context_synchronously
+    final messenger = ScaffoldMessenger.maybeOf(ctx);
+    if (messenger == null) return;
+
+    _updateBannerVisible = true;
+    messenger.showMaterialBanner(
+      MaterialBanner(
+        content: const Text(
+          'An update is ready. Restart the app to apply it.',
+        ),
+        leading: const Icon(Icons.system_update_rounded),
+        actions: [
+          TextButton(
+            onPressed: () {
+              messenger.hideCurrentMaterialBanner();
+              _updateBannerVisible = false;
+            },
+            child: const Text('LATER'),
+          ),
+          TextButton(
+            onPressed: () => getIt<AppUpdateService>().restart(),
+            child: const Text('RESTART NOW'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _setupNotificationHandlers() {
@@ -189,6 +237,7 @@ class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
       // Fire-and-forget; errors are contained inside the service.
       getIt<BillSyncService>().flushAll();
       unawaited(getIt<SyncDistributorStockUseCase>()().catchError((_) {}));
+      unawaited(_checkForPatch());
     }
   }
 

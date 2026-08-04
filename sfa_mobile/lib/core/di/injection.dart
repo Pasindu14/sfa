@@ -25,6 +25,7 @@ import 'package:uswatte/features/route_assignment/domain/usecases/get_assignment
 import 'package:uswatte/features/route_assignment/domain/usecases/get_my_reps_usecase.dart';
 import 'package:uswatte/features/route_assignment/domain/usecases/get_rep_routes_usecase.dart';
 import 'package:uswatte/core/db/database_helper.dart';
+import 'package:uswatte/core/update/app_update_service.dart';
 import 'package:uswatte/features/products/data/datasources/products_local_datasource.dart';
 import 'package:uswatte/features/products/data/datasources/products_remote_datasource.dart';
 import 'package:uswatte/features/products/data/repositories/products_repository_impl.dart';
@@ -199,6 +200,9 @@ Future<void> configureDependencies() async {
       () => GetAssignmentsUseCase(getIt<RouteAssignmentRepository>()));
   getIt.registerLazySingleton(
       () => DeleteAssignmentUseCase(getIt<RouteAssignmentRepository>()));
+
+  // ── App updates (Shorebird code push) ────────────────────────────────────────
+  getIt.registerLazySingleton(() => AppUpdateService.instance);
 
   // ── Products ─────────────────────────────────────────────────────────────────
   getIt.registerLazySingleton(() => DatabaseHelper.instance);
