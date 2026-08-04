@@ -120,9 +120,33 @@ class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
     Future.delayed(const Duration(seconds: 8), _checkForPatch);
   }
 
-  // ── Shorebird patch prompt ──────────────────────────────────────────────────
+  // ── Shorebird patch prompt + auto-apply ─────────────────────────────────────
+
+  /// How long the app must stay backgrounded before a staged patch is applied
+  /// by killing the process. Long enough that a phone call or a quick hop to
+  /// another app doesn't discard a half-entered bill form, short enough that
+  /// the patch lands the same working day.
+  static const _backgroundRestartDelay = Duration(minutes: 2);
 
   bool _updateBannerVisible = false;
+  bool _patchStaged = false;
+  Timer? _autoRestartTimer;
+
+  /// Applies a staged patch once the rep has been out of the app long enough
+  /// to be done with it.
+  ///
+  /// Killing the process also kills the location foreground service, but
+  /// flutter_background_service arms an AlarmManager watchdog 5s out
+  /// (WatchdogReceiver) that respawns it — and the respawned isolate boots the
+  /// patched code. Tracking resumes on its own; it is not left off.
+  void _scheduleAutoRestart() {
+    if (!_patchStaged) return;
+    _autoRestartTimer?.cancel();
+    _autoRestartTimer = Timer(
+      _backgroundRestartDelay,
+      () => getIt<AppUpdateService>().restart(),
+    );
+  }
 
   /// Downloads any pending patch and, if one is staged, offers a restart.
   ///
@@ -130,9 +154,9 @@ class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
   /// applies patches at process start, and the location foreground service keeps
   /// this app's process alive across swipe-away. See [AppUpdateService].
   Future<void> _checkForPatch() async {
-    if (_updateBannerVisible) return;
     final needsRestart = await getIt<AppUpdateService>().checkAndDownload();
-    if (!needsRestart || !mounted) return;
+    _patchStaged = needsRestart;
+    if (!needsRestart || !mounted || _updateBannerVisible) return;
 
     final ctx = _router.routerDelegate.navigatorKey.currentContext;
     if (ctx == null) return;
@@ -144,7 +168,8 @@ class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
     messenger.showMaterialBanner(
       MaterialBanner(
         content: const Text(
-          'An update is ready. Restart the app to apply it.',
+          'An update is ready. It applies automatically once you leave the '
+          'app, or restart now.',
         ),
         leading: const Icon(Icons.system_update_rounded),
         actions: [
@@ -222,6 +247,7 @@ class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
     _connectivityStockSub?.cancel();
     _fcmForegroundSub?.cancel();
     _fcmTapSub?.cancel();
+    _autoRestartTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -234,10 +260,16 @@ class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      // The rep came back — they're not done with the app, so don't apply a
+      // staged patch out from under them.
+      _autoRestartTimer?.cancel();
+      _autoRestartTimer = null;
       // Fire-and-forget; errors are contained inside the service.
       getIt<BillSyncService>().flushAll();
       unawaited(getIt<SyncDistributorStockUseCase>()().catchError((_) {}));
       unawaited(_checkForPatch());
+    } else if (state == AppLifecycleState.paused) {
+      _scheduleAutoRestart();
     }
   }
 
