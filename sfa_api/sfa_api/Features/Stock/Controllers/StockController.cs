@@ -64,6 +64,7 @@ public class StockController(
             s.Product?.ItemDescription ?? string.Empty,
             s.StockType.ToString(),
             s.QuantityOnHand,
+            s.Product?.PiecesPerPack ?? 0,
             s.LastUpdatedAt,
             s.FleetId,
             s.Fleet?.Name
@@ -97,6 +98,7 @@ public class StockController(
             s.Product?.ItemDescription ?? string.Empty,
             s.StockType.ToString(),
             s.QuantityOnHand,
+            s.Product?.PiecesPerPack ?? 0,
             s.LastUpdatedAt,
             s.FleetId,
             s.Fleet?.Name
@@ -140,6 +142,7 @@ public class StockController(
             s.Product?.ItemDescription ?? string.Empty,
             s.StockType.ToString(),
             s.QuantityOnHand,
+            s.Product?.PiecesPerPack ?? 0,
             // Id == 0 is a zero-fill placeholder — it has no movement history to date-stamp.
             s.Id == 0 ? null : s.LastUpdatedAt,
             s.FleetId,

@@ -14,6 +14,10 @@ public record DistributorStockDto(
     string    ProductDescription,
     string    StockType,
     decimal   QuantityOnHand,
+    // Units per case, from Product.PiecesPerPack. QuantityOnHand is stored in pieces; callers
+    // divide by this to split it into a case + piece balance. 0 means the product has no pack
+    // size configured — callers should treat the whole quantity as loose pieces.
+    int       PiecesPerPack,
     DateTime? LastUpdatedAt,
     int?      FleetId,
     string?   FleetName

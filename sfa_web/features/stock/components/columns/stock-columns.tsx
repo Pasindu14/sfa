@@ -19,6 +19,32 @@ function StockTypeBadge({ type }: { type: string }) {
   return <Badge variant="secondary" className="text-xs">Normal</Badge>
 }
 
+// quantityOnHand is stored in pieces. piecesPerPack (0 = no pack size configured) splits it
+// into a case balance + leftover piece balance, matching the "CS · PKT" convention used on mobile.
+function StockBalanceCell({ qty, piecesPerPack }: { qty: number; piecesPerPack: number }) {
+  if (piecesPerPack <= 0) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="tabular-nums font-semibold">{qty} pcs</span>
+        <StockLevelBadge qty={qty} />
+      </div>
+    )
+  }
+
+  const cases = Math.floor(qty / piecesPerPack)
+  const pieces = qty - cases * piecesPerPack
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex flex-col leading-tight">
+        <span className="tabular-nums font-semibold text-sm">{cases} CS</span>
+        <span className="tabular-nums text-xs text-muted-foreground">{pieces} PCS</span>
+      </div>
+      <StockLevelBadge qty={qty} />
+    </div>
+  )
+}
+
 export function getStockColumns(): ColumnDef<DistributorStockItem>[] {
   return [
     {
@@ -51,16 +77,13 @@ export function getStockColumns(): ColumnDef<DistributorStockItem>[] {
     },
     {
       accessorKey: 'quantityOnHand',
-      header: 'Qty on Hand',
-      cell: ({ row }) => {
-        const qty = row.original.quantityOnHand
-        return (
-          <div className="flex items-center gap-2">
-            <span className="tabular-nums font-semibold">{qty}</span>
-            <StockLevelBadge qty={qty} />
-          </div>
-        )
-      },
+      header: 'Stock Balance',
+      cell: ({ row }) => (
+        <StockBalanceCell
+          qty={row.original.quantityOnHand}
+          piecesPerPack={row.original.piecesPerPack}
+        />
+      ),
     },
     {
       accessorKey: 'lastUpdatedAt',

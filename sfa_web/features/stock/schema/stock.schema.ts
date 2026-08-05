@@ -11,6 +11,9 @@ export const distributorStockItemSchema = z.object({
   productDescription: z.string(),
   stockType: z.enum(['Normal', 'FreeIssue']),
   quantityOnHand: z.number(),
+  // Units per case, from the product master. 0 means no pack size is configured — treat the
+  // whole quantity as loose pieces.
+  piecesPerPack: z.number(),
   // Null on zero-fill placeholders — an active product with no stock row yet, so nothing has
   // ever moved. Real stock rows always carry a timestamp.
   lastUpdatedAt: z.string().nullable(),
