@@ -106,7 +106,9 @@ export function useOutletDataTable(
     queryKey: outletKeys.list({ page, pageSize, search, customFilters }),
     queryFn: async () => {
       const status = customFilters?.status as string | undefined
-      const result = await getOutletsAction(page, pageSize, search || undefined, status || undefined)
+      const territoryId = customFilters?.territoryId ? Number(customFilters.territoryId) : undefined
+      const routeId = customFilters?.routeId ? Number(customFilters.routeId) : undefined
+      const result = await getOutletsAction(page, pageSize, search || undefined, status || undefined, territoryId, routeId)
       if (!result.success) throw new Error(result.error)
       const { outlets, totalCount, page: p, pageSize: ps } = result.data
       return {

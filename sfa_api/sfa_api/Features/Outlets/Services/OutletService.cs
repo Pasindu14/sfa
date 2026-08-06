@@ -70,22 +70,26 @@ public class OutletService(
         return MapToDto(outlet);
     }
 
-    public async Task<OutletListDto> GetAllAsync(int page, int pageSize, int callerId, UserRole callerRole, bool? isActive = null, string? search = null, CancellationToken ct = default)
+    public async Task<OutletListDto> GetAllAsync(int page, int pageSize, int callerId, UserRole callerRole, bool? isActive = null, string? search = null, int? territoryId = null, int? routeId = null, CancellationToken ct = default)
     {
         var skip = (page - 1) * pageSize;
 
         // Non-management callers are pinned to their own territory's outlets.
-        var (restricted, territoryId) = await ResolveTerritoryScopeAsync(callerId, callerRole, ct);
+        var (restricted, scopeTerritoryId) = await ResolveTerritoryScopeAsync(callerId, callerRole, ct);
         if (restricted)
         {
-            if (territoryId is null)
+            if (scopeTerritoryId is null)
                 return new OutletListDto(Outlets: [], TotalCount: 0, Page: page, PageSize: pageSize);
 
-            var (scoped, scopedCount) = await _repo.GetAllByTerritoryAsync(territoryId.Value, skip, pageSize, isActive, search, ct);
-            return new OutletListDto(scoped.Select(MapToDto), scopedCount, page, pageSize);
+            // An explicit territoryId that disagrees with the caller's own scope can never
+            // match any outlet (a row can't have two different TerritoryId values), so short-circuit
+            // to an empty result instead of round-tripping to the database.
+            if (territoryId.HasValue && territoryId.Value != scopeTerritoryId.Value)
+                return new OutletListDto(Outlets: [], TotalCount: 0, Page: page, PageSize: pageSize);
         }
 
-        var (outlets, totalCount) = await _repo.GetAllAsync(skip, pageSize, isActive, search, ct);
+        var effectiveTerritoryId = restricted ? scopeTerritoryId : territoryId;
+        var (outlets, totalCount) = await _repo.GetAllAsync(skip, pageSize, isActive, search, effectiveTerritoryId, routeId, ct);
         return new OutletListDto(
             Outlets: outlets.Select(MapToDto),
             TotalCount: totalCount,
@@ -100,7 +104,7 @@ public class OutletService(
         CancellationToken ct = default)
     {
         var skip = (page - 1) * pageSize;
-        var (outlets, totalCount) = await _repo.GetAllByTerritoryAsync(territoryId, skip, pageSize, isActive, search, ct);
+        var (outlets, totalCount) = await _repo.GetAllAsync(skip, pageSize, isActive, search, territoryId, routeId: null, ct);
         return new OutletListDto(
             Outlets: outlets.Select(MapToDto),
             TotalCount: totalCount,

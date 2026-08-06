@@ -3,6 +3,10 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using sfa_api.Features.UserGeoAssignments.Entities;
+using sfa_api.Features.Users.Entities;
+using sfa_api.Infrastructure.Persistence;
 using sfa_api.IntegrationTests.Infrastructure;
 
 namespace sfa_api.IntegrationTests.Features.Outlets;
@@ -10,11 +14,13 @@ namespace sfa_api.IntegrationTests.Features.Outlets;
 [Collection(SfaApiCollection.Name)]
 public class OutletsApiTests
 {
+    private readonly SfaWebApplicationFactory _factory;
     private readonly HttpClient _client;
     private readonly JsonSerializerOptions _jsonOpts = new() { PropertyNameCaseInsensitive = true };
 
     public OutletsApiTests(SfaWebApplicationFactory factory)
     {
+        _factory = factory;
         _client = factory.CreateClient();
     }
 
@@ -91,6 +97,36 @@ public class OutletsApiTests
         response.StatusCode.Should().Be(HttpStatusCode.OK, $"reading rowVersion for outlet {id} must succeed");
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
         return body.GetProperty("data").GetProperty("rowVersion").GetUInt32();
+    }
+
+    // SQLite enforces FKs, so a UserGeoAssignment.UserId must reference a real Users row —
+    // seed one and mint a token for its actual (auto-assigned) id, rather than the fixed
+    // AuthHelper.SalesRepToken userId=200 (mirrors the pattern in BillingsApiTests).
+    private async Task<string> CreateScopedSalesRepTokenAsync(int territoryId, int divisionId, int areaId, int regionId)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var rep = new User
+        {
+            Name = "Scoped Test Rep", Username = $"rep-{suffix}", Email = $"rep-{suffix}@sfa.com",
+            Phone = $"07{suffix}"[..10], PasswordHash = "placeholder",
+            Role = UserRole.SalesRep, IsActive = true,
+            CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+        };
+        db.Users.Add(rep);
+        await db.SaveChangesAsync();
+
+        db.UserGeoAssignments.Add(new UserGeoAssignment
+        {
+            UserId = rep.Id, DivisionId = divisionId, TerritoryId = territoryId,
+            AreaId = areaId, RegionId = regionId, IsActive = true,
+            EffectiveFrom = DateOnly.FromDateTime(DateTime.UtcNow)
+        });
+        await db.SaveChangesAsync();
+
+        return AuthHelper.GenerateToken(rep.Id, "SalesRep");
     }
 
     private static object CreateOutletPayload(string name, int routeId, string nicNo, string outletType = "Medium", string outletCategory = "Wholesale")
@@ -301,6 +337,159 @@ public class OutletsApiTests
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
         var outlets = body.GetProperty("data").GetProperty("outlets");
         outlets.EnumerateArray().Should().Contain(o => o.GetProperty("name").GetString()!.Contains("UniqueXYZ789"));
+    }
+
+    [Fact]
+    public async Task GetAllOutlets_WithTerritoryIdParam_ReturnsOnlyMatchingTerritory()
+    {
+        var regionId = await CreateRegionAsync("Region For Outlet TerritoryId Filter Test");
+        var areaId = await CreateAreaAsync("Area For Outlet TerritoryId Filter Test", regionId);
+
+        var territoryAId = await CreateTerritoryAsync("Territory A For Outlet TerritoryId Filter Test", areaId);
+        var divisionAId = await CreateDivisionAsync("Division A For Outlet TerritoryId Filter Test", territoryAId);
+        var routeAId = await CreateRouteAsync("Route A For Outlet TerritoryId Filter Test", divisionAId);
+        var outletAId = await CreateOutletAsync("Outlet A TerritoryId Filter UniqueOT10", routeAId, "930001001V");
+
+        var territoryBId = await CreateTerritoryAsync("Territory B For Outlet TerritoryId Filter Test", areaId);
+        var divisionBId = await CreateDivisionAsync("Division B For Outlet TerritoryId Filter Test", territoryBId);
+        var routeBId = await CreateRouteAsync("Route B For Outlet TerritoryId Filter Test", divisionBId);
+        var outletBId = await CreateOutletAsync("Outlet B TerritoryId Filter UniqueOT10", routeBId, "930001002V");
+
+        SetToken(AuthHelper.AdminToken);
+        var response = await _client.GetAsync($"/api/v1/outlets?territoryId={territoryAId}&pageSize=100");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
+        var outlets = body.GetProperty("data").GetProperty("outlets").EnumerateArray().ToList();
+        outlets.Should().Contain(o => o.GetProperty("id").GetInt32() == outletAId);
+        outlets.Should().NotContain(o => o.GetProperty("id").GetInt32() == outletBId);
+    }
+
+    [Fact]
+    public async Task GetAllOutlets_WithRouteIdParam_ReturnsOnlyMatchingRoute()
+    {
+        var regionId = await CreateRegionAsync("Region For Outlet RouteId Filter Test");
+        var areaId = await CreateAreaAsync("Area For Outlet RouteId Filter Test", regionId);
+        var territoryId = await CreateTerritoryAsync("Territory For Outlet RouteId Filter Test", areaId);
+        var divisionId = await CreateDivisionAsync("Division For Outlet RouteId Filter Test", territoryId);
+
+        var routeAId = await CreateRouteAsync("Route A For Outlet RouteId Filter Test", divisionId);
+        var outletAId = await CreateOutletAsync("Outlet A RouteId Filter UniqueOT11", routeAId, "931001001V");
+
+        var routeBId = await CreateRouteAsync("Route B For Outlet RouteId Filter Test", divisionId);
+        var outletBId = await CreateOutletAsync("Outlet B RouteId Filter UniqueOT11", routeBId, "931001002V");
+
+        SetToken(AuthHelper.AdminToken);
+        var response = await _client.GetAsync($"/api/v1/outlets?routeId={routeAId}&pageSize=100");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
+        var outlets = body.GetProperty("data").GetProperty("outlets").EnumerateArray().ToList();
+        outlets.Should().Contain(o => o.GetProperty("id").GetInt32() == outletAId);
+        outlets.Should().NotContain(o => o.GetProperty("id").GetInt32() == outletBId);
+    }
+
+    [Fact]
+    public async Task GetAllOutlets_WithTerritoryAndRouteFromDifferentTerritories_ReturnsEmpty()
+    {
+        var regionId = await CreateRegionAsync("Region For Outlet Mismatched Filter Test");
+        var areaId = await CreateAreaAsync("Area For Outlet Mismatched Filter Test", regionId);
+
+        var territoryAId = await CreateTerritoryAsync("Territory A For Outlet Mismatched Filter Test", areaId);
+        var divisionAId = await CreateDivisionAsync("Division A For Outlet Mismatched Filter Test", territoryAId);
+        var routeAId = await CreateRouteAsync("Route A For Outlet Mismatched Filter Test", divisionAId);
+        await CreateOutletAsync("Outlet A Mismatched Filter UniqueOT12", routeAId, "932001001V");
+
+        var territoryBId = await CreateTerritoryAsync("Territory B For Outlet Mismatched Filter Test", areaId);
+        var divisionBId = await CreateDivisionAsync("Division B For Outlet Mismatched Filter Test", territoryBId);
+        var routeBId = await CreateRouteAsync("Route B For Outlet Mismatched Filter Test", divisionBId);
+        await CreateOutletAsync("Outlet B Mismatched Filter UniqueOT12", routeBId, "932001002V");
+
+        SetToken(AuthHelper.AdminToken);
+        var response = await _client.GetAsync($"/api/v1/outlets?territoryId={territoryAId}&routeId={routeBId}&pageSize=100");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
+        body.GetProperty("data").GetProperty("outlets").EnumerateArray().Should().BeEmpty();
+        body.GetProperty("data").GetProperty("totalCount").GetInt32().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GetAllOutlets_WithTerritoryAndSearchParams_CombinesWithAndLogic()
+    {
+        var regionId = await CreateRegionAsync("Region For Outlet Territory Search Combo Test");
+        var areaId = await CreateAreaAsync("Area For Outlet Territory Search Combo Test", regionId);
+
+        var territoryAId = await CreateTerritoryAsync("Territory A For Outlet Territory Search Combo Test", areaId);
+        var divisionAId = await CreateDivisionAsync("Division A For Outlet Territory Search Combo Test", territoryAId);
+        var routeAId = await CreateRouteAsync("Route A For Outlet Territory Search Combo Test", divisionAId);
+        var matchingId = await CreateOutletAsync("Combo Match UniqueXYZ456", routeAId, "933001001V");
+        var nonMatchingNameId = await CreateOutletAsync("Combo Other Name UniqueOT13", routeAId, "933001002V");
+
+        var territoryBId = await CreateTerritoryAsync("Territory B For Outlet Territory Search Combo Test", areaId);
+        var divisionBId = await CreateDivisionAsync("Division B For Outlet Territory Search Combo Test", territoryBId);
+        var routeBId = await CreateRouteAsync("Route B For Outlet Territory Search Combo Test", divisionBId);
+        var otherTerritoryId = await CreateOutletAsync("Combo Match UniqueXYZ456 Other Territory", routeBId, "933001003V");
+
+        SetToken(AuthHelper.AdminToken);
+        var response = await _client.GetAsync(
+            $"/api/v1/outlets?territoryId={territoryAId}&search=UniqueXYZ456&pageSize=100");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
+        var outlets = body.GetProperty("data").GetProperty("outlets").EnumerateArray().ToList();
+        outlets.Should().Contain(o => o.GetProperty("id").GetInt32() == matchingId);
+        outlets.Should().NotContain(o => o.GetProperty("id").GetInt32() == nonMatchingNameId);
+        outlets.Should().NotContain(o => o.GetProperty("id").GetInt32() == otherTerritoryId);
+    }
+
+    [Fact]
+    public async Task GetAllOutlets_AsSalesRep_WithMismatchedTerritoryId_ReturnsEmptyNot403()
+    {
+        var regionId = await CreateRegionAsync("Region For SalesRep Mismatched Territory Test");
+        var areaId = await CreateAreaAsync("Area For SalesRep Mismatched Territory Test", regionId);
+
+        var ownTerritoryId = await CreateTerritoryAsync("Own Territory For SalesRep Mismatched Test", areaId);
+        var ownDivisionId = await CreateDivisionAsync("Own Division For SalesRep Mismatched Test", ownTerritoryId);
+        var ownRouteId = await CreateRouteAsync("Own Route For SalesRep Mismatched Test", ownDivisionId);
+        await CreateOutletAsync("Own Territory Outlet UniqueOT14", ownRouteId, "934001001V");
+
+        var otherTerritoryId = await CreateTerritoryAsync("Other Territory For SalesRep Mismatched Test", areaId);
+        var otherDivisionId = await CreateDivisionAsync("Other Division For SalesRep Mismatched Test", otherTerritoryId);
+        var otherRouteId = await CreateRouteAsync("Other Route For SalesRep Mismatched Test", otherDivisionId);
+        await CreateOutletAsync("Other Territory Outlet UniqueOT14", otherRouteId, "934001002V");
+
+        var repToken = await CreateScopedSalesRepTokenAsync(ownTerritoryId, ownDivisionId, areaId, regionId);
+        SetToken(repToken);
+
+        var response = await _client.GetAsync($"/api/v1/outlets?territoryId={otherTerritoryId}&pageSize=100");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
+        body.GetProperty("data").GetProperty("outlets").EnumerateArray().Should().BeEmpty();
+        body.GetProperty("data").GetProperty("totalCount").GetInt32().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GetAllOutlets_AsSalesRep_WithOwnTerritoryId_ReturnsScopedResults()
+    {
+        var regionId = await CreateRegionAsync("Region For SalesRep Own Territory Test");
+        var areaId = await CreateAreaAsync("Area For SalesRep Own Territory Test", regionId);
+
+        var ownTerritoryId = await CreateTerritoryAsync("Own Territory For SalesRep Own Test", areaId);
+        var ownDivisionId = await CreateDivisionAsync("Own Division For SalesRep Own Test", ownTerritoryId);
+        var ownRouteId = await CreateRouteAsync("Own Route For SalesRep Own Test", ownDivisionId);
+        var ownOutletId = await CreateOutletAsync("Own Territory Outlet UniqueOT15", ownRouteId, "935001001V");
+
+        var repToken = await CreateScopedSalesRepTokenAsync(ownTerritoryId, ownDivisionId, areaId, regionId);
+        SetToken(repToken);
+
+        var response = await _client.GetAsync($"/api/v1/outlets?territoryId={ownTerritoryId}&pageSize=100");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
+        var outlets = body.GetProperty("data").GetProperty("outlets").EnumerateArray().ToList();
+        outlets.Should().Contain(o => o.GetProperty("id").GetInt32() == ownOutletId);
     }
 
     // ─────────────────────────────────────────────────

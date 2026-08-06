@@ -81,6 +81,8 @@ export const updateOutletSchema = createOutletSchema.extend({
 export const filterSchema = z.object({
   search: z.string().optional(),
   status: z.string().optional(),
+  territoryId: z.string().optional(),
+  routeId: z.string().optional(),
   page: z.number().default(1),
   pageSize: z.number().default(10),
 })

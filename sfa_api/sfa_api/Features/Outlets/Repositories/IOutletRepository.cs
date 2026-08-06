@@ -7,8 +7,7 @@ namespace sfa_api.Features.Outlets.Repositories;
 public interface IOutletRepository
 {
     Task<Outlet?> GetByIdAsync(int id, CancellationToken ct = default);
-    Task<(IEnumerable<Outlet> Outlets, int TotalCount)> GetAllAsync(int skip, int take, bool? isActive = null, string? search = null, CancellationToken ct = default);
-    Task<(IEnumerable<Outlet> Outlets, int TotalCount)> GetAllByTerritoryAsync(int territoryId, int skip, int take, bool? isActive = null, string? search = null, CancellationToken ct = default);
+    Task<(IEnumerable<Outlet> Outlets, int TotalCount)> GetAllAsync(int skip, int take, bool? isActive = null, string? search = null, int? territoryId = null, int? routeId = null, CancellationToken ct = default);
     Task<IEnumerable<Outlet>> GetAllActiveAsync(CancellationToken ct = default);
     Task<IEnumerable<OutletMapPointDto>> GetMapPointsAsync(CancellationToken ct = default);
     Task<IEnumerable<Outlet>> GetByRouteIdAsync(int routeId, CancellationToken ct = default);

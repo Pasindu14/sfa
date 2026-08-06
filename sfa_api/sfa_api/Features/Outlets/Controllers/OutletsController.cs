@@ -51,6 +51,8 @@ public class OutletsController(
         [FromQuery] int pageSize = 10,
         [FromQuery] string? status = null,
         [FromQuery] string? search = null,
+        [FromQuery] int? territoryId = null,
+        [FromQuery] int? routeId = null,
         CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
@@ -61,7 +63,7 @@ public class OutletsController(
             _ => null
         };
         var (callerId, callerRole) = GetCallerInfo();
-        var result = await _service.GetAllAsync(page, pageSize, callerId, callerRole, isActive, search, ct);
+        var result = await _service.GetAllAsync(page, pageSize, callerId, callerRole, isActive, search, territoryId, routeId, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 

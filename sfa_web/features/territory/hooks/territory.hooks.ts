@@ -11,6 +11,7 @@ import {
   deleteTerritoryAction,
   activateTerritoryAction,
   deactivateTerritoryAction,
+  getActiveTerritoriesAction,
 } from '../actions/territory.actions'
 import {
   useCreateDialog,
@@ -61,6 +62,19 @@ export function useTerritory(id: number | null) {
       return result.data
     },
     enabled: id !== null,
+  })
+}
+
+// --- Active territories hook (for dropdowns/selects) ---
+
+export function useActiveTerritories() {
+  return useQuery({
+    queryKey: [...territoryKeys.all, 'active'] as const,
+    queryFn: async () => {
+      const result = await getActiveTerritoriesAction()
+      if (!result.success) throw new Error(result.error)
+      return result.data
+    },
   })
 }
 

@@ -200,7 +200,7 @@ public class OutletServiceTests
     public async Task GetAllAsync_ReturnsPaginatedOutletListDto()
     {
         var outlets = new[] { CreateFakeOutlet(1), CreateFakeOutlet(2) };
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((outlets.AsEnumerable(), 2));
 
         var result = await _sut.GetAllAsync(1, 10, 1, UserRole.Admin);
@@ -214,18 +214,18 @@ public class OutletServiceTests
     [Fact]
     public async Task GetAllAsync_Page2_CalculatesCorrectSkip()
     {
-        _repoMock.Setup(r => r.GetAllAsync(10, 10, null, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(10, 10, null, null, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<Outlet>(), 0));
 
         await _sut.GetAllAsync(2, 10, 1, UserRole.Admin);
 
-        _repoMock.Verify(r => r.GetAllAsync(10, 10, null, null, It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.GetAllAsync(10, 10, null, null, null, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task GetAllAsync_EmptyResult_ReturnsEmptyList()
     {
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<Outlet>(), 0));
 
         var result = await _sut.GetAllAsync(1, 10, 1, UserRole.Admin);
@@ -237,34 +237,132 @@ public class OutletServiceTests
     [Fact]
     public async Task GetAllAsync_ActiveFilter_ForwardedToRepository()
     {
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, true, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, true, null, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<Outlet>(), 0));
 
         await _sut.GetAllAsync(1, 10, 1, UserRole.Admin, isActive: true);
 
-        _repoMock.Verify(r => r.GetAllAsync(0, 10, true, null, It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.GetAllAsync(0, 10, true, null, null, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task GetAllAsync_InactiveFilter_ForwardedToRepository()
     {
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, false, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, false, null, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<Outlet>(), 0));
 
         await _sut.GetAllAsync(1, 10, 1, UserRole.Admin, isActive: false);
 
-        _repoMock.Verify(r => r.GetAllAsync(0, 10, false, null, It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.GetAllAsync(0, 10, false, null, null, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task GetAllAsync_SearchParam_ForwardedToRepository()
     {
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, "pharmacy", It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, "pharmacy", null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<Outlet>(), 0));
 
         await _sut.GetAllAsync(1, 10, 1, UserRole.Admin, search: "pharmacy");
 
-        _repoMock.Verify(r => r.GetAllAsync(0, 10, null, "pharmacy", It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.GetAllAsync(0, 10, null, "pharmacy", null, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_TerritoryIdParam_ForwardedToRepository()
+    {
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, 30, null, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((Enumerable.Empty<Outlet>(), 0));
+
+        await _sut.GetAllAsync(1, 10, 1, UserRole.Admin, territoryId: 30);
+
+        _repoMock.Verify(r => r.GetAllAsync(0, 10, null, null, 30, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_RouteIdParam_ForwardedToRepository()
+    {
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, null, 50, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((Enumerable.Empty<Outlet>(), 0));
+
+        await _sut.GetAllAsync(1, 10, 1, UserRole.Admin, routeId: 50);
+
+        _repoMock.Verify(r => r.GetAllAsync(0, 10, null, null, null, 50, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_RestrictedCaller_NoExplicitFilter_UsesScopeTerritoryId()
+    {
+        _geoRepoMock.Setup(r => r.GetActiveByUserIdAsync(5, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserGeoAssignment { UserId = 5, TerritoryId = 30 });
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, 30, null, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((Enumerable.Empty<Outlet>(), 0));
+
+        await _sut.GetAllAsync(1, 10, callerId: 5, callerRole: UserRole.SalesRep);
+
+        _repoMock.Verify(r => r.GetAllAsync(0, 10, null, null, 30, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_RestrictedCaller_MatchingExplicitTerritoryId_PassesThrough()
+    {
+        _geoRepoMock.Setup(r => r.GetActiveByUserIdAsync(5, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserGeoAssignment { UserId = 5, TerritoryId = 30 });
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, 30, null, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((Enumerable.Empty<Outlet>(), 0));
+
+        await _sut.GetAllAsync(1, 10, callerId: 5, callerRole: UserRole.SalesRep, territoryId: 30);
+
+        _repoMock.Verify(r => r.GetAllAsync(0, 10, null, null, 30, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_RestrictedCaller_MismatchedExplicitTerritoryId_ReturnsEmptyWithoutRepoCall()
+    {
+        _geoRepoMock.Setup(r => r.GetActiveByUserIdAsync(5, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserGeoAssignment { UserId = 5, TerritoryId = 30 });
+
+        var result = await _sut.GetAllAsync(1, 10, callerId: 5, callerRole: UserRole.SalesRep, territoryId: 99);
+
+        result.TotalCount.Should().Be(0);
+        result.Outlets.Should().BeEmpty();
+        _repoMock.Verify(r => r.GetAllAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<bool?>(), It.IsAny<string?>(),
+            It.IsAny<int?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_RestrictedCaller_RouteIdOutsideScope_RepoCallReturnsEmpty()
+    {
+        // A SalesRep scoped to territory 30 requesting routeId 99 (which belongs to a different
+        // territory) is not short-circuited at the service layer — the repo's combined
+        // "TerritoryId == 30 AND RouteId == 99" predicate naturally yields zero rows.
+        _geoRepoMock.Setup(r => r.GetActiveByUserIdAsync(5, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserGeoAssignment { UserId = 5, TerritoryId = 30 });
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, 30, 99, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((Enumerable.Empty<Outlet>(), 0));
+
+        var result = await _sut.GetAllAsync(1, 10, callerId: 5, callerRole: UserRole.SalesRep, routeId: 99);
+
+        result.TotalCount.Should().Be(0);
+        result.Outlets.Should().BeEmpty();
+        _repoMock.Verify(r => r.GetAllAsync(0, 10, null, null, 30, 99, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // ─────────────────────────────────────────────────
+    // GetAllByTerritoryAsync
+    // ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetAllByTerritoryAsync_DelegatesToUnifiedRepoMethod_WithNullRouteId()
+    {
+        var outlets = new[] { CreateFakeOutlet(1, territoryId: 30) };
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, 30, null, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((outlets.AsEnumerable(), 1));
+
+        var result = await _sut.GetAllByTerritoryAsync(30, 1, 10);
+
+        result.Outlets.Should().HaveCount(1);
+        result.TotalCount.Should().Be(1);
+        _repoMock.Verify(r => r.GetAllAsync(0, 10, null, null, 30, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     // ── #14 territory scoping ────────────────────────────────────────────────

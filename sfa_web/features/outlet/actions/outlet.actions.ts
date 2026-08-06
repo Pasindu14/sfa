@@ -14,9 +14,23 @@ type OutletsListResponse = {
 
 export const getOutletsAction = createAction(
   { name: 'getOutletsAction', requireAuth: true, requiredRole: 'Admin' },
-  async (page: number = 1, pageSize: number = 10, search?: string, status?: string) => {
+  async (
+    page: number = 1,
+    pageSize: number = 10,
+    search?: string,
+    status?: string,
+    territoryId?: number,
+    routeId?: number,
+  ) => {
     const res = await client.get('/api/v1/outlets', {
-      params: { page, pageSize, search: search || undefined, status: status || undefined },
+      params: {
+        page,
+        pageSize,
+        search: search || undefined,
+        status: status || undefined,
+        territoryId: territoryId || undefined,
+        routeId: routeId || undefined,
+      },
     })
     return res.data.data as OutletsListResponse
   }
