@@ -53,7 +53,7 @@ export function DistributorPurchaseOrderEditPage({ id }: Props) {
 
   const { data: order, isLoading: isLoadingOrder } = useMyPurchaseOrder(id)
   const { data: categoryPricings = [], isLoading: isLoadingPricings } = useMyProductCategoryPricings()
-  const products = categoryPricings.map((r) => ({ id: r.productId, itemDescription: r.itemDescription }))
+  const products = categoryPricings.map((r) => ({ id: r.productId, code: r.productCode, itemDescription: r.itemDescription }))
 
   const { mutate: updateOrder, isPending, fieldErrors } = useUpdateMyPurchaseOrder(
     id,
@@ -234,7 +234,10 @@ export function DistributorPurchaseOrderEditPage({ id }: Props) {
                                   <SelectContent>
                                     {products?.map((p) => (
                                       <SelectItem key={p.id} value={String(p.id)}>
-                                        {p.itemDescription}
+                                        <span className="font-medium">{p.itemDescription}</span>
+                                        <span className="ml-2 text-xs text-muted-foreground font-mono">
+                                          {p.code}
+                                        </span>
                                       </SelectItem>
                                     ))}
                                   </SelectContent>

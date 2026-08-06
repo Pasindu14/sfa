@@ -14,6 +14,7 @@ public record GrnDto(
     DateTime? ConfirmedAt,
     string? Notes,
     DateTime CreatedAt,
+    decimal TotalAmount,
     List<GrnItemDto> Items
 );
 
@@ -24,5 +25,7 @@ public record GrnItemDto(
     string  ProductCode,
     decimal Quantity,
     string  Unit,
+    decimal UnitPrice,
+    decimal TotalPrice,
     string? Notes
 );

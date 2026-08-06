@@ -84,6 +84,7 @@ public class GrnRepository(AppDbContext db) : IGrnRepository
               .Include(x => x.Items)
                   .ThenInclude(i => i.Product)
               .Include(x => x.SalesInvoice)
+                  .ThenInclude(si => si.Items)
               .Include(x => x.Distributor)
               .Include(x => x.ConfirmedByUser)
               .FirstOrDefaultAsync(x => x.Id == grnId && x.IsActive, ct);

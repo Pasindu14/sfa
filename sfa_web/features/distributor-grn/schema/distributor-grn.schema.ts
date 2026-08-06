@@ -7,6 +7,8 @@ export const myGrnItemSchema = z.object({
   productCode: z.string(),
   quantity: z.number(),
   unit: z.string(),
+  unitPrice: z.number(),
+  totalPrice: z.number(),
   notes: z.string().nullable(),
 })
 
@@ -22,6 +24,7 @@ export const myGrnListItemSchema = z.object({
   confirmedAt: z.string().nullable(),
   notes: z.string().nullable(),
   createdAt: z.string(),
+  totalAmount: z.number(),
   items: z.array(myGrnItemSchema),
 })
 

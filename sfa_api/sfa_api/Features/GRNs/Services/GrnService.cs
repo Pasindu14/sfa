@@ -40,6 +40,7 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
             g.ConfirmedAt,
             g.Notes,
             g.CreatedAt,
+            g.SalesInvoice?.TotalAmount ?? 0,
             []
         )).ToList();
         return (dtos, total);
@@ -257,28 +258,47 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
 
     // ── DTO Projection ────────────────────────────────────────────────────
 
-    private static GrnDto ProjectToDto(GRN grn) => new(
-        grn.Id,
-        grn.GrnNumber,
-        grn.SalesInvoiceId,
-        grn.SalesInvoice?.VchBillNo ?? string.Empty,
-        grn.DistributorId,
-        grn.Distributor?.Name ?? string.Empty,
-        grn.Status.ToString(),
-        grn.ReceivedAt,
-        grn.ConfirmedBy,
-        grn.ConfirmedByUser?.Name,
-        grn.ConfirmedAt,
-        grn.Notes,
-        grn.CreatedAt,
-        grn.Items.Select(i => new GrnItemDto(
-            i.Id,
-            i.ProductId,
-            i.Product?.ItemDescription ?? string.Empty,
-            i.Product?.Code ?? string.Empty,
-            i.Quantity,
-            i.Unit,
-            i.Notes
-        )).ToList()
-    );
+    private static GrnDto ProjectToDto(GRN grn)
+    {
+        // GRN items are a 1:1 snapshot of the invoice's items (same ProductId, same Quantity —
+        // enforced at creation, see GRN_DUPLICATE_PRODUCT guard in CreateAsync), so pricing is
+        // never stored on GRNItem itself; it's always looked up from the source invoice line.
+        var invoicePricesByProduct = grn.SalesInvoice?.Items
+            .ToDictionary(i => i.ProductId, i => (i.UnitPrice, i.TotalPrice))
+            ?? new Dictionary<int, (decimal UnitPrice, decimal TotalPrice)>();
+
+        return new(
+            grn.Id,
+            grn.GrnNumber,
+            grn.SalesInvoiceId,
+            grn.SalesInvoice?.VchBillNo ?? string.Empty,
+            grn.DistributorId,
+            grn.Distributor?.Name ?? string.Empty,
+            grn.Status.ToString(),
+            grn.ReceivedAt,
+            grn.ConfirmedBy,
+            grn.ConfirmedByUser?.Name,
+            grn.ConfirmedAt,
+            grn.Notes,
+            grn.CreatedAt,
+            grn.SalesInvoice?.TotalAmount ?? 0,
+            grn.Items.Select(i =>
+            {
+                var (unitPrice, totalPrice) = invoicePricesByProduct.TryGetValue(i.ProductId, out var price)
+                    ? price
+                    : (0m, 0m);
+                return new GrnItemDto(
+                    i.Id,
+                    i.ProductId,
+                    i.Product?.ItemDescription ?? string.Empty,
+                    i.Product?.Code ?? string.Empty,
+                    i.Quantity,
+                    i.Unit,
+                    unitPrice,
+                    totalPrice,
+                    i.Notes
+                );
+            }).ToList()
+        );
+    }
 }

@@ -71,6 +71,13 @@ function formatDate(dateStr: string | null) {
   return formatColombo(dateStr, 'd MMM yyyy')
 }
 
+function fmtAmount(n: number) {
+  return n.toLocaleString('en-LK', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
+
 interface Props {
   id: number | null
   onClose: () => void
@@ -172,6 +179,8 @@ export function DistributorGrnDetailDialog({ id, onClose }: Props) {
                         <th className="border-r px-3 py-2 text-left text-xs font-medium text-muted-foreground">Code</th>
                         <th className="border-r px-3 py-2 text-right text-xs font-medium text-muted-foreground">Quantity</th>
                         <th className="border-r px-3 py-2 text-left text-xs font-medium text-muted-foreground">Unit</th>
+                        <th className="border-r px-3 py-2 text-right text-xs font-medium text-muted-foreground">Unit Price</th>
+                        <th className="border-r px-3 py-2 text-right text-xs font-medium text-muted-foreground">Total</th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">Notes</th>
                       </tr>
                     </thead>
@@ -192,6 +201,12 @@ export function DistributorGrnDetailDialog({ id, onClose }: Props) {
                           <td className="border-r px-3 py-2.5 text-muted-foreground whitespace-nowrap">
                             {item.unit}
                           </td>
+                          <td className="border-r px-3 py-2.5 text-right tabular-nums text-muted-foreground">
+                            {fmtAmount(item.unitPrice)}
+                          </td>
+                          <td className="border-r px-3 py-2.5 text-right tabular-nums font-medium">
+                            {fmtAmount(item.totalPrice)}
+                          </td>
                           <td className="px-3 py-2.5 text-xs text-muted-foreground">
                             {item.notes ?? '—'}
                           </td>
@@ -203,11 +218,17 @@ export function DistributorGrnDetailDialog({ id, onClose }: Props) {
               </div>
             </ScrollArea>
 
-            {/* Footer: total item count */}
+            {/* Footer: total item count + total value */}
             <div className="shrink-0 border-t bg-muted/30 px-4 sm:px-6 py-3">
-              <div className="flex justify-between text-sm font-semibold">
-                <span>Total Items</span>
-                <span className="tabular-nums">{grn.items.length}</span>
+              <div className="flex items-center justify-between">
+                <div className="flex justify-between gap-2 text-sm font-semibold">
+                  <span>Total Items</span>
+                  <span className="tabular-nums">{grn.items.length}</span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-sm font-semibold">Total Value</span>
+                  <span className="tabular-nums text-base font-bold">{fmtAmount(grn.totalAmount)}</span>
+                </div>
               </div>
             </div>
 

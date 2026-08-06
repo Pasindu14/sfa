@@ -163,6 +163,11 @@ export function parseExcelFile(buffer: ArrayBuffer, fileName: string): ParseResu
 
   const invoices: ImportInvoicePayload[] = []
   const issues: ParseIssue[] = []
+  // Vch/Bill No -> the row it first appeared on, so a repeat can point back to it.
+  // The API also rejects duplicates already in the database, but a dupe *within this
+  // file* would otherwise silently overwrite nothing — both rows would be sent to the
+  // API and one would come back as an opaque "Already imported" skip after the fact.
+  const seenVchBillNos = new Map<string, number>()
   let current: ImportInvoicePayload | null = null
   let currentRow = 0
   let lineNumber = 1
@@ -211,6 +216,9 @@ export function parseExcelFile(buffer: ArrayBuffer, fileName: string): ParseResu
       if (!invoiceDate) problems.push(`unreadable date "${str(dateCell)}"`)
       if (!vchBillNo) problems.push('missing voucher number')
       if (!distributorAlias) problems.push(`missing or non-numeric distributor alias "${str(row[COL.ALIAS])}"`)
+      if (vchBillNo && seenVchBillNos.has(vchBillNo)) {
+        problems.push(`duplicate voucher number — already used at row ${seenVchBillNos.get(vchBillNo)} in this file`)
+      }
 
       if (problems.length > 0) {
         issues.push({
@@ -220,6 +228,8 @@ export function parseExcelFile(buffer: ArrayBuffer, fileName: string): ParseResu
         })
         continue
       }
+
+      seenVchBillNos.set(vchBillNo, sheetRow)
 
       const itemErpCode = str(row[COL.ITEM_CODE])
       const isFreeIssue = str(row[COL.FREE_ISSUE]).toUpperCase() === 'Y'
