@@ -27,5 +27,10 @@ public record GrnItemDto(
     string  Unit,
     decimal UnitPrice,
     decimal TotalPrice,
+    // Units per case, from Product.PiecesPerPack. Quantity above is the raw Case count from the
+    // invoice; the pieces actually credited to stock on confirm = Quantity * PiecesPerPack. 0
+    // means not configured (confirming is blocked in that state — see
+    // GRN_PRODUCT_MISSING_PIECES_PER_PACK).
+    int     PiecesPerPack,
     string? Notes
 );

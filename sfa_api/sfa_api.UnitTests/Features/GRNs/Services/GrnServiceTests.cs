@@ -9,6 +9,7 @@ using sfa_api.Features.GRNs.Enums;
 using sfa_api.Features.GRNs.Repositories;
 using sfa_api.Features.GRNs.Requests;
 using sfa_api.Features.GRNs.Services;
+using sfa_api.Features.Products.Entities;
 using sfa_api.Features.SalesInvoices.Entities;
 using sfa_api.Features.SalesInvoices.Enums;
 using sfa_api.Features.Stock.Entities;
@@ -88,7 +89,9 @@ public class GrnServiceTests
         }
     };
 
-    private static GRN PendingGrn(int id = GrnId) => new()
+    // PiecesPerPack = 1 by default so existing quantity assertions (which predate case-to-piece
+    // conversion) are unaffected: Quantity * 1 == Quantity.
+    private static GRN PendingGrn(int id = GrnId, int piecesPerPack = 1) => new()
     {
         Id            = id,
         GrnNumber     = $"GRN-2026-{id:D5}",
@@ -103,7 +106,8 @@ public class GrnServiceTests
                 Id        = 1,
                 ProductId = ProductId,
                 Quantity  = 10m,
-                Unit      = "CTN"
+                Unit      = "CTN",
+                Product   = new Product { Id = ProductId, Code = "CF01", ItemDescription = "Test product", PiecesPerPack = piecesPerPack }
             }
         }
     };
@@ -120,7 +124,11 @@ public class GrnServiceTests
         IsActive       = true,
         Items          = new List<GRNItem>
         {
-            new() { Id = 1, ProductId = ProductId, Quantity = 10m, Unit = "CTN" }
+            new()
+            {
+                Id = 1, ProductId = ProductId, Quantity = 10m, Unit = "CTN",
+                Product = new Product { Id = ProductId, Code = "CF01", ItemDescription = "Test product", PiecesPerPack = 1 }
+            }
         }
     };
 
@@ -582,6 +590,143 @@ public class GrnServiceTests
 
         _txMock.Verify(t => t.RollbackAsync(It.IsAny<CancellationToken>()), Times.Once);
         _txMock.Verify(t => t.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // ─────────────────────────────────────────────────
+    // Case-to-piece conversion
+    // ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ConfirmAsync_PiecesPerPackConfigured_CreditsConvertedPieceQuantity()
+    {
+        var grn = PendingGrn(piecesPerPack: 12);
+        var existingStock = new DistributorStock
+        {
+            Id             = 1,
+            DistributorId  = DistributorId,
+            ProductId      = ProductId,
+            QuantityOnHand = 0m,
+            LastUpdatedAt  = DateTime.UtcNow
+        };
+        SetupConfirmHappyPath(grn, existingStock);
+        SetupConfirmReloadAfterCommit(grn);
+        _repoMock
+            .Setup(r => r.BeginTransactionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(_txMock.Object);
+
+        StockTransaction? capturedTx = null;
+        _repoMock
+            .Setup(r => r.AddStockTransactionAsync(It.IsAny<StockTransaction>(), It.IsAny<CancellationToken>()))
+            .Callback<StockTransaction, CancellationToken>((tx, _) => capturedTx = tx)
+            .Returns(Task.CompletedTask);
+
+        await _sut.ConfirmAsync(grn.Id, new ConfirmGrnRequest(DateTime.UtcNow), CallerId);
+
+        // GRN item Quantity = 10 (cases), PiecesPerPack = 12 → 120 pieces credited, not 10.
+        existingStock.QuantityOnHand.Should().Be(120m);
+        capturedTx!.Quantity.Should().Be(120m);
+        capturedTx.QuantityAfter.Should().Be(120m);
+    }
+
+    [Fact]
+    public async Task ConfirmAsync_ProductPiecesPerPackIsZero_ThrowsBusinessRuleException()
+    {
+        var grn = PendingGrn(piecesPerPack: 0);
+        _repoMock
+            .Setup(r => r.GetGrnWithItemsAsync(grn.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(grn);
+
+        var act = () => _sut.ConfirmAsync(grn.Id, new ConfirmGrnRequest(DateTime.UtcNow), CallerId);
+
+        var ex = await act.Should().ThrowAsync<BusinessRuleException>();
+        ex.Which.ErrorCode.Should().Be("GRN_PRODUCT_MISSING_PIECES_PER_PACK");
+        ex.Which.Message.Should().Contain("CF01").And.Contain("Test product");
+    }
+
+    [Fact]
+    public async Task ConfirmAsync_ProductPiecesPerPackIsNegative_ThrowsBusinessRuleException()
+    {
+        var grn = PendingGrn(piecesPerPack: -1);
+        _repoMock
+            .Setup(r => r.GetGrnWithItemsAsync(grn.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(grn);
+
+        var act = () => _sut.ConfirmAsync(grn.Id, new ConfirmGrnRequest(DateTime.UtcNow), CallerId);
+
+        var ex = await act.Should().ThrowAsync<BusinessRuleException>();
+        ex.Which.ErrorCode.Should().Be("GRN_PRODUCT_MISSING_PIECES_PER_PACK");
+    }
+
+    [Fact]
+    public async Task ConfirmAsync_MultipleItemsSomeMissingPiecesPerPack_ListsAllOffendingProductsInOneError()
+    {
+        const int OtherProductId = 6;
+        var grn = new GRN
+        {
+            Id             = GrnId,
+            GrnNumber      = "GRN-2026-00007",
+            SalesInvoiceId = SalesInvoiceId,
+            DistributorId  = DistributorId,
+            Status         = GrnStatus.Pending,
+            IsActive       = true,
+            Items = new List<GRNItem>
+            {
+                new()
+                {
+                    Id = 1, ProductId = ProductId, Quantity = 10m, Unit = "CTN",
+                    Product = new Product { Id = ProductId, Code = "CF01", ItemDescription = "Configured product", PiecesPerPack = 12 }
+                },
+                new()
+                {
+                    Id = 2, ProductId = OtherProductId, Quantity = 5m, Unit = "CTN",
+                    Product = new Product { Id = OtherProductId, Code = "CF02", ItemDescription = "Unconfigured product", PiecesPerPack = 0 }
+                }
+            }
+        };
+
+        _repoMock
+            .Setup(r => r.GetGrnWithItemsAsync(grn.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(grn);
+
+        var act = () => _sut.ConfirmAsync(grn.Id, new ConfirmGrnRequest(DateTime.UtcNow), CallerId);
+
+        var ex = await act.Should().ThrowAsync<BusinessRuleException>();
+        ex.Which.ErrorCode.Should().Be("GRN_PRODUCT_MISSING_PIECES_PER_PACK");
+        ex.Which.Message.Should().Contain("CF02").And.NotContain("CF01");
+
+        // Fails before any mutation — the configured item's stock/ledger must never be touched
+        // just because a sibling item on the same GRN is unconfigured.
+        _repoMock.Verify(
+            r => r.AddStockTransactionAsync(It.IsAny<StockTransaction>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task ConfirmAsync_ValidGrn_ProjectsGrnItemDtoPiecesPerPack()
+    {
+        var grn = PendingGrn(piecesPerPack: 24);
+        var existingStock = new DistributorStock
+        {
+            DistributorId  = DistributorId,
+            ProductId      = ProductId,
+            QuantityOnHand = 0m,
+            LastUpdatedAt  = DateTime.UtcNow
+        };
+        SetupConfirmHappyPath(grn, existingStock);
+        _repoMock
+            .Setup(r => r.BeginTransactionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(_txMock.Object);
+
+        // The post-commit reload must also carry the Product nav so ProjectToDto can read PiecesPerPack.
+        var confirmedSnapshot = PendingGrn(piecesPerPack: 24);
+        confirmedSnapshot.Status = GrnStatus.Confirmed;
+        _repoMock
+            .Setup(r => r.GetGrnWithItemsReadOnlyAsync(grn.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(confirmedSnapshot);
+
+        var result = await _sut.ConfirmAsync(grn.Id, new ConfirmGrnRequest(DateTime.UtcNow), CallerId);
+
+        result.Items.Should().ContainSingle(i => i.PiecesPerPack == 24);
     }
 
     // ────────────────────────────────────────────────────────────────────────

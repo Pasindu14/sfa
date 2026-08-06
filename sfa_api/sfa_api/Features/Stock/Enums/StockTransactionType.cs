@@ -9,5 +9,9 @@ public enum StockTransactionType
     Damage          = 4,
     Opening         = 5,
     BillingReversal      = 6,
-    StockTakingAdjustment = 7
+    StockTakingAdjustment = 7,
+
+    /// <summary>One-off ledger correction (e.g. backfilling a unit-conversion bug) — distinct
+    /// from StockTakingAdjustment, which specifically means a physical stock-count variance.</summary>
+    Correction = 8
 }

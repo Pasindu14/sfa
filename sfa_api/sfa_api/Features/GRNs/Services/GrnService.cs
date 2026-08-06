@@ -152,6 +152,19 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
         //     Distributor nav rather than re-queried.
         var distributorFleetId = grn.Distributor?.FleetId;
 
+        // 3b. Business rule: every item's product must have a configured PiecesPerPack. GRN
+        //     quantities arrive in Case units from the BUSY ERP import; DistributorStock is
+        //     maintained in pieces. Collect every offending product up front (not fail-fast on
+        //     the first one) so the caller gets one complete, actionable error.
+        var unconfigured = grn.Items.Where(i => i.Product == null || i.Product.PiecesPerPack <= 0).ToList();
+        if (unconfigured.Count > 0)
+            throw new BusinessRuleException(
+                "GRN_PRODUCT_MISSING_PIECES_PER_PACK",
+                $"Cannot confirm GRN: {unconfigured.Count} product(s) have no Pieces Per Pack configured — " +
+                string.Join(", ", unconfigured.Select(i => $"{i.Product?.Code} ({i.Product?.ItemDescription})")) +
+                ". Set Pieces Per Pack for these products before confirming.",
+                new { grnId, products = unconfigured.Select(i => new { i.ProductId, i.Product?.Code, i.Product?.ItemDescription }) });
+
         // 4. Wrap in execution strategy — required because NpgsqlRetryingExecutionStrategy
         //    does not allow user-initiated transactions unless wrapped this way
         var strategy = _db.Database.CreateExecutionStrategy();
@@ -174,6 +187,11 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
                 foreach (var item in grn.Items)
                 {
                     var stockType = item.IsFreeIssue ? StockType.FreeIssue : StockType.Normal;
+
+                    // Case → piece conversion. item.Quantity is the raw case count received on the
+                    // invoice; DistributorStock is maintained in pieces. PiecesPerPack > 0 is
+                    // guaranteed by the guard in step 3b above.
+                    var piecesQuantity = item.Quantity * item.Product.PiecesPerPack;
 
                     // SELECT ... FOR UPDATE locks the row, preventing concurrent reads of stale QuantityOnHand
                     var stock = await _repository.GetStockForUpdateAsync(grn.DistributorId, item.ProductId, stockType, ct);
@@ -204,7 +222,7 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
                         quantityBefore = stock.QuantityOnHand;
                     }
 
-                    var quantityAfter = quantityBefore + item.Quantity;
+                    var quantityAfter = quantityBefore + piecesQuantity;
 
                     // Update running balance
                     stock.QuantityOnHand = quantityAfter;
@@ -219,7 +237,7 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
                         StockType       = stockType,
                         TransactionType = StockTransactionType.GRNReceipt,
                         Direction       = StockTransactionDirection.In,
-                        Quantity        = item.Quantity,
+                        Quantity        = piecesQuantity,
                         QuantityBefore  = quantityBefore,
                         QuantityAfter   = quantityAfter,
                         ReferenceType   = "GRN",
@@ -296,6 +314,7 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
                     i.Unit,
                     unitPrice,
                     totalPrice,
+                    i.Product?.PiecesPerPack ?? 0,
                     i.Notes
                 );
             }).ToList()

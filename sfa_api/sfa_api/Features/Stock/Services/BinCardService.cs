@@ -71,7 +71,8 @@ public class BinCardService(IBinCardRepository repo) : IBinCardService
             var invoice           = SumType(StockTransactionType.GRNReceipt);
             var marketResaleable  = SumType(StockTransactionType.Return);
             var deletedInv        = NetType(StockTransactionType.BillingReversal);
-            var stockAdjustment   = NetType(StockTransactionType.StockTakingAdjustment);
+            var stockAdjustment   = NetType(StockTransactionType.StockTakingAdjustment)
+                                   + NetType(StockTransactionType.Correction);
             var sold              = SumType(StockTransactionType.Sale);
             var freeIssues        = FreeIssue(StockType.Normal);
             var companyFreeIssues = FreeIssue(StockType.FreeIssue);
