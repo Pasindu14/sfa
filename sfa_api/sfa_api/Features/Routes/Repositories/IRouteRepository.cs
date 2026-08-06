@@ -7,7 +7,7 @@ namespace sfa_api.Features.Routes.Repositories;
 public interface IRouteRepository
 {
     Task<RouteEntity?> GetByIdAsync(int id, CancellationToken ct = default);
-    Task<(IEnumerable<RouteEntity> Routes, int TotalCount)> GetAllAsync(int skip, int take, bool? isActive = null, string? search = null, CancellationToken ct = default);
+    Task<(IEnumerable<RouteEntity> Routes, int TotalCount)> GetAllAsync(int skip, int take, bool? isActive = null, string? search = null, int? areaId = null, int? territoryId = null, CancellationToken ct = default);
     Task<IEnumerable<RouteEntity>> GetAllActiveAsync(int? territoryId = null, CancellationToken ct = default);
     Task<IEnumerable<RouteEntity>> GetActiveByDivisionIdAsync(int divisionId, CancellationToken ct = default);
     Task<Division?> GetDivisionWithAncestorsAsync(int divisionId, CancellationToken ct = default);

@@ -14,8 +14,10 @@ type TerritoriesListResponse = {
 
 export const getActiveTerritoriesAction = createAction(
   { name: 'getActiveTerritoriesAction', requireAuth: true, requiredRole: 'Admin' },
-  async () => {
-    const res = await client.get('/api/v1/territories/active')
+  async (areaId?: number) => {
+    const res = await client.get('/api/v1/territories/active', {
+      params: { areaId: areaId || undefined },
+    })
     return res.data.data as TerritoryDto[]
   }
 )

@@ -42,6 +42,8 @@ public class RoutesController(
         [FromQuery] int pageSize = 10,
         [FromQuery] string? status = null,
         [FromQuery] string? search = null,
+        [FromQuery] int? areaId = null,
+        [FromQuery] int? territoryId = null,
         CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
@@ -51,7 +53,7 @@ public class RoutesController(
             "inactive" => (bool?)false,
             _ => null
         };
-        var result = await _service.GetAllAsync(page, pageSize, isActive, search, ct);
+        var result = await _service.GetAllAsync(page, pageSize, isActive, search, areaId, territoryId, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 

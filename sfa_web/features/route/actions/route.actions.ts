@@ -14,9 +14,21 @@ type RoutesListResponse = {
 
 export const getRoutesAction = createAction(
   { name: 'getRoutesAction', requireAuth: true, requiredRole: 'Admin' },
-  async (page: number = 1, pageSize: number = 10, search?: string) => {
+  async (
+    page: number = 1,
+    pageSize: number = 10,
+    search?: string,
+    areaId?: number,
+    territoryId?: number,
+  ) => {
     const res = await client.get('/api/v1/routes', {
-      params: { page, pageSize, search: search || undefined },
+      params: {
+        page,
+        pageSize,
+        search: search || undefined,
+        areaId: areaId || undefined,
+        territoryId: territoryId || undefined,
+      },
     })
     return res.data.data as RoutesListResponse
   }

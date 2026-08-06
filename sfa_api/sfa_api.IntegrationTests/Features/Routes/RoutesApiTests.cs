@@ -290,6 +290,76 @@ public class RoutesApiTests
         routes.EnumerateArray().Should().Contain(r => r.GetProperty("name").GetString()!.Contains("UniqueXYZ123"));
     }
 
+    [Fact]
+    public async Task GetAllRoutes_WithAreaIdParam_ReturnsOnlyMatchingArea()
+    {
+        var regionId = await CreateRegionAsync("Region For Route AreaId Filter Test");
+
+        var areaAId = await CreateAreaAsync("Area A For Route AreaId Filter Test", regionId);
+        var territoryAId = await CreateTerritoryAsync("Territory A For Route AreaId Filter Test", areaAId);
+        var divisionAId = await CreateDivisionAsync("Division A For Route AreaId Filter Test", territoryAId);
+        var routeAId = await CreateRouteAsync("Route A AreaId Filter UniqueAA6", divisionAId);
+
+        var areaBId = await CreateAreaAsync("Area B For Route AreaId Filter Test", regionId);
+        var territoryBId = await CreateTerritoryAsync("Territory B For Route AreaId Filter Test", areaBId);
+        var divisionBId = await CreateDivisionAsync("Division B For Route AreaId Filter Test", territoryBId);
+        var routeBId = await CreateRouteAsync("Route B AreaId Filter UniqueAA6", divisionBId);
+
+        var response = await _client.GetAsync($"/api/v1/routes?areaId={areaAId}&pageSize=100");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
+        var routes = body.GetProperty("data").GetProperty("routes").EnumerateArray().ToList();
+        routes.Should().Contain(r => r.GetProperty("id").GetInt32() == routeAId);
+        routes.Should().NotContain(r => r.GetProperty("id").GetInt32() == routeBId);
+    }
+
+    [Fact]
+    public async Task GetAllRoutes_WithTerritoryIdParam_ReturnsOnlyMatchingTerritory()
+    {
+        var regionId = await CreateRegionAsync("Region For Route TerritoryId Filter Test");
+        var areaId = await CreateAreaAsync("Area For Route TerritoryId Filter Test", regionId);
+
+        var territoryAId = await CreateTerritoryAsync("Territory A For Route TerritoryId Filter Test", areaId);
+        var divisionAId = await CreateDivisionAsync("Division A For Route TerritoryId Filter Test", territoryAId);
+        var routeAId = await CreateRouteAsync("Route A TerritoryId Filter UniqueAA7", divisionAId);
+
+        var territoryBId = await CreateTerritoryAsync("Territory B For Route TerritoryId Filter Test", areaId);
+        var divisionBId = await CreateDivisionAsync("Division B For Route TerritoryId Filter Test", territoryBId);
+        var routeBId = await CreateRouteAsync("Route B TerritoryId Filter UniqueAA7", divisionBId);
+
+        var response = await _client.GetAsync($"/api/v1/routes?territoryId={territoryAId}&pageSize=100");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
+        var routes = body.GetProperty("data").GetProperty("routes").EnumerateArray().ToList();
+        routes.Should().Contain(r => r.GetProperty("id").GetInt32() == routeAId);
+        routes.Should().NotContain(r => r.GetProperty("id").GetInt32() == routeBId);
+    }
+
+    [Fact]
+    public async Task GetAllRoutes_WithAreaAndTerritoryFromDifferentAreas_ReturnsEmpty()
+    {
+        var regionId = await CreateRegionAsync("Region For Route Mismatched Filter Test");
+
+        var areaAId = await CreateAreaAsync("Area A For Route Mismatched Filter Test", regionId);
+        var territoryAId = await CreateTerritoryAsync("Territory A For Route Mismatched Filter Test", areaAId);
+        var divisionAId = await CreateDivisionAsync("Division A For Route Mismatched Filter Test", territoryAId);
+        await CreateRouteAsync("Route A Mismatched Filter UniqueAA8", divisionAId);
+
+        var areaBId = await CreateAreaAsync("Area B For Route Mismatched Filter Test", regionId);
+        var territoryBId = await CreateTerritoryAsync("Territory B For Route Mismatched Filter Test", areaBId);
+        var divisionBId = await CreateDivisionAsync("Division B For Route Mismatched Filter Test", territoryBId);
+        await CreateRouteAsync("Route B Mismatched Filter UniqueAA8", divisionBId);
+
+        var response = await _client.GetAsync($"/api/v1/routes?areaId={areaAId}&territoryId={territoryBId}&pageSize=100");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
+        body.GetProperty("data").GetProperty("routes").EnumerateArray().Should().BeEmpty();
+        body.GetProperty("data").GetProperty("totalCount").GetInt32().Should().Be(0);
+    }
+
     // ─────────────────────────────────────────────────
     // GET /api/v1/routes/active
     // ─────────────────────────────────────────────────

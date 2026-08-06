@@ -6,7 +6,7 @@ namespace sfa_api.Features.Routes.Services;
 public interface IRouteService
 {
     Task<RouteDto> GetByIdAsync(int id, CancellationToken ct = default);
-    Task<RouteListDto> GetAllAsync(int page, int pageSize, bool? isActive = null, string? search = null, CancellationToken ct = default);
+    Task<RouteListDto> GetAllAsync(int page, int pageSize, bool? isActive = null, string? search = null, int? areaId = null, int? territoryId = null, CancellationToken ct = default);
     Task<IEnumerable<RouteDto>> GetAllActiveAsync(int? territoryId = null, CancellationToken ct = default);
     Task<IEnumerable<RouteDto>> GetActiveByDivisionIdAsync(int divisionId, CancellationToken ct = default);
     Task<RouteDto> CreateAsync(CreateRouteRequest request, int? callerId, CancellationToken ct = default);

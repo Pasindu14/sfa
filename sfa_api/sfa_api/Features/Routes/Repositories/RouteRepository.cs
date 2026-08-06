@@ -23,11 +23,14 @@ public class RouteRepository(AppDbContext context) : IRouteRepository
             .FirstOrDefaultAsync(r => r.Id == id, ct);
 
     public async Task<(IEnumerable<RouteEntity> Routes, int TotalCount)> GetAllAsync(
-        int skip, int take, bool? isActive = null, string? search = null, CancellationToken ct = default)
+        int skip, int take, bool? isActive = null, string? search = null,
+        int? areaId = null, int? territoryId = null, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, 200);
         var query = _context.Routes.IgnoreQueryFilters().Where(x => !x.IsDeleted).AsQueryable();
 
+        if (areaId.HasValue) query = query.Where(r => r.AreaId == areaId.Value);
+        if (territoryId.HasValue) query = query.Where(r => r.TerritoryId == territoryId.Value);
         if (isActive.HasValue) query = query.Where(r => r.IsActive == isActive.Value);
         if (!string.IsNullOrWhiteSpace(search))
         {

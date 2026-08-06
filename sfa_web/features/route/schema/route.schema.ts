@@ -42,6 +42,8 @@ export const updateRouteSchema = z.object({
 
 export const filterSchema = z.object({
   search: z.string().optional(),
+  areaId: z.string().optional(),
+  territoryId: z.string().optional(),
   page: z.number().default(1),
   pageSize: z.number().default(10),
 })

@@ -168,7 +168,7 @@ public class RouteServiceTests
     public async Task GetAllAsync_ReturnsPaginatedRouteListDto()
     {
         var routes = new[] { CreateFakeRoute(1), CreateFakeRoute(2) };
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((routes.AsEnumerable(), 2));
 
         var result = await _sut.GetAllAsync(1, 10);
@@ -182,18 +182,18 @@ public class RouteServiceTests
     [Fact]
     public async Task GetAllAsync_Page2_CalculatesCorrectSkip()
     {
-        _repoMock.Setup(r => r.GetAllAsync(10, 10, null, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(10, 10, null, null, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<RouteEntity>(), 0));
 
         await _sut.GetAllAsync(2, 10);
 
-        _repoMock.Verify(r => r.GetAllAsync(10, 10, null, null, It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.GetAllAsync(10, 10, null, null, null, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task GetAllAsync_EmptyResult_ReturnsEmptyRouteList()
     {
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<RouteEntity>(), 0));
 
         var result = await _sut.GetAllAsync(1, 10);
@@ -205,34 +205,56 @@ public class RouteServiceTests
     [Fact]
     public async Task GetAllAsync_ActiveFilter_ForwardedToRepository()
     {
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, true, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, true, null, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<RouteEntity>(), 0));
 
         await _sut.GetAllAsync(1, 10, isActive: true);
 
-        _repoMock.Verify(r => r.GetAllAsync(0, 10, true, null, It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.GetAllAsync(0, 10, true, null, null, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task GetAllAsync_InactiveFilter_ForwardedToRepository()
     {
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, false, null, It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, false, null, null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<RouteEntity>(), 0));
 
         await _sut.GetAllAsync(1, 10, isActive: false);
 
-        _repoMock.Verify(r => r.GetAllAsync(0, 10, false, null, It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.GetAllAsync(0, 10, false, null, null, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task GetAllAsync_SearchParam_ForwardedToRepository()
     {
-        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, "north", It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, "north", null, null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((Enumerable.Empty<RouteEntity>(), 0));
 
         await _sut.GetAllAsync(1, 10, search: "north");
 
-        _repoMock.Verify(r => r.GetAllAsync(0, 10, null, "north", It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.GetAllAsync(0, 10, null, "north", null, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_AreaIdParam_ForwardedToRepository()
+    {
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, 20, null, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((Enumerable.Empty<RouteEntity>(), 0));
+
+        await _sut.GetAllAsync(1, 10, areaId: 20);
+
+        _repoMock.Verify(r => r.GetAllAsync(0, 10, null, null, 20, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_TerritoryIdParam_ForwardedToRepository()
+    {
+        _repoMock.Setup(r => r.GetAllAsync(0, 10, null, null, null, 30, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((Enumerable.Empty<RouteEntity>(), 0));
+
+        await _sut.GetAllAsync(1, 10, territoryId: 30);
+
+        _repoMock.Verify(r => r.GetAllAsync(0, 10, null, null, null, 30, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     // ─────────────────────────────────────────────────

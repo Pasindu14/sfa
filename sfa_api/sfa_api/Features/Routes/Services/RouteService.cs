@@ -28,10 +28,10 @@ public class RouteService(
         return MapToDto(route);
     }
 
-    public async Task<RouteListDto> GetAllAsync(int page, int pageSize, bool? isActive = null, string? search = null, CancellationToken ct = default)
+    public async Task<RouteListDto> GetAllAsync(int page, int pageSize, bool? isActive = null, string? search = null, int? areaId = null, int? territoryId = null, CancellationToken ct = default)
     {
         var skip = (page - 1) * pageSize;
-        var (routes, totalCount) = await _repo.GetAllAsync(skip, pageSize, isActive, search, ct);
+        var (routes, totalCount) = await _repo.GetAllAsync(skip, pageSize, isActive, search, areaId, territoryId, ct);
         return new RouteListDto(
             Routes: routes.Select(MapToDto),
             TotalCount: totalCount,

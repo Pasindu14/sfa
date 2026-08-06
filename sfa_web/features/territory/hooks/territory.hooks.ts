@@ -66,15 +66,17 @@ export function useTerritory(id: number | null) {
 }
 
 // --- Active territories hook (for dropdowns/selects) ---
+// Pass areaId to scope the fetch to that area's territories only; omit for all active territories.
 
-export function useActiveTerritories() {
+export function useActiveTerritories(areaId?: number, options?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: [...territoryKeys.all, 'active'] as const,
+    queryKey: [...territoryKeys.all, 'active', areaId ?? null] as const,
     queryFn: async () => {
-      const result = await getActiveTerritoriesAction()
+      const result = await getActiveTerritoriesAction(areaId)
       if (!result.success) throw new Error(result.error)
       return result.data
     },
+    enabled: options?.enabled ?? true,
   })
 }
 
