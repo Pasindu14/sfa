@@ -243,13 +243,25 @@ public class RouteServiceTests
     public async Task GetAllActiveAsync_ReturnsOnlyActiveRoutes()
     {
         var activeRoutes = new[] { CreateFakeRoute(1, isActive: true), CreateFakeRoute(2, isActive: true) };
-        _repoMock.Setup(r => r.GetAllActiveAsync(It.IsAny<CancellationToken>()))
+        _repoMock.Setup(r => r.GetAllActiveAsync(null, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(activeRoutes.AsEnumerable());
 
         var result = await _sut.GetAllActiveAsync();
 
         result.Should().HaveCount(2);
         result.Should().OnlyContain(r => r.IsActive);
+    }
+
+    [Fact]
+    public async Task GetAllActiveAsync_TerritoryIdParam_ForwardedToRepository()
+    {
+        var activeRoutes = new[] { CreateFakeRoute(1, isActive: true) };
+        _repoMock.Setup(r => r.GetAllActiveAsync(30, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(activeRoutes.AsEnumerable());
+
+        await _sut.GetAllActiveAsync(territoryId: 30);
+
+        _repoMock.Verify(r => r.GetAllActiveAsync(30, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     // ─────────────────────────────────────────────────

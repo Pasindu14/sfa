@@ -55,9 +55,12 @@ public class RouteRepository(AppDbContext context) : IRouteRepository
         return (items, totalCount);
     }
 
-    public async Task<IEnumerable<RouteEntity>> GetAllActiveAsync(CancellationToken ct = default)
-        => await _context.Routes
-            .Where(r => r.IsActive)
+    public async Task<IEnumerable<RouteEntity>> GetAllActiveAsync(int? territoryId = null, CancellationToken ct = default)
+    {
+        var query = _context.Routes.Where(r => r.IsActive).AsQueryable();
+        if (territoryId.HasValue) query = query.Where(r => r.TerritoryId == territoryId.Value);
+
+        return await query
             .Include(r => r.Division)
                 .ThenInclude(d => d!.Territory)
                     .ThenInclude(t => t!.Area)
@@ -68,6 +71,7 @@ public class RouteRepository(AppDbContext context) : IRouteRepository
             .AsNoTracking()
             .OrderBy(r => r.Name)
             .ToListAsync(ct);
+    }
 
     public async Task<IEnumerable<RouteEntity>> GetActiveByDivisionIdAsync(int divisionId, CancellationToken ct = default)
         => await _context.Routes

@@ -316,6 +316,29 @@ public class RoutesApiTests
         routes.Should().NotContain(r => r.GetProperty("id").GetInt32() == inactiveId);
     }
 
+    [Fact]
+    public async Task GetActiveRoutes_WithTerritoryIdParam_ReturnsOnlyMatchingTerritory()
+    {
+        var regionId = await CreateRegionAsync("Region For Active Routes TerritoryId Test");
+        var areaId = await CreateAreaAsync("Area For Active Routes TerritoryId Test", regionId);
+
+        var territoryAId = await CreateTerritoryAsync("Territory A For Active Routes TerritoryId Test", areaId);
+        var divisionAId = await CreateDivisionAsync("Division A For Active Routes TerritoryId Test", territoryAId);
+        var routeAId = await CreateRouteAsync("Route A Active TerritoryId UniqueAA5", divisionAId);
+
+        var territoryBId = await CreateTerritoryAsync("Territory B For Active Routes TerritoryId Test", areaId);
+        var divisionBId = await CreateDivisionAsync("Division B For Active Routes TerritoryId Test", territoryBId);
+        var routeBId = await CreateRouteAsync("Route B Active TerritoryId UniqueAA5", divisionBId);
+
+        var response = await _client.GetAsync($"/api/v1/routes/active?territoryId={territoryAId}");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
+        var routes = body.GetProperty("data").EnumerateArray().ToList();
+        routes.Should().Contain(r => r.GetProperty("id").GetInt32() == routeAId);
+        routes.Should().NotContain(r => r.GetProperty("id").GetInt32() == routeBId);
+    }
+
     // ─────────────────────────────────────────────────
     // POST /api/v1/routes — Create
     // ─────────────────────────────────────────────────

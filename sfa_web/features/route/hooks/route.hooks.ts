@@ -67,15 +67,17 @@ export function useRoute(id: number | null) {
 }
 
 // --- Active routes hook (for dropdowns/selects) ---
+// Pass territoryId to scope the fetch to that territory's routes only; omit for all active routes.
 
-export function useActiveRoutes() {
+export function useActiveRoutes(territoryId?: number, options?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: [...routeKeys.all, 'active'] as const,
+    queryKey: [...routeKeys.all, 'active', territoryId ?? null] as const,
     queryFn: async () => {
-      const result = await getActiveRoutesAction()
+      const result = await getActiveRoutesAction(territoryId)
       if (!result.success) throw new Error(result.error)
       return result.data
     },
+    enabled: options?.enabled ?? true,
   })
 }
 

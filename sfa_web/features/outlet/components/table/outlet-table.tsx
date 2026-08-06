@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { DataTable } from '@/components/data-table/data-table'
 import { Button } from '@/components/ui/button'
 import {
@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, RotateCcw } from 'lucide-react'
+import { Plus, RotateCcw, Loader2 } from 'lucide-react'
 import {
   useEditDialog,
   useDeleteDialog,
@@ -29,8 +29,16 @@ export function OutletTable() {
   const { open: openDelete } = useDeleteDialog()
   const { open: openActivate } = useActivateDialog()
   const { open: openDeactivate } = useDeactivateDialog()
-  const { data: territories = [] } = useActiveTerritories()
-  const { data: routes = [] } = useActiveRoutes()
+  const { data: territories = [], isLoading: loadingTerritories } = useActiveTerritories()
+
+  // Routes are scoped to the selected territory and only fetched once one is chosen —
+  // mirrored from the DataTable's own customFilters state (see renderCustomFilters below)
+  // since that state isn't otherwise exposed to the parent component.
+  const [selectedTerritoryId, setSelectedTerritoryId] = useState('')
+  const { data: routes = [], isLoading: loadingRoutes } = useActiveRoutes(
+    selectedTerritoryId ? Number(selectedTerritoryId) : undefined,
+    { enabled: !!selectedTerritoryId },
+  )
 
   const getColumns = useCallback(
     () => getOutletColumns({ openEdit, openDelete, openActivate, openDeactivate }),
@@ -57,12 +65,23 @@ export function OutletTable() {
           <div className="flex flex-wrap items-center gap-2">
             <Select
               value={(filters?.territoryId as string) ?? 'all'}
-              onValueChange={(value) =>
-                setFilters({ ...filters, territoryId: value === 'all' ? '' : value })
-              }
+              onValueChange={(value) => {
+                const territoryId = value === 'all' ? '' : value
+                setSelectedTerritoryId(territoryId)
+                // Changing (or clearing) the territory invalidates any previously selected
+                // route, since the route list is scoped to the chosen territory.
+                setFilters({ ...filters, territoryId, routeId: '' })
+              }}
             >
               <SelectTrigger className="h-8 w-40 sm:w-48">
-                <SelectValue placeholder="Territory" />
+                {loadingTerritories ? (
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Loading...
+                  </span>
+                ) : (
+                  <SelectValue placeholder="Territory" />
+                )}
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Territories</SelectItem>
@@ -73,13 +92,21 @@ export function OutletTable() {
             </Select>
 
             <Select
+              disabled={!selectedTerritoryId}
               value={(filters?.routeId as string) ?? 'all'}
               onValueChange={(value) =>
                 setFilters({ ...filters, routeId: value === 'all' ? '' : value })
               }
             >
               <SelectTrigger className="h-8 w-40 sm:w-48">
-                <SelectValue placeholder="Route" />
+                {loadingRoutes ? (
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Loading...
+                  </span>
+                ) : (
+                  <SelectValue placeholder={selectedTerritoryId ? 'Route' : 'Select a territory first'} />
+                )}
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Routes</SelectItem>
@@ -94,7 +121,10 @@ export function OutletTable() {
                 variant="ghost"
                 size="sm"
                 className="h-8 gap-1.5 text-muted-foreground"
-                onClick={() => setFilters({ territoryId: '', routeId: '' })}
+                onClick={() => {
+                  setSelectedTerritoryId('')
+                  setFilters({ territoryId: '', routeId: '' })
+                }}
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 Reset

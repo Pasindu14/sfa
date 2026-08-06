@@ -40,9 +40,9 @@ public class RouteService(
         );
     }
 
-    public async Task<IEnumerable<RouteDto>> GetAllActiveAsync(CancellationToken ct = default)
+    public async Task<IEnumerable<RouteDto>> GetAllActiveAsync(int? territoryId = null, CancellationToken ct = default)
     {
-        var routes = await _repo.GetAllActiveAsync(ct);
+        var routes = await _repo.GetAllActiveAsync(territoryId, ct);
         return routes.Select(MapToDto);
     }
 

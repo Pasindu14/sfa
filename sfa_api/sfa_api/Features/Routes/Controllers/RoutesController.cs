@@ -60,10 +60,10 @@ public class RoutesController(
     /// </summary>
     [HttpGet("active")]
     [Authorize]
-    public async Task<IActionResult> GetAllActive(CancellationToken ct = default)
+    public async Task<IActionResult> GetAllActive([FromQuery] int? territoryId = null, CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
-        var result = await _service.GetAllActiveAsync(ct);
+        var result = await _service.GetAllActiveAsync(territoryId, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 

@@ -50,8 +50,10 @@ export const updateRouteAction = createAction(
 
 export const getActiveRoutesAction = createAction(
   { name: 'getActiveRoutesAction', requireAuth: true, requiredRole: 'Admin' },
-  async () => {
-    const res = await client.get('/api/v1/routes/active')
+  async (territoryId?: number) => {
+    const res = await client.get('/api/v1/routes/active', {
+      params: { territoryId: territoryId || undefined },
+    })
     return res.data.data as RouteDto[]
   }
 )
