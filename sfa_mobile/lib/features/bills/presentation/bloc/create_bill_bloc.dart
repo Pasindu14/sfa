@@ -37,6 +37,7 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     on<CartItemExpireDateChanged>(_onExpireDateChanged);
     on<BillDiscountChanged>(_onDiscountChanged);
     on<SubmitPressed>(_onSubmit);
+    on<LocationRefreshRequested>(_onLocationRefreshRequested);
     _captureLocation();
   }
 
@@ -58,6 +59,21 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
         return;
       }
 
+      // Unblock the page immediately with a recent cached fix instead of
+      // making the rep stare at a spinner for the several seconds a fresh
+      // high-accuracy fix takes; refine silently once the fresh fix lands.
+      // A stale cached fix is rejected outright — the outlet geofence check
+      // must not pass a rep against a position from somewhere they've since
+      // driven away from.
+      final cached = await Geolocator.getLastKnownPosition();
+      final hasFreshCache = cached != null &&
+          DateTime.now().difference(cached.timestamp) <=
+              const Duration(minutes: 2);
+      if (hasFreshCache) {
+        add(const BillLocationStatusChanged(LocationCheckStatus.ready));
+        add(BillLocationCaptured(cached.latitude, cached.longitude));
+      }
+
       try {
         final position = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
@@ -66,18 +82,16 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
         ).timeout(const Duration(seconds: 20));
         add(const BillLocationStatusChanged(LocationCheckStatus.ready));
         add(BillLocationCaptured(position.latitude, position.longitude));
-        return;
       } on TimeoutException {
-        // Fresh fix took too long — fall back to a recent cached position
-        // (if any) instead of telling the rep GPS/permissions are the problem.
-        final lastKnown = await Geolocator.getLastKnownPosition();
-        if (lastKnown != null) {
-          add(const BillLocationStatusChanged(LocationCheckStatus.ready));
-          add(BillLocationCaptured(lastKnown.latitude, lastKnown.longitude));
-          return;
+        // Fresh fix took too long. Already unblocked via the cached fix
+        // above (if any) — otherwise there's truly nothing to show yet.
+        if (!hasFreshCache) {
+          add(const BillLocationStatusChanged(LocationCheckStatus.fixTimeout));
         }
-        add(const BillLocationStatusChanged(LocationCheckStatus.fixTimeout));
-        return;
+      } catch (_) {
+        if (!hasFreshCache) {
+          add(const BillLocationStatusChanged(LocationCheckStatus.serviceDisabled));
+        }
       }
     } catch (_) {
       add(const BillLocationStatusChanged(LocationCheckStatus.serviceDisabled));
@@ -105,6 +119,29 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
   void _onRadiusMetersLoaded(
       RadiusMetersLoaded e, Emitter<CreateBillState> emit) {
     emit(state.copyWith(radiusMeters: e.radiusMeters));
+  }
+
+  Future<void> _onLocationRefreshRequested(
+      LocationRefreshRequested e, Emitter<CreateBillState> emit) async {
+    if (state.refreshingLocation) return;
+    emit(state.copyWith(refreshingLocation: true, clearError: true));
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      ).timeout(const Duration(seconds: 20));
+      emit(state.copyWith(
+        refreshingLocation: false,
+        latitude: position.latitude,
+        longitude: position.longitude,
+      ));
+    } catch (_) {
+      emit(state.copyWith(
+        refreshingLocation: false,
+        errorMessage: 'Could not update location — move to an open area and try again.',
+      ));
+    }
   }
 
   void _onOutletSelected(OutletSelected e, Emitter<CreateBillState> emit) {

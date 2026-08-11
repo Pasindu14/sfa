@@ -494,10 +494,62 @@ class _OrderAppBar extends StatelessWidget {
                   ],
                 ),
               ),
+              const _RefreshLocationButton(),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+// ── Manual "update my location" button (top-right, next to NEW ORDER) ────────
+
+class _RefreshLocationButton extends StatelessWidget {
+  const _RefreshLocationButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<CreateBillBloc, CreateBillState>(
+      buildWhen: (p, c) =>
+          p.refreshingLocation != c.refreshingLocation ||
+          p.locationStatus != c.locationStatus,
+      builder: (ctx, state) {
+        // Only offer a manual refresh once the form is actually visible —
+        // the blocked view (permission/service/timeout) already has its own
+        // Retry action.
+        if (state.locationStatus != LocationCheckStatus.ready) {
+          return const SizedBox.shrink();
+        }
+        return GestureDetector(
+          onTap: state.refreshingLocation
+              ? null
+              : () => ctx
+                  .read<CreateBillBloc>()
+                  .add(const LocationRefreshRequested()),
+          child: Container(
+            width: 40.r,
+            height: 40.r,
+            margin: EdgeInsets.all(4.r),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10.r),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+            ),
+            alignment: Alignment.center,
+            child: state.refreshingLocation
+                ? SizedBox(
+                    width: 16.r,
+                    height: 16.r,
+                    child: const CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Icon(Icons.my_location_rounded, size: 18.r, color: Colors.white),
+          ),
+        );
+      },
     );
   }
 }

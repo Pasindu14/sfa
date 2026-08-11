@@ -145,6 +145,14 @@ final class LocationCheckRetried extends CreateBillEvent {
   const LocationCheckRetried();
 }
 
+/// Manual "update my location" tap while the form is already visible.
+/// Unlike [LocationCheckRetried], this must NOT touch [LocationCheckStatus] —
+/// the page gates its entire body on that status, so flipping it back to
+/// `checking` would hide the outlet/cart the rep is already working with.
+final class LocationRefreshRequested extends CreateBillEvent {
+  const LocationRefreshRequested();
+}
+
 final class RadiusMetersLoaded extends CreateBillEvent {
   final double radiusMeters;
   const RadiusMetersLoaded(this.radiusMeters);

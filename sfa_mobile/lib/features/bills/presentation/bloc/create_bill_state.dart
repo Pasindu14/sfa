@@ -115,6 +115,7 @@ class CreateBillState extends Equatable {
   final double? longitude;
   final LocationCheckStatus locationStatus;
   final double radiusMeters;
+  final bool refreshingLocation;
 
   const CreateBillState({
     this.outlet,
@@ -127,6 +128,7 @@ class CreateBillState extends Equatable {
     this.longitude,
     this.locationStatus = LocationCheckStatus.checking,
     this.radiusMeters = AppConstants.billingProximityRadiusMeters,
+    this.refreshingLocation = false,
   });
 
   // Aggregates — each line type contributes to its own bucket only.
@@ -166,6 +168,7 @@ class CreateBillState extends Equatable {
     double? longitude,
     LocationCheckStatus? locationStatus,
     double? radiusMeters,
+    bool? refreshingLocation,
   }) =>
       CreateBillState(
         outlet: outlet ?? this.outlet,
@@ -179,6 +182,7 @@ class CreateBillState extends Equatable {
         longitude: longitude ?? this.longitude,
         locationStatus: locationStatus ?? this.locationStatus,
         radiusMeters: radiusMeters ?? this.radiusMeters,
+        refreshingLocation: refreshingLocation ?? this.refreshingLocation,
       );
 
   @override
@@ -193,5 +197,6 @@ class CreateBillState extends Equatable {
         longitude,
         locationStatus,
         radiusMeters,
+        refreshingLocation,
       ];
 }
