@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/update/app_update_service.dart';
 import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/auth/presentation/bloc/auth_bloc.dart';
 
@@ -237,24 +239,7 @@ class _HeaderBlock extends StatelessWidget {
                         ),
                       ),
                       const Spacer(),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 8.w, vertical: 3.h),
-                        decoration: BoxDecoration(
-                          border:
-                              Border.all(color: AppColors.surfaceVariant),
-                          borderRadius: BorderRadius.circular(3.r),
-                        ),
-                        child: Text(
-                          'v1.0',
-                          style: GoogleFonts.barlowCondensed(
-                            fontSize: 10.sp,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 1.0,
-                            color: AppColors.foregroundMuted,
-                          ),
-                        ),
-                      ),
+                      const _VersionBadge(),
                     ],
                   ),
 
@@ -310,6 +295,86 @@ class _HeaderBlock extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+// ── Version badge ────────────────────────────────────────────────────────────
+/// Shows the real app version, e.g. "v1.0.5" or "v1.0.5 · P3" once a Shorebird
+/// patch is active. Mirrors the "SFA · P3" label on the sales rep home page so
+/// the running version is visible before the rep even logs in.
+class _VersionBadge extends StatelessWidget {
+  const _VersionBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: AppUpdateService.instance.patchStaged,
+      builder: (context, staged, _) {
+        return FutureBuilder<(String, int?)>(
+          future: _loadVersionInfo(),
+          builder: (context, snapshot) {
+            final info = snapshot.data;
+            final label = info == null
+                ? ''
+                : (info.$2 == null
+                    ? 'v${info.$1}'
+                    : 'v${info.$1} · P${info.$2}');
+            return Container(
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+              decoration: BoxDecoration(
+                // A downloaded-but-unapplied patch: currentPatchNumber() can't
+                // show this on its own, since it only reflects what's running.
+                border: Border.all(
+                  color: staged ? AppColors.amber : AppColors.surfaceVariant,
+                ),
+                borderRadius: BorderRadius.circular(3.r),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: GoogleFonts.barlowCondensed(
+                      fontSize: 10.sp,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.0,
+                      color: AppColors.foregroundMuted,
+                    ),
+                  ),
+                  if (staged) ...[
+                    SizedBox(width: 4.w),
+                    Container(
+                      width: 5.r,
+                      height: 5.r,
+                      decoration: const BoxDecoration(
+                        color: AppColors.amber,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    SizedBox(width: 4.w),
+                    Text(
+                      'UPDATE',
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 9.sp,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.5,
+                        color: AppColors.amber,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<(String, int?)> _loadVersionInfo() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    final patch = await AppUpdateService.instance.currentPatchNumber();
+    return (packageInfo.version, patch);
   }
 }
 

@@ -1685,18 +1685,51 @@ class _AppLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<int?>(
-      future: AppUpdateService.instance.currentPatchNumber(),
-      builder: (context, snapshot) {
-        final patch = snapshot.data;
-        return Text(
-          patch == null ? 'SFA' : 'SFA · P$patch',
-          style: GoogleFonts.barlowCondensed(
-            fontSize: 11.sp,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 4,
-            color: AppColors.foregroundMuted,
-          ),
+    return ValueListenableBuilder<bool>(
+      valueListenable: AppUpdateService.instance.patchStaged,
+      builder: (context, staged, _) {
+        return FutureBuilder<int?>(
+          future: AppUpdateService.instance.currentPatchNumber(),
+          builder: (context, snapshot) {
+            final patch = snapshot.data;
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  patch == null ? 'SFA' : 'SFA · P$patch',
+                  style: GoogleFonts.barlowCondensed(
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 4,
+                    color: AppColors.foregroundMuted,
+                  ),
+                ),
+                // A downloaded-but-unapplied patch: currentPatchNumber() can't
+                // show this, since it only reflects what's already running.
+                if (staged) ...[
+                  SizedBox(width: 5.w),
+                  Container(
+                    width: 6.r,
+                    height: 6.r,
+                    decoration: const BoxDecoration(
+                      color: AppColors.amber,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  SizedBox(width: 4.w),
+                  Text(
+                    'UPDATE',
+                    style: GoogleFonts.barlowCondensed(
+                      fontSize: 9.sp,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.5,
+                      color: AppColors.amber,
+                    ),
+                  ),
+                ],
+              ],
+            );
+          },
         );
       },
     );

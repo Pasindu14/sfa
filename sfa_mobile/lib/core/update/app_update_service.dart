@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:shorebird_code_push/shorebird_code_push.dart';
 
 /// Thin wrapper over the Shorebird updater.
@@ -21,6 +22,12 @@ class AppUpdateService {
   static final AppUpdateService instance = AppUpdateService._private();
 
   final ShorebirdUpdater _updater = ShorebirdUpdater();
+
+  /// True once a patch has been downloaded and is waiting for a process
+  /// restart to take effect. Widgets (the version badges) listen to this to
+  /// show a staged indicator — [currentPatchNumber] alone can't do that, since
+  /// it only reflects what's already running, not what's waiting on disk.
+  final ValueNotifier<bool> patchStaged = ValueNotifier<bool>(false);
 
   /// False on builds without the Shorebird engine — a plain `flutter build`,
   /// a debug run, or the emulator. Everything below no-ops in that case.
@@ -54,7 +61,11 @@ class AppUpdateService {
         await _updater.update();
         status = await _updater.checkForUpdate();
       }
-      return status == UpdateStatus.restartRequired;
+      final needsRestart = status == UpdateStatus.restartRequired;
+      // Only ever set on a successful check — a transient failure here must
+      // not clear a staged flag set by an earlier successful check.
+      patchStaged.value = needsRestart;
+      return needsRestart;
     } on UpdateException {
       return false;
     } catch (_) {
