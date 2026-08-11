@@ -3,7 +3,16 @@ import 'package:uswatte/core/constants/app_constants.dart';
 import 'package:uswatte/features/bills/data/datasources/bills_local_datasource.dart';
 import 'package:uswatte/features/outlets/domain/entities/outlet.dart';
 
-enum LocationCheckStatus { checking, ready, serviceDisabled, permissionDenied }
+enum LocationCheckStatus {
+  checking,
+  ready,
+  serviceDisabled,
+  permissionDenied,
+  // GPS is on and permission is granted, but a fix couldn't be obtained in time
+  // (weak signal / indoors / cold start) — distinct from serviceDisabled so the
+  // UI doesn't send the rep to Settings when Settings is already fine.
+  fixTimeout,
+}
 
 /// In-memory cart line during Create Bill editing.
 ///

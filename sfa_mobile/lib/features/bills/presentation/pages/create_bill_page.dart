@@ -257,6 +257,7 @@ class _LocationBlockedView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isServiceOff = status == LocationCheckStatus.serviceDisabled;
+    final isFixTimeout = status == LocationCheckStatus.fixTimeout;
     return Padding(
       padding: EdgeInsets.all(24.r),
       child: Column(
@@ -277,7 +278,7 @@ class _LocationBlockedView extends StatelessWidget {
           ),
           SizedBox(height: 20.h),
           Text(
-            'Location Required',
+            isFixTimeout ? 'Still Finding Your Location' : 'Location Required',
             style: GoogleFonts.barlowCondensed(
               fontSize: 22.sp,
               fontWeight: FontWeight.w800,
@@ -289,7 +290,9 @@ class _LocationBlockedView extends StatelessWidget {
           Text(
             isServiceOff
                 ? 'GPS is turned off on your device. Please enable Location Services to create a bill.'
-                : 'Location permission was denied. Please allow location access for this app to continue.',
+                : isFixTimeout
+                    ? 'GPS is on, but we couldn\'t get a location fix in time. Move to an open area (away from buildings) and retry.'
+                    : 'Location permission was denied. Please allow location access for this app to continue.',
             textAlign: TextAlign.center,
             style: GoogleFonts.barlow(
               fontSize: 14.sp,
@@ -298,36 +301,38 @@ class _LocationBlockedView extends StatelessWidget {
             ),
           ),
           SizedBox(height: 28.h),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () async {
-                if (isServiceOff) {
-                  await Geolocator.openLocationSettings();
-                } else {
-                  await Geolocator.openAppSettings();
-                }
-              },
-              icon: Icon(Icons.settings_rounded, size: 18.r),
-              label: Text(
-                isServiceOff ? 'Open Location Settings' : 'Open App Settings',
-                style: GoogleFonts.barlowCondensed(
-                  fontSize: 15.sp,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
+          if (!isFixTimeout) ...[
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  if (isServiceOff) {
+                    await Geolocator.openLocationSettings();
+                  } else {
+                    await Geolocator.openAppSettings();
+                  }
+                },
+                icon: Icon(Icons.settings_rounded, size: 18.r),
+                label: Text(
+                  isServiceOff ? 'Open Location Settings' : 'Open App Settings',
+                  style: GoogleFonts.barlowCondensed(
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
                 ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(vertical: 14.h),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12.r),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(vertical: 14.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
                 ),
               ),
             ),
-          ),
-          SizedBox(height: 12.h),
+            SizedBox(height: 12.h),
+          ],
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(

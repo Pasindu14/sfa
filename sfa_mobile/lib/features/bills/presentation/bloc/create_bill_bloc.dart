@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uswatte/core/errors/app_exception.dart';
@@ -56,13 +58,27 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
         return;
       }
 
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
-        ),
-      ).timeout(const Duration(seconds: 10));
-      add(const BillLocationStatusChanged(LocationCheckStatus.ready));
-      add(BillLocationCaptured(position.latitude, position.longitude));
+      try {
+        final position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+          ),
+        ).timeout(const Duration(seconds: 20));
+        add(const BillLocationStatusChanged(LocationCheckStatus.ready));
+        add(BillLocationCaptured(position.latitude, position.longitude));
+        return;
+      } on TimeoutException {
+        // Fresh fix took too long — fall back to a recent cached position
+        // (if any) instead of telling the rep GPS/permissions are the problem.
+        final lastKnown = await Geolocator.getLastKnownPosition();
+        if (lastKnown != null) {
+          add(const BillLocationStatusChanged(LocationCheckStatus.ready));
+          add(BillLocationCaptured(lastKnown.latitude, lastKnown.longitude));
+          return;
+        }
+        add(const BillLocationStatusChanged(LocationCheckStatus.fixTimeout));
+        return;
+      }
     } catch (_) {
       add(const BillLocationStatusChanged(LocationCheckStatus.serviceDisabled));
     }
