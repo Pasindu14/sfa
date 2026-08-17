@@ -221,8 +221,6 @@ class CartRow extends StatelessWidget {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 if (caseLine != null) ...[
-                                  _label('Cases'),
-                                  SizedBox(width: 4.w),
                                   Builder(builder: (_) {
                                     final ppc = caseLine!.product.packsPerCase.toDouble();
                                     final displayQty = caseLine!.quantity / ppc;
@@ -240,9 +238,7 @@ class CartRow extends StatelessWidget {
                                   }),
                                 ],
                                 if (packetLine != null) ...[
-                                  if (caseLine != null) SizedBox(width: 8.w),
-                                  _label('Pkts'),
-                                  SizedBox(width: 4.w),
+                                  if (caseLine != null) SizedBox(width: 6.w),
                                   _Stepper(
                                     value: packetLine!.quantity,
                                     displayText: '${packetLine!.quantity.toStringAsFixed(packetLine!.quantity.truncateToDouble() == packetLine!.quantity ? 0 : 1)} pks',
@@ -650,47 +646,65 @@ class _Stepper extends StatelessWidget {
         borderRadius: BorderRadius.circular(7.r),
         border: Border.all(color: const Color(0xFFCCCBC3)),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          GestureDetector(
-            onTap: canDecrement ? onDecrement : null,
-            child: SizedBox(
-              width: 26.r,
-              height: 26.r,
-              child: Icon(
-                Icons.remove,
-                size: 12.r,
-                color: canDecrement
-                    ? const Color(0xFF1A1A11)
-                    : const Color(0xFFCCCBC3),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(6.r),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _button(
+              icon: Icons.remove,
+              onTap: canDecrement ? onDecrement : null,
+              enabled: canDecrement,
+              borderRadius: BorderRadius.horizontal(left: Radius.circular(6.r)),
+            ),
+            Container(
+              width: 44.w,
+              alignment: Alignment.center,
+              child: Text(
+                displayText,
+                style: GoogleFonts.barlowCondensed(
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w800,
+                  color: valueColor,
+                ),
               ),
             ),
-          ),
-          Container(
-            width: 44.w,
-            alignment: Alignment.center,
-            child: Text(
-              displayText,
-              style: GoogleFonts.barlowCondensed(
-                fontSize: 13.sp,
-                fontWeight: FontWeight.w800,
-                color: valueColor,
-              ),
+            _button(
+              icon: Icons.add,
+              onTap: onIncrement,
+              enabled: true,
+              borderRadius: BorderRadius.horizontal(right: Radius.circular(6.r)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _button({
+    required IconData icon,
+    required VoidCallback? onTap,
+    required bool enabled,
+    required BorderRadius borderRadius,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: borderRadius,
+        child: SizedBox(
+          width: 32.r,
+          height: 32.r,
+          child: Center(
+            child: Icon(
+              icon,
+              size: 14.r,
+              color: enabled
+                  ? const Color(0xFF1A1A11)
+                  : const Color(0xFFCCCBC3),
             ),
           ),
-          GestureDetector(
-            onTap: onIncrement,
-            child: SizedBox(
-              width: 26.r,
-              height: 26.r,
-              child: Icon(Icons.add,
-                size: 12.r,
-                color: const Color(0xFF1A1A11),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

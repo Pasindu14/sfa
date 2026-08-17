@@ -73,6 +73,10 @@ class _QuantitySheetState extends State<_QuantitySheet> {
   String? _returnTypeError;
   String? _expireDateError;
 
+  // Sale/Free Issue/Return are independent entries — each tab remembers its
+  // own cases/packets/discount instead of sharing the same text fields.
+  final Map<_Mode, ({String cases, String packets, String disc})> _qtyByMode = {};
+
   @override
   void initState() {
     super.initState();
@@ -125,8 +129,20 @@ class _QuantitySheetState extends State<_QuantitySheet> {
   }
 
   void _setMode(_Mode mode) {
+    if (mode == _mode) return;
     setState(() {
+      _qtyByMode[_mode] = (
+        cases: _casesController.text,
+        packets: _packetsController.text,
+        disc: _discController.text,
+      );
       _mode = mode;
+      final saved = _qtyByMode[mode];
+      _casesController.text = saved?.cases ?? '0';
+      _packetsController.text = saved?.packets ?? '1';
+      _discController.text = saved?.disc ?? '0';
+      _qtyError = null;
+      _discError = null;
       switch (mode) {
         case _Mode.sale:
         case _Mode.freeIssue:
