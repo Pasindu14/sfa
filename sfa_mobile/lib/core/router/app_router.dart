@@ -168,10 +168,16 @@ class AppRouter {
         // pushed as a real page beneath every child, so back-out-of-home landed
         // on an empty page (black screen). `redirect` satisfies GoRoute's
         // builder/pageBuilder/redirect assertion without producing a page.
+        //
+        // Must be `state.uri.path`, NOT `state.matchedLocation`. go_router runs
+        // a parent's redirect for child matches too, and builds the state from
+        // the PARENT's match — so matchedLocation is '/sales-rep' even when the
+        // user asked for '/sales-rep/bills', and this would bounce every child
+        // route to home. `uri` is the full requested location.
         GoRoute(
           path: '/sales-rep',
           redirect: (_, state) =>
-              state.matchedLocation == '/sales-rep' ? '/sales-rep/home' : null,
+              state.uri.path == '/sales-rep' ? '/sales-rep/home' : null,
           routes: [
             GoRoute(
               path: 'home',
@@ -567,7 +573,7 @@ class AppRouter {
         GoRoute(
           path: '/supervisor',
           redirect: (_, state) =>
-              state.matchedLocation == '/supervisor' ? '/supervisor/home' : null,
+              state.uri.path == '/supervisor' ? '/supervisor/home' : null,
           routes: [
             GoRoute(
               path: 'home',
