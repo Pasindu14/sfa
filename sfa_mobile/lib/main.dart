@@ -237,7 +237,18 @@ class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
     // Navigate to bills list so the rep can see the updated status.
     // The router guards will ensure the user is authenticated before proceeding.
     if (type == 'BILL_APPROVED' || type == 'BILL_REJECTED') {
-      _router.goNamed('bills');
+      // Push so the rep's existing stack (home) stays underneath and back
+      // returns there. `goNamed` REPLACES the stack, which would leave the
+      // bills list with nothing below it. On a cold start opened straight
+      // from a notification there is no stack yet — we're still on splash
+      // while auth resolves — so fall back to `go`, which the auth redirect
+      // holds until authentication completes.
+      final location = _router.routerDelegate.currentConfiguration.uri.path;
+      if (location.startsWith('/sales-rep')) {
+        _router.pushNamed('bills');
+      } else {
+        _router.goNamed('bills');
+      }
     }
   }
 

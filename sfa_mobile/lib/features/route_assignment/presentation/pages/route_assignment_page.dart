@@ -59,7 +59,14 @@ class _RouteAssignmentView extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12.r)),
             ),
           );
-          context.go('/supervisor/home');
+          // Pop back to the supervisor home already on the stack (it refreshes
+          // its summary on return). `go` would REPLACE the stack, discarding
+          // that page and leaving nothing to go back to.
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/supervisor/home');
+          }
         }
       },
       child: Scaffold(

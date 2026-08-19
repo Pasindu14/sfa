@@ -102,6 +102,7 @@ function EditOutletDialog() {
         ) : (
           <OutletForm
             mode="edit"
+            initialTerritoryId={outlet?.territoryId}
             initialRouteName={outlet?.routeName}
             defaultValues={
               outlet

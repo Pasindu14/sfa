@@ -11,6 +11,7 @@ export interface OutletFormData {
   longitude: number
   outletType: 'Small' | 'Medium' | 'Large'
   outletCategory: 'Wholesale' | 'SMMT'
+  territoryId?: string // territory name as shown in the select; required before routeId
   routeId?: string // route name as shown in the select
   email?: string
   contactPerson?: string
@@ -220,11 +221,24 @@ export class OutletPage {
         .waitFor({ state: 'hidden', timeout: 3_000 })
         .catch(() => {})
     }
+    if (data.territoryId !== undefined) {
+      await dialog.getByLabel('Territory', { exact: true }).click()
+      await this.page.getByRole('option', { name: data.territoryId }).click()
+      await this.page
+        .locator('[data-radix-select-content]')
+        .waitFor({ state: 'hidden', timeout: 3_000 })
+        .catch(() => {})
+    }
     if (data.routeId !== undefined) {
-      await dialog.getByRole('combobox').filter({ hasText: 'Select a route' }).click()
-      await this.page.locator('[role="listbox"]').waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {})
+      // Route is disabled until a territory is chosen and its routes have loaded.
+      const routeTrigger = dialog.getByLabel('Route', { exact: true })
+      await expect(routeTrigger).toBeEnabled({ timeout: 10_000 })
+      await routeTrigger.click()
       await this.page.getByRole('option', { name: data.routeId }).click()
-      await this.page.locator('[role="listbox"]').waitFor({ state: 'hidden', timeout: 3_000 }).catch(() => {})
+      await this.page
+        .locator('[data-radix-select-content]')
+        .waitFor({ state: 'hidden', timeout: 3_000 })
+        .catch(() => {})
     }
   }
 

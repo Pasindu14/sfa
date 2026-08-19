@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -33,14 +33,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
-import { AsyncSelect } from "@/components/async-select";
-import { searchActiveRoutesAction } from "@/features/route/actions/route.actions";
-import type { RouteDto } from "@/features/route/schema/route.schema";
+import { useActiveTerritories } from "@/features/territory/hooks/territory.hooks";
+import { useActiveRoutes } from "@/features/route/hooks/route.hooks";
 
 // UpdateOutletInput is a superset of CreateOutletInput (adds rowVersion).
 interface OutletFormProps {
   mode: "create" | "edit";
   defaultValues?: Partial<UpdateOutletInput>;
+  /** Edit mode: the outlet's current territory, used to preload its route list. */
+  initialTerritoryId?: number;
   initialRouteName?: string;
   onSubmit: (data: UpdateOutletInput) => void;
   isLoading: boolean;
@@ -50,6 +51,7 @@ interface OutletFormProps {
 export function OutletForm({
   mode,
   defaultValues,
+  initialTerritoryId,
   initialRouteName,
   onSubmit,
   isLoading,
@@ -84,7 +86,33 @@ export function OutletForm({
     },
   });
 
-  const { setError } = form;
+  const { setError, setValue } = form;
+
+  // Territory is UI-only state — it narrows the route list but is never submitted.
+  // The API derives territory/division/area/region server-side from routeId.
+  const [territoryId, setTerritoryId] = useState<number>(initialTerritoryId ?? 0);
+
+  const { data: territories = [], isLoading: loadingTerritories } =
+    useActiveTerritories();
+  const { data: routes = [], isLoading: loadingRoutes } = useActiveRoutes(
+    territoryId || undefined,
+    { enabled: territoryId > 0 },
+  );
+
+  function handleTerritoryChange(value: string) {
+    setTerritoryId(Number(value));
+    // Reset the route so a selection from the previous territory can't slip through.
+    setValue("routeId", 0);
+  }
+
+  // The active-route list omits a route deactivated after this outlet was assigned to
+  // it — keep it in the options so opening the edit dialog can't silently blank Route.
+  const routeOptions = useMemo(() => {
+    const currentId = defaultValues?.routeId;
+    if (!currentId || !initialRouteName) return routes;
+    if (routes.some((r) => r.id === currentId)) return routes;
+    return [{ id: currentId, name: initialRouteName }, ...routes];
+  }, [routes, defaultValues?.routeId, initialRouteName]);
 
   useEffect(() => {
     if (fieldErrors) {
@@ -467,41 +495,71 @@ export function OutletForm({
           />
         </div>
 
-        {/* Route */}
-        <FormField
-          control={form.control}
-          name="routeId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Route</FormLabel>
+        {/* Row: Territory + Route — territory scopes the route list */}
+        <div className="grid grid-cols-2 gap-4">
+          <FormItem>
+            <FormLabel>Territory</FormLabel>
+            <Select
+              value={territoryId > 0 ? String(territoryId) : ""}
+              onValueChange={handleTerritoryChange}
+              disabled={isLoading || loadingTerritories}
+            >
               <FormControl>
-                <AsyncSelect<RouteDto>
-                  label="Route"
-                  placeholder="Select a route"
-                  value={field.value ? String(field.value) : ""}
-                  onChange={(val) => field.onChange(val ? Number(val) : 0)}
-                  fetcher={async (query) => {
-                    if (!query) return [];
-                    const result = await searchActiveRoutesAction(query);
-                    return result.success ? result.data : [];
-                  }}
-                  getOptionValue={(r) => String(r.id)}
-                  getDisplayValue={(r) => r.name}
-                  renderOption={(r) => r.name}
-                  noResultsMessage="No routes found"
-                  width="100%"
-                  disabled={isLoading}
-                  initialOption={
-                    initialRouteName && defaultValues?.routeId
-                      ? ({ id: defaultValues.routeId, name: initialRouteName } as RouteDto)
-                      : null
-                  }
-                />
+                <SelectTrigger className="w-full">
+                  <SelectValue
+                    placeholder={
+                      loadingTerritories ? "Loading..." : "Select a territory"
+                    }
+                  />
+                </SelectTrigger>
               </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+              <SelectContent>
+                {territories.map((t) => (
+                  <SelectItem key={t.id} value={String(t.id)}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormItem>
+
+          <FormField
+            control={form.control}
+            name="routeId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Route</FormLabel>
+                <Select
+                  value={field.value ? String(field.value) : ""}
+                  onValueChange={(value) => field.onChange(Number(value))}
+                  disabled={isLoading || territoryId === 0 || loadingRoutes}
+                >
+                  <FormControl>
+                    <SelectTrigger className="w-full">
+                      <SelectValue
+                        placeholder={
+                          territoryId === 0
+                            ? "Select a territory first"
+                            : loadingRoutes
+                              ? "Loading..."
+                              : "Select a route"
+                        }
+                      />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {routeOptions.map((r) => (
+                      <SelectItem key={r.id} value={String(r.id)}>
+                        {r.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         {/* Remarks */}
         <FormField

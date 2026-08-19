@@ -1,4 +1,3 @@
-import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uswatte/core/router/go_router_refresh_stream.dart';
 import 'package:uswatte/features/auth/domain/entities/user_role.dart';
@@ -165,9 +164,14 @@ class AppRouter {
           name: 'login',
           builder: (context, state) => const LoginPage(),
         ),
+        // Path grouping only — NO builder. A parent GoRoute with a builder is
+        // pushed as a real page beneath every child, so back-out-of-home landed
+        // on an empty page (black screen). `redirect` satisfies GoRoute's
+        // builder/pageBuilder/redirect assertion without producing a page.
         GoRoute(
           path: '/sales-rep',
-          builder: (_, __) => const SizedBox.shrink(),
+          redirect: (_, state) =>
+              state.matchedLocation == '/sales-rep' ? '/sales-rep/home' : null,
           routes: [
             GoRoute(
               path: 'home',
@@ -559,9 +563,11 @@ class AppRouter {
             ),
           ],
         ),
+        // Path grouping only — no builder. See the note on '/sales-rep'.
         GoRoute(
           path: '/supervisor',
-          builder: (_, __) => const SizedBox.shrink(),
+          redirect: (_, state) =>
+              state.matchedLocation == '/supervisor' ? '/supervisor/home' : null,
           routes: [
             GoRoute(
               path: 'home',
