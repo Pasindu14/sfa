@@ -163,9 +163,14 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
   void _onProductAdded(ProductAdded e, Emitter<CreateBillState> emit) {
     // Only merge quantities for sale items with the same product.
     // Return items are always added as separate lines (different return type/price).
+    //
+    // Must match on isSale, NOT !isReturn: free issue lines are also non-return,
+    // so the looser test folded a new Sale into an existing FOC line for the same
+    // product — the sale vanished and the outlet was undercharged. Reachable in
+    // one tap now that the quantity sheet can stage Sale and Free Issue together.
     if (e.billingItemType == 'Sale') {
       final existingIdx = state.cart.indexWhere(
-          (l) => l.product.id == e.product.id && !l.isReturn && l.priceType == e.priceType);
+          (l) => l.product.id == e.product.id && l.isSale && l.priceType == e.priceType);
       if (existingIdx >= 0) {
         final existing = state.cart[existingIdx];
         final updated = [...state.cart];

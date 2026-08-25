@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uswatte/core/background/background_sync_service.dart';
+import 'package:uswatte/core/di/injection.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/core/update/app_update_service.dart';
 import 'package:uswatte/features/auth/presentation/bloc/auth_bloc.dart';
@@ -426,15 +430,25 @@ class _TopBar extends StatelessWidget {
                 ),
               ],
             ),
-            BlocBuilder<AssignmentsBloc, AssignmentsState>(
-              builder: (context, state) {
-                if (state is AssignmentsLoaded &&
-                    state.assignments.isNotEmpty) {
-                  return _RouteChip(
-                      routeName: state.assignments.first.routeName);
-                }
-                return const SizedBox.shrink();
-              },
+            Row(
+              children: [
+                Flexible(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: BlocBuilder<AssignmentsBloc, AssignmentsState>(
+                      builder: (context, state) {
+                        if (state is AssignmentsLoaded &&
+                            state.assignments.isNotEmpty) {
+                          return _RouteChip(
+                              routeName: state.assignments.first.routeName);
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                  ),
+                ),
+                const _SyncStatusChip(),
+              ],
             ),
           ],
         ),
@@ -490,6 +504,129 @@ class _RouteChip extends StatelessWidget {
                   color: AppColors.foreground,
                 ),
                 overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Shows the state of the app-wide sync driven by [BackgroundSyncService] —
+/// the one that runs automatically after login (SFA-119). Renders nothing when
+/// idle so the header stays clean; the "SYNCED" confirmation self-dismisses.
+class _SyncStatusChip extends StatefulWidget {
+  const _SyncStatusChip();
+
+  @override
+  State<_SyncStatusChip> createState() => _SyncStatusChipState();
+}
+
+class _SyncStatusChipState extends State<_SyncStatusChip> {
+  /// How long the "SYNCED" confirmation stays up before fading out.
+  static const _doneVisibleFor = Duration(seconds: 3);
+
+  late final ValueNotifier<AppSyncProgress> _progress;
+  Timer? _hideTimer;
+  bool _showDone = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Reading .value on mount is why this is a ValueNotifier and not a stream:
+    // the post-login sync starts before Home is built, and the chip still has
+    // to come up mid-run.
+    _progress = getIt<BackgroundSyncService>().progress;
+    _progress.addListener(_onProgress);
+  }
+
+  @override
+  void dispose() {
+    _progress.removeListener(_onProgress);
+    _hideTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onProgress() {
+    if (!mounted) return;
+    final value = _progress.value;
+    final finished = !value.isSyncing && value.completedAt != null;
+
+    _hideTimer?.cancel();
+    if (finished) {
+      _hideTimer = Timer(_doneVisibleFor, () {
+        if (mounted) setState(() => _showDone = false);
+      });
+    }
+    setState(() => _showDone = finished);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final value = _progress.value;
+
+    Widget child;
+    if (value.isSyncing) {
+      child = _pill(
+        key: const ValueKey('syncing'),
+        color: AppColors.primary,
+        label: value.step == null ? 'SYNCING' : 'SYNCING · ${value.step}',
+        leading: SizedBox(
+          width: 9.r,
+          height: 9.r,
+          child: CircularProgressIndicator(
+            strokeWidth: 1.6,
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+          ),
+        ),
+      );
+    } else if (_showDone) {
+      child = _pill(
+        key: const ValueKey('synced'),
+        color: AppColors.success,
+        label: 'SYNCED',
+        leading: Icon(Icons.check_rounded,
+            size: 11.r, color: AppColors.success),
+      );
+    } else {
+      child = const SizedBox.shrink(key: ValueKey('idle'));
+    }
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 220),
+      child: child,
+    );
+  }
+
+  Widget _pill({
+    required Key key,
+    required Color color,
+    required String label,
+    required Widget leading,
+  }) {
+    return Padding(
+      key: key,
+      padding: EdgeInsets.only(top: 8.h, left: 8.w),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 5.h),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(8.r),
+          border: Border.all(color: color.withValues(alpha: 0.22)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            leading,
+            SizedBox(width: 6.w),
+            Text(
+              label,
+              style: GoogleFonts.barlowCondensed(
+                fontSize: 9.sp,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.2,
+                color: color,
               ),
             ),
           ],

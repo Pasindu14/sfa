@@ -512,6 +512,7 @@ Future<void> configureDependencies() async {
       syncCategories: getIt<SyncProductCategoriesUseCase>(),
       syncOutlets: getIt<SyncOutletsUseCase>(),
       syncStock: getIt<SyncDistributorStockUseCase>(),
+      getAssignments: getIt<GetAssignmentsUseCase>(),
       billSync: getIt<BillSyncService>(),
       notBillingSync: getIt<NotBillingSyncService>(),
       outletsLocal: getIt<OutletsLocalDatasource>(),

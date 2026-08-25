@@ -20,6 +20,7 @@ import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/features/auth/domain/usecases/get_current_auth_usecase.dart';
 import 'package:uswatte/features/auth/domain/usecases/login_usecase.dart';
 import 'package:uswatte/features/auth/domain/usecases/logout_usecase.dart';
+import 'package:uswatte/features/auth/domain/entities/user_role.dart';
 import 'package:uswatte/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -92,6 +93,10 @@ class SfaApp extends StatefulWidget {
 
 class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
   StreamSubscription<void>? _sessionExpiredSub;
+  StreamSubscription<AuthState>? _authSyncSub;
+  // Guards against a second post-login sync starting while the first is still
+  // running (e.g. AuthAuthenticated re-emitted by a token refresh).
+  bool _postLoginSyncing = false;
   StreamSubscription<void>? _connectivityStockSub;
   StreamSubscription<RemoteMessage>? _fcmForegroundSub;
   StreamSubscription<RemoteMessage>? _fcmTapSub;
@@ -108,6 +113,14 @@ class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
     _sessionExpiredSub = getIt<SessionExpiredNotifier>().stream.listen((_) {
       widget.authBloc.add(LogoutRequested());
     });
+    // SFA-119: pull fresh master data the moment a session becomes active —
+    // a real login, or a token restore on cold start. Without this the rep
+    // works off whatever was cached last session until they open Sync
+    // manually, which is how stale stock counts reach the bill screen.
+    _authSyncSub = widget.authBloc.stream.listen(_onAuthStateChanged);
+    if (widget.authBloc.state is AuthAuthenticated) {
+      _onAuthStateChanged(widget.authBloc.state);
+    }
     // Sync distributor stock whenever connectivity is restored (fire-and-forget).
     _connectivityStockSub = getIt<ConnectivityService>()
         .onConnectionRestored
@@ -118,6 +131,39 @@ class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
     // Staggered so the check doesn't compete with launch work (schema open,
     // auth restore, first sync).
     Future.delayed(const Duration(seconds: 8), _checkForPatch);
+  }
+
+  // ── Post-login sync ─────────────────────────────────────────────────────────
+
+  /// Runs a full sync when a session becomes active. Only sales reps get it:
+  /// products, outlets, the daily route assignment and distributor stock are
+  /// all rep-scoped data, and the supervisor/distributor screens fetch live
+  /// from the API instead of the local cache.
+  void _onAuthStateChanged(AuthState state) {
+    if (state is! AuthAuthenticated) {
+      // A logout ends the guard too, so the next login syncs again.
+      _postLoginSyncing = false;
+      return;
+    }
+    if (state.role != UserRole.salesRep) return;
+    if (_postLoginSyncing) return;
+    _postLoginSyncing = true;
+    unawaited(_runPostLoginSync());
+  }
+
+  Future<void> _runPostLoginSync() async {
+    try {
+      if (!await getIt<ConnectivityService>().hasInternet()) return;
+      // refreshRouteAssignment: today's route may have changed server-side
+      // since this device last synced — or never have been set at all on a
+      // first login. Every step inside runSync is individually guarded.
+      await getIt<BackgroundSyncService>().runSync(refreshRouteAssignment: true);
+    } catch (_) {
+      // Best-effort: the rep can still work offline off the existing cache,
+      // and Sync / connectivity-restored / app-resume all retry later.
+    } finally {
+      _postLoginSyncing = false;
+    }
   }
 
   // ── Shorebird patch prompt + auto-apply ─────────────────────────────────────
@@ -255,6 +301,7 @@ class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
   @override
   void dispose() {
     _sessionExpiredSub?.cancel();
+    _authSyncSub?.cancel();
     _connectivityStockSub?.cancel();
     _fcmForegroundSub?.cancel();
     _fcmTapSub?.cancel();

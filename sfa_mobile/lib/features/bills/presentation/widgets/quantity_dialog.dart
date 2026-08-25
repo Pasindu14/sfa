@@ -29,6 +29,16 @@ class QuantityDialogResult {
 
 enum _Mode { sale, freeIssue, returnItem }
 
+/// One tab's in-progress numbers. Kept per entry key so switching tabs (or
+/// return types) never carries a quantity across to a different line.
+typedef _QtyEntry = ({
+  String cases,
+  String packets,
+  String disc,
+  String price,
+  DateTime? expireDate,
+});
+
 String _modeToBillingItemType(_Mode m) {
   switch (m) {
     case _Mode.sale:       return 'Sale';
@@ -72,19 +82,20 @@ class _QuantitySheetState extends State<_QuantitySheet> {
   String? _discError;
   String? _returnTypeError;
   String? _expireDateError;
+  String? _priceError;
 
-  // Sale/Free Issue/Return are independent entries — each tab remembers its
-  // own cases/packets/discount instead of sharing the same text fields.
-  final Map<_Mode, ({String cases, String packets, String disc})> _qtyByMode = {};
+  // Sale / Free Issue / Return — and each return type (Damage, Expire, Resell)
+  // — are independent entries. Each remembers its own cases/packets/discount/
+  // price/expire date instead of sharing the same text fields.
+  final Map<String, _QtyEntry> _entryByKey = {};
 
   @override
   void initState() {
     super.initState();
-    _casesController = TextEditingController(text: '0');
-    _packetsController = TextEditingController(text: '1');
-    _priceController = TextEditingController(
-      text: (widget.product.dealerPackPrice ?? 0).toStringAsFixed(0),
-    );
+    // SFA-117: Cases and Packets start blank — the rep fills both in.
+    _casesController = TextEditingController();
+    _packetsController = TextEditingController();
+    _priceController = TextEditingController(text: _defaultPriceText);
   }
 
   @override
@@ -109,45 +120,47 @@ class _QuantitySheetState extends State<_QuantitySheet> {
 
   double get _packPrice => widget.product.dealerPackPrice ?? 0.0;
   double get _casePrice => widget.product.dealerCasePrice ?? (_packPrice * _packsPerCase);
-  double get _returnPrice => double.tryParse(_priceController.text.trim()) ?? 0;
   int get _packsPerCase => widget.product.packsPerCase;
 
-  double get _enteredCases => double.tryParse(_casesController.text.trim()) ?? 0;
-  double get _enteredPackets => double.tryParse(_packetsController.text.trim()) ?? 0;
-  double get _enteredDisc => double.tryParse(_discController.text.trim()) ?? 0;
+  /// Identifies the entry the text fields currently hold. Return lines are
+  /// keyed per return type, so Damage, Expire and Resell each keep their own
+  /// quantity and price.
+  String get _entryKey => _mode == _Mode.returnItem
+      ? 'Return:${_returnType ?? ''}'
+      : _modeToBillingItemType(_mode);
 
-  double get _lineTotal {
-    if (_isReturn) {
-      final totalPacks = (_enteredCases * _packsPerCase) + _enteredPackets;
-      return totalPacks * _returnPrice;
-    }
-    final grossCases = _enteredCases * _casePrice;
-    final grossPackets = _enteredPackets * _packPrice;
-    final gross = grossCases + grossPackets;
-    if (_isFreeIssue) return gross;
-    return gross * (1 - _enteredDisc / 100);
+  String get _defaultPriceText =>
+      (widget.product.dealerPackPrice ?? 0).toStringAsFixed(0);
+
+  void _stashEntry(String key) {
+    _entryByKey[key] = (
+      cases: _casesController.text,
+      packets: _packetsController.text,
+      disc: _discController.text,
+      price: _priceController.text,
+      expireDate: _expireDate,
+    );
+  }
+
+  void _restoreEntry(String key) {
+    final saved = _entryByKey[key];
+    _casesController.text = saved?.cases ?? '';
+    _packetsController.text = saved?.packets ?? '';
+    _discController.text = saved?.disc ?? '0';
+    _priceController.text = saved?.price ?? _defaultPriceText;
+    _expireDate = saved?.expireDate;
   }
 
   void _setMode(_Mode mode) {
     if (mode == _mode) return;
+    final previousKey = _entryKey;
     setState(() {
-      _qtyByMode[_mode] = (
-        cases: _casesController.text,
-        packets: _packetsController.text,
-        disc: _discController.text,
-      );
+      _stashEntry(previousKey);
       _mode = mode;
-      final saved = _qtyByMode[mode];
-      _casesController.text = saved?.cases ?? '0';
-      _packetsController.text = saved?.packets ?? '1';
-      _discController.text = saved?.disc ?? '0';
-      _qtyError = null;
-      _discError = null;
       switch (mode) {
         case _Mode.sale:
         case _Mode.freeIssue:
           _returnType = null;
-          _expireDate = null;
           _returnTypeError = null;
           _expireDateError = null;
           break;
@@ -156,15 +169,28 @@ class _QuantitySheetState extends State<_QuantitySheet> {
           _returnTypeError = null;
           break;
       }
+      _restoreEntry(_entryKey);
+      if (_mode != _Mode.returnItem) _expireDate = null;
+      _qtyError = null;
+      _discError = null;
     });
   }
 
   void _setReturnType(String type) {
+    if (type == _returnType) {
+      setState(() => _returnTypeError = null);
+      return;
+    }
+    final previousKey = _entryKey;
     setState(() {
+      _stashEntry(previousKey);
       _returnType = type;
       _returnTypeError = null;
-      if (type != 'Expire') _expireDate = null;
       _expireDateError = null;
+      _restoreEntry(_entryKey);
+      if (type != 'Expire') _expireDate = null;
+      _qtyError = null;
+      _discError = null;
     });
   }
 
@@ -185,95 +211,400 @@ class _QuantitySheetState extends State<_QuantitySheet> {
     }
   }
 
-  void _submit() {
-    bool hasError = false;
+  // ── Staged entries ─────────────────────────────────────────────────────────
+  //
+  // The rep can fill in Sale, Free Issue and any of the three return types for
+  // one product and add them all with a single press. Each becomes its own cart
+  // line; _entryByKey holds the ones not currently on screen.
 
-    final cases = double.tryParse(_casesController.text.trim()) ?? 0;
-    final packets = double.tryParse(_packetsController.text.trim()) ?? 0;
+  /// Every key the sheet can hold, in the order the lines are handed to the
+  /// cart. Sale first so the bill reads the way a rep would write it.
+  static const List<String> _allEntryKeys = [
+    'Sale',
+    'FreeIssue',
+    'Return:Damage',
+    'Return:Expire',
+    'Return:MarketResell',
+  ];
 
-    if (cases < 0 || packets < 0 || (cases == 0 && packets == 0)) {
-      setState(() => _qtyError = 'Enter at least one quantity greater than zero.');
-      hasError = true;
-    } else {
-      setState(() => _qtyError = null);
+  String _billingTypeForKey(String key) =>
+      key.startsWith('Return:') ? 'Return' : key;
+
+  String? _returnTypeForKey(String key) =>
+      key.startsWith('Return:') ? key.substring('Return:'.length) : null;
+
+  /// Snapshot of the text fields as they stand right now.
+  _QtyEntry _currentEntry() => (
+        cases: _casesController.text,
+        packets: _packetsController.text,
+        disc: _discController.text,
+        price: _priceController.text,
+        expireDate: _expireDate,
+      );
+
+  double _casesOf(_QtyEntry e) => double.tryParse(e.cases.trim()) ?? 0;
+  double _packetsOf(_QtyEntry e) => double.tryParse(e.packets.trim()) ?? 0;
+  double _discOf(_QtyEntry e) => double.tryParse(e.disc.trim()) ?? 0;
+  double _priceOf(_QtyEntry e) => double.tryParse(e.price.trim()) ?? 0;
+
+  /// Everything the rep has actually put a number against, in display order.
+  ///
+  /// Overlays the live fields on top of the stored map rather than calling
+  /// _stashEntry, because this is read from build() and must not mutate state.
+  List<({String key, _QtyEntry entry})> get _stagedEntries {
+    final live = {..._entryByKey, _entryKey: _currentEntry()};
+    return [
+      for (final key in _allEntryKeys)
+        if (live[key] != null &&
+            (_casesOf(live[key]!) > 0 || _packetsOf(live[key]!) > 0))
+          (key: key, entry: live[key]!),
+    ];
+  }
+
+  /// Money impact of one staged entry, matching how CreateBillState aggregates
+  /// the cart: sales charge net of the line discount, free issues carry a value
+  /// but cost nothing, returns are a credit back to the distributor.
+  double _entryTotal(String key, _QtyEntry e) {
+    final type = _billingTypeForKey(key);
+    if (type == 'Return') {
+      final packs = (_casesOf(e) * _packsPerCase) + _packetsOf(e);
+      return packs * _priceOf(e);
     }
+    final gross = (_casesOf(e) * _casePrice) + (_packetsOf(e) * _packPrice);
+    if (type == 'FreeIssue') return gross;
+    return gross * (1 - _discOf(e) / 100);
+  }
 
-    if (_mode == _Mode.sale) {
-      final disc = double.tryParse(_discController.text.trim());
+  /// Net effect on the bill of everything staged — free issues excluded because
+  /// they are not charged, returns subtracted because they are a credit.
+  double get _stagedNet {
+    var net = 0.0;
+    for (final staged in _stagedEntries) {
+      final type = _billingTypeForKey(staged.key);
+      if (type == 'FreeIssue') continue;
+      final value = _entryTotal(staged.key, staged.entry);
+      net += type == 'Return' ? -value : value;
+    }
+    return net;
+  }
+
+  /// First problem with a staged entry, or null when it is ready to add.
+  /// [field] names the inline error slot to light up once the sheet has been
+  /// switched to that entry.
+  ({String field, String message})? _validateEntry(String key, _QtyEntry e) {
+    if (_casesOf(e) < 0 || _packetsOf(e) < 0) {
+      return (field: 'qty', message: 'Quantity cannot be negative.');
+    }
+    if (key == 'Sale') {
+      final disc = double.tryParse(e.disc.trim());
       if (disc == null || disc < 0 || disc > 100) {
-        setState(() => _discError = 'Enter a value between 0 and 100.');
-        hasError = true;
-      } else {
-        setState(() => _discError = null);
+        return (field: 'disc', message: 'Enter a discount between 0 and 100.');
       }
     }
-
-    if (_isReturn) {
-      if (_returnType == null) {
-        setState(() => _returnTypeError = 'Select a return type.');
-        hasError = true;
+    if (_billingTypeForKey(key) == 'Return') {
+      if (_priceOf(e) <= 0) {
+        return (
+          field: 'price',
+          message: 'Enter a return price greater than zero.'
+        );
       }
-      if (_returnType == 'Expire' && _expireDate == null) {
-        setState(() => _expireDateError = 'Select an expire date.');
-        hasError = true;
+      if (_returnTypeForKey(key) == 'Expire' && e.expireDate == null) {
+        return (field: 'expire', message: 'Select an expire date.');
       }
     }
+    return null;
+  }
 
-    if (hasError) {
-      final msg = _qtyError ?? _returnTypeError ?? _expireDateError ?? _discError;
-      if (msg != null) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(msg, style: GoogleFonts.barlow(color: Colors.white, fontWeight: FontWeight.w500)),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          margin: EdgeInsets.all(16.w),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
-          duration: const Duration(seconds: 3),
-        ));
-      }
+  /// Brings the offending entry on screen before reporting its error, so the
+  /// rep never gets a complaint about a tab they cannot see.
+  void _focusEntry(String key, ({String field, String message}) problem) {
+    final targetMode = key == 'Sale'
+        ? _Mode.sale
+        : key == 'FreeIssue'
+            ? _Mode.freeIssue
+            : _Mode.returnItem;
+    if (targetMode != _mode) _setMode(targetMode);
+
+    final returnType = _returnTypeForKey(key);
+    if (returnType != null && returnType != _returnType) {
+      _setReturnType(returnType);
+    }
+
+    setState(() {
+      _qtyError = problem.field == 'qty' ? problem.message : null;
+      _discError = problem.field == 'disc' ? problem.message : null;
+      _expireDateError = problem.field == 'expire' ? problem.message : null;
+      _priceError = problem.field == 'price' ? problem.message : null;
+    });
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message,
+          style: GoogleFonts.barlow(
+              color: Colors.white, fontWeight: FontWeight.w500)),
+      backgroundColor: AppColors.error,
+      behavior: SnackBarBehavior.floating,
+      margin: EdgeInsets.all(16.w),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+      duration: const Duration(seconds: 3),
+    ));
+  }
+
+  /// Cart lines for one staged entry. Cases and packets stay separate lines so
+  /// each keeps its own priceType — that is what the cart merges on.
+  List<QuantityDialogResult> _resultsFor(String key, _QtyEntry e) {
+    final cases = _casesOf(e);
+    final packets = _packetsOf(e);
+    final type = _billingTypeForKey(key);
+    final isReturn = type == 'Return';
+    final isFree = type == 'FreeIssue';
+    final disc = (isReturn || isFree) ? 0.0 : _discOf(e);
+    final source = isFree ? _freeIssueSource : null;
+    final returnType = _returnTypeForKey(key);
+
+    return [
+      if (cases > 0 && _hasCasesOption)
+        QuantityDialogResult(
+          quantity: cases * _packsPerCase,
+          unitPrice: isReturn ? _priceOf(e) : _casePrice / _packsPerCase,
+          discountRate: disc,
+          billingItemType: type,
+          returnType: returnType,
+          freeIssueSource: source,
+          expireDate: e.expireDate,
+          priceType: 'Case',
+        ),
+      if (packets > 0)
+        QuantityDialogResult(
+          quantity: packets,
+          unitPrice: isReturn ? _priceOf(e) : _packPrice,
+          discountRate: disc,
+          billingItemType: type,
+          returnType: returnType,
+          freeIssueSource: source,
+          expireDate: e.expireDate,
+          priceType: 'Packet',
+        ),
+    ];
+  }
+
+  void _submit() {
+    final staged = _stagedEntries;
+
+    if (staged.isEmpty) {
+      const message = 'Enter a quantity for at least one item type.';
+      setState(() => _qtyError = message);
+      _showError(message);
       return;
     }
 
-    final disc = double.tryParse(_discController.text.trim()) ?? 0;
-    final String billingType = _modeToBillingItemType(_mode);
-    final String? source = _isFreeIssue ? _freeIssueSource : null;
-
-    final List<QuantityDialogResult> results = [];
-
-    if (cases > 0 && _hasCasesOption) {
-      final double resolvedUnitPrice;
-      if (_isReturn) {
-        resolvedUnitPrice = _returnPrice;
-      } else {
-        resolvedUnitPrice = _casePrice / _packsPerCase;
-      }
-      results.add(QuantityDialogResult(
-        quantity: cases * _packsPerCase,
-        unitPrice: resolvedUnitPrice,
-        discountRate: _isReturn ? 0 : (_isFreeIssue ? 0 : disc),
-        billingItemType: billingType,
-        returnType: _returnType,
-        freeIssueSource: source,
-        expireDate: _expireDate,
-        priceType: 'Case',
-      ));
+    for (final entry in staged) {
+      final problem = _validateEntry(entry.key, entry.entry);
+      if (problem == null) continue;
+      _focusEntry(entry.key, problem);
+      _showError(problem.message);
+      return;
     }
 
-    if (packets > 0) {
-      final double resolvedUnitPrice = _isReturn ? _returnPrice : _packPrice;
-      results.add(QuantityDialogResult(
-        quantity: packets,
-        unitPrice: resolvedUnitPrice,
-        discountRate: _isReturn ? 0 : (_isFreeIssue ? 0 : disc),
-        billingItemType: billingType,
-        returnType: _returnType,
-        freeIssueSource: source,
-        expireDate: _expireDate,
-        priceType: 'Packet',
-      ));
-    }
+    setState(() {
+      _qtyError = null;
+      _discError = null;
+      _returnTypeError = null;
+      _expireDateError = null;
+      _priceError = null;
+    });
 
-    Navigator.of(context).pop(results);
+    Navigator.of(context).pop([
+      for (final entry in staged) ..._resultsFor(entry.key, entry.entry),
+    ]);
+  }
+
+  // ── Staged summary presentation ────────────────────────────────────────────
+
+  /// Which segments of the ITEM TYPE track hold a quantity. Drives the dot that
+  /// tells the rep a tab they are not looking at is still staged.
+  Set<int> get _filledSegments {
+    final keys = _stagedEntries.map((e) => e.key).toSet();
+    return {
+      if (keys.contains('Sale')) 0,
+      if (keys.contains('FreeIssue')) 1,
+      if (keys.any((k) => k.startsWith('Return:'))) 2,
+    };
+  }
+
+  bool _returnTypeFilled(String type) =>
+      _stagedEntries.any((e) => e.key == 'Return:$type');
+
+  String get _addButtonLabel {
+    final count = _stagedEntries.length;
+    if (count == 0) return 'Add to Cart';
+    if (count == 1) return 'Add 1 line';
+    return 'Add $count lines';
+  }
+
+  String _returnLabel(String type) => type == 'MarketResell' ? 'Resell' : type;
+
+  ({String label, Color color}) _summaryStyleFor(String key) {
+    switch (_billingTypeForKey(key)) {
+      case 'FreeIssue':
+        return (label: 'Free Issue', color: AppColors.success);
+      case 'Return':
+        return (
+          label: 'Return · ${_returnLabel(_returnTypeForKey(key)!)}',
+          color: AppColors.error
+        );
+      default:
+        return (label: 'Sale', color: AppColors.primary);
+    }
+  }
+
+  /// '2 cs + 4 pkt' — only the units the rep actually entered.
+  String _qtyLabel(_QtyEntry e) {
+    final cases = _casesOf(e);
+    final packets = _packetsOf(e);
+    return [
+      if (cases > 0 && _hasCasesOption) '${_trimQty(cases)} cs',
+      if (packets > 0) '${_trimQty(packets)} pkt',
+    ].join(' + ');
+  }
+
+  String _trimQty(double v) =>
+      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
+
+  Widget _summaryHeading(String text) => Text(
+        text,
+        style: GoogleFonts.barlowCondensed(
+          fontSize: 10.sp,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 1.5,
+          color: Colors.white.withValues(alpha: 0.40),
+        ),
+      );
+
+  Widget _summaryRow(String key, _QtyEntry entry) {
+    final style = _summaryStyleFor(key);
+    final type = _billingTypeForKey(key);
+    final value = _entryTotal(key, entry);
+    final amount = type == 'FreeIssue'
+        ? 'FOC'
+        : type == 'Return'
+            ? '−Rs. ${value.toStringAsFixed(2)}'
+            : 'Rs. ${value.toStringAsFixed(2)}';
+
+    return Row(
+      children: [
+        Container(
+          width: 6.r,
+          height: 6.r,
+          decoration: BoxDecoration(color: style.color, shape: BoxShape.circle),
+        ),
+        SizedBox(width: 8.w),
+        Expanded(
+          child: Text(
+            style.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.barlow(
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w600,
+              color: Colors.white.withValues(alpha: 0.75),
+            ),
+          ),
+        ),
+        SizedBox(width: 8.w),
+        Text(
+          _qtyLabel(entry),
+          style: GoogleFonts.barlowCondensed(
+            fontSize: 13.sp,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.3,
+            color: Colors.white.withValues(alpha: 0.55),
+          ),
+        ),
+        SizedBox(width: 12.w),
+        Text(
+          amount,
+          style: GoogleFonts.barlowCondensed(
+            fontSize: 15.sp,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.2,
+            color: style.color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Card listing every staged line and the net effect on the bill. Replaces
+  /// the old single LINE TOTAL, which could only describe the visible tab.
+  Widget _buildStagedSummary() {
+    final staged = _stagedEntries;
+    final net = _stagedNet;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 16.h),
+      decoration: BoxDecoration(
+        color: AppColors.darkSurface,
+        borderRadius: BorderRadius.circular(14.r),
+      ),
+      child: staged.isEmpty
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _summaryHeading('NOTHING STAGED YET'),
+                SizedBox(height: 6.h),
+                Text(
+                  'Enter a quantity to begin. Sale, Free Issue and Returns can '
+                  'all go on this item in one go.',
+                  style: GoogleFonts.barlow(
+                    fontSize: 11.sp,
+                    height: 1.35,
+                    color: Colors.white.withValues(alpha: 0.30),
+                  ),
+                ),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _summaryHeading(staged.length == 1
+                    ? '1 LINE STAGED'
+                    : '${staged.length} LINES STAGED'),
+                SizedBox(height: 12.h),
+                for (var i = 0; i < staged.length; i++) ...[
+                  if (i > 0) SizedBox(height: 9.h),
+                  _summaryRow(staged[i].key, staged[i].entry),
+                ],
+                SizedBox(height: 12.h),
+                Container(
+                  height: 1,
+                  color: Colors.white.withValues(alpha: 0.10),
+                ),
+                SizedBox(height: 12.h),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    _summaryHeading('NET'),
+                    Text(
+                      net < 0
+                          ? '−Rs. ${net.abs().toStringAsFixed(2)}'
+                          : 'Rs. ${net.toStringAsFixed(2)}',
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 24.sp,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                        color: net < 0 ? AppColors.error : AppColors.amber,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+    );
   }
 
   @override
@@ -386,6 +717,7 @@ class _QuantitySheetState extends State<_QuantitySheet> {
                         : _mode == _Mode.freeIssue
                             ? 1
                             : 2,
+                    filledIndices: _filledSegments,
                     activeColor: _accentColor,
                     onChanged: (i) => _setMode(
                       i == 0
@@ -464,6 +796,7 @@ class _QuantitySheetState extends State<_QuantitySheet> {
                                     label: 'Damage',
                                     icon: Icons.warning_amber_rounded,
                                     selected: _returnType == 'Damage',
+                                    filled: _returnTypeFilled('Damage'),
                                     onTap: () => _setReturnType('Damage'),
                                   ),
                                   SizedBox(width: 10.w),
@@ -471,6 +804,7 @@ class _QuantitySheetState extends State<_QuantitySheet> {
                                     label: 'Expire',
                                     icon: Icons.event_rounded,
                                     selected: _returnType == 'Expire',
+                                    filled: _returnTypeFilled('Expire'),
                                     onTap: () => _setReturnType('Expire'),
                                   ),
                                   SizedBox(width: 10.w),
@@ -478,6 +812,7 @@ class _QuantitySheetState extends State<_QuantitySheet> {
                                     label: 'Resell',
                                     icon: Icons.storefront_rounded,
                                     selected: _returnType == 'MarketResell',
+                                    filled: _returnTypeFilled('MarketResell'),
                                     onTap: () => _setReturnType('MarketResell'),
                                   ),
                                 ],
@@ -631,6 +966,7 @@ class _QuantitySheetState extends State<_QuantitySheet> {
                           fontSize: 12.sp,
                           color: AppColors.foregroundMuted,
                         ),
+                        errorText: _priceError,
                       ),
                       onChanged: (_) => setState(() {}),
                     ),
@@ -751,65 +1087,7 @@ class _QuantitySheetState extends State<_QuantitySheet> {
 
                   SizedBox(height: 18.h),
 
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.symmetric(
-                        horizontal: 18.w, vertical: 16.h),
-                    decoration: BoxDecoration(
-                      color: AppColors.darkSurface,
-                      borderRadius: BorderRadius.circular(14.r),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'LINE TOTAL',
-                              style: GoogleFonts.barlowCondensed(
-                                fontSize: 10.sp,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 1.5,
-                                color: Colors.white.withValues(alpha: 0.40),
-                              ),
-                            ),
-                            SizedBox(height: 2.h),
-                            Text(
-                              _isReturn
-                                  ? 'Credit to distributor'
-                                  : _isFreeIssue
-                                      ? 'FOC — value shown for record'
-                                      : 'Charged to outlet',
-                              style: GoogleFonts.barlow(
-                                fontSize: 11.sp,
-                                color: Colors.white.withValues(alpha: 0.30),
-                              ),
-                            ),
-                          ],
-                        ),
-                        Text(
-                          _isReturn
-                              ? '−Rs. ${_lineTotal.toStringAsFixed(2)}'
-                              : _isFreeIssue
-                                  ? 'FOC · Rs. ${_lineTotal.toStringAsFixed(2)}'
-                                  : 'Rs. ${_lineTotal.toStringAsFixed(2)}',
-                          style: GoogleFonts.barlowCondensed(
-                            fontSize: 24.sp,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.5,
-                            color: _isReturn
-                                ? AppColors.error
-                                : _isFreeIssue
-                                    ? AppColors.success
-                                    : (_enteredDisc > 0
-                                        ? AppColors.success
-                                        : AppColors.amber),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  _buildStagedSummary(),
 
                   SizedBox(height: 16.h),
 
@@ -863,11 +1141,7 @@ class _QuantitySheetState extends State<_QuantitySheet> {
                                 ),
                                 SizedBox(width: 8.w),
                                 Text(
-                                  _isReturn
-                                      ? 'Add Return'
-                                      : _isFreeIssue
-                                          ? 'Add Free Issue'
-                                          : 'Add to Cart',
+                                  _addButtonLabel,
                                   style: GoogleFonts.barlowCondensed(
                                     fontSize: 16.sp,
                                     fontWeight: FontWeight.w700,
@@ -922,11 +1196,16 @@ class _SegmentedTrack extends StatelessWidget {
   final Color activeColor;
   final ValueChanged<int> onChanged;
 
+  /// Segments holding a quantity. Marked with a dot so the rep can see that a
+  /// tab they are not looking at is still staged.
+  final Set<int> filledIndices;
+
   const _SegmentedTrack({
     required this.segments,
     required this.selectedIndex,
     required this.activeColor,
     required this.onChanged,
+    this.filledIndices = const {},
   });
 
   @override
@@ -972,17 +1251,34 @@ class _SegmentedTrack extends StatelessWidget {
                           : AppColors.foregroundMuted,
                     ),
                     SizedBox(width: 5.w),
-                    Text(
-                      seg.label,
-                      style: GoogleFonts.barlow(
-                        fontSize: 13.sp,
-                        fontWeight:
-                            isActive ? FontWeight.w700 : FontWeight.w500,
-                        color: isActive
-                            ? activeColor
-                            : AppColors.foregroundMuted,
+                    Flexible(
+                      child: Text(
+                        seg.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.barlow(
+                          fontSize: 13.sp,
+                          fontWeight:
+                              isActive ? FontWeight.w700 : FontWeight.w500,
+                          color: isActive
+                              ? activeColor
+                              : AppColors.foregroundMuted,
+                        ),
                       ),
                     ),
+                    if (filledIndices.contains(i)) ...[
+                      SizedBox(width: 4.w),
+                      Container(
+                        width: 5.r,
+                        height: 5.r,
+                        decoration: BoxDecoration(
+                          color: isActive
+                              ? activeColor
+                              : AppColors.foreground.withValues(alpha: 0.55),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1002,11 +1298,15 @@ class _ReturnChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
+  /// This return type already holds a quantity.
+  final bool filled;
+
   const _ReturnChip({
     required this.label,
     required this.icon,
     required this.selected,
     required this.onTap,
+    this.filled = false,
   });
 
   @override
@@ -1038,14 +1338,32 @@ class _ReturnChip extends StatelessWidget {
                 color: selected ? AppColors.error : AppColors.foregroundMuted,
               ),
               SizedBox(height: 4.h),
-              Text(
-                label,
-                style: GoogleFonts.barlowCondensed(
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.3,
-                  color: selected ? AppColors.error : AppColors.foreground,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    label,
+                    style: GoogleFonts.barlowCondensed(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
+                      color: selected ? AppColors.error : AppColors.foreground,
+                    ),
+                  ),
+                  if (filled) ...[
+                    SizedBox(width: 4.w),
+                    Container(
+                      width: 5.r,
+                      height: 5.r,
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? AppColors.error
+                            : AppColors.foreground.withValues(alpha: 0.55),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),

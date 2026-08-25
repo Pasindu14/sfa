@@ -552,6 +552,14 @@ class _ProductTile extends StatelessWidget {
   bool get _hasPrice =>
       product.dealerPackPrice != null && product.dealerPackPrice! > 0;
 
+  /// Distributor stock. A NULL join result means the distributor holds no
+  /// stock row for this product at all, which counts as zero.
+  bool get _hasStock => (product.normalStock ?? 0) > 0;
+
+  /// A product can only be added to a bill when it is both priced and in
+  /// stock at the distributor.
+  bool get _isSelectable => _hasPrice && _hasStock;
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -577,13 +585,13 @@ class _ProductTile extends StatelessWidget {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: _hasPrice ? onTap : null,
+            onTap: _isSelectable ? onTap : null,
             borderRadius: BorderRadius.only(
               bottomLeft: Radius.circular(isLast ? 12.r : 0),
               bottomRight: Radius.circular(isLast ? 12.r : 0),
             ),
             child: Opacity(
-              opacity: _hasPrice ? 1.0 : 0.45,
+              opacity: _isSelectable ? 1.0 : 0.45,
               child: Padding(
                 padding:
                     EdgeInsets.symmetric(horizontal: 14.w, vertical: 11.h),
@@ -594,14 +602,14 @@ class _ProductTile extends StatelessWidget {
                       width: 38.r,
                       height: 38.r,
                       decoration: BoxDecoration(
-                        color: _hasPrice
+                        color: _isSelectable
                             ? AppColors.primary.withValues(alpha: 0.08)
                             : AppColors.surfaceVariant,
                         borderRadius: BorderRadius.circular(9.r),
                       ),
                       child: Icon(Icons.inventory_2_rounded,
                           size: 17.r,
-                          color: _hasPrice
+                          color: _isSelectable
                               ? AppColors.primary
                               : AppColors.foregroundMuted),
                     ),
@@ -634,10 +642,8 @@ class _ProductTile extends StatelessWidget {
                                   color: AppColors.foregroundMuted,
                                 ),
                               ),
-                              if (product.normalStock != null) ...[
-                                SizedBox(width: 6.w),
-                                _StockBadge(qty: product.normalStock!),
-                              ],
+                              SizedBox(width: 6.w),
+                              _StockBadge(qty: product.normalStock ?? 0),
                             ],
                           ),
                         ],
@@ -650,7 +656,7 @@ class _ProductTile extends StatelessWidget {
                       padding: EdgeInsets.symmetric(
                           horizontal: 10.w, vertical: 5.h),
                       decoration: BoxDecoration(
-                        color: _hasPrice
+                        color: _isSelectable
                             ? AppColors.primaryDark
                             : AppColors.surfaceVariant,
                         borderRadius: BorderRadius.circular(8.r),
@@ -663,7 +669,7 @@ class _ProductTile extends StatelessWidget {
                           fontSize: 14.sp,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.3,
-                          color: _hasPrice
+                          color: _isSelectable
                               ? Colors.white
                               : AppColors.foregroundMuted,
                         ),
@@ -689,7 +695,7 @@ class _StockBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasStock = qty > 0;
-    final color = hasStock ? AppColors.success : AppColors.warning;
+    final color = hasStock ? AppColors.success : AppColors.error;
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.5.h),
       decoration: BoxDecoration(
@@ -698,7 +704,7 @@ class _StockBadge extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.30)),
       ),
       child: Text(
-        'Stk: ${qty.toStringAsFixed(0)}',
+        hasStock ? 'Stk: ${qty.toStringAsFixed(0)}' : 'No stock',
         style: GoogleFonts.barlow(
           fontSize: 9.sp,
           fontWeight: FontWeight.w700,
