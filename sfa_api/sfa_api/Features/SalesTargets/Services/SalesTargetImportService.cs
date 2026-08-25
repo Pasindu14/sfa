@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using System.Text.Json;
 using sfa_api.Features.SalesTargets.DTOs;
 using sfa_api.Features.SalesTargets.Entities;
@@ -19,7 +20,8 @@ public class SalesTargetImportService(
     IUserReportingLineRepository reportingLineRepo,
     IUserGeoAssignmentRepository geoRepo,
     IDistributorRepository distributorRepo,
-    AppDbContext context) : ISalesTargetImportService
+    AppDbContext context,
+    ILogger<SalesTargetImportService> logger) : ISalesTargetImportService
 {
     public async Task<ImportSalesTargetsResultDto> ImportAsync(
         ImportSalesTargetsRequest request,
@@ -47,6 +49,27 @@ public class SalesTargetImportService(
         await batchRepo.CreateAsync(batch, ct);
         await batchRepo.SaveChangesAsync(ct);
 
+        // The batch row is now committed as Processing. Everything past this point must either
+        // finish it or mark it Failed — an escaping exception would otherwise strand it at
+        // Processing forever, indistinguishable from work that is genuinely still running.
+        try
+        {
+            return await RunImportAsync(request, batch, callerId, now, ct);
+        }
+        catch (Exception ex)
+        {
+            await MarkBatchFailedAsync(batch, ex, now);
+            throw;
+        }
+    }
+
+    private async Task<ImportSalesTargetsResultDto> RunImportAsync(
+        ImportSalesTargetsRequest request,
+        SalesTargetImportBatch batch,
+        int callerId,
+        DateTime now,
+        CancellationToken ct)
+    {
         // ② Collect distinct lookup sets
         var repIds    = request.Rows.Select(r => r.RepsCode).Distinct().ToList();
         var itemCodes = request.Rows.Select(r => r.ItemCode.Trim()).Distinct().ToList();
@@ -111,6 +134,13 @@ public class SalesTargetImportService(
         var errors   = new List<SalesTargetImportErrorDto>();
         int inserted = 0, updated = 0, skipped = 0;
 
+        // Rows already staged by THIS batch, keyed exactly like the DB unique index
+        // IX_SalesTargets_SalesRepId_Year_Month_ProductId. `existingTargets` only dedupes against
+        // rows already in the database; without this, the same (rep, product) appearing twice in
+        // one file produces two INSERTs with an identical key, Postgres rejects the whole
+        // SaveChanges with 23505, and every row in the batch is lost.
+        var stagedByKey = new Dictionary<(int RepId, int ProductId), (SalesTarget Entity, int RowIndex)>();
+
         foreach (var row in request.Rows)
         {
             var itemCode = row.ItemCode.Trim();
@@ -136,6 +166,25 @@ public class SalesTargetImportService(
                 continue;
             }
 
+            var key = (row.RepsCode, product.Id);
+
+            // Same rep + product already seen in this same file — last row wins. Overwrite the
+            // staged quantity in place and report the SUPERSEDED row as skipped, so that
+            // inserted + updated + skipped still adds up to TotalRows.
+            if (stagedByKey.TryGetValue(key, out var staged))
+            {
+                errors.Add(new SalesTargetImportErrorDto(
+                    staged.RowIndex, row.RepsCode, itemCode,
+                    $"Duplicate rep/item in file — superseded by row {row.RowIndex} (qty {row.TargetQty})"));
+                skipped++;
+
+                staged.Entity.TargetQuantity = row.TargetQty;
+                staged.Entity.UpdatedAt      = now;
+                staged.Entity.UpdatedBy      = callerId;
+                stagedByKey[key] = (staged.Entity, row.RowIndex);
+                continue;
+            }
+
             // Walk org chain in-memory (4 hops, O(1) each)
             reportingLines.TryGetValue(row.RepsCode, out var supervisorId);
             int? supId = supervisorId == 0 ? null : supervisorId;
@@ -149,8 +198,6 @@ public class SalesTargetImportService(
             int? distributorId = geo?.TerritoryId.HasValue == true
                 && distributorIdByTerritoryId.TryGetValue(geo.TerritoryId!.Value, out var distId)
                 ? distId : null;
-
-            var key = (row.RepsCode, product.Id);
 
             if (existingTargets.TryGetValue(key, out var existing))
             {
@@ -168,11 +215,12 @@ public class SalesTargetImportService(
                 existing.UpdatedAt        = now;
                 existing.UpdatedBy        = callerId;
                 toUpdate.Add(existing);
+                stagedByKey[key] = (existing, row.RowIndex);
                 updated++;
             }
             else
             {
-                toInsert.Add(new SalesTarget
+                var target = new SalesTarget
                 {
                     ImportBatchId    = batch.Id,
                     Year             = request.Year,
@@ -193,7 +241,9 @@ public class SalesTargetImportService(
                     UpdatedAt        = now,
                     CreatedBy        = callerId,
                     UpdatedBy        = callerId,
-                });
+                };
+                toInsert.Add(target);
+                stagedByKey[key] = (target, row.RowIndex);
                 inserted++;
             }
         }
@@ -230,4 +280,58 @@ public class SalesTargetImportService(
             Status:       status,
             Errors:       errors);
     }
+
+    /// <summary>
+    /// Closes out a batch that blew up mid-run so it never sits at Processing forever.
+    /// Best-effort: if even this write fails, we log and let the original exception surface.
+    /// </summary>
+    private async Task MarkBatchFailedAsync(SalesTargetImportBatch batch, Exception ex, DateTime now)
+    {
+        logger.LogError(ex,
+            "Sales target import {BatchNumber} (batch {BatchId}) failed for {Year}-{Month:00}; no targets were written.",
+            batch.BatchNumber, batch.Id, batch.Year, batch.Month);
+
+        try
+        {
+            // The failed SalesTarget writes are still tracked on this shared DbContext. Saving the
+            // batch row without detaching them would simply replay the same failing statements.
+            foreach (var entry in context.ChangeTracker.Entries<SalesTarget>().ToList())
+                entry.State = EntityState.Detached;
+
+            batch.InsertedRows = 0;
+            batch.UpdatedRows  = 0;
+            batch.SkippedRows  = 0;
+            batch.Status       = SalesTargetImportBatchStatus.Failed;
+            batch.ErrorSummary = JsonSerializer.Serialize(new[]
+            {
+                new SalesTargetImportErrorDto(0, 0, string.Empty, DescribeFailure(ex))
+            });
+            batch.UpdatedAt = now;
+
+            // Deliberately not the request token — an aborted or cancelled request is exactly the
+            // case where this bookkeeping write still has to land.
+            await batchRepo.SaveChangesAsync(CancellationToken.None);
+        }
+        catch (Exception bookkeepingEx)
+        {
+            logger.LogError(bookkeepingEx,
+                "Could not mark sales target import {BatchNumber} as Failed; it will remain at Processing.",
+                batch.BatchNumber);
+        }
+    }
+
+    /// <summary>Safe, non-leaking description stored on the batch row — never raw exception text.</summary>
+    private static string DescribeFailure(Exception ex) => ex switch
+    {
+        OperationCanceledException =>
+            "Import was cancelled before it finished (request aborted or timed out). No targets were written.",
+        DbUpdateException dbEx when dbEx.InnerException is PostgresException { SqlState: "23505" } =>
+            "A duplicate sales target (same rep + product + period) was rejected by the database. No targets were written.",
+        DbUpdateException dbEx when dbEx.InnerException is PostgresException { SqlState: "23503" } =>
+            "A referenced rep, product or geo record no longer exists. No targets were written.",
+        DbUpdateException =>
+            "The database rejected the target rows. No targets were written.",
+        _ =>
+            "The import failed unexpectedly. No targets were written. See server logs for details.",
+    };
 }

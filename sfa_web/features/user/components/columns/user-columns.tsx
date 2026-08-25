@@ -50,6 +50,16 @@ export function getUserColumns(actions: UserColumnActions): ColumnDef<UserDto>[]
 
   return [
     {
+      accessorKey: 'id',
+      header: 'ID',
+      size: 70,
+      cell: ({ row }) => (
+        <span className="font-mono text-sm tabular-nums text-muted-foreground">
+          {row.original.id}
+        </span>
+      ),
+    },
+    {
       id: 'nameEmail',
       header: 'User',
       cell: ({ row }) => {
