@@ -63,6 +63,7 @@ const navConfig: NavGroup[] = [
       { title: "User Assignments", url: "/user-reporting-lines" },
       { title: "Geo Assignments", url: "/geo-assignments" },
       { title: "Route Cancellations", url: "/route-cancellations" },
+      { title: "Field Reps Live Map", url: "/field-reps-live-map" },
     ],
   },
   {
