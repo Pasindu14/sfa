@@ -80,7 +80,7 @@ export function parseTargetsExcel(
 
     if (!repsCode || !itemCode) continue
     rows.push({
-      rowIndex: i - 7,
+      rowIndex: i + 1,
       repsCode,
       repName,
       itemCode,
