@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:uswatte/core/connectivity/connectivity_service.dart';
 import 'package:uswatte/core/di/injection.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/core/widgets/app_spinner.dart';
@@ -48,8 +49,38 @@ class _SyncPageState extends State<SyncPage> {
     }
   }
 
+  /// Shows a toast and returns false when offline, instead of letting a sync
+  /// action fail into a raw AppException dump in a category card — this app
+  /// is offline-first, so "no internet" is an expected, recoverable state,
+  /// not an error worth alarming the rep with.
+  Future<bool> _requireOnline() async {
+    final online = await getIt<ConnectivityService>().hasInternet();
+    if (!online && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'No internet connection — connect and try again',
+            style: GoogleFonts.barlow(
+              color: Colors.white,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          backgroundColor: AppColors.darkSurface,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(16.w),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8.r),
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+    return online;
+  }
+
   Future<void> _syncStock() async {
     if (_stockSyncing) return;
+    if (!await _requireOnline()) return;
     setState(() {
       _stockSyncing = true;
       _stockErrorMessage = null;
@@ -68,10 +99,12 @@ class _SyncPageState extends State<SyncPage> {
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+      ),
+    );
 
     return BlocListener<AssignmentsBloc, AssignmentsState>(
       listenWhen: (_, curr) => curr is AssignmentsLoaded,
@@ -79,16 +112,16 @@ class _SyncPageState extends State<SyncPage> {
         if (state is AssignmentsLoaded) {
           if (state.assignments.isNotEmpty) {
             final assignment = state.assignments.first;
-            context.read<OutletsBloc>().add(SyncDailyOutletsRequested(
-                  routeId: assignment.routeId,
-                  routeName: assignment.routeName,
-                ));
+            context.read<OutletsBloc>().add(
+              SyncDailyOutletsRequested(
+                routeId: assignment.routeId,
+                routeName: assignment.routeName,
+              ),
+            );
           } else {
             // Confirmed no assignment today — wipe any stale outlets/sync
             // stamp so the billing flow doesn't keep showing yesterday's data.
-            context
-                .read<OutletsBloc>()
-                .add(const NoAssignmentTodayConfirmed());
+            context.read<OutletsBloc>().add(const NoAssignmentTodayConfirmed());
           }
         }
       },
@@ -96,8 +129,13 @@ class _SyncPageState extends State<SyncPage> {
         builder: (context, outletsState) {
           return BlocBuilder<ProductsBloc, ProductsState>(
             builder: (context, productsState) {
-              return _buildBody(context, productsState, outletsState,
-              outletsState is OutletsLoaded && outletsState.hasActiveAssignment);
+              return _buildBody(
+                context,
+                productsState,
+                outletsState,
+                outletsState is OutletsLoaded &&
+                    outletsState.hasActiveAssignment,
+              );
             },
           );
         },
@@ -111,121 +149,130 @@ class _SyncPageState extends State<SyncPage> {
     OutletsState outletsState,
     bool hasActiveAssignment,
   ) {
-    final isAnySyncing = _isAnySyncing(productsState, outletsState, hasActiveAssignment) || _stockSyncing;
-    final allSynced = _isAllSynced(productsState, outletsState, hasActiveAssignment) &&
+    final isAnySyncing =
+        _isAnySyncing(productsState, outletsState, hasActiveAssignment) ||
+        _stockSyncing;
+    final allSynced =
+        _isAllSynced(productsState, outletsState, hasActiveAssignment) &&
         _stockLastSyncedAt != null &&
         !_stockSyncing;
 
-        return Scaffold(
-          backgroundColor: AppColors.background,
-          body: CustomScrollView(
-            slivers: [
-              // ── App bar ──────────────────────────────────────────────────
-              _SyncAppBar(onBack: () => context.pop()),
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: CustomScrollView(
+        slivers: [
+          // ── App bar ──────────────────────────────────────────────────
+          _SyncAppBar(onBack: () => context.pop()),
 
-              // ── Status banner ────────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 0),
-                  child: _StatusBanner(
-                    isAnySyncing: isAnySyncing,
-                    allSynced: allSynced,
-                  ),
-                ),
+          // ── Status banner ────────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 0),
+              child: _StatusBanner(
+                isAnySyncing: isAnySyncing,
+                allSynced: allSynced,
               ),
-
-              // ── Section label ────────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(20.w, 24.h, 20.w, 10.h),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 3.w,
-                        height: 13.h,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(2.r),
-                        ),
-                      ),
-                      SizedBox(width: 8.w),
-                      Text(
-                        'DATA CATEGORIES',
-                        style: GoogleFonts.barlowCondensed(
-                          fontSize: 11.sp,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 2.5,
-                          color: AppColors.foregroundMuted,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // ── Category cards ───────────────────────────────────────────
-              SliverPadding(
-                padding: EdgeInsets.symmetric(horizontal: 16.w),
-                sliver: SliverList.list(
-                  children: [
-                    _ProductsCategoryCard(
-                      state: productsState,
-                      onSync: () => context
-                          .read<ProductsBloc>()
-                          .add(const SyncProductsRequested()),
-                      onView: () => context.push('/sales-rep/products'),
-                    ),
-                    if (outletsState is! OutletsLoaded ||
-                        outletsState.hasActiveAssignment)
-                      _OutletsCategoryCard(
-                        state: outletsState,
-                        onSync: () => _syncOutlets(context),
-                        onView: () => context.push('/sales-rep/outlets'),
-                      ),
-                    _CategoryCard(
-                      icon: Icons.warehouse_rounded,
-                      label: 'DISTRIBUTOR STOCK',
-                      subtitle: "Your distributor's current stock levels",
-                      accentColor: const Color(0xFF7C3AED),
-                      itemCount: _stockItemCount,
-                      itemUnit: 'stock rows',
-                      lastSyncedAt: _stockLastSyncedAt,
-                      isSyncing: _stockSyncing,
-                      hasError: _stockErrorMessage != null,
-                      errorMessage: _stockErrorMessage,
-                      onSync: _syncStock,
-                      onView: () => context.push('/sales-rep/stock'),
-                      viewLabel: 'View stock',
-                    ),
-                  ],
-                ),
-              ),
-
-              // ── SYNC ALL button pinned to bottom ─────────────────────────
-              SliverFillRemaining(
-                hasScrollBody: false,
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(16.w, 24.h, 16.w, 36.h),
-                    child: _SyncAllButton(
-                      isSyncing: isAnySyncing,
-                      onTap: isAnySyncing
-                          ? null
-                          : () {
-                              context
-                                  .read<ProductsBloc>()
-                                  .add(const SyncProductsRequested());
-                              _syncOutlets(context);
-                              _syncStock();
-                            },
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-        );
+
+          // ── Section label ────────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(20.w, 24.h, 20.w, 10.h),
+              child: Row(
+                children: [
+                  Container(
+                    width: 3.w,
+                    height: 13.h,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(2.r),
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  Text(
+                    'DATA CATEGORIES',
+                    style: GoogleFonts.barlowCondensed(
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 2.5,
+                      color: AppColors.foregroundMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Category cards ───────────────────────────────────────────
+          SliverPadding(
+            padding: EdgeInsets.symmetric(horizontal: 16.w),
+            sliver: SliverList.list(
+              children: [
+                _ProductsCategoryCard(
+                  state: productsState,
+                  onSync: () async {
+                    if (!await _requireOnline()) return;
+                    if (!context.mounted) return;
+                    context.read<ProductsBloc>().add(
+                      const SyncProductsRequested(),
+                    );
+                  },
+                  onView: () => context.push('/sales-rep/products'),
+                ),
+                if (outletsState is! OutletsLoaded ||
+                    outletsState.hasActiveAssignment)
+                  _OutletsCategoryCard(
+                    state: outletsState,
+                    onSync: () => _syncOutlets(context),
+                    onView: () => context.push('/sales-rep/outlets'),
+                  ),
+                _CategoryCard(
+                  icon: Icons.warehouse_rounded,
+                  label: 'DISTRIBUTOR STOCK',
+                  subtitle: "Your distributor's current stock levels",
+                  accentColor: const Color(0xFF7C3AED),
+                  itemCount: _stockItemCount,
+                  itemUnit: 'stock rows',
+                  lastSyncedAt: _stockLastSyncedAt,
+                  isSyncing: _stockSyncing,
+                  hasError: _stockErrorMessage != null,
+                  errorMessage: _stockErrorMessage,
+                  onSync: _syncStock,
+                  onView: () => context.push('/sales-rep/stock'),
+                  viewLabel: 'View stock',
+                ),
+              ],
+            ),
+          ),
+
+          // ── SYNC ALL button pinned to bottom ─────────────────────────
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(16.w, 24.h, 16.w, 36.h),
+                child: _SyncAllButton(
+                  isSyncing: isAnySyncing,
+                  onTap: isAnySyncing
+                      ? null
+                      : () async {
+                          if (!await _requireOnline()) return;
+                          if (!context.mounted) return;
+                          context.read<ProductsBloc>().add(
+                            const SyncProductsRequested(),
+                          );
+                          _syncOutlets(context);
+                          _syncStock();
+                        },
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // Always refetch today's assignment from the server so route changes made
@@ -234,22 +281,34 @@ class _SyncPageState extends State<SyncPage> {
   // that updates metadata.current_route_id and the daily_outlets table.
   // Do NOT read AssignmentsBloc.state here: that state was captured when the
   // page mounted and can be stale if the DB changed in the meantime.
-  void _syncOutlets(BuildContext context) {
-    context
-        .read<AssignmentsBloc>()
-        .add(LoadAssignmentsRequested(date: DateTime.now()));
+  Future<void> _syncOutlets(BuildContext context) async {
+    if (!await _requireOnline()) return;
+    if (!context.mounted) return;
+    context.read<AssignmentsBloc>().add(
+      LoadAssignmentsRequested(date: DateTime.now()),
+    );
   }
 
-  bool _isAnySyncing(ProductsState ps, OutletsState os, bool hasActiveAssignment) {
+  bool _isAnySyncing(
+    ProductsState ps,
+    OutletsState os,
+    bool hasActiveAssignment,
+  ) {
     final productsSyncing =
         ps is ProductsLoading || (ps is ProductsLoaded && ps.isSyncing);
-    final outletsSyncing = hasActiveAssignment &&
+    final outletsSyncing =
+        hasActiveAssignment &&
         (os is OutletsLoading || (os is OutletsLoaded && os.isSyncing));
     return productsSyncing || outletsSyncing;
   }
 
-  bool _isAllSynced(ProductsState ps, OutletsState os, bool hasActiveAssignment) {
-    final outletsSynced = !hasActiveAssignment ||
+  bool _isAllSynced(
+    ProductsState ps,
+    OutletsState os,
+    bool hasActiveAssignment,
+  ) {
+    final outletsSynced =
+        !hasActiveAssignment ||
         (os is OutletsLoaded && os.lastSyncedAt != null && !os.isSyncing);
     return ps is ProductsLoaded &&
         ps.lastSyncedAt != null &&
@@ -273,11 +332,14 @@ class _OutletsCategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final int? count =
-        state is OutletsLoaded ? (state as OutletsLoaded).outlets.length : null;
-    final DateTime? lastSyncedAt =
-        state is OutletsLoaded ? (state as OutletsLoaded).lastSyncedAt : null;
-    final bool isSyncing = state is OutletsLoading ||
+    final int? count = state is OutletsLoaded
+        ? (state as OutletsLoaded).outlets.length
+        : null;
+    final DateTime? lastSyncedAt = state is OutletsLoaded
+        ? (state as OutletsLoaded).lastSyncedAt
+        : null;
+    final bool isSyncing =
+        state is OutletsLoading ||
         (state is OutletsLoaded && (state as OutletsLoaded).isSyncing);
     final bool hasError = state is OutletsError;
 
@@ -331,10 +393,14 @@ class _SyncAppBar extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10.r),
                       border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.25)),
+                        color: Colors.white.withValues(alpha: 0.25),
+                      ),
                     ),
-                    child: Icon(Icons.arrow_back_ios_new_rounded,
-                        size: 15.r, color: Colors.white),
+                    child: Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      size: 15.r,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
                 SizedBox(width: 4.w),
@@ -374,10 +440,7 @@ class _SyncAppBar extends StatelessWidget {
 // ── Status banner ─────────────────────────────────────────────────────────────
 
 class _StatusBanner extends StatelessWidget {
-  const _StatusBanner({
-    required this.isAnySyncing,
-    required this.allSynced,
-  });
+  const _StatusBanner({required this.isAnySyncing, required this.allSynced});
 
   final bool isAnySyncing;
   final bool allSynced;
@@ -451,7 +514,8 @@ class _ProductsCategoryCard extends StatelessWidget {
         ? (state as ProductsLoaded).lastSyncedAt
         : null;
     final bool isSyncing =
-        state is ProductsLoading || (state is ProductsLoaded && (state as ProductsLoaded).isSyncing);
+        state is ProductsLoading ||
+        (state is ProductsLoaded && (state as ProductsLoaded).isSyncing);
     final bool hasError = state is ProductsError;
 
     return _CategoryCard(
@@ -597,12 +661,16 @@ class _CategoryCard extends StatelessWidget {
                     color: accentColor.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8.r),
                     border: Border.all(
-                        color: accentColor.withValues(alpha: 0.20)),
+                      color: accentColor.withValues(alpha: 0.20),
+                    ),
                   ),
                   child: isSyncing
                       ? Center(child: AppSpinner.small(color: accentColor))
-                      : Icon(Icons.sync_rounded,
-                          size: 15.r, color: accentColor),
+                      : Icon(
+                          Icons.sync_rounded,
+                          size: 15.r,
+                          color: accentColor,
+                        ),
                 ),
               ),
             ],
@@ -626,8 +694,11 @@ class _CategoryCard extends StatelessWidget {
                         color: AppColors.surface,
                         borderRadius: BorderRadius.circular(6.r),
                       ),
-                      child: Icon(Icons.tag_rounded,
-                          size: 13.r, color: AppColors.foregroundMuted),
+                      child: Icon(
+                        Icons.tag_rounded,
+                        size: 13.r,
+                        color: AppColors.foregroundMuted,
+                      ),
                     ),
                     SizedBox(width: 8.w),
                     Column(
@@ -660,39 +731,41 @@ class _CategoryCard extends StatelessWidget {
 
               // Status
               Flexible(
-               child: Container(
-                padding:
-                    EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(20.r),
-                  border: Border.all(
-                      color: statusColor.withValues(alpha: 0.20)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    isSyncing
-                        ? AppSpinner.small(color: statusColor)
-                        : Icon(_statusIcon(),
-                            size: 11.r, color: statusColor),
-                    SizedBox(width: 5.w),
-                    Flexible(
-                      child: Text(
-                        _syncLabel(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.barlowCondensed(
-                          fontSize: 11.sp,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.3,
-                          color: statusColor,
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 10.w,
+                    vertical: 6.h,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(20.r),
+                    border: Border.all(
+                      color: statusColor.withValues(alpha: 0.20),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      isSyncing
+                          ? AppSpinner.small(color: statusColor)
+                          : Icon(_statusIcon(), size: 11.r, color: statusColor),
+                      SizedBox(width: 5.w),
+                      Flexible(
+                        child: Text(
+                          _syncLabel(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.barlowCondensed(
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
+                            color: statusColor,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-               ),
               ),
             ],
           ),
@@ -715,8 +788,11 @@ class _CategoryCard extends StatelessWidget {
                     ),
                   ),
                   SizedBox(width: 4.w),
-                  Icon(Icons.arrow_forward_ios_rounded,
-                      size: 10.r, color: accentColor),
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 10.r,
+                    color: accentColor,
+                  ),
                 ],
               ),
             ),
@@ -765,8 +841,7 @@ class _SyncAllButton extends StatelessWidget {
             children: [
               isSyncing
                   ? const AppSpinner.button()
-                  : Icon(Icons.sync_rounded,
-                      size: 18.r, color: Colors.white),
+                  : Icon(Icons.sync_rounded, size: 18.r, color: Colors.white),
               SizedBox(width: 10.w),
               Text(
                 isSyncing ? 'SYNCING…' : 'SYNC ALL',

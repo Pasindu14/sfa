@@ -11,7 +11,12 @@ class SupervisorRouteMapRemoteDatasource {
     try {
       final response = await _dio.get(
         '/api/v1/daily-route-assignments',
-        queryParameters: {'userId': userId, 'date': date, 'page': 1, 'pageSize': 1},
+        queryParameters: {
+          'userId': userId,
+          'date': date,
+          'page': 1,
+          'pageSize': 1,
+        },
       );
       final body = response.data as Map<String, dynamic>;
       final data = body['data'] as Map<String, dynamic>;
@@ -31,7 +36,10 @@ class SupervisorRouteMapRemoteDatasource {
     try {
       final response = await _dio.get('/api/v1/outlets/by-route/$routeId');
       final body = response.data as Map<String, dynamic>;
-      final rawList = body['data'] as List<dynamic>;
+      // GET /api/v1/outlets/by-route/{routeId} returns MobileOutletSyncDto —
+      // {data: {outlets: [...], geofenceRadiusMeters: ...}} — not a bare list.
+      final data = body['data'] as Map<String, dynamic>;
+      final rawList = data['outlets'] as List<dynamic>;
       return rawList
           .map((e) => OutletModel.fromJson(e as Map<String, dynamic>))
           .toList();
@@ -108,8 +116,7 @@ class SupervisorRouteMapRemoteDatasource {
     }
 
     final message = switch (e.type) {
-      DioExceptionType.connectionTimeout ||
-      DioExceptionType.sendTimeout =>
+      DioExceptionType.connectionTimeout || DioExceptionType.sendTimeout =>
         'Connection timed out. Check your network.',
       DioExceptionType.receiveTimeout => 'Server took too long to respond.',
       DioExceptionType.connectionError => 'No internet connection.',
