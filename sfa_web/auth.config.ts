@@ -39,8 +39,9 @@ export default {
         return true;
       }
 
-      // All remaining routes require Admin
-      if (userRole?.toLowerCase() !== "admin") {
+      // All remaining routes are the back-office app — every role except
+      // SalesRep (mobile-only) and Distributor (confined to the portal above).
+      if (userRole?.toLowerCase() === "salesrep" || userRole?.toLowerCase() === "distributor") {
         return Response.redirect(new URL("/unauthorized", nextUrl));
       }
 

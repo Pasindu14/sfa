@@ -145,8 +145,16 @@ final getIt = GetIt.instance;
 Future<void> configureDependencies() async {
   // ── Infrastructure ──────────────────────────────────────────────────────────
   const storage = FlutterSecureStorage(
-    // Encrypts on Android API 23+; falls back to standard on older versions
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    // Encrypts on Android API 23+; falls back to standard on older versions.
+    // resetOnError: a corrupted EncryptedSharedPreferences master key (OS update,
+    // OEM keystore eviction, backup/restore) makes every read throw instead of
+    // returning null. Without this, that surfaces as a stuck app; with it, the
+    // corrupted store is wiped and reads behave like "nothing stored" — the app
+    // just asks the user to log in again instead of failing unpredictably.
+    aOptions: AndroidOptions(
+      encryptedSharedPreferences: true,
+      resetOnError: true,
+    ),
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
   );
   final cache = TokenCache();

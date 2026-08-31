@@ -38,10 +38,13 @@ type RefreshResult = {
  */
 const inFlightRefreshes = new Map<string, Promise<RefreshResult>>();
 
-async function requestRefresh(refreshToken: string): Promise<RefreshResult> {
+async function requestRefresh(
+  refreshToken: string,
+  deviceId: string,
+): Promise<RefreshResult> {
   const response = await apiClient.post(
     `${env.SFA_API_DOMAIN}/api/v1/auth/refresh`,
-    { refreshToken, deviceId: "test-device-001" },
+    { refreshToken, deviceId },
     { headers: { "Content-Type": "application/json" } },
   );
 
@@ -52,11 +55,14 @@ async function requestRefresh(refreshToken: string): Promise<RefreshResult> {
   return data as RefreshResult;
 }
 
-function refreshAccessToken(refreshToken: string): Promise<RefreshResult> {
+function refreshAccessToken(
+  refreshToken: string,
+  deviceId: string,
+): Promise<RefreshResult> {
   const existing = inFlightRefreshes.get(refreshToken);
   if (existing) return existing;
 
-  const pending = requestRefresh(refreshToken).finally(() => {
+  const pending = requestRefresh(refreshToken, deviceId).finally(() => {
     inFlightRefreshes.delete(refreshToken);
   });
 
@@ -73,6 +79,7 @@ declare module "next-auth" {
     accessToken?: string; // JWT token from .NET Core API
     refreshToken?: string; // Refresh token from .NET Core API
     accessTokenExpiry?: number; // Unix timestamp (ms)
+    deviceId?: string; // Device ID bound to this session's refresh token family
   }
   interface Session {
     user: {
@@ -88,6 +95,7 @@ declare module "next-auth" {
   }
   interface JWT {
     accessToken?: string; // JWT token from .NET Core API
+    deviceId?: string; // Device ID bound to this session's refresh token family
   }
 }
 
@@ -114,6 +122,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
           const username = (credentials.username as string).trim();
           const password = credentials.password as string;
+          // Client always sends one (see getOrCreateDeviceId); fall back defensively
+          // so a missing field never silently reuses another session's device.
+          const deviceId = (credentials.deviceId as string) || crypto.randomUUID();
 
           // Basic username validation
           if (username.length < 1 || password.length < 1) {
@@ -126,7 +137,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             {
               username,
               password,
-              deviceId: "test-device-001",
+              deviceId,
             },
             {
               headers: {
@@ -165,6 +176,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             role: user.role,
             accessToken: data.accessToken,
             refreshToken: data.refreshToken,
+            deviceId,
             accessTokenExpiry: data.accessTokenExpiry
               ? new Date(data.accessTokenExpiry).getTime()
               : Date.now() + 5 * 60 * 60 * 1000, // fallback: 5 hours
@@ -199,6 +211,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.email = user.email;
         token.accessToken = user.accessToken;
         token.refreshToken = user.refreshToken;
+        token.deviceId = user.deviceId;
         token.accessTokenExpiry = user.accessTokenExpiry;
         token.error = undefined;
         return token;
@@ -219,8 +232,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!token.refreshToken) {
           throw new Error("No refresh token on session");
         }
+        if (!token.deviceId) {
+          throw new Error("No device ID on session");
+        }
 
-        const data = await refreshAccessToken(token.refreshToken as string);
+        const data = await refreshAccessToken(
+          token.refreshToken as string,
+          token.deviceId as string,
+        );
 
         token.accessToken = data.accessToken;
         token.refreshToken = data.refreshToken ?? token.refreshToken;
