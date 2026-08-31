@@ -6,6 +6,7 @@ import 'package:uswatte/features/auth/presentation/pages/login_page.dart';
 import 'package:uswatte/features/create_outlet/domain/usecases/create_outlet_usecase.dart';
 import 'package:uswatte/features/create_outlet/presentation/bloc/create_outlet_bloc.dart';
 import 'package:uswatte/features/create_outlet/presentation/pages/create_outlet_page.dart';
+import 'package:uswatte/features/outlets/domain/usecases/clear_daily_outlets_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_current_route_id_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_geofence_radius_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_outlets_last_synced_at_usecase.dart';
@@ -81,13 +82,15 @@ import 'package:uswatte/features/supervisor_billing/domain/usecases/get_billing_
 import 'package:uswatte/features/supervisor_not_billing/domain/usecases/get_not_billing_detail_usecase.dart';
 import 'package:uswatte/features/supervisor_not_billing/domain/usecases/get_supervisor_not_billings_usecase.dart';
 import 'package:uswatte/features/supervisor_not_billing/presentation/bloc/supervisor_not_billing_bloc.dart';
-import 'package:uswatte/features/supervisor_not_billing/presentation/bloc/supervisor_not_billing_event.dart' as nb_ev;
+import 'package:uswatte/features/supervisor_not_billing/presentation/bloc/supervisor_not_billing_event.dart'
+    as nb_ev;
 import 'package:uswatte/features/supervisor_not_billing/presentation/cubit/not_billing_detail_cubit.dart';
 import 'package:uswatte/features/supervisor_not_billing/presentation/pages/rep_not_billing_detail_page.dart';
 import 'package:uswatte/features/supervisor_not_billing/presentation/pages/supervisor_not_billing_page.dart';
 import 'package:uswatte/features/supervisor_billing/domain/usecases/get_supervisor_billings_usecase.dart';
 import 'package:uswatte/features/supervisor_billing/presentation/bloc/supervisor_billing_bloc.dart';
-import 'package:uswatte/features/supervisor_billing/presentation/bloc/supervisor_billing_event.dart' as billing_ev;
+import 'package:uswatte/features/supervisor_billing/presentation/bloc/supervisor_billing_event.dart'
+    as billing_ev;
 import 'package:uswatte/features/supervisor_billing/presentation/cubit/billing_detail_cubit.dart';
 import 'package:uswatte/features/supervisor_billing/presentation/pages/billing_detail_page.dart';
 import 'package:uswatte/features/supervisor_billing/presentation/pages/supervisor_billing_page.dart';
@@ -200,6 +203,8 @@ class AppRouter {
                           getIt<GetOutletsLastSyncedAtUseCase>(),
                       getGeofenceRadiusUseCase:
                           getIt<GetGeofenceRadiusUseCase>(),
+                      clearDailyOutletsUseCase:
+                          getIt<ClearDailyOutletsUseCase>(),
                     )..add(const LoadOutletsRequested()),
                   ),
                   BlocProvider(
@@ -225,13 +230,15 @@ class AppRouter {
                   BlocProvider(
                     create: (_) {
                       final now = DateTime.now();
-                      return RepMonthlySalesCubit(getIt<GetRepMonthlySalesUseCase>())
-                        ..load(now.year, now.month);
+                      return RepMonthlySalesCubit(
+                        getIt<GetRepMonthlySalesUseCase>(),
+                      )..load(now.year, now.month);
                     },
                   ),
                   BlocProvider(
-                    create: (_) => RepDailySalesCubit(getIt<GetRepDailySalesUseCase>())
-                      ..load(DateTime.now()),
+                    create: (_) =>
+                        RepDailySalesCubit(getIt<GetRepDailySalesUseCase>())
+                          ..load(DateTime.now()),
                   ),
                   BlocProvider(
                     create: (_) => NotificationsBloc(
@@ -285,6 +292,8 @@ class AppRouter {
                           getIt<GetOutletsLastSyncedAtUseCase>(),
                       getGeofenceRadiusUseCase:
                           getIt<GetGeofenceRadiusUseCase>(),
+                      clearDailyOutletsUseCase:
+                          getIt<ClearDailyOutletsUseCase>(),
                     )..add(const LoadOutletsRequested()),
                   ),
                 ],
@@ -302,6 +311,7 @@ class AppRouter {
                   getOutletsLastSyncedAtUseCase:
                       getIt<GetOutletsLastSyncedAtUseCase>(),
                   getGeofenceRadiusUseCase: getIt<GetGeofenceRadiusUseCase>(),
+                  clearDailyOutletsUseCase: getIt<ClearDailyOutletsUseCase>(),
                 )..add(const LoadOutletsRequested()),
                 child: const OutletsPage(),
               ),
@@ -334,13 +344,37 @@ class AppRouter {
             GoRoute(
               path: 'bills',
               name: 'bills',
-              builder: (_, __) => BlocProvider(
-                create: (_) => BillsListBloc(
-                  getBillsUseCase: getIt<GetBillsUseCase>(),
-                  retrySyncUseCase: getIt<RetrySyncUseCase>(),
-                  deleteBillUseCase: getIt<DeleteBillUseCase>(),
-                  syncService: getIt<BillSyncService>(),
-                )..add(const LoadBillsRequested()),
+              builder: (_, __) => MultiBlocProvider(
+                providers: [
+                  BlocProvider(
+                    create: (_) => BillsListBloc(
+                      getBillsUseCase: getIt<GetBillsUseCase>(),
+                      retrySyncUseCase: getIt<RetrySyncUseCase>(),
+                      deleteBillUseCase: getIt<DeleteBillUseCase>(),
+                      syncService: getIt<BillSyncService>(),
+                    )..add(const LoadBillsRequested()),
+                  ),
+                  BlocProvider(
+                    create: (_) => AssignmentsBloc(
+                      getAssignments: getIt<GetAssignmentsUseCase>(),
+                      deleteAssignment: getIt<DeleteAssignmentUseCase>(),
+                    )..add(LoadAssignmentsRequested(date: DateTime.now())),
+                  ),
+                  BlocProvider(
+                    create: (_) => OutletsBloc(
+                      getOutletsUseCase: getIt<GetOutletsUseCase>(),
+                      syncOutletsUseCase: getIt<SyncOutletsUseCase>(),
+                      getCurrentRouteIdUseCase:
+                          getIt<GetCurrentRouteIdUseCase>(),
+                      getOutletsLastSyncedAtUseCase:
+                          getIt<GetOutletsLastSyncedAtUseCase>(),
+                      getGeofenceRadiusUseCase:
+                          getIt<GetGeofenceRadiusUseCase>(),
+                      clearDailyOutletsUseCase:
+                          getIt<ClearDailyOutletsUseCase>(),
+                    )..add(const LoadOutletsRequested()),
+                  ),
+                ],
                 child: const BillsListPage(),
               ),
               routes: [
@@ -364,6 +398,8 @@ class AppRouter {
                               getIt<GetOutletsLastSyncedAtUseCase>(),
                           getGeofenceRadiusUseCase:
                               getIt<GetGeofenceRadiusUseCase>(),
+                          clearDailyOutletsUseCase:
+                              getIt<ClearDailyOutletsUseCase>(),
                         )..add(const LoadOutletsRequested()),
                       ),
                     ],
@@ -374,8 +410,7 @@ class AppRouter {
                       path: 'outlet-history',
                       name: 'outletBillHistory',
                       builder: (_, state) {
-                        final args =
-                            state.extra as Map<String, dynamic>;
+                        final args = state.extra as Map<String, dynamic>;
                         return BlocProvider(
                           create: (_) => OutletBillHistoryCubit(
                             OutletBillHistoryRepositoryImpl(
@@ -400,7 +435,8 @@ class AppRouter {
                             ),
                             child: OutletBillDetailPage(
                               billingId: int.parse(
-                                  state.pathParameters['billingId']!),
+                                state.pathParameters['billingId']!,
+                              ),
                             ),
                           ),
                         ),
@@ -459,6 +495,8 @@ class AppRouter {
                               getIt<GetOutletsLastSyncedAtUseCase>(),
                           getGeofenceRadiusUseCase:
                               getIt<GetGeofenceRadiusUseCase>(),
+                          clearDailyOutletsUseCase:
+                              getIt<ClearDailyOutletsUseCase>(),
                         )..add(const LoadOutletsRequested()),
                       ),
                     ],
@@ -472,8 +510,7 @@ class AppRouter {
                     create: (_) => NotBillingsListBloc(
                       getNotBillingsUseCase: getIt<GetNotBillingsUseCase>(),
                       retrySyncUseCase: getIt<RetryNotBillingSyncUseCase>(),
-                      deleteNotBillingUseCase:
-                          getIt<DeleteNotBillingUseCase>(),
+                      deleteNotBillingUseCase: getIt<DeleteNotBillingUseCase>(),
                       syncService: getIt<NotBillingSyncService>(),
                     )..add(const LoadNotBillingsRequested()),
                     child: NotBillingDetailPage(
@@ -507,9 +544,9 @@ class AppRouter {
               path: 'todays-route-map',
               name: 'todaysRouteMap',
               builder: (_, __) => BlocProvider(
-                create: (_) => TodaysRouteMapBloc(
-                  getIt<GetTodaysRouteMapUseCase>(),
-                )..add(const LoadTodaysRouteMapRequested()),
+                create: (_) =>
+                    TodaysRouteMapBloc(getIt<GetTodaysRouteMapUseCase>())
+                      ..add(const LoadTodaysRouteMapRequested()),
                 child: const TodaysRouteMapPage(),
               ),
             ),
@@ -543,7 +580,8 @@ class AppRouter {
                   rejectOrder: getIt<RejectPurchaseOrderUseCase>(),
                 )..add(const LoadPendingOrders()),
                 child: const PurchaseOrdersListPage(
-                    approvalMode: ApprovalMode.salesRep),
+                  approvalMode: ApprovalMode.salesRep,
+                ),
               ),
               routes: [
                 GoRoute(
@@ -582,7 +620,8 @@ class AppRouter {
                 providers: [
                   BlocProvider(
                     create: (_) => SupervisorSummaryCubit(
-                        getIt<GetSupervisorSummaryUseCase>()),
+                      getIt<GetSupervisorSummaryUseCase>(),
+                    ),
                   ),
                   BlocProvider(
                     create: (_) => NotificationsBloc(
@@ -636,10 +675,10 @@ class AppRouter {
                   name: 'repNotBillingDetail',
                   builder: (_, state) => BlocProvider(
                     create: (_) => NotBillingDetailCubit(
-                        getIt<GetNotBillingDetailUseCase>()),
+                      getIt<GetNotBillingDetailUseCase>(),
+                    ),
                     child: RepNotBillingDetailPage(
-                      notBillingId:
-                          int.parse(state.pathParameters['id']!),
+                      notBillingId: int.parse(state.pathParameters['id']!),
                       notBillingNumber: state.extra as String?,
                     ),
                   ),
@@ -674,8 +713,7 @@ class AppRouter {
               builder: (_, __) => BlocProvider(
                 create: (_) => SupervisorBillingBloc(
                   getMyReps: getIt<GetMyRepsUseCase>(),
-                  getSupervisorBillings:
-                      getIt<GetSupervisorBillingsUseCase>(),
+                  getSupervisorBillings: getIt<GetSupervisorBillingsUseCase>(),
                 )..add(const billing_ev.LoadRepsRequested()),
                 child: const SupervisorBillingPage(),
               ),
@@ -684,8 +722,8 @@ class AppRouter {
                   path: ':id',
                   name: 'billingDetail',
                   builder: (_, state) => BlocProvider(
-                    create: (_) => BillingDetailCubit(
-                        getIt<GetBillingDetailUseCase>()),
+                    create: (_) =>
+                        BillingDetailCubit(getIt<GetBillingDetailUseCase>()),
                     child: BillingDetailPage(
                       billingId: int.parse(state.pathParameters['id']!),
                       billingNumber: state.extra as String?,
@@ -707,7 +745,8 @@ class AppRouter {
                   statusFilter: 'PendingManagerApproval',
                 )..add(const LoadPendingOrders()),
                 child: const PurchaseOrdersListPage(
-                    approvalMode: ApprovalMode.manager),
+                  approvalMode: ApprovalMode.manager,
+                ),
               ),
               routes: [
                 GoRoute(

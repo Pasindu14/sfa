@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uswatte/core/constants/app_constants.dart';
 import 'package:uswatte/core/errors/app_exception.dart';
 import 'package:uswatte/features/outlets/domain/entities/outlet.dart';
+import 'package:uswatte/features/outlets/domain/usecases/clear_daily_outlets_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_current_route_id_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_geofence_radius_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_outlets_last_synced_at_usecase.dart';
@@ -17,6 +18,7 @@ class OutletsBloc extends Bloc<OutletsEvent, OutletsState> {
   final GetCurrentRouteIdUseCase _getCurrentRouteId;
   final GetOutletsLastSyncedAtUseCase _getLastSyncedAt;
   final GetGeofenceRadiusUseCase _getGeofenceRadius;
+  final ClearDailyOutletsUseCase _clearDailyOutlets;
 
   OutletsBloc({
     required GetOutletsUseCase getOutletsUseCase,
@@ -24,14 +26,17 @@ class OutletsBloc extends Bloc<OutletsEvent, OutletsState> {
     required GetCurrentRouteIdUseCase getCurrentRouteIdUseCase,
     required GetOutletsLastSyncedAtUseCase getOutletsLastSyncedAtUseCase,
     required GetGeofenceRadiusUseCase getGeofenceRadiusUseCase,
+    required ClearDailyOutletsUseCase clearDailyOutletsUseCase,
   })  : _getOutlets = getOutletsUseCase,
         _syncOutlets = syncOutletsUseCase,
         _getCurrentRouteId = getCurrentRouteIdUseCase,
         _getLastSyncedAt = getOutletsLastSyncedAtUseCase,
         _getGeofenceRadius = getGeofenceRadiusUseCase,
+        _clearDailyOutlets = clearDailyOutletsUseCase,
         super(const OutletsInitial()) {
     on<LoadOutletsRequested>(_onLoad, transformer: sequential());
     on<SyncDailyOutletsRequested>(_onSync, transformer: sequential());
+    on<NoAssignmentTodayConfirmed>(_onNoAssignment, transformer: sequential());
   }
 
   Future<void> _onLoad(
@@ -108,6 +113,26 @@ class OutletsBloc extends Bloc<OutletsEvent, OutletsState> {
       } else {
         emit(OutletsError(message: e.message));
       }
+    }
+  }
+
+  Future<void> _onNoAssignment(
+    NoAssignmentTodayConfirmed event,
+    Emitter<OutletsState> emit,
+  ) async {
+    try {
+      await _clearDailyOutlets();
+      final storedRadius = await _getGeofenceRadius();
+      emit(OutletsLoaded(
+        outlets: const [],
+        isSyncing: false,
+        lastSyncedAt: null,
+        hasActiveAssignment: false,
+        geofenceRadiusMeters:
+            storedRadius ?? AppConstants.billingProximityRadiusMeters,
+      ));
+    } on AppException catch (e) {
+      emit(OutletsError(message: e.message));
     }
   }
 }

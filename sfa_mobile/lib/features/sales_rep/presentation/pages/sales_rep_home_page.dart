@@ -90,15 +90,22 @@ class _SalesRepHomePageState extends State<SalesRepHomePage>
     ));
 
     return BlocListener<AssignmentsBloc, AssignmentsState>(
-      listenWhen: (_, curr) =>
-          curr is AssignmentsLoaded && curr.assignments.isNotEmpty,
+      listenWhen: (_, curr) => curr is AssignmentsLoaded,
       listener: (context, state) {
-        if (state is AssignmentsLoaded && state.assignments.isNotEmpty) {
-          final assignment = state.assignments.first;
-          context.read<OutletsBloc>().add(SyncDailyOutletsRequested(
-                routeId: assignment.routeId,
-                routeName: assignment.routeName,
-              ));
+        if (state is AssignmentsLoaded) {
+          if (state.assignments.isNotEmpty) {
+            final assignment = state.assignments.first;
+            context.read<OutletsBloc>().add(SyncDailyOutletsRequested(
+                  routeId: assignment.routeId,
+                  routeName: assignment.routeName,
+                ));
+          } else {
+            // Confirmed no assignment today — wipe any stale outlets/sync
+            // stamp so the billing flow doesn't keep showing yesterday's data.
+            context
+                .read<OutletsBloc>()
+                .add(const NoAssignmentTodayConfirmed());
+          }
         }
       },
       child: Scaffold(

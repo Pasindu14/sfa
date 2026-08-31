@@ -7,4 +7,5 @@ abstract interface class OutletsRepository {
   Future<DateTime?> getLastSyncedAt();
   Future<int?> getCurrentRouteId();
   Future<double?> getGeofenceRadiusMeters();
+  Future<void> clearDailyOutlets();
 }

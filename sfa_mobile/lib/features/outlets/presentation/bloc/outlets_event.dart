@@ -26,3 +26,11 @@ final class SyncDailyOutletsRequested extends OutletsEvent {
   @override
   List<Object?> get props => [routeId, routeName];
 }
+
+/// Fired when the caller has confirmed (via a fresh server call) that there is
+/// no route assignment for today. Wipes any outlets + sync stamp left over
+/// from a previous day so a stale "today" timestamp can't keep the billing
+/// flow unlocked.
+final class NoAssignmentTodayConfirmed extends OutletsEvent {
+  const NoAssignmentTodayConfirmed();
+}

@@ -11,149 +11,249 @@ import 'package:uswatte/features/bills/domain/entities/sync_status.dart';
 import 'package:uswatte/features/bills/presentation/bloc/bills_list_bloc.dart';
 import 'package:uswatte/features/bills/presentation/bloc/bills_list_event.dart';
 import 'package:uswatte/features/bills/presentation/bloc/bills_list_state.dart';
+import 'package:uswatte/features/outlets/presentation/bloc/outlets_bloc.dart';
+import 'package:uswatte/features/outlets/presentation/bloc/outlets_event.dart';
+import 'package:uswatte/features/outlets/presentation/bloc/outlets_state.dart';
+import 'package:uswatte/features/route_assignment/presentation/bloc/assignments_bloc.dart';
 
 class BillsListPage extends StatelessWidget {
   const BillsListPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-    ));
-
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: Text('New Order',
-            style: GoogleFonts.barlowCondensed(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-              fontSize: 15.sp,
-              letterSpacing: 0.5,
-            )),
-        onPressed: () async {
-          await context.pushNamed('createBill');
-          // Refresh the list so a just-created bill appears (create pops back here).
-          if (context.mounted) {
-            context.read<BillsListBloc>().add(const LoadBillsRequested());
-          }
-        },
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
       ),
-      body: Column(
-        children: [
-          // ── Gradient header ───────────────────────────────────────────────
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [AppColors.primaryDark, AppColors.primary],
+    );
+
+    return BlocListener<AssignmentsBloc, AssignmentsState>(
+      listenWhen: (_, curr) => curr is AssignmentsLoaded,
+      listener: (context, state) {
+        if (state is AssignmentsLoaded) {
+          if (state.assignments.isNotEmpty) {
+            final assignment = state.assignments.first;
+            context.read<OutletsBloc>().add(
+              SyncDailyOutletsRequested(
+                routeId: assignment.routeId,
+                routeName: assignment.routeName,
               ),
-            ),
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(8.w, 4.h, 8.w, 16.h),
-                child: Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        if (context.canPop()) {
-                          context.pop();
-                        } else {
-                          context.goNamed('salesRepHome');
-                        }
-                      },
-                      child: Container(
-                        width: 40.r,
-                        height: 40.r,
-                        margin: EdgeInsets.all(4.r),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10.r),
-                          border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.25)),
-                        ),
-                        child: Icon(Icons.arrow_back_ios_new_rounded,
-                            size: 15.r, color: Colors.white),
-                      ),
-                    ),
-                    SizedBox(width: 4.w),
-                    Expanded(
-                      child: Text(
-                        'MY ORDERS',
-                        style: GoogleFonts.barlowCondensed(
-                          fontSize: 18.sp,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.5,
-                          height: 1.0,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    // Sync button
-                    BlocBuilder<BillsListBloc, BillsListState>(
-                      builder: (context, state) {
-                        final isSyncing = state is BillsListLoading;
-                        return GestureDetector(
-                          onTap: isSyncing
-                              ? null
-                              : () => context
-                                  .read<BillsListBloc>()
-                                  .add(const FlushAllRequested()),
-                          child: Container(
-                            width: 40.r,
-                            height: 40.r,
-                            margin: EdgeInsets.all(4.r),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(10.r),
-                              border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.25)),
-                            ),
-                            child: Center(
-                              child: isSyncing
-                                  ? const AppSpinner.small(
-                                      color: Colors.white)
-                                  : Icon(Icons.cloud_sync_rounded,
-                                      size: 16.r, color: Colors.white),
+            );
+          } else {
+            context.read<OutletsBloc>().add(const NoAssignmentTodayConfirmed());
+          }
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        floatingActionButton: BlocBuilder<OutletsBloc, OutletsState>(
+          builder: (context, outletsState) {
+            final hasAssignment = outletsState is OutletsLoaded
+                ? outletsState.hasActiveAssignment
+                : true;
+            return FloatingActionButton.extended(
+              backgroundColor: hasAssignment
+                  ? AppColors.primary
+                  : AppColors.surfaceVariant,
+              icon: Icon(
+                Icons.add,
+                color: hasAssignment ? Colors.white : AppColors.foregroundMuted,
+              ),
+              label: Text(
+                'New Order',
+                style: GoogleFonts.barlowCondensed(
+                  color: hasAssignment
+                      ? Colors.white
+                      : AppColors.foregroundMuted,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15.sp,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              onPressed: !hasAssignment
+                  ? null
+                  : () async {
+                      await context.pushNamed('createBill');
+                      // Refresh the list so a just-created bill appears (create pops back here).
+                      if (context.mounted) {
+                        context.read<BillsListBloc>().add(
+                          const LoadBillsRequested(),
+                        );
+                      }
+                    },
+            );
+          },
+        ),
+        body: Column(
+          children: [
+            // ── Gradient header ───────────────────────────────────────────────
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AppColors.primaryDark, AppColors.primary],
+                ),
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(8.w, 4.h, 8.w, 16.h),
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          if (context.canPop()) {
+                            context.pop();
+                          } else {
+                            context.goNamed('salesRepHome');
+                          }
+                        },
+                        child: Container(
+                          width: 40.r,
+                          height: 40.r,
+                          margin: EdgeInsets.all(4.r),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10.r),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.25),
                             ),
                           ),
-                        );
-                      },
-                    ),
-                  ],
+                          child: Icon(
+                            Icons.arrow_back_ios_new_rounded,
+                            size: 15.r,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 4.w),
+                      Expanded(
+                        child: Text(
+                          'MY ORDERS',
+                          style: GoogleFonts.barlowCondensed(
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.5,
+                            height: 1.0,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      // Sync button
+                      BlocBuilder<BillsListBloc, BillsListState>(
+                        builder: (context, state) {
+                          final isSyncing = state is BillsListLoading;
+                          return GestureDetector(
+                            onTap: isSyncing
+                                ? null
+                                : () => context.read<BillsListBloc>().add(
+                                    const FlushAllRequested(),
+                                  ),
+                            child: Container(
+                              width: 40.r,
+                              height: 40.r,
+                              margin: EdgeInsets.all(4.r),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10.r),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.25),
+                                ),
+                              ),
+                              child: Center(
+                                child: isSyncing
+                                    ? const AppSpinner.small(
+                                        color: Colors.white,
+                                      )
+                                    : Icon(
+                                        Icons.cloud_sync_rounded,
+                                        size: 16.r,
+                                        color: Colors.white,
+                                      ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
 
-          // ── Body ──────────────────────────────────────────────────────────
-          Expanded(
-            child: BlocBuilder<BillsListBloc, BillsListState>(
-              builder: (ctx, state) {
-                if (state is BillsListLoading || state is BillsListInitial) {
-                  return const Center(child: AppSpinner());
-                }
-                if (state is BillsListError) {
-                  return Center(child: Text(state.message));
-                }
-                final loaded = state as BillsListLoaded;
-                if (loaded.bills.isEmpty) return const _EmptyView();
-                return ListView.separated(
-                  padding: EdgeInsets.only(bottom: 100.h),
-                  itemCount: loaded.bills.length,
-                  separatorBuilder: (_, __) => const Divider(
-                      height: 1, color: AppColors.surfaceVariant),
-                  itemBuilder: (_, i) => _BillTile(bill: loaded.bills[i]),
+            // ── No-assignment banner ─────────────────────────────────────────
+            BlocBuilder<OutletsBloc, OutletsState>(
+              builder: (context, outletsState) {
+                final hasAssignment = outletsState is OutletsLoaded
+                    ? outletsState.hasActiveAssignment
+                    : true;
+                if (hasAssignment) return const SizedBox.shrink();
+                return Container(
+                  width: double.infinity,
+                  margin: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 0),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 12.w,
+                    vertical: 10.h,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.amber.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10.r),
+                    border: Border.all(
+                      color: AppColors.amber.withValues(alpha: 0.25),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline_rounded,
+                        size: 15.r,
+                        color: AppColors.amber,
+                      ),
+                      SizedBox(width: 8.w),
+                      Expanded(
+                        child: Text(
+                          'No route assigned today — orders can\'t be created.',
+                          style: GoogleFonts.barlow(
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.amber,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 );
               },
             ),
-          ),
-        ],
+
+            // ── Body ──────────────────────────────────────────────────────────
+            Expanded(
+              child: BlocBuilder<BillsListBloc, BillsListState>(
+                builder: (ctx, state) {
+                  if (state is BillsListLoading || state is BillsListInitial) {
+                    return const Center(child: AppSpinner());
+                  }
+                  if (state is BillsListError) {
+                    return Center(child: Text(state.message));
+                  }
+                  final loaded = state as BillsListLoaded;
+                  if (loaded.bills.isEmpty) return const _EmptyView();
+                  return ListView.separated(
+                    padding: EdgeInsets.only(bottom: 100.h),
+                    itemCount: loaded.bills.length,
+                    separatorBuilder: (_, __) => const Divider(
+                      height: 1,
+                      color: AppColors.surfaceVariant,
+                    ),
+                    itemBuilder: (_, i) => _BillTile(bill: loaded.bills[i]),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -171,8 +271,10 @@ class _BillTile extends StatelessWidget {
 
     return InkWell(
       onTap: () async {
-        await context.pushNamed('billDetail',
-            pathParameters: {'id': bill.clientBillId});
+        await context.pushNamed(
+          'billDetail',
+          pathParameters: {'id': bill.clientBillId},
+        );
         // Refresh on return so a delete done from the detail page is reflected.
         if (context.mounted) {
           context.read<BillsListBloc>().add(const LoadBillsRequested());
@@ -233,8 +335,11 @@ class _BillTile extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded,
-                size: 18.r, color: AppColors.foregroundMuted),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 18.r,
+              color: AppColors.foregroundMuted,
+            ),
           ],
         ),
       ),
@@ -249,11 +354,19 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (color, label, icon) = switch (status) {
-      SyncStatus.synced    => (AppColors.success, 'Synced', Icons.cloud_done),
-      SyncStatus.syncing   => (AppColors.primary, 'Syncing', Icons.cloud_upload_rounded),
-      SyncStatus.pending   => (AppColors.warning, 'Pending', Icons.schedule),
-      SyncStatus.failed    => (AppColors.error, 'Failed', Icons.error_outline),
-      SyncStatus.cancelled => (AppColors.error, 'Cancelled', Icons.cancel_outlined),
+      SyncStatus.synced => (AppColors.success, 'Synced', Icons.cloud_done),
+      SyncStatus.syncing => (
+        AppColors.primary,
+        'Syncing',
+        Icons.cloud_upload_rounded,
+      ),
+      SyncStatus.pending => (AppColors.warning, 'Pending', Icons.schedule),
+      SyncStatus.failed => (AppColors.error, 'Failed', Icons.error_outline),
+      SyncStatus.cancelled => (
+        AppColors.error,
+        'Cancelled',
+        Icons.cancel_outlined,
+      ),
     };
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
@@ -300,8 +413,11 @@ class _EmptyView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.receipt_long_rounded,
-                size: 56.r, color: AppColors.surfaceVariant),
+            Icon(
+              Icons.receipt_long_rounded,
+              size: 56.r,
+              color: AppColors.surfaceVariant,
+            ),
             SizedBox(height: 14.h),
             Text(
               'No orders yet',

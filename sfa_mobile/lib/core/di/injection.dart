@@ -43,6 +43,7 @@ import 'package:uswatte/features/outlets/data/datasources/outlets_local_datasour
 import 'package:uswatte/features/outlets/data/datasources/outlets_remote_datasource.dart';
 import 'package:uswatte/features/outlets/data/repositories/outlets_repository_impl.dart';
 import 'package:uswatte/features/outlets/domain/repositories/outlets_repository.dart';
+import 'package:uswatte/features/outlets/domain/usecases/clear_daily_outlets_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_outlets_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_current_route_id_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_geofence_radius_usecase.dart';
@@ -270,6 +271,8 @@ Future<void> configureDependencies() async {
       () => GetOutletsLastSyncedAtUseCase(getIt<OutletsRepository>()));
   getIt.registerLazySingleton(
       () => GetGeofenceRadiusUseCase(getIt<OutletsRepository>()));
+  getIt.registerLazySingleton(
+      () => ClearDailyOutletsUseCase(getIt<OutletsRepository>()));
 
   // ── Connectivity ─────────────────────────────────────────────────────────────
   getIt.registerLazySingleton<ConnectivityService>(() => ConnectivityService());
@@ -519,6 +522,7 @@ Future<void> configureDependencies() async {
       syncProducts: getIt<SyncProductsUseCase>(),
       syncCategories: getIt<SyncProductCategoriesUseCase>(),
       syncOutlets: getIt<SyncOutletsUseCase>(),
+      clearDailyOutlets: getIt<ClearDailyOutletsUseCase>(),
       syncStock: getIt<SyncDistributorStockUseCase>(),
       getAssignments: getIt<GetAssignmentsUseCase>(),
       billSync: getIt<BillSyncService>(),

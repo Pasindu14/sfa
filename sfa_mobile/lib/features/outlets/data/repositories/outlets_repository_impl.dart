@@ -37,4 +37,7 @@ class OutletsRepositoryImpl implements OutletsRepository {
 
   @override
   Future<double?> getGeofenceRadiusMeters() => _local.getGeofenceRadiusMeters();
+
+  @override
+  Future<void> clearDailyOutlets() => _local.clearDailyOutlets();
 }

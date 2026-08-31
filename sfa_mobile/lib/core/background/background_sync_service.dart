@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:uswatte/core/background/location_tracking_service.dart';
 import 'package:uswatte/core/sync/bill_sync_service.dart';
 import 'package:uswatte/core/sync/not_billing_sync_service.dart';
+import 'package:uswatte/features/outlets/domain/usecases/clear_daily_outlets_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/sync_outlets_usecase.dart';
 import 'package:uswatte/features/products/domain/usecases/sync_product_categories_usecase.dart';
 import 'package:uswatte/features/products/domain/usecases/sync_products_usecase.dart';
@@ -42,6 +43,7 @@ class BackgroundSyncService {
   final SyncProductsUseCase _syncProducts;
   final SyncProductCategoriesUseCase _syncCategories;
   final SyncOutletsUseCase _syncOutlets;
+  final ClearDailyOutletsUseCase _clearDailyOutlets;
   final SyncDistributorStockUseCase _syncStock;
   final GetAssignmentsUseCase _getAssignments;
   final BillSyncService _billSync;
@@ -51,6 +53,7 @@ class BackgroundSyncService {
     required SyncProductsUseCase syncProducts,
     required SyncProductCategoriesUseCase syncCategories,
     required SyncOutletsUseCase syncOutlets,
+    required ClearDailyOutletsUseCase clearDailyOutlets,
     required SyncDistributorStockUseCase syncStock,
     required GetAssignmentsUseCase getAssignments,
     required BillSyncService billSync,
@@ -58,6 +61,7 @@ class BackgroundSyncService {
   })  : _syncProducts = syncProducts,
         _syncCategories = syncCategories,
         _syncOutlets = syncOutlets,
+        _clearDailyOutlets = clearDailyOutlets,
         _syncStock = syncStock,
         _getAssignments = getAssignments,
         _billSync = billSync,
@@ -96,9 +100,14 @@ class BackgroundSyncService {
 
       if (assignment != null) {
         await _syncOutlets(assignment.routeId, assignment.routeName);
+      } else {
+        // No assignment today — actively wipe any outlets + sync stamp left
+        // over from a previous day (or an earlier buggy sync). Merely
+        // skipping the sync isn't enough: a stale lastSyncedAt already
+        // stamped "today" would keep OutletsBloc's _isSyncedToday gate
+        // fooled into showing yesterday's outlets as valid for today.
+        await _clearDailyOutlets();
       }
-      // No assignment today — leave the local outlets table untouched so
-      // OutletsBloc's _isSyncedToday gate keeps locking the billing flow.
     } catch (_) {}
 
     progress.value = const AppSyncProgress.running('Stock');

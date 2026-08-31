@@ -46,6 +46,22 @@ class OutletsLocalDatasource {
     );
   }
 
+  /// Wipes today's outlet snapshot and its sync stamp. Called when a sync
+  /// confirms there is no route assignment for today, so a stale "today"
+  /// timestamp from an earlier (possibly stale-route) sync can't keep
+  /// OutletsBloc's `_isSyncedToday` check believing outlets are still valid.
+  Future<void> clearDailyOutlets() async {
+    final db = await _dbHelper.database;
+    await db.transaction((txn) async {
+      await txn.delete('daily_outlets');
+      await txn.delete(
+        'metadata',
+        where: 'key = ?',
+        whereArgs: ['daily_outlets_last_synced_at'],
+      );
+    });
+  }
+
   Future<void> saveCurrentRoute(int routeId, String routeName) async {
     final db = await _dbHelper.database;
     await db.insert(
