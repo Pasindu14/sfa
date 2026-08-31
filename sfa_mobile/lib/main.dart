@@ -154,10 +154,8 @@ class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
   Future<void> _runPostLoginSync() async {
     try {
       if (!await getIt<ConnectivityService>().hasInternet()) return;
-      // refreshRouteAssignment: today's route may have changed server-side
-      // since this device last synced — or never have been set at all on a
-      // first login. Every step inside runSync is individually guarded.
-      await getIt<BackgroundSyncService>().runSync(refreshRouteAssignment: true);
+      // Every step inside runSync is individually guarded.
+      await getIt<BackgroundSyncService>().runSync();
     } catch (_) {
       // Best-effort: the rep can still work offline off the existing cache,
       // and Sync / connectivity-restored / app-resume all retry later.
