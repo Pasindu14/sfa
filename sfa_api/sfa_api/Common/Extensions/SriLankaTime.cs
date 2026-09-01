@@ -30,4 +30,27 @@ public static class SriLankaTime
 
     /// <summary>The current Sri Lanka business year — for document-number prefixes.</summary>
     public static int Year => Now.Year;
+
+    /// <summary>
+    /// The half-open instant range covering one Sri Lanka business day — i.e. the interval
+    /// from Colombo midnight on <paramref name="date"/> to Colombo midnight the next day,
+    /// returned as UTC instants.
+    ///
+    /// Use this when filtering an absolute-instant column (<c>DateTimeOffset</c>/<c>DateTime</c>)
+    /// by a business date. This is deliberately NOT
+    /// <c>date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)</c> — that treats the SL calendar
+    /// date as UTC midnight, shifting the window 5½ hours late and filing anything recorded
+    /// between 00:00 and 05:30 SL under the previous day.
+    ///
+    /// The result is normalised to UTC (Offset = 0) rather than left at +05:30 because Npgsql
+    /// refuses to bind a <c>DateTimeOffset</c> with a non-zero offset to a <c>timestamptz</c>
+    /// parameter ("only offset 0 (UTC) is supported"). Both forms denote the same instant, so
+    /// comparisons are unaffected — but only the UTC form can be sent to PostgreSQL.
+    /// </summary>
+    public static (DateTimeOffset FromInclusive, DateTimeOffset ToExclusive) DayRange(DateOnly date)
+    {
+        var startLocal = date.ToDateTime(TimeOnly.MinValue);
+        var from = new DateTimeOffset(startLocal, Tz.GetUtcOffset(startLocal)).ToUniversalTime();
+        return (from, from.AddDays(1));
+    }
 }

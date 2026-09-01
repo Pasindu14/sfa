@@ -57,4 +57,23 @@ public class LocationPingsController(
         var result = await service.GetLatestPerRepAsync(ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
+
+    /// <summary>
+    /// Returns one rep's travelled route for a single Sri Lanka business day — every ping
+    /// that rep recorded, oldest first, plus distance/first/last totals.
+    /// Admin only — this is staff movement history.
+    /// </summary>
+    /// <param name="repId">The sales rep whose route to return.</param>
+    /// <param name="date">Business date in <c>YYYY-MM-DD</c> (Sri Lanka calendar day).</param>
+    [HttpGet("rep/{repId:int}/route")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetRepRoute(
+        int repId,
+        [FromQuery] DateOnly date,
+        CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var result = await service.GetRepRouteAsync(repId, date, ct);
+        return Ok(ResponseHelper.Ok(result, correlationId));
+    }
 }
