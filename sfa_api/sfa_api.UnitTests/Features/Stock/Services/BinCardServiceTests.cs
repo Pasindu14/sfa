@@ -227,4 +227,50 @@ public class BinCardServiceTests
 
         await act.Should().ThrowAsync<NotFoundException>();
     }
+
+    // ── Business-day window ─────────────────────────────────────────────────
+    //
+    // Asserted here rather than through the API, because the movements query aggregates
+    // decimals and the SQLite test provider cannot translate SUM over decimal (see the
+    // skipped test in BinCardApiTests). Checking the window the service hands the repository
+    // tests exactly the thing that was wrong, and actually runs.
+
+    // 1 June 2026 00:00 Sri Lanka == 31 May 2026 18:30 UTC.
+    private static readonly DateTime ExpectedFromUtc = new(2026, 5, 31, 18, 30, 0, DateTimeKind.Utc);
+    // Exclusive end: 16 June 00:00 SL == 15 June 18:30 UTC, so all of 15 June SL is included.
+    private static readonly DateTime ExpectedToExclusiveUtc = new(2026, 6, 15, 18, 30, 0, DateTimeKind.Utc);
+
+    [Fact]
+    public async Task GetBinCardAsync_QueriesMovementsOverTheColomboBusinessDay()
+    {
+        await _sut.GetBinCardAsync(Query());
+
+        _repoMock.Verify(r => r.GetBinCardMovementsAsync(
+            DistributorId, ExpectedFromUtc, ExpectedToExclusiveUtc, It.IsAny<CancellationToken>()),
+            Times.Once,
+            "a UTC-midnight window would run 05:30→05:30 Sri Lanka time and misfile "
+            + "anything transacted before dawn");
+    }
+
+    [Fact]
+    public async Task GetBinCardAsync_CutsOpeningBalanceAtColomboMidnight()
+    {
+        await _sut.GetBinCardAsync(Query());
+
+        // The opening balance is everything strictly before the window. Getting this cutoff
+        // wrong shifts the starting quantity and therefore every row's running balance.
+        _repoMock.Verify(r => r.GetBinCardOpeningAsync(
+            DistributorId, ExpectedFromUtc, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GetBinCardAsync_TakesStockCountAsOfColomboEndOfRange()
+    {
+        await _sut.GetBinCardAsync(Query());
+
+        _repoMock.Verify(r => r.GetBinCardLatestCountsAsync(
+            DistributorId, ExpectedToExclusiveUtc, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
 }

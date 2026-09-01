@@ -1,4 +1,5 @@
 using sfa_api.Common.Errors;
+using sfa_api.Common.Extensions;
 using sfa_api.Features.Stock.DTOs;
 using sfa_api.Features.Stock.Enums;
 using sfa_api.Features.Stock.Repositories;
@@ -26,9 +27,12 @@ public class BinCardService(IBinCardRepository repo) : IBinCardService
         var distributorName = await _repo.GetDistributorNameAsync(query.DistributorId, ct)
             ?? throw new NotFoundException("Distributor", query.DistributorId);
 
-        // Inclusive business dates → UTC half-open window [from 00:00, to+1 00:00).
-        var fromUtc        = query.From.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-        var toExclusiveUtc = query.To.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        // Inclusive business dates → half-open window [from 00:00 SL, to+1 00:00 SL), as UTC.
+        // Must be Sri Lankan midnight, not UTC midnight: the window feeds the opening-balance
+        // cutoff as well as the movement filter, so a 5½-hour shift here moves the starting
+        // quantity and therefore every row's running balance, not just boundary records.
+        var fromUtc        = SriLankaTime.StartOfDayUtc(query.From);
+        var toExclusiveUtc = SriLankaTime.StartOfDayUtc(query.To.AddDays(1));
 
         var movements  = await _repo.GetBinCardMovementsAsync(query.DistributorId, fromUtc, toExclusiveUtc, ct);
         var openings   = await _repo.GetBinCardOpeningAsync(query.DistributorId, fromUtc, ct);

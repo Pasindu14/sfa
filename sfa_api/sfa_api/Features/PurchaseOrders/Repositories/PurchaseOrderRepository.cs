@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using sfa_api.Common.Extensions;
 using sfa_api.Features.PurchaseOrders.Entities;
 using sfa_api.Features.PurchaseOrders.Enums;
 using sfa_api.Infrastructure.Persistence;
@@ -57,12 +58,14 @@ public class PurchaseOrderRepository(AppDbContext context) : IPurchaseOrderRepos
 
         if (fromDate.HasValue)
         {
-            var from = DateTime.SpecifyKind(fromDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            // Sri Lankan midnight, not UTC midnight — otherwise the window runs
+            // 05:30→05:30 SL and orders placed before dawn land on the previous day.
+            var from = SriLankaTime.StartOfDayUtc(fromDate.Value);
             query = query.Where(o => o.CreatedAt >= from);
         }
         if (toDate.HasValue)
         {
-            var to = DateTime.SpecifyKind(toDate.Value.ToDateTime(TimeOnly.MinValue).AddDays(1), DateTimeKind.Utc);
+            var to = SriLankaTime.StartOfDayUtc(toDate.Value.AddDays(1));
             query = query.Where(o => o.CreatedAt < to);
         }
 
@@ -98,12 +101,14 @@ public class PurchaseOrderRepository(AppDbContext context) : IPurchaseOrderRepos
 
         if (fromDate.HasValue)
         {
-            var from = DateTime.SpecifyKind(fromDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            // Sri Lankan midnight, not UTC midnight — otherwise the window runs
+            // 05:30→05:30 SL and orders placed before dawn land on the previous day.
+            var from = SriLankaTime.StartOfDayUtc(fromDate.Value);
             query = query.Where(o => o.CreatedAt >= from);
         }
         if (toDate.HasValue)
         {
-            var to = DateTime.SpecifyKind(toDate.Value.ToDateTime(TimeOnly.MinValue).AddDays(1), DateTimeKind.Utc);
+            var to = SriLankaTime.StartOfDayUtc(toDate.Value.AddDays(1));
             query = query.Where(o => o.CreatedAt < to);
         }
 

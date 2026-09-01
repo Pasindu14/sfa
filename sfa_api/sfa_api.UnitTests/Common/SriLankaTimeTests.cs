@@ -17,6 +17,54 @@ public class SriLankaTimeTests
     private static readonly TimeSpan SlOffset = TimeSpan.FromHours(5.5);
 
     [Fact]
+    public void StartOfDayUtc_IsColomboMidnight_NotUtcMidnight()
+    {
+        var start = SriLankaTime.StartOfDayUtc(new DateOnly(2026, 6, 15));
+
+        start.Should().Be(new DateTime(2026, 6, 14, 18, 30, 0, DateTimeKind.Utc),
+            "Sri Lankan midnight on the 15th is 18:30 UTC on the 14th");
+        start.Kind.Should().Be(DateTimeKind.Utc,
+            "EF/Npgsql compare against UTC-kind timestamps");
+    }
+
+    [Fact]
+    public void StartOfDayUtc_ConsecutiveDays_AreExactlyOneDayApart()
+    {
+        var d = new DateOnly(2026, 6, 15);
+
+        (SriLankaTime.StartOfDayUtc(d.AddDays(1)) - SriLankaTime.StartOfDayUtc(d))
+            .Should().Be(TimeSpan.FromDays(1));
+    }
+
+    [Fact]
+    public void StartOfDayUtc_BracketsEveryColomboWallClockTimeOfThatDay()
+    {
+        var date = new DateOnly(2026, 6, 15);
+        var from = SriLankaTime.StartOfDayUtc(date);
+        var toExclusive = SriLankaTime.StartOfDayUtc(date.AddDays(1));
+
+        // 02:00 SL == 20:30 UTC the previous day — the record a UTC-midnight window misfiles.
+        var preDawn = new DateTimeOffset(date.ToDateTime(new TimeOnly(2, 0)), SlOffset).UtcDateTime;
+        (preDawn >= from && preDawn < toExclusive).Should().BeTrue();
+
+        var lateEvening = new DateTimeOffset(date.ToDateTime(new TimeOnly(23, 30)), SlOffset).UtcDateTime;
+        (lateEvening >= from && lateEvening < toExclusive).Should().BeTrue();
+
+        var nextDayPreDawn = new DateTimeOffset(date.AddDays(1).ToDateTime(new TimeOnly(2, 0)), SlOffset).UtcDateTime;
+        (nextDayPreDawn < toExclusive).Should().BeFalse("02:00 SL belongs to the next business day");
+    }
+
+    [Fact]
+    public void DayRange_DelegatesToStartOfDayUtc_SoBothAgree()
+    {
+        var date = new DateOnly(2026, 6, 15);
+        var (from, to) = SriLankaTime.DayRange(date);
+
+        from.UtcDateTime.Should().Be(SriLankaTime.StartOfDayUtc(date));
+        to.UtcDateTime.Should().Be(SriLankaTime.StartOfDayUtc(date.AddDays(1)));
+    }
+
+    [Fact]
     public void DayRange_StartsAtColomboMidnight_NotUtcMidnight()
     {
         var (from, _) = SriLankaTime.DayRange(new DateOnly(2026, 6, 15));

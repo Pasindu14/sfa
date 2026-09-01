@@ -32,6 +32,26 @@ public static class SriLankaTime
     public static int Year => Now.Year;
 
     /// <summary>
+    /// The instant Sri Lankan midnight falls on <paramref name="date"/>, as UTC.
+    /// For 2026-06-15 that is 2026-06-14T18:30:00Z.
+    ///
+    /// This is the single definition of "the start of a business day" — use it whenever a
+    /// <c>DateOnly</c> business date has to filter an absolute-instant column
+    /// (<c>CreatedAt</c>, <c>TransactedAt</c>, <c>SubmittedAt</c>, …). Build a day range as
+    /// <c>[StartOfDayUtc(from), StartOfDayUtc(to.AddDays(1)))</c> — half-open, so the end
+    /// day is fully included without a boundary tick belonging to two ranges at once.
+    ///
+    /// Do NOT use <c>date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)</c>: that treats
+    /// the Sri Lankan calendar date as UTC midnight, shifting the window 5½ hours late so
+    /// that anything recorded between 00:00 and 05:30 SL is filed under the previous day.
+    /// </summary>
+    public static DateTime StartOfDayUtc(DateOnly date)
+    {
+        var startLocal = date.ToDateTime(TimeOnly.MinValue);
+        return new DateTimeOffset(startLocal, Tz.GetUtcOffset(startLocal)).UtcDateTime;
+    }
+
+    /// <summary>
     /// The half-open instant range covering one Sri Lanka business day — i.e. the interval
     /// from Colombo midnight on <paramref name="date"/> to Colombo midnight the next day,
     /// returned as UTC instants.
@@ -49,8 +69,7 @@ public static class SriLankaTime
     /// </summary>
     public static (DateTimeOffset FromInclusive, DateTimeOffset ToExclusive) DayRange(DateOnly date)
     {
-        var startLocal = date.ToDateTime(TimeOnly.MinValue);
-        var from = new DateTimeOffset(startLocal, Tz.GetUtcOffset(startLocal)).ToUniversalTime();
+        var from = new DateTimeOffset(StartOfDayUtc(date), TimeSpan.Zero);
         return (from, from.AddDays(1));
     }
 }

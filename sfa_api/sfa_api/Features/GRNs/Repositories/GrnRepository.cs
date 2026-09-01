@@ -41,14 +41,19 @@ public class GrnRepository(AppDbContext db) : IGrnRepository
 
         if (dateFrom.HasValue)
         {
-            var start = DateTime.SpecifyKind(dateFrom.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            // Sri Lankan midnight, not UTC midnight — otherwise the window runs
+            // 05:30→05:30 SL and GRNs received before dawn land on the previous day.
+            var start = SriLankaTime.StartOfDayUtc(dateFrom.Value);
             query = query.Where(x => x.CreatedAt >= start);
         }
 
         if (dateTo.HasValue)
         {
-            var end = DateTime.SpecifyKind(dateTo.Value.ToDateTime(TimeOnly.MaxValue), DateTimeKind.Utc);
-            query = query.Where(x => x.CreatedAt <= end);
+            // Half-open, matching PurchaseOrderRepository. dateTo is still fully included;
+            // the previous `<= TimeOnly.MaxValue` form let a record on the exact boundary
+            // tick belong to two adjacent ranges at once.
+            var endExclusive = SriLankaTime.StartOfDayUtc(dateTo.Value.AddDays(1));
+            query = query.Where(x => x.CreatedAt < endExclusive);
         }
 
         if (!string.IsNullOrWhiteSpace(search))
