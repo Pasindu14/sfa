@@ -37,6 +37,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AppStarted>(_onAppStarted);
     on<LoginSubmitted>(_onLoginSubmitted);
     on<LogoutRequested>(_onLogoutRequested);
+    on<SessionExpired>(_onSessionExpired);
   }
 
   /// Restores session from secure storage on app start.
@@ -102,6 +103,25 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       // Swallow — navigating to login is the priority
     }
     unawaited(LocationTrackingService.stop());
+    emit(const AuthUnauthenticated());
+  }
+
+  /// A failed token refresh — not a choice the rep made.
+  ///
+  /// Credentials are cleared so the app doesn't sit in a half-authenticated
+  /// state, but location tracking is deliberately left running and the queued
+  /// pings are left intact: the rep is almost certainly still on their route,
+  /// and killing tracking here silently loses the rest of their day. The
+  /// backlog uploads as soon as they sign back in.
+  Future<void> _onSessionExpired(
+    SessionExpired event,
+    Emitter<AuthState> emit,
+  ) async {
+    try {
+      await _logoutUseCase();
+    } catch (_) {
+      // Swallow — reaching the login screen is the priority.
+    }
     emit(const AuthUnauthenticated());
   }
 }

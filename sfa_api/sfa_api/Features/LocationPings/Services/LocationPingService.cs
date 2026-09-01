@@ -1,6 +1,5 @@
 using sfa_api.Common.Errors;
 using sfa_api.Common.Extensions;
-using sfa_api.Common.Geo;
 using sfa_api.Features.LocationPings.DTOs;
 using sfa_api.Features.LocationPings.Entities;
 using sfa_api.Features.LocationPings.Repositories;
@@ -70,28 +69,7 @@ public class LocationPingService(
             RepId:   repId,
             RepName: rep.Name ?? string.Empty,
             Date:    date,
-            Summary: new RepRouteSummaryDto(
-                PointCount:          points.Count,
-                FirstPingAt:         points.Count > 0 ? points[0].RecordedAt : null,
-                LastPingAt:          points.Count > 0 ? points[^1].RecordedAt : null,
-                TotalDistanceMeters: TotalDistanceMeters(points)),
-            Points: points);
-    }
-
-    /// Sum of great-circle hops between consecutive fixes. GeoMath returns double.MaxValue
-    /// for a (0,0) endpoint — its "no coordinate" sentinel — so those hops are skipped
-    /// rather than poisoning the total with a ~10,000 km segment.
-    private static double TotalDistanceMeters(IReadOnlyList<RepRoutePointDto> points)
-    {
-        double total = 0;
-        for (var i = 1; i < points.Count; i++)
-        {
-            var hop = GeoMath.HaversineMeters(
-                points[i - 1].Latitude, points[i - 1].Longitude,
-                points[i].Latitude,     points[i].Longitude);
-
-            if (hop < double.MaxValue) total += hop;
-        }
-        return total;
+            Summary: RepRouteSummaryCalculator.Build(points),
+            Points:  points);
     }
 }

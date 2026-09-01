@@ -39,8 +39,10 @@ export function RepSelect({ value, onChange }: RepSelectProps) {
       )}
       noResultsMessage="No sales reps found"
       notFound={<div className="p-2 text-sm text-muted-foreground">No sales reps found</div>}
+      // AsyncSelect puts `width` on the trigger as an inline style, which outranks any
+      // Tailwind width class — so sizing is controlled by the wrapper, and 100% fills it.
       width="100%"
-      triggerClassName="w-full sm:w-64"
+      triggerClassName="h-10"
       clearable
     />
   )

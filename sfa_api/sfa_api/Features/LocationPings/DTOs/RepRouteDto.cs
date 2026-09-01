@@ -32,12 +32,23 @@ public record RepRoutePointDto(
 
 /// <summary>
 /// Totals computed server-side so every client doesn't re-derive them.
-/// <c>TotalDistanceMeters</c> is the sum of great-circle hops between consecutive points —
-/// it is a lower bound on real distance travelled, since the phone only reports roughly
-/// every 5 minutes and drops fixes it considers too inaccurate.
 /// </summary>
+/// <param name="MeasuredDistanceMeters">
+/// Sum of straight-line hops between consecutive pings, <b>excluding</b> hops that span a
+/// gap — across a gap the path is unknown, so the straight line is the size of the missing
+/// data, not distance travelled. This is a lower bound on real road distance: roads bend,
+/// straight lines don't, and the phone only reports every few minutes.
+/// </param>
+/// <param name="GapCount">How many gaps were skipped, so the UI can say what isn't counted.</param>
+/// <param name="GapThresholdMinutes">
+/// The rule used to classify a gap. Returned so clients draw those segments as gaps using
+/// the same threshold the distance was calculated with, instead of keeping their own copy
+/// that can drift out of step.
+/// </param>
 public record RepRouteSummaryDto(
     int PointCount,
     DateTimeOffset? FirstPingAt,
     DateTimeOffset? LastPingAt,
-    double TotalDistanceMeters);
+    double MeasuredDistanceMeters,
+    int GapCount,
+    int GapThresholdMinutes);

@@ -4,7 +4,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:uswatte/core/constants/app_constants.dart';
 import 'package:uswatte/core/db/database_helper.dart';
 import 'package:uswatte/core/di/injection.dart';
 
@@ -12,6 +14,13 @@ const _channelId = 'sfa_location_tracking';
 const _channelName = 'SFA Location Tracking';
 const _notificationId = 888;
 const _maxAccuracyMetres = 100.0;
+
+/// Upper bound on the offline outbox — roughly a week at one ping per 5 minutes.
+///
+/// Uploads only delete rows on success, so a rep whose session expired and who
+/// never logs back in would otherwise queue rows forever. Trimming the oldest
+/// keeps the most recent (most useful) positions and bounds the DB.
+const _maxQueuedPings = 2000;
 
 /// Delay before this isolate first touches SQLite. The UI isolate creates and
 /// migrates the schema on launch, and this isolate opening the same file
@@ -36,6 +45,14 @@ void locationServiceEntry(ServiceInstance service) async {
     timer?.cancel();
     service.stopSelf();
   });
+
+  // The plugin's autoStartOnBoot defaults to true, so this isolate also runs
+  // after a device restart with no app launch behind it. If nobody is logged
+  // in, shut down instead of capturing positions that can never be uploaded.
+  if (!await LocationTrackingService.isEnabled()) {
+    service.stopSelf();
+    return;
+  }
 
   // Stagger the first DB access past app startup — see [_firstTickDelay].
   await Future<void>.delayed(_firstTickDelay);
@@ -97,6 +114,19 @@ Future<void> _captureAndQueue() async {
     'recorded_at': position.timestamp.toUtc().toIso8601String(),
     'created_at': DateTime.now().toUtc().toIso8601String(),
   });
+
+  // Drop the oldest rows once the outbox exceeds its cap. Only reached when
+  // uploads have been failing for days — the newest positions are the ones
+  // worth keeping.
+  await database.rawDelete(
+    '''
+    DELETE FROM pending_location_pings
+    WHERE id NOT IN (
+      SELECT id FROM pending_location_pings ORDER BY id DESC LIMIT ?
+    )
+    ''',
+    [_maxQueuedPings],
+  );
 }
 
 Future<void> _flushQueue() async {
@@ -170,16 +200,52 @@ class LocationTrackingService {
     );
   }
 
+  /// Whether tracking is meant to be running. Survives token loss — only
+  /// [stop] clears it. Read by the background isolate on a boot auto-start.
+  static Future<bool> isEnabled() async {
+    try {
+      final value = await getIt<FlutterSecureStorage>()
+          .read(key: AppConstants.trackingEnabledKey);
+      return value == '1';
+    } catch (_) {
+      // Storage unavailable in this isolate — assume off rather than tracking
+      // a device we cannot prove is logged in.
+      return false;
+    }
+  }
+
+  /// Marks tracking as wanted and starts the service if it isn't already up.
+  /// Safe to call repeatedly — used on login and on every session restore, so
+  /// reopening the app also revives a service the OS killed.
   static Future<void> start() async {
+    try {
+      await getIt<FlutterSecureStorage>()
+          .write(key: AppConstants.trackingEnabledKey, value: '1');
+    } catch (_) {
+      // Fall through — a running service is still better than none.
+    }
+
     final isRunning = await _service.isRunning();
     if (!isRunning) {
       await _service.startService();
     }
   }
 
+  /// Deliberate logout only. Clears the flag so a boot auto-start won't revive
+  /// tracking, and empties the outbox so a previous rep's positions are not
+  /// uploaded under whoever logs in next.
+  ///
+  /// Do NOT call this on session expiry — a failed token refresh does not mean
+  /// the rep stopped working, and dropping the queue there loses real data.
   static Future<void> stop() async {
+    try {
+      await getIt<FlutterSecureStorage>()
+          .delete(key: AppConstants.trackingEnabledKey);
+    } catch (_) {
+      // Ignore — the stopSelf below is what actually halts capture.
+    }
+
     _service.invoke('stop');
-    // Clear the outbox so stale pings don't upload after next login.
     final database = await DatabaseHelper.instance.database;
     await database.delete('pending_location_pings');
   }

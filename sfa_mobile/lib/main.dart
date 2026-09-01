@@ -110,8 +110,11 @@ class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _router = AppRouter.createRouter(widget.authBloc);
+    // SessionExpired, not LogoutRequested — a failed refresh must send the rep
+    // to the login screen without also killing location tracking and binning
+    // their queued pings for the rest of the route.
     _sessionExpiredSub = getIt<SessionExpiredNotifier>().stream.listen((_) {
-      widget.authBloc.add(LogoutRequested());
+      widget.authBloc.add(const SessionExpired());
     });
     // SFA-119: pull fresh master data the moment a session becomes active —
     // a real login, or a token restore on cold start. Without this the rep

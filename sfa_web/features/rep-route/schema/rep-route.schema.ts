@@ -20,7 +20,11 @@ export const repRouteSummarySchema = z.object({
   pointCount: z.number(),
   firstPingAt: z.string().nullable(),
   lastPingAt: z.string().nullable(),
-  totalDistanceMeters: z.number(),
+  /** Straight-line distance across observed stretches only — gaps are excluded. */
+  measuredDistanceMeters: z.number(),
+  gapCount: z.number(),
+  /** The server's gap rule. Used for drawing too, so dashes and distance always agree. */
+  gapThresholdMinutes: z.number(),
 })
 
 export const repRouteSchema = z.object({
