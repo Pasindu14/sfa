@@ -73,37 +73,82 @@ Future<bool> locationServiceIosBackground(ServiceInstance service) async {
 
 // ── Private helpers (run inside background isolate) ─────────────────────────
 
+/// Why a tick produced no position. Values must match TrackingSkipReasons on the API.
+class _SkipReason {
+  const _SkipReason(this.reason, [this.accuracyMetres]);
+  final String reason;
+  final double? accuracyMetres;
+
+  static const permissionDenied = _SkipReason('PermissionDenied');
+  static const locationServicesOff = _SkipReason('LocationServicesOff');
+  static const noFixTimeout = _SkipReason('NoFixTimeout');
+  static const zeroCoordinate = _SkipReason('ZeroCoordinate');
+  static const captureError = _SkipReason('CaptureError');
+}
+
 Future<void> _tick() async {
+  _SkipReason? skipped;
   try {
-    await _captureAndQueue();
-  } catch (_) {}
+    skipped = await _captureAndQueue();
+  } catch (_) {
+    skipped = _SkipReason.captureError;
+  }
   try {
     await _flushQueue();
   } catch (_) {}
+
+  // Only reported when the tick captured nothing. A healthy rep's pings are already the
+  // signal, so this adds no traffic on a good day — but it means an empty map can say
+  // WHY it is empty instead of looking identical to a dead service.
+  if (skipped != null) {
+    try {
+      await _reportSkip(skipped);
+    } catch (_) {}
+  }
 }
 
-Future<void> _captureAndQueue() async {
+Future<void> _reportSkip(_SkipReason skip) async {
+  final dio = getIt<Dio>();
+  await dio.post('/api/v1/location-pings/status', data: {
+    'reason': skip.reason,
+    'occurredAt': DateTime.now().toUtc().toIso8601String(),
+    if (skip.accuracyMetres != null) 'accuracyMeters': skip.accuracyMetres,
+  });
+}
+
+/// Returns null when a position was captured and queued, otherwise why it wasn't.
+Future<_SkipReason?> _captureAndQueue() async {
   final permission = await Geolocator.checkPermission();
   if (permission == LocationPermission.denied ||
       permission == LocationPermission.deniedForever) {
-    return;
+    return _SkipReason.permissionDenied;
   }
   if (!await Geolocator.isLocationServiceEnabled()) {
-    return;
+    return _SkipReason.locationServicesOff;
   }
 
-  final position = await Geolocator.getCurrentPosition(
-    locationSettings: const LocationSettings(
-      accuracy: LocationAccuracy.medium,
-      timeLimit: Duration(seconds: 10),
-    ),
-  );
+  final Position position;
+  try {
+    position = await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.medium,
+        timeLimit: Duration(seconds: 10),
+      ),
+    );
+  } on TimeoutException {
+    return _SkipReason.noFixTimeout;
+  } on LocationServiceDisabledException {
+    return _SkipReason.locationServicesOff;
+  }
 
   if (position.latitude == 0.0 && position.longitude == 0.0) {
-    return;
+    return _SkipReason.zeroCoordinate;
   }
   if (position.accuracy > _maxAccuracyMetres) {
-    return;
+    // The most common cause of a silently empty day: a stationary phone indoors whose
+    // fix degrades past the ceiling. Report the actual accuracy so the threshold can be
+    // tuned against real numbers rather than guessed at.
+    return _SkipReason('AccuracyTooPoor', position.accuracy);
   }
 
   final database = await DatabaseHelper.instance.database;
@@ -127,6 +172,8 @@ Future<void> _captureAndQueue() async {
     ''',
     [_maxQueuedPings],
   );
+
+  return null; // captured and queued
 }
 
 Future<void> _flushQueue() async {

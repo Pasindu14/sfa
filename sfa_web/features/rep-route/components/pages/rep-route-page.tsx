@@ -5,7 +5,7 @@ import { APIProvider, Map, useMap } from '@vis.gl/react-google-maps'
 import { Spinner } from '@/components/ui/spinner'
 import { Button } from '@/components/ui/button'
 import { DateOnlyPicker } from '@/components/date-only-picker'
-import { MapPin, Route as RouteIcon, Search } from 'lucide-react'
+import { MapPin, Route as RouteIcon, Search, TriangleAlert } from 'lucide-react'
 import { RepSelect } from '../selects/rep-select'
 import { useRepRoute } from '../../hooks/rep-route.hooks'
 import type { RepRoutePointDto } from '../../schema/rep-route.schema'
@@ -21,6 +21,19 @@ const CENTER = { lat: 7.8731, lng: 80.7718 } // Sri Lanka centre — fallback be
 const FALLBACK_GAP_MINUTES = 15
 
 const TRAIL_COLOR = '#f97316'
+
+/**
+ * Reason codes from the phone, turned into something an admin can act on. Unknown codes
+ * fall through verbatim so a newer app version reporting something new still shows it.
+ */
+const SKIP_REASONS: Record<string, string> = {
+  PermissionDenied: 'Location permission is denied on the phone',
+  LocationServicesOff: 'Location is switched off on the phone',
+  NoFixTimeout: 'No GPS fix — usually indoors or poor sky view',
+  AccuracyTooPoor: 'GPS fix too weak to trust (over 100 m accuracy)',
+  ZeroCoordinate: 'Phone reported an invalid position',
+  CaptureError: 'The phone hit an error while reading location',
+}
 
 function formatDistance(meters: number): string {
   if (meters < 1000) return `${Math.round(meters)} m`
@@ -204,6 +217,14 @@ export function RepRoutePage() {
 
   const isEmpty = !!applied && !isLoading && !isError && points.length === 0
 
+  // Only surface the failure if it is more recent than the last position we got — otherwise
+  // the phone already recovered and the warning would be noise.
+  const status = route?.trackingStatus ?? null
+  const statusIsCurrent =
+    !!status &&
+    (!route?.summary.lastPingAt ||
+      new Date(status.reportedAt) > new Date(route.summary.lastPingAt))
+
   // The controls have moved on from what's drawn — say so, rather than letting the map
   // silently disagree with the filters above it.
   const isDirty =
@@ -287,6 +308,24 @@ export function RepRoutePage() {
         </div>
       )}
 
+      {statusIsCurrent && status && (
+        <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/40">
+          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <div className="text-sm">
+            <p className="font-medium">
+              The phone stopped recording positions —{' '}
+              {SKIP_REASONS[status.reason] ?? status.reason}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Reported at {formatColombo(status.reportedAt, 'd MMM, HH:mm')}
+              {status.accuracyMeters != null &&
+                ` · fix was ±${Math.round(status.accuracyMeters)} m`}
+              . The tracking service is still running — it just has nothing usable to send.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="relative" style={{ height: 'calc(100vh - 320px)' }}>
         {isLoading && (
           <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-background/60 backdrop-blur-sm">
@@ -322,8 +361,9 @@ export function RepRoutePage() {
               {formatColombo(`${applied?.date}T00:00:00`)}
             </p>
             <p className="max-w-md text-center text-xs text-muted-foreground">
-              The app records a position every 5 minutes, but skips it when location is off,
-              the GPS fix is too weak, or the phone stopped the tracking service.
+              {status
+                ? `${SKIP_REASONS[status.reason] ?? status.reason} — last reported ${formatColombo(status.reportedAt, 'd MMM, HH:mm')}.`
+                : 'No reason was reported either, which usually means the tracking service was not running at all.'}
             </p>
           </div>
         )}

@@ -5,13 +5,22 @@ using sfa_api.Features.LocationPings.Entities;
 using sfa_api.Features.LocationPings.Repositories;
 using sfa_api.Features.LocationPings.Requests;
 using sfa_api.Features.Users.Repositories;
+using sfa_api.Infrastructure.Caching;
 
 namespace sfa_api.Features.LocationPings.Services;
 
 public class LocationPingService(
     ILocationPingRepository repository,
-    IUserRepository userRepository) : ILocationPingService
+    IUserRepository userRepository,
+    ICacheService cache) : ILocationPingService
 {
+    /// Current state, not history — rewritten every few minutes and meaningless once stale,
+    /// so it lives in the cache rather than earning a table and a migration. Two days is
+    /// long enough to explain a quiet weekend and short enough to self-expire.
+    private static readonly TimeSpan TrackingStatusTtl = TimeSpan.FromDays(2);
+
+    private static string TrackingStatusKey(int repId) => $"tracking:status:{repId}";
+
     public async Task<int> RecordAsync(int repId, CreateLocationPingsRequest request, CancellationToken ct = default)
     {
         var now = DateTimeOffset.UtcNow;
@@ -70,6 +79,21 @@ public class LocationPingService(
             RepName: rep.Name ?? string.Empty,
             Date:    date,
             Summary: RepRouteSummaryCalculator.Build(points),
-            Points:  points);
+            Points:  points,
+            TrackingStatus: await GetTrackingStatusAsync(repId, ct));
     }
+
+    public async Task ReportTrackingStatusAsync(
+        int repId, ReportTrackingStatusRequest request, CancellationToken ct = default)
+    {
+        var status = new RepTrackingStatusDto(
+            Reason:         request.Reason,
+            AccuracyMeters: request.AccuracyMeters,
+            ReportedAt:     request.OccurredAt);
+
+        await cache.SetAsync(TrackingStatusKey(repId), status, TrackingStatusTtl, ct);
+    }
+
+    public Task<RepTrackingStatusDto?> GetTrackingStatusAsync(int repId, CancellationToken ct = default)
+        => cache.GetAsync<RepTrackingStatusDto>(TrackingStatusKey(repId), ct);
 }

@@ -7,12 +7,19 @@ namespace sfa_api.Features.LocationPings.DTOs;
 /// every row, which is dead weight when all points belong to one rep. Here the rep is named
 /// once and the points stay minimal.
 /// </summary>
+/// <param name="TrackingStatus">
+/// Why the phone last failed to capture a position, if it has reported one. This is
+/// <b>current</b> state rather than something about <c>Date</c> — it exists so an empty or
+/// prematurely-ending route can be explained ("no GPS fix since 10:25") instead of leaving
+/// the reader to guess between a dead service and a rejected fix.
+/// </param>
 public record RepRouteDto(
     int RepId,
     string RepName,
     DateOnly Date,
     RepRouteSummaryDto Summary,
-    IReadOnlyList<RepRoutePointDto> Points);
+    IReadOnlyList<RepRoutePointDto> Points,
+    RepTrackingStatusDto? TrackingStatus);
 
 /// <summary>
 /// A single GPS fix on the route.

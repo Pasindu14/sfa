@@ -27,12 +27,24 @@ export const repRouteSummarySchema = z.object({
   gapThresholdMinutes: z.number(),
 })
 
+/**
+ * Why the phone last failed to record a position. Current state, not tied to the queried
+ * date — it exists so an empty map can explain itself instead of looking the same whether
+ * the service died or every fix was rejected.
+ */
+export const repTrackingStatusSchema = z.object({
+  reason: z.string(),
+  accuracyMeters: z.number().nullable(),
+  reportedAt: z.string(),
+})
+
 export const repRouteSchema = z.object({
   repId: z.number(),
   repName: z.string(),
   date: z.string(),
   summary: repRouteSummarySchema,
   points: z.array(repRoutePointSchema),
+  trackingStatus: repTrackingStatusSchema.nullable(),
 })
 
 /** Minimal shape needed to render the rep picker — not the full user record. */
@@ -44,6 +56,7 @@ export const repOptionSchema = z.object({
   isActive: z.boolean(),
 })
 
+export type RepTrackingStatusDto = z.infer<typeof repTrackingStatusSchema>
 export type RepRoutePointDto = z.infer<typeof repRoutePointSchema>
 export type RepRouteSummaryDto = z.infer<typeof repRouteSummarySchema>
 export type RepRouteDto = z.infer<typeof repRouteSchema>

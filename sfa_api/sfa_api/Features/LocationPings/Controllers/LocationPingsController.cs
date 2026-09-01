@@ -46,6 +46,25 @@ public class LocationPingsController(
     }
 
     /// <summary>
+    /// Records why this rep's phone captured no position on its latest tick.
+    /// RepId comes from the JWT. Sent only when a tick produced nothing, so a healthy rep
+    /// adds no extra traffic — their pings are already the signal.
+    /// </summary>
+    [HttpPost("status")]
+    public async Task<IActionResult> ReportStatus(
+        [FromBody] ReportTrackingStatusRequest request,
+        CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+
+        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var repId))
+            return Unauthorized();
+
+        await service.ReportTrackingStatusAsync(repId, request, ct);
+        return Ok(ResponseHelper.Ok(new { recorded = true }, correlationId));
+    }
+
+    /// <summary>
     /// Returns the most-recent location ping for every active rep.
     /// Admin only — used by the supervisor live map dashboard.
     /// </summary>
