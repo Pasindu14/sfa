@@ -52,7 +52,9 @@ export function DistributorBillingTable() {
           enableExport: false,
           enableColumnResizing: true,
           enableUrlState: false,
-          columnResizingTableId: 'distributor-billing-table',
+          // v2: bumped so previously-saved column widths (which clipped the
+          // actions column) are discarded and the new defaults apply.
+          columnResizingTableId: 'distributor-billing-table-v2',
           searchPlaceholder: 'Search by billing number or outlet...',
         }}
         getColumns={getColumns}

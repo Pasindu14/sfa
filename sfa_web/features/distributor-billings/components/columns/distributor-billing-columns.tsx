@@ -122,7 +122,11 @@ export function getDistributorBillingColumns(
     {
       id: 'actions',
       header: '',
-      size: 210,
+      // Fits View + Cash + Review. The table is `table-layout: fixed`, so a
+      // column narrower than its content silently clips the trailing buttons.
+      // minSize stops a resize drag from shrinking it back into a clip.
+      size: 290,
+      minSize: 290,
       cell: ({ row }) => {
         const isPending =
           row.original.repStatus === 'Submitted' && row.original.distributorStatus === 'Pending'
