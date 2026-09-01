@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { APIProvider, Map, useMap } from '@vis.gl/react-google-maps'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { MapPin, Radio } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import { useFieldRepsLive } from '@/features/field-rep/hooks/field-rep.hooks'
@@ -10,9 +11,20 @@ import type { RepLocationPingDto } from '@/features/field-rep/schema/field-rep.s
 
 const CENTER = { lat: 7.8731, lng: 80.7718 } // Sri Lanka center
 const STALE_THRESHOLD_MS = 15 * 60 * 1000     // 15 minutes
+const TICK_MS = 30_000                        // matches the query poll interval
 
-function isStale(recordedAt: string): boolean {
-  return Date.now() - new Date(recordedAt).getTime() > STALE_THRESHOLD_MS
+type RepFilter = 'all' | 'active' | 'stale'
+
+const FILTERS: { key: RepFilter; label: string; dot?: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'active', label: 'Active', dot: 'bg-green-500' },
+  { key: 'stale', label: 'Stale', dot: 'bg-gray-400' },
+]
+
+// `now` is passed in so every marker, count and filter in one render agrees on
+// a single instant rather than each calling Date.now() separately.
+function isStale(recordedAt: string, now: number = Date.now()): boolean {
+  return now - new Date(recordedAt).getTime() > STALE_THRESHOLD_MS
 }
 
 function formatLastSeen(recordedAt: string): string {
@@ -25,7 +37,7 @@ function formatLastSeen(recordedAt: string): string {
 }
 
 // Must live inside <Map> to access map context via useMap()
-function RepMarkers({ pings }: { pings: RepLocationPingDto[] }) {
+function RepMarkers({ pings, now }: { pings: RepLocationPingDto[]; now: number }) {
   const map = useMap()
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null)
 
@@ -36,7 +48,7 @@ function RepMarkers({ pings }: { pings: RepLocationPingDto[] }) {
     infoWindowRef.current = infoWindow
 
     const markers = pings.map((p) => {
-      const stale = isStale(p.recordedAt)
+      const stale = isStale(p.recordedAt, now)
       const marker = new google.maps.Marker({
         position: { lat: p.latitude, lng: p.longitude },
         map,
@@ -70,7 +82,7 @@ function RepMarkers({ pings }: { pings: RepLocationPingDto[] }) {
       infoWindow.close()
       markers.forEach((m) => m.setMap(null))
     }
-  }, [map, pings])
+  }, [map, pings, now])
 
   return null
 }
@@ -78,9 +90,39 @@ function RepMarkers({ pings }: { pings: RepLocationPingDto[] }) {
 export function FieldRepsMapPage() {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ''
   const { data: pings = [], isLoading, error } = useFieldRepsLive()
+  const [filter, setFilter] = useState<RepFilter>('all')
 
-  const activeCount = pings.filter((p) => !isStale(p.recordedAt)).length
-  const staleCount = pings.length - activeCount
+  // Staleness is derived from elapsed time, not from the payload. A poll that
+  // returns identical data keeps the same array identity and re-renders
+  // nothing, so without this tick a rep would stay "active" indefinitely.
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), TICK_MS)
+    return () => clearInterval(id)
+  }, [])
+
+  const { active, stale } = useMemo(() => {
+    const active: RepLocationPingDto[] = []
+    const stale: RepLocationPingDto[] = []
+    for (const p of pings) {
+      ;(isStale(p.recordedAt, now) ? stale : active).push(p)
+    }
+    return { active, stale }
+  }, [pings, now])
+
+  // Memoised: RepMarkers rebuilds every marker whenever this array's identity
+  // changes, so returning a fresh array on each render would thrash the map.
+  const visiblePings = useMemo(() => {
+    if (filter === 'active') return active
+    if (filter === 'stale') return stale
+    return pings
+  }, [filter, active, stale, pings])
+
+  const counts: Record<RepFilter, number> = {
+    all: pings.length,
+    active: active.length,
+    stale: stale.length,
+  }
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -90,12 +132,38 @@ export function FieldRepsMapPage() {
           <p className="text-muted-foreground">
             {isLoading
               ? 'Loading rep locations...'
-              : `${activeCount} active · ${staleCount} stale · updates every 30s`}
+              : `${counts.active} active · ${counts.stale} stale · updates every 30s`}
           </p>
         </div>
-        <Badge variant="secondary" className="text-sm px-3 py-1">
-          {isLoading ? 'Loading...' : `${pings.length} reps`}
-        </Badge>
+
+        <div className="flex items-center gap-3">
+          <div
+            role="group"
+            aria-label="Filter reps by signal status"
+            className="inline-flex items-center gap-0.5 rounded-lg border bg-background p-0.5"
+          >
+            {FILTERS.map((f) => (
+              <Button
+                key={f.key}
+                size="sm"
+                variant={filter === f.key ? 'default' : 'ghost'}
+                aria-pressed={filter === f.key}
+                className="h-7 gap-1.5 px-2.5 text-xs"
+                onClick={() => setFilter(f.key)}
+              >
+                {f.dot && (
+                  <span className={`h-2 w-2 shrink-0 rounded-full ${f.dot}`} />
+                )}
+                {f.label}
+                <span className="tabular-nums opacity-70">{counts[f.key]}</span>
+              </Button>
+            ))}
+          </div>
+
+          <Badge variant="secondary" className="text-sm px-3 py-1">
+            {isLoading ? 'Loading...' : `${pings.length} reps`}
+          </Badge>
+        </div>
       </div>
 
       <div className="relative" style={{ height: 'calc(100vh - 260px)' }}>
@@ -115,6 +183,14 @@ export function FieldRepsMapPage() {
           </div>
         )}
 
+        {/* Filter matched nothing — a light banner, not a full overlay, so the
+            map stays readable while the user switches filters. */}
+        {!isLoading && !error && pings.length > 0 && visiblePings.length === 0 && (
+          <div className="absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-full border bg-background/95 px-4 py-1.5 text-xs shadow-md">
+            No {filter} reps right now
+          </div>
+        )}
+
         <APIProvider apiKey={apiKey}>
           <Map
             defaultCenter={CENTER}
@@ -122,7 +198,7 @@ export function FieldRepsMapPage() {
             gestureHandling="cooperative"
             className="w-full h-full rounded-xl overflow-hidden border"
           >
-            <RepMarkers pings={pings} />
+            <RepMarkers pings={visiblePings} now={now} />
           </Map>
         </APIProvider>
 
