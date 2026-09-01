@@ -221,6 +221,8 @@ public class BillingsApiTests
             billDiscountRate = 10m,
             notes = "itemwise discount test",
             billingDate = Today(),
+            latitude = 6.9271,
+            longitude = 79.8612,
             items = new object[]
             {
                 new { productId = _productAId, quantity = 3m,  unitPrice = 9.99m,  discountRate = 10m,   billingItemType = 0 },
@@ -257,6 +259,8 @@ public class BillingsApiTests
             outletId = _outletId,
             billDiscountRate = 0m,
             billingDate = Today(),
+            latitude = 6.9271,
+            longitude = 79.8612,
             items = new object[]
             {
                 new { productId = _productAId, quantity = 1m, unitPrice = 100m, discountRate = 0m, billingItemType = 0 }
@@ -288,6 +292,8 @@ public class BillingsApiTests
             outletId = _outletId,
             billDiscountRate = 0m,
             billingDate = Today(),
+            latitude = 6.9271,
+            longitude = 79.8612,
             items = new object[]
             {
                 new { productId = _productAId, quantity = 1m, unitPrice = 100m, discountRate = 0m, billingItemType = 0 }
@@ -318,6 +324,8 @@ public class BillingsApiTests
             outletId = _outletId,
             billDiscountRate = 10m,
             billingDate = Today(),
+            latitude = 6.9271,
+            longitude = 79.8612,
             items = new object[]
             {
                 new { productId = _productAId, quantity = 10m, unitPrice = 100m, discountRate = 0m, billingItemType = 0 },
@@ -352,7 +360,9 @@ public class BillingsApiTests
             {
                 new(_productAId, Quantity: 1m, UnitPrice: 50m, BillingItemType: BillingItemType.Sale)
             },
-            BillingDate: DateOnly.FromDateTime(DateTime.UtcNow));
+            BillingDate: DateOnly.FromDateTime(DateTime.UtcNow),
+            Latitude: 6.9271,
+            Longitude: 79.8612);
 
         using var scope = _factory.Services.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IBillingService>();
@@ -370,6 +380,98 @@ public class BillingsApiTests
           .Should().Be(1, "the clientBillId fast-path + unique index must prevent a duplicate bill");
     }
 
+    // ─────────────────────────────────────────────────
+    // Mandatory rep location
+    // ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CreateBilling_WithoutCoordinates_IsRejected()
+    {
+        await EnsureSeededAsync();
+        SetToken(_repToken);
+
+        var payload = new
+        {
+            outletId = _outletId,
+            billDiscountRate = 0m,
+            notes = "no location",
+            billingDate = Today(),
+            items = new object[]
+            {
+                new { productId = _productAId, quantity = 1m, unitPrice = 10m, discountRate = 0m, billingItemType = 0 }
+            }
+        };
+
+        var (status, _, raw) = await PostBillingAsync(payload);
+
+        status.Should().Be(HttpStatusCode.BadRequest, raw);
+        raw.Should().Contain("Latitude is required",
+            "omitting coordinates would otherwise skip the proximity gate entirely");
+    }
+
+    [Fact]
+    public async Task CreateBilling_WithZeroZeroCoordinates_IsRejected()
+    {
+        await EnsureSeededAsync();
+        SetToken(_repToken);
+
+        var payload = new
+        {
+            outletId = _outletId,
+            billDiscountRate = 0m,
+            notes = "null island",
+            billingDate = Today(),
+            latitude = 0.0,
+            longitude = 0.0,
+            items = new object[]
+            {
+                new { productId = _productAId, quantity = 1m, unitPrice = 10m, discountRate = 0m, billingItemType = 0 }
+            }
+        };
+
+        var (status, _, raw) = await PostBillingAsync(payload);
+
+        status.Should().Be(HttpStatusCode.BadRequest, raw);
+        raw.Should().Contain("(0, 0)",
+            "(0,0) is GeoMath's no-coordinate sentinel and must not be usable to opt out of the geofence");
+    }
+
+    [Fact]
+    public async Task CreateBilling_OutletWithoutCoordinates_SkipsProximityButStillRequiresRepLocation()
+    {
+        await EnsureSeededAsync();
+        SetToken(_repToken);
+
+        // The seeded outlet has no coordinates (0,0). The rep position below is
+        // ~10,000 km from it, yet the bill must succeed: proximity is skipped for
+        // placeholder outlets, while the rep's own location is still recorded.
+        var payload = new
+        {
+            outletId = _outletId,
+            billDiscountRate = 0m,
+            notes = "placeholder outlet",
+            billingDate = Today(),
+            latitude = 6.9271,
+            longitude = 79.8612,
+            items = new object[]
+            {
+                new { productId = _productAId, quantity = 1m, unitPrice = 10m, discountRate = 0m, billingItemType = 0 }
+            }
+        };
+
+        var (status, data, raw) = await PostBillingAsync(payload);
+
+        status.Should().Be(HttpStatusCode.Created, raw);
+        data.GetProperty("latitude").GetDouble().Should().Be(6.9271);
+
+        // No distance is computable against a 0,0 outlet, so it stays null.
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var saved = db.Billings.OrderByDescending(b => b.Id).First();
+        saved.DistanceFromOutletMeters.Should().BeNull();
+        saved.Latitude.Should().Be(6.9271);
+    }
+
     [Fact]
     public async Task CreateBilling_DifferentClientBillIds_CreateDistinctBills()
     {
@@ -383,7 +485,9 @@ public class BillingsApiTests
             {
                 new(_productAId, Quantity: 1m, UnitPrice: 25m, BillingItemType: BillingItemType.Sale)
             },
-            BillingDate: DateOnly.FromDateTime(DateTime.UtcNow));
+            BillingDate: DateOnly.FromDateTime(DateTime.UtcNow),
+            Latitude: 6.9271,
+            Longitude: 79.8612);
 
         using var scope = _factory.Services.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IBillingService>();

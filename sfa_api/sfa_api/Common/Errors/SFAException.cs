@@ -87,6 +87,16 @@ public class OutletProximityException(double actualMeters, double limitMeters)
 {
 }
 
+/// Raised when a bill arrives without a usable rep position. The proximity gate
+/// is only meaningful if every bill carries the location it was raised from, so
+/// a missing coordinate is rejected rather than silently skipping the check.
+public class BillingLocationRequiredException()
+    : BusinessRuleException(
+        "BILLING_LOCATION_REQUIRED",
+        "A device location is required to create a bill. Enable location services and try again.")
+{
+}
+
 public class InvalidOrderStateException(string currentState, string attemptedTransition) : BusinessRuleException("INVALID_ORDER_STATE",
         $"Cannot transition order from '{currentState}' to '{attemptedTransition}'.",
         new { currentState, attemptedTransition })

@@ -22,6 +22,31 @@ public class CreateBillingValidator : AbstractValidator<CreateBillingRequest>
                 .WithMessage("BillingDate cannot be more than 7 days in the past.")
             .When(x => x.BillingDate.HasValue);
 
+        // Rep coordinates are mandatory. Without them the proximity gate in
+        // BillingService silently does nothing, so an omitted coordinate is an
+        // opt-out of the geofence rather than a missing nicety.
+        RuleFor(x => x.Latitude)
+            .NotNull().WithMessage("Latitude is required — location must be enabled to bill.");
+
+        RuleFor(x => x.Longitude)
+            .NotNull().WithMessage("Longitude is required — location must be enabled to bill.");
+
+        RuleFor(x => x.Latitude)
+            .Must(v => v is >= -90 and <= 90).WithMessage("Latitude must be between -90 and 90.")
+            .When(x => x.Latitude.HasValue);
+
+        RuleFor(x => x.Longitude)
+            .Must(v => v is >= -180 and <= 180).WithMessage("Longitude must be between -180 and 180.")
+            .When(x => x.Longitude.HasValue);
+
+        // (0,0) is GeoMath's "no coordinate stored" sentinel. Accepting it as a
+        // rep position would disable the proximity check for that bill, which is
+        // exactly the bypass this rule exists to close.
+        RuleFor(x => x.Latitude)
+            .Must((req, _) => !(req.Latitude == 0 && req.Longitude == 0))
+                .WithMessage("A valid device location is required — (0, 0) is not an acceptable position.")
+            .When(x => x.Latitude.HasValue && x.Longitude.HasValue);
+
         RuleFor(x => x.Items)
             .NotEmpty().WithMessage("At least one billing item is required.")
             .Must(items => items.Count <= 100).WithMessage("A billing may not have more than 100 items.")

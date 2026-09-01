@@ -73,18 +73,29 @@ public class BillingService(
         var outlet = await _billingRepository.GetOutletAsync(request.OutletId, ct)
             ?? throw new NotFoundException("Outlet", request.OutletId);
 
-        // ② Proximity gate — fails fast before any further DB work
+        // ② Proximity gate — fails fast before any further DB work.
+        //
+        // The rep position is mandatory and is re-checked here, not only in the
+        // validator, so that a direct service call cannot bypass the geofence by
+        // simply omitting the coordinates. (0,0) is rejected for the same reason:
+        // GeoMath treats it as "no coordinate", which would skip the check.
         var geo0 = _geoOptions.Value;
+        if (request.Latitude is not { } repLat
+            || request.Longitude is not { } repLng
+            || (repLat == 0 && repLng == 0))
+            throw new BillingLocationRequiredException();
+
+        // A MaxValue distance means the OUTLET has no stored coordinates (a 0,0
+        // placeholder). Those outlets stay billable from anywhere until someone
+        // captures their real position — the alternative is computing them as
+        // ~10,000 km away and making them permanently unbillable.
         double? distanceFromOutletMeters = null;
-        if (request.Latitude is { } repLat && request.Longitude is { } repLng)
+        var dist = GeoMath.HaversineMeters(repLat, repLng, outlet.Latitude, outlet.Longitude);
+        if (dist < double.MaxValue)
         {
-            var dist = GeoMath.HaversineMeters(repLat, repLng, outlet.Latitude, outlet.Longitude);
-            if (dist < double.MaxValue)
-            {
-                distanceFromOutletMeters = dist;
-                if (geo0.EnforceProximity && dist > geo0.RadiusMeters + geo0.ToleranceMeters)
-                    throw new OutletProximityException(dist, geo0.RadiusMeters);
-            }
+            distanceFromOutletMeters = dist;
+            if (geo0.EnforceProximity && dist > geo0.RadiusMeters + geo0.ToleranceMeters)
+                throw new OutletProximityException(dist, geo0.RadiusMeters);
         }
 
         // ③ Validate all products exist and are active
