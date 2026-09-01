@@ -9,6 +9,7 @@ import 'package:uswatte/core/background/background_sync_service.dart';
 import 'package:uswatte/core/background/location_tracking_service.dart';
 import 'package:uswatte/core/device/device_id_service.dart';
 import 'package:uswatte/core/di/injection.dart';
+import 'package:uswatte/core/location/location_gate.dart';
 import 'package:uswatte/core/network/session_expired_notifier.dart';
 import 'package:uswatte/core/router/app_router.dart';
 import 'package:uswatte/core/connectivity/connectivity_service.dart';
@@ -379,6 +380,12 @@ class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
               debugShowCheckedModeBanner: false,
               theme: AppTheme.light,
               routerConfig: _router,
+              // Wraps whatever the router renders, so a sales rep with location off is
+              // blocked on every screen rather than per-page. Deliberately here and not
+              // as a builder on the /sales-rep GoRoute — that pushes a phantom blank
+              // page under every screen and breaks the back button.
+              builder: (context, child) =>
+                  LocationGate(child: child ?? const SizedBox.shrink()),
             ),
           ),
         );

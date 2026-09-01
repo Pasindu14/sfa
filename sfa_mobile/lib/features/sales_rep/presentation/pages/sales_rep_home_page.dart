@@ -26,6 +26,7 @@ import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_daily_
 import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_monthly_sales_cubit.dart';
 import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_monthly_sales_state.dart';
 import 'package:uswatte/features/notifications/presentation/bloc/notifications_bloc.dart';
+import 'package:uswatte/features/sales_rep/presentation/widgets/location_nag_banner.dart';
 
 class SalesRepHomePage extends StatefulWidget {
   const SalesRepHomePage({super.key});
@@ -121,6 +122,11 @@ class _SalesRepHomePageState extends State<SalesRepHomePage>
               child: const _TopBar(),
             ),
           ),
+          // Sits directly under the top bar and above everything else — it is only
+          // rendered when something is actually wrong, and when it is, it matters more
+          // than the day's numbers. Not wrapped in the fade/slide animation so it cannot
+          // be missed on a quick glance at the screen.
+          const SliverToBoxAdapter(child: LocationNagBanner()),
           SliverToBoxAdapter(
             child: FadeTransition(
               opacity: _fade(0.05, 0.55),
