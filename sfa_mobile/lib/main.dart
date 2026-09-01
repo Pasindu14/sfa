@@ -28,6 +28,9 @@ import 'package:uswatte/core/notifications/fcm_service.dart';
 import 'package:uswatte/firebase_options.dart';
 import 'package:workmanager/workmanager.dart';
 
+const _backgroundSyncTask = 'backgroundSyncTask';
+const _trackingWatchdogTask = 'trackingWatchdogTask';
+
 // @pragma prevents the Dart tree-shaker from removing this function in release
 // builds. Without it, WorkManager fires but the callback silently does nothing.
 @pragma('vm:entry-point')
@@ -38,7 +41,14 @@ void callbackDispatcher() {
       // calling any Flutter plugin (sqflite, flutter_secure_storage, etc.).
       WidgetsFlutterBinding.ensureInitialized();
       await configureDependencies();
-      await getIt<BackgroundSyncService>().runSync();
+
+      // Branch on the task: the dispatcher is shared by every registered task,
+      // so without this the watchdog would run a full data sync every 15 minutes.
+      if (taskName == _trackingWatchdogTask) {
+        await LocationTrackingService.reviveIfEnabled();
+      } else {
+        await getIt<BackgroundSyncService>().runSync();
+      }
     } catch (_) {
       // Never surface exceptions to WorkManager — it retries immediately on
       // failure, which would drain battery and spam the server.
@@ -64,9 +74,21 @@ void main() async {
   await Workmanager().initialize(callbackDispatcher);
   await Workmanager().registerPeriodicTask(
     'com.sfa.uswatte.background_sync',
-    'backgroundSyncTask',
+    _backgroundSyncTask,
     frequency: const Duration(hours: 4),
     constraints: Constraints(networkType: NetworkType.connected),
+    existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
+  );
+
+  // Watchdog: restart location tracking if it should be running but isn't.
+  // WorkManager survives the process death that kills the foreground service, and
+  // 15 minutes is its minimum period. No network constraint — starting a service
+  // needs none, and requiring connectivity would leave a dead service dead through
+  // exactly the offline stretch we still want positions recorded for.
+  await Workmanager().registerPeriodicTask(
+    'com.sfa.uswatte.tracking_watchdog',
+    _trackingWatchdogTask,
+    frequency: const Duration(minutes: 15),
     existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
   );
 

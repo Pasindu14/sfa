@@ -278,6 +278,24 @@ class LocationTrackingService {
     }
   }
 
+  /// Restarts tracking if it is supposed to be running but isn't.
+  ///
+  /// This is the only *automatic* recovery path. When Android (or an OEM battery
+  /// manager) kills the service, nothing brings it back on its own — field data showed
+  /// devices sitting dead for up to nine days, recovering only when a rep happened to
+  /// open the app. The WorkManager watchdog calls this every 15 minutes so an outage
+  /// lasts minutes instead of days.
+  ///
+  /// Starting a foreground service from the background is restricted on Android 12+, so
+  /// this can throw; the caller swallows it and the next watchdog tick tries again.
+  /// Whitelisting the app from battery optimisation is what makes the start reliably
+  /// permitted.
+  static Future<void> reviveIfEnabled() async {
+    if (!await isEnabled()) return;
+    if (await _service.isRunning()) return;
+    await _service.startService();
+  }
+
   /// Deliberate logout only. Clears the flag so a boot auto-start won't revive
   /// tracking, and empties the outbox so a previous rep's positions are not
   /// uploaded under whoever logs in next.
