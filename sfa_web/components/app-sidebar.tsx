@@ -78,6 +78,7 @@ const navConfig: NavGroup[] = [
       { title: "Purchase Orders", url: "/purchase-orders" },
       { title: "Sales Invoices", url: "/sales-invoices" },
       { title: "Sales Targets", url: "/sales-targets" },
+      { title: "Rep Bills", url: "/rep-bills" },
       { title: "GRNs", url: "/grns" },
       { title: "Stock", url: "/stock" },
       { title: "Bin Card", url: "/bin-card" },
