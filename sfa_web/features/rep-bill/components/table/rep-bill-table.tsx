@@ -30,7 +30,11 @@ export function RepBillTable() {
           // Remounting on commit is what carries the newly applied filters into the table:
           // `customFilters` is only an *initial* value, so a re-render cannot push them in.
           // It also resets paging, which is the right behaviour when the rep or range changes.
-          key={`${appliedFilters.salesRepId}-${appliedFilters.dateFrom}-${appliedFilters.dateTo}`}
+          //
+          // `runId` is in the key so that pressing Reload with unchanged filters still remounts.
+          // Without it that press changes nothing the table can see, so it would never re-enter
+          // a loading state and the filter bar's spinner would never be switched back off.
+          key={`${appliedFilters.runId}-${appliedFilters.salesRepId}-${appliedFilters.dateFrom}-${appliedFilters.dateTo}`}
           config={{
             enableRowSelection: false,
             // GET /api/v1/billings has no `search` param (only the distributor portal endpoint

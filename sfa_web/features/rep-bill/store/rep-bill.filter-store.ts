@@ -15,6 +15,17 @@ export interface AppliedRepBillFilters {
   dateFrom: string
   dateTo: string
   salesRepId: number
+  /**
+   * Incremented on every press of Load/Reload.
+   *
+   * Without it, re-pressing with unchanged filters produces an identical query key, so React
+   * Query serves the cached result without ever re-entering a loading state — the spinner would
+   * have nothing to switch it back off, and the button would sit on "Loading…" forever.
+   *
+   * It also makes Reload mean what it says: distributors approve and reject bills out of band,
+   * so pressing it must go back to the server rather than re-render stale statuses.
+   */
+  runId: number
 }
 
 interface RepBillFilterState {
@@ -69,9 +80,17 @@ export const useRepBillFilterStore = create<RepBillFilterState>()(
       setRepId: (repId) => set({ repId }),
 
       applyFilters: () => {
-        const { dateFrom, dateTo, repId } = get()
+        const { dateFrom, dateTo, repId, appliedFilters } = get()
         if (!repId) return
-        set({ appliedFilters: { dateFrom, dateTo, salesRepId: repId }, isFetching: true })
+        set({
+          appliedFilters: {
+            dateFrom,
+            dateTo,
+            salesRepId: repId,
+            runId: (appliedFilters?.runId ?? 0) + 1,
+          },
+          isFetching: true,
+        })
       },
 
       setFetching: (isFetching) => set({ isFetching }),

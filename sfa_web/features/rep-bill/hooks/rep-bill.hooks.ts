@@ -46,7 +46,19 @@ export function useRepBillDataTable(
   const paymentType = customFilters?.paymentType
 
   const query = useQuery({
-    queryKey: repBillKeys.list({ page, pageSize, appliedFilters, distributorStatus, paymentType }),
+    // Spelled out rather than spreading `appliedFilters`, so it is obvious that `runId` is part
+    // of the key on purpose: it is what makes a second press of Reload a new request instead of
+    // a cache hit that never re-enters a loading state.
+    queryKey: repBillKeys.list({
+      page,
+      pageSize,
+      salesRepId: appliedFilters?.salesRepId,
+      dateFrom: appliedFilters?.dateFrom,
+      dateTo: appliedFilters?.dateTo,
+      runId: appliedFilters?.runId,
+      distributorStatus,
+      paymentType,
+    }),
     queryFn: async () => {
       // The table is only mounted once `appliedFilters` is set, so this is a type guard rather
       // than a reachable state.
@@ -79,10 +91,15 @@ export function useRepBillDataTable(
     placeholderData: keepPreviousData,
   })
 
-  // Release the filter bar's spinner once the request settles, either way.
+  // Release the filter bar's spinner whenever this query is not actively fetching — on success,
+  // on error, and on the mount where there is nothing left to wait for.
+  //
+  // Keyed off `isFetching` rather than `isSuccess || isError`: those two only ever transition
+  // on the *first* resolution, so any later press that did not produce a fresh transition would
+  // leave the button stuck on "Loading…" with rows already on screen.
   useEffect(() => {
-    if (query.isSuccess || query.isError) useRepBillFilterStore.getState().setFetching(false)
-  }, [query.isSuccess, query.isError])
+    if (!query.isFetching) useRepBillFilterStore.getState().setFetching(false)
+  }, [query.isFetching])
 
   return query
 }
