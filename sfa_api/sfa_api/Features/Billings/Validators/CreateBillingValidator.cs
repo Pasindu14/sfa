@@ -15,6 +15,13 @@ public class CreateBillingValidator : AbstractValidator<CreateBillingRequest>
         RuleFor(x => x.BillDiscountRate)
             .InclusiveBetween(0, 100).WithMessage("BillDiscountRate must be between 0 and 100.");
 
+        // Rep remarks captured when the bill is closed. Mirrors the 1000-char
+        // cap configured on Billing.Notes so an over-long note fails as a 400
+        // rather than blowing up against the column limit.
+        RuleFor(x => x.Notes)
+            .MaximumLength(1000).WithMessage("Notes must not exceed 1000 characters.")
+            .When(x => x.Notes != null);
+
         RuleFor(x => x.BillingDate!.Value)
             .LessThanOrEqualTo(_ => SriLankaTime.Today)
                 .WithMessage("BillingDate cannot be in the future.")

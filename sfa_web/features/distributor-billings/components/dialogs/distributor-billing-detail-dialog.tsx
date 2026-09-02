@@ -165,6 +165,18 @@ export function DistributorBillingDetailDialog({ id, onClose }: Props) {
 
             <Separator />
 
+            {/* Remarks the rep recorded when closing the bill. Sits above the
+                ScrollArea in the shrink-0 header region so it never competes
+                with the line-items scroll. */}
+            {billing.notes && (
+              <div className="shrink-0 px-4 sm:px-6 pt-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Remarks
+                </p>
+                <p className="mt-1 whitespace-pre-wrap text-sm">{billing.notes}</p>
+              </div>
+            )}
+
             {/* Line items label */}
             <div className="shrink-0 px-4 sm:px-6 pb-1 pt-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">

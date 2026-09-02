@@ -123,7 +123,13 @@ final class BillDiscountChanged extends CreateBillEvent {
 }
 
 final class SubmitPressed extends CreateBillEvent {
-  const SubmitPressed();
+  /// Free-text remark the rep typed on the confirm sheet when closing the bill.
+  /// Carried on the event rather than held in [CreateBillState] so the sheet can
+  /// own the text in a local controller until the rep actually confirms.
+  final String? notes;
+  const SubmitPressed({this.notes});
+  @override
+  List<Object?> get props => [notes];
 }
 
 final class BillLocationCaptured extends CreateBillEvent {

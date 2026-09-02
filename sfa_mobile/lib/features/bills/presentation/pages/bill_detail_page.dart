@@ -358,6 +358,33 @@ class _InfoCard extends StatelessWidget {
             _infoRow(Icons.replay_rounded, 'Sync attempts',
                 '${bill.syncAttempts}'),
           ],
+          // Remarks get their own wrapping block rather than an _infoRow —
+          // that helper is a single line and would ellipsis a long remark.
+          if (bill.notes != null && bill.notes!.isNotEmpty) ...[
+            SizedBox(height: 10.h),
+            Divider(height: 1, color: AppColors.surfaceVariant),
+            SizedBox(height: 10.h),
+            Row(
+              children: [
+                Icon(Icons.sticky_note_2_rounded,
+                    size: 13.r, color: AppColors.foregroundMuted),
+                SizedBox(width: 6.w),
+                Text(
+                  'Remarks',
+                  style: GoogleFonts.barlow(
+                      fontSize: 12.sp, color: AppColors.foregroundMuted),
+                ),
+              ],
+            ),
+            SizedBox(height: 4.h),
+            Text(
+              bill.notes!,
+              style: GoogleFonts.barlow(
+                fontSize: 13.sp,
+                color: AppColors.foreground,
+              ),
+            ),
+          ],
         ],
       ),
     );

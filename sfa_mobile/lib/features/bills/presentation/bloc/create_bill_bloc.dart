@@ -356,6 +356,7 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
       subTotalAmount: state.saleSubTotal,
       billDiscountAmount: state.billDiscountAmount,
       totalAmount: state.total,
+      notes: (e.notes?.trim().isEmpty ?? true) ? null : e.notes!.trim(),
       latitude: state.latitude,
       longitude: state.longitude,
       createdAt: now,

@@ -498,4 +498,65 @@ public class BillingsApiTests
         b.Id.Should().NotBe(a.Id,
             "different clientBillIds are genuinely different submissions and must each create a bill");
     }
+
+    [Fact]
+    public async Task CreateBilling_WithRemarks_PersistsAndReturnsThem()
+    {
+        await EnsureSeededAsync();
+        SetToken(_repToken);
+
+        // SFA-120: the rep records anything special about the outlet when they
+        // close the bill. Multi-line text must survive the round trip intact.
+        const string remarks = "Shop closed early.\nOwner asked to deliver the balance next visit.";
+
+        var payload = new
+        {
+            outletId = _outletId,
+            billDiscountRate = 0m,
+            notes = remarks,
+            billingDate = Today(),
+            latitude = 6.9271,
+            longitude = 79.8612,
+            items = new object[]
+            {
+                new { productId = _productAId, quantity = 1m, unitPrice = 10m, discountRate = 0m, billingItemType = 0 }
+            }
+        };
+
+        var (status, data, raw) = await PostBillingAsync(payload);
+
+        status.Should().Be(HttpStatusCode.Created, raw);
+        data.GetProperty("notes").GetString().Should().Be(remarks);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.Billings.OrderByDescending(b => b.Id).First().Notes.Should().Be(remarks);
+    }
+
+    [Fact]
+    public async Task CreateBilling_WithOverlongRemarks_Returns400()
+    {
+        await EnsureSeededAsync();
+        SetToken(_repToken);
+
+        var payload = new
+        {
+            outletId = _outletId,
+            billDiscountRate = 0m,
+            notes = new string('x', 1001),
+            billingDate = Today(),
+            latitude = 6.9271,
+            longitude = 79.8612,
+            items = new object[]
+            {
+                new { productId = _productAId, quantity = 1m, unitPrice = 10m, discountRate = 0m, billingItemType = 0 }
+            }
+        };
+
+        var (status, _, raw) = await PostBillingAsync(payload);
+
+        status.Should().Be(HttpStatusCode.BadRequest, raw);
+        raw.Should().Contain("Notes must not exceed 1000 characters",
+            "the 1000-char cap is enforced on the column, so without a validator rule an over-long remark would surface as a 500");
+    }
 }

@@ -9,6 +9,7 @@ import 'package:uswatte/features/bills/presentation/bloc/create_bill_event.dart'
 import 'package:uswatte/features/bills/presentation/bloc/create_bill_state.dart';
 
 import 'cart_row.dart';
+import 'confirm_bill_sheet.dart';
 
 /// Sticky light cart panel — collapses to a slim summary bar so product search
 /// stays fully visible. Tap the chevron (or the bar itself) to expand.
@@ -497,8 +498,16 @@ class _CtaButton extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: state.canSubmit
-            ? () =>
-                context.read<CreateBillBloc>().add(const SubmitPressed())
+            ? () async {
+                // Closing the bill goes through the confirm sheet so the rep
+                // can record anything special about the outlet. A null result
+                // means they backed out — leave the cart untouched.
+                final notes = await showConfirmBillSheet(context, state: state);
+                if (notes == null || !context.mounted) return;
+                context
+                    .read<CreateBillBloc>()
+                    .add(SubmitPressed(notes: notes));
+              }
             : null,
         borderRadius: BorderRadius.circular(12.r),
         child: Ink(
