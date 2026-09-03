@@ -22,4 +22,9 @@ public record SalesSummaryQuery(
     int? DistributorId = null,
     int? SalesRepId    = null,
     int? SupervisorId  = null,
+    // The three org levels above Supervisor. Unlike RouteId these do NOT suppress targets:
+    // SalesTarget carries AsmUserId/RsmUserId/NsmUserId too, so targets stay attributable.
+    int? AsmId         = null,
+    int? RsmId         = null,
+    int? NsmId         = null,
     int? ProductId     = null);

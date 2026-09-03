@@ -2,13 +2,6 @@
 
 import { createAction } from '@/lib/actions/wrapper'
 import client from '@/lib/api/client'
-import {
-  getActiveAreasForSelectAction,
-  getActiveDivisionsForSelectAction,
-  getActiveRegionsForSelectAction,
-  getActiveTerritoriesForSelectAction,
-} from '@/features/user-geo-assignment/actions/user-geo-assignment.actions'
-import { getActiveRoutesAction } from '@/features/route/actions/route.actions'
 import type { AreaDto } from '@/features/area/schema/area.schema'
 import type { DivisionDto } from '@/features/division/schema/division.schema'
 import type { RegionDto } from '@/features/region/schema/region.schema'
@@ -52,6 +45,9 @@ export const getSalesSummaryAction = createAction(
         distributorId: filters.distributorId ?? undefined,
         salesRepId: filters.salesRepId ?? undefined,
         supervisorId: filters.supervisorId ?? undefined,
+        asmId: filters.asmId ?? undefined,
+        rsmId: filters.rsmId ?? undefined,
+        nsmId: filters.nsmId ?? undefined,
         productId: filters.productId ?? undefined,
       },
     })
@@ -60,7 +56,7 @@ export const getSalesSummaryAction = createAction(
 )
 
 /**
- * Users for the Supervisor / Sales rep pickers.
+ * Users for the People picker, filtered to one org role.
  *
  * Filtered server-side to active users of the requested role — every dropdown in this app loads
  * active, non-deleted records only, and for users the parameter is `isActive=true` (routes and
@@ -68,7 +64,7 @@ export const getSalesSummaryAction = createAction(
  */
 export const getUsersByRoleForSelectAction = createAction(
   { name: 'getUsersByRoleForSelectAction', requireAuth: true, requiredRole: 'Admin' },
-  async (role: 'Supervisor' | 'SalesRep', search?: string): Promise<UserOption[]> => {
+  async (role: string, search?: string): Promise<UserOption[]> => {
     const res = await client.get('/api/v1/users', {
       params: {
         page: 1,
@@ -82,34 +78,53 @@ export const getUsersByRoleForSelectAction = createAction(
   },
 )
 
-// ── Geo / route fetchers for the optional narrowing filters ─────────────────
+// ── Geo cascade ─────────────────────────────────────────────────────────────
 //
-// These reuse the existing `/active` endpoints rather than adding new ones. Each returns the full
-// active list (all small — a handful of regions up to a few hundred routes), so the pickers use
-// AsyncSelect's `preload` mode and filter client-side. Server-side filtering to active records is
-// what matters, and these endpoints already do it.
+// Each level is filtered server-side by its parent, so a child list can only ever contain valid
+// choices. The shared actions in the region/area/division features take no parent argument even
+// though the API accepts one, so these are defined here rather than changing those and risking
+// the features that already depend on them.
 
-export const fetchRegionsForSelect = async (): Promise<RegionDto[]> => {
-  const res = await getActiveRegionsForSelectAction()
-  return res.success ? res.data : []
-}
+export const getActiveRegionsAction = createAction(
+  { name: 'salesSummary.getActiveRegions', requireAuth: true, requiredRole: 'Admin' },
+  async (): Promise<RegionDto[]> => {
+    const res = await client.get('/api/v1/regions/active')
+    return res.data.data as RegionDto[]
+  },
+)
 
-export const fetchAreasForSelect = async (): Promise<AreaDto[]> => {
-  const res = await getActiveAreasForSelectAction()
-  return res.success ? res.data : []
-}
+export const getActiveAreasForRegionAction = createAction(
+  { name: 'salesSummary.getActiveAreasForRegion', requireAuth: true, requiredRole: 'Admin' },
+  async (regionId: number): Promise<AreaDto[]> => {
+    const res = await client.get('/api/v1/areas/active', { params: { regionId } })
+    return res.data.data as AreaDto[]
+  },
+)
 
-export const fetchTerritoriesForSelect = async (): Promise<TerritoryDto[]> => {
-  const res = await getActiveTerritoriesForSelectAction()
-  return res.success ? res.data : []
-}
+export const getActiveTerritoriesForAreaAction = createAction(
+  { name: 'salesSummary.getActiveTerritoriesForArea', requireAuth: true, requiredRole: 'Admin' },
+  async (areaId: number): Promise<TerritoryDto[]> => {
+    const res = await client.get('/api/v1/territories/active', { params: { areaId } })
+    return res.data.data as TerritoryDto[]
+  },
+)
 
-export const fetchDivisionsForSelect = async (): Promise<DivisionDto[]> => {
-  const res = await getActiveDivisionsForSelectAction()
-  return res.success ? res.data : []
-}
+export const getActiveDivisionsForTerritoryAction = createAction(
+  { name: 'salesSummary.getActiveDivisionsForTerritory', requireAuth: true, requiredRole: 'Admin' },
+  async (territoryId: number): Promise<DivisionDto[]> => {
+    const res = await client.get('/api/v1/divisions/active', { params: { territoryId } })
+    return res.data.data as DivisionDto[]
+  },
+)
 
-export const fetchRoutesForSelect = async (): Promise<RouteDto[]> => {
-  const res = await getActiveRoutesAction()
-  return res.success ? res.data : []
-}
+/**
+ * Routes under one division. Uses `/routes/by-division/{id}` rather than `/routes/active`, whose
+ * only filter is `territoryId` — the cascade needs the division level.
+ */
+export const getActiveRoutesForDivisionAction = createAction(
+  { name: 'salesSummary.getActiveRoutesForDivision', requireAuth: true, requiredRole: 'Admin' },
+  async (divisionId: number): Promise<RouteDto[]> => {
+    const res = await client.get(`/api/v1/routes/by-division/${divisionId}`)
+    return res.data.data as RouteDto[]
+  },
+)

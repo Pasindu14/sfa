@@ -395,6 +395,64 @@ public class SalesSummaryServiceTests
     }
 
     [Fact]
+    public async Task OrgLevelFilters_ReachTheRepository()
+    {
+        SetupSales(Sales());
+        var q = new SalesSummaryQuery(
+            SalesSummaryGroupBy.SalesRep, From, To, AsmId: 5, RsmId: 6, NsmId: 7);
+
+        await _sut.GetSalesSummaryAsync(q);
+
+        _repoMock.Verify(r => r.GetSalesAggregatesAsync(
+            It.Is<SalesSummaryQuery>(x => x.AsmId == 5 && x.RsmId == 6 && x.NsmId == 7),
+            It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task OrgLevelFilters_DoNotSuppressTargets()
+    {
+        // Unlike RouteId, SalesTarget carries AsmUserId/RsmUserId/NsmUserId, so these filters must
+        // still return targets. Guards against someone copying the RouteId suppression rule.
+        SetupSales(Sales());
+        SetupTargets(new SalesSummaryTargetAgg(RepId, 2026, 4, 600m, 1200m));
+
+        var result = await _sut.GetSalesSummaryAsync(
+            new SalesSummaryQuery(SalesSummaryGroupBy.SalesRep, From, To, AsmId: 5));
+
+        result.TargetsAvailable.Should().BeTrue();
+        result.Rows.Single().TargetValue.Should().Be(1200m);
+    }
+
+    [Fact]
+    public async Task CacheKey_DistinguishesEveryFilter()
+    {
+        // A parameter missing from the cache key makes two different requests share a result —
+        // one filter silently showing another's numbers. Assert each filter yields a distinct key.
+        SetupSales(Sales());
+        var keys = new List<string>();
+        _cacheMock.Setup(c => c.SetAsync(It.IsAny<string>(), It.IsAny<SalesSummaryResponseDto>(),
+                                         It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                  .Callback<string, SalesSummaryResponseDto, TimeSpan, CancellationToken>(
+                      (k, _, _, _) => keys.Add(k));
+
+        var baseQ = new SalesSummaryQuery(SalesSummaryGroupBy.SalesRep, From, To);
+        foreach (var q in new[]
+        {
+            baseQ,
+            baseQ with { RegionId = 1 },   baseQ with { AreaId = 1 },
+            baseQ with { TerritoryId = 1 }, baseQ with { DivisionId = 1 },
+            baseQ with { RouteId = 1 },     baseQ with { DistributorId = 1 },
+            baseQ with { SalesRepId = 1 },  baseQ with { SupervisorId = 1 },
+            baseQ with { AsmId = 1 },       baseQ with { RsmId = 1 },
+            baseQ with { NsmId = 1 },       baseQ with { ProductId = 1 },
+        })
+            await _sut.GetSalesSummaryAsync(q);
+
+        keys.Should().OnlyHaveUniqueItems();
+        keys.Should().HaveCount(13);
+    }
+
+    [Fact]
     public async Task Response_EchoesTheRequestedRangeAndGrouping()
     {
         SetupSales(Sales());

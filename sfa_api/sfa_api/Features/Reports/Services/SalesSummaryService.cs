@@ -227,8 +227,13 @@ public class SalesSummaryService(
             $"This report would return more than {MaxGroups} rows. Narrow the filters or choose a coarser grouping.");
     }
 
+    /// <summary>
+    /// EVERY filter must appear here. A parameter left out of the key makes two different requests
+    /// share a cached result, which surfaces as one filter silently returning another's numbers.
+    /// </summary>
     private static string BuildCacheKey(SalesSummaryQuery q) => string.Join(':',
         "sales-summary", q.GroupBy, q.From.DayNumber, q.To.DayNumber,
         q.RegionId, q.AreaId, q.TerritoryId, q.DivisionId, q.RouteId,
-        q.DistributorId, q.SalesRepId, q.SupervisorId, q.ProductId);
+        q.DistributorId, q.SalesRepId, q.SupervisorId,
+        q.AsmId, q.RsmId, q.NsmId, q.ProductId);
 }

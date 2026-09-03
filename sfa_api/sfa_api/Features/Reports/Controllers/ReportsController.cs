@@ -39,6 +39,9 @@ public class ReportsController(
         [FromQuery] int? distributorId = null,
         [FromQuery] int? salesRepId = null,
         [FromQuery] int? supervisorId = null,
+        [FromQuery] int? asmId = null,
+        [FromQuery] int? rsmId = null,
+        [FromQuery] int? nsmId = null,
         [FromQuery] int? productId = null,
         CancellationToken ct = default)
     {
@@ -47,7 +50,7 @@ public class ReportsController(
         var query = new SalesSummaryQuery(
             groupBy, from, to,
             regionId, areaId, territoryId, divisionId, routeId,
-            distributorId, salesRepId, supervisorId, productId);
+            distributorId, salesRepId, supervisorId, asmId, rsmId, nsmId, productId);
 
         await _salesSummaryValidator.ValidateOrThrowAsync(query, ct);
 

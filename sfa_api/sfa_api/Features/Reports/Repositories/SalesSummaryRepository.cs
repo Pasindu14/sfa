@@ -97,6 +97,9 @@ public class SalesSummaryRepository(AppDbContext context) : ISalesSummaryReposit
         if (q.DistributorId is int di) items = items.Where(bi => bi.Billing.DistributorId    == di);
         if (q.SalesRepId    is int sr) items = items.Where(bi => bi.Billing.SalesRepId       == sr);
         if (q.SupervisorId  is int su) items = items.Where(bi => bi.Billing.SupervisorUserId == su);
+        if (q.AsmId         is int am) items = items.Where(bi => bi.Billing.AsmUserId        == am);
+        if (q.RsmId         is int rm) items = items.Where(bi => bi.Billing.RsmUserId        == rm);
+        if (q.NsmId         is int nm) items = items.Where(bi => bi.Billing.NsmUserId        == nm);
         if (q.ProductId     is int pr) items = items.Where(bi => bi.ProductId                == pr);
 
         // EF cannot bind a GroupBy result to a positional record ctor (BinCardRepository.cs:16-17),
@@ -191,6 +194,9 @@ public class SalesSummaryRepository(AppDbContext context) : ISalesSummaryReposit
             if (q.DistributorId is int di) qm = qm.Where(t => t.DistributorId    == di);
             if (q.SalesRepId    is int sr) qm = qm.Where(t => t.SalesRepId       == sr);
             if (q.SupervisorId  is int su) qm = qm.Where(t => t.SupervisorUserId == su);
+            if (q.AsmId         is int am) qm = qm.Where(t => t.AsmUserId        == am);
+            if (q.RsmId         is int rm) qm = qm.Where(t => t.RsmUserId        == rm);
+            if (q.NsmId         is int nm) qm = qm.Where(t => t.NsmUserId        == nm);
             if (q.ProductId     is int pr) qm = qm.Where(t => t.ProductId        == pr);
 
             // TargetQuantity is in CASES; PiecesPerPack is semantically packs-per-case

@@ -72,6 +72,34 @@ public class SalesSummaryQueryValidatorTests
     public void NonPositiveFilterId_Fails(int id)
         => _sut.Validate(Query(salesRepId: id)).IsValid.Should().BeFalse();
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void NonPositiveOrgLevelId_Fails(int id)
+    {
+        var q = new SalesSummaryQuery(
+            SalesSummaryGroupBy.SalesRep, new DateOnly(2026, 4, 1), new DateOnly(2026, 4, 30),
+            AsmId: id, RsmId: id, NsmId: id);
+
+        var result = _sut.Validate(q);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Select(e => e.PropertyName)
+              .Should().Contain([nameof(SalesSummaryQuery.AsmId),
+                                 nameof(SalesSummaryQuery.RsmId),
+                                 nameof(SalesSummaryQuery.NsmId)]);
+    }
+
+    [Fact]
+    public void ValidOrgLevelIds_Pass()
+    {
+        var q = new SalesSummaryQuery(
+            SalesSummaryGroupBy.SalesRep, new DateOnly(2026, 4, 1), new DateOnly(2026, 4, 30),
+            AsmId: 5, RsmId: 6, NsmId: 7);
+
+        _sut.Validate(q).IsValid.Should().BeTrue();
+    }
+
     [Fact]
     public void NullFilterId_Passes()
         => _sut.Validate(Query(salesRepId: null)).IsValid.Should().BeTrue();

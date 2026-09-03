@@ -403,6 +403,10 @@ public class BillingService(
             .ExecuteUpdateAsync(s => s.SetProperty(o => o.LastBillDate, lastBillDate), ct);
         await _cache.RemoveByPrefixAsync("outlets:route:", ct);
 
+        // A new bill lands as Pending, so it does not move the approved-only sales summary — but it
+        // does move the pending totals on the rep's own screens, which are cached the same way.
+        await InvalidateSalesCachesAsync(ct);
+
         // ⑬ Re-fetch read-only for DTO projection
         var created = await _billingRepository.GetByIdAsync(billing.Id, ct)
             ?? throw new DatabaseUnavailableException();
@@ -591,6 +595,26 @@ public class BillingService(
             OutletSummaries: outletSummaries);
     }
 
+    /// <summary>
+    /// Drops every cached sales aggregate. Must be called after ANY change to a bill's state —
+    /// create, cancel, approve, reject — because all of these caches are keyed on a date/rep
+    /// window rather than on the bills themselves, so there is no narrower key to evict.
+    /// <para>
+    /// Without this, a distributor approves a bill and then sees a report that predates their own
+    /// action for up to the cache TTL, which is indistinguishable from the feature being broken.
+    /// Read-through caches for aggregates need an invalidation hook on the write path; a TTL alone
+    /// is only acceptable when nothing in the product lets a user cause the change and then
+    /// immediately look at the result.
+    /// </para>
+    /// </summary>
+    private async Task InvalidateSalesCachesAsync(CancellationToken ct)
+    {
+        await _cache.RemoveByPrefixAsync("sales-summary:", ct);      // Features/Reports
+        await _cache.RemoveByPrefixAsync("rep-sales:", ct);
+        await _cache.RemoveByPrefixAsync("rep-sales-daily:", ct);
+        await _cache.RemoveByPrefixAsync("rep-sales-itemwise:", ct);
+    }
+
     public async Task<RepMonthlySalesDto> GetRepMonthlySalesAsync(
         int salesRepId, int year, int month, CancellationToken ct = default)
     {
@@ -659,6 +683,8 @@ public class BillingService(
             }
         });
 
+        await InvalidateSalesCachesAsync(ct);
+
         var updated = await _billingRepository.GetByIdAsync(billingId, ct)
             ?? throw new DatabaseUnavailableException();
         return ProjectToDto(updated);
@@ -692,6 +718,7 @@ public class BillingService(
         billing.UpdatedBy         = userId;
 
         await _billingRepository.SaveChangesAsync(ct);
+        await InvalidateSalesCachesAsync(ct);
 
         var result = await _billingRepository.GetByIdAsync(billingId, ct)
             ?? throw new DatabaseUnavailableException();
@@ -755,6 +782,8 @@ public class BillingService(
                 throw;
             }
         });
+
+        await InvalidateSalesCachesAsync(ct);
 
         var result = await _billingRepository.GetByIdAsync(billingId, ct)
             ?? throw new DatabaseUnavailableException();

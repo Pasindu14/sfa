@@ -100,8 +100,51 @@ export interface SalesSummaryFilterIds {
   distributorId: number | null
   salesRepId: number | null
   supervisorId: number | null
+  asmId: number | null
+  rsmId: number | null
+  nsmId: number | null
   productId: number | null
 }
+
+// ── People filter: pick a role, then a user of that role ────────────────────
+
+/**
+ * The five org levels a bill is stamped with. Each maps to its own denormalized column on both
+ * Billing and SalesTarget, so filtering by any of them keeps targets attributable.
+ */
+export const PEOPLE_ROLES = [
+  { role: 'SalesRep',   label: 'Sales Rep',  filterKey: 'salesRepId' },
+  { role: 'Supervisor', label: 'Supervisor', filterKey: 'supervisorId' },
+  { role: 'ASM',        label: 'ASM',        filterKey: 'asmId' },
+  { role: 'RSM',        label: 'RSM',        filterKey: 'rsmId' },
+  { role: 'NSM',        label: 'NSM',        filterKey: 'nsmId' },
+] as const satisfies readonly {
+  role: string
+  label: string
+  filterKey: keyof SalesSummaryFilterIds
+}[]
+
+export type PeopleRole = (typeof PEOPLE_ROLES)[number]['role']
+
+/** The filter id each role writes to — changing role clears the previous one. */
+export const ROLE_FILTER_KEY: Record<PeopleRole, keyof SalesSummaryFilterIds> =
+  Object.fromEntries(PEOPLE_ROLES.map((r) => [r.role, r.filterKey])) as Record<
+    PeopleRole,
+    keyof SalesSummaryFilterIds
+  >
+
+/**
+ * Geo levels, parent → child. The store uses this order to clear descendants when a level changes,
+ * which is what makes an invalid combination (an Area from one Region, a Territory from another)
+ * impossible to express.
+ */
+export const GEO_CHAIN = [
+  'regionId',
+  'areaId',
+  'territoryId',
+  'divisionId',
+  'routeId',
+] as const satisfies readonly (keyof SalesSummaryFilterIds)[]
 
 /** A user as returned by the supervisor/rep pickers. */
 export interface UserOption {

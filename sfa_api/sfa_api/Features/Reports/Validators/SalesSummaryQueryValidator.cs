@@ -31,6 +31,9 @@ public class SalesSummaryQueryValidator : AbstractValidator<SalesSummaryQuery>
         RuleFor(x => x.DistributorId).GreaterThan(0).When(x => x.DistributorId.HasValue);
         RuleFor(x => x.SalesRepId).GreaterThan(0).When(x => x.SalesRepId.HasValue);
         RuleFor(x => x.SupervisorId).GreaterThan(0).When(x => x.SupervisorId.HasValue);
+        RuleFor(x => x.AsmId).GreaterThan(0).When(x => x.AsmId.HasValue);
+        RuleFor(x => x.RsmId).GreaterThan(0).When(x => x.RsmId.HasValue);
+        RuleFor(x => x.NsmId).GreaterThan(0).When(x => x.NsmId.HasValue);
         RuleFor(x => x.ProductId).GreaterThan(0).When(x => x.ProductId.HasValue);
     }
 }
