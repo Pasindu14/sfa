@@ -6,7 +6,22 @@ import { useSalesSummary } from '../../hooks/sales-summary.hooks'
 import { useSalesSummaryFilters } from '../../store'
 import { GROUP_BY_OPTIONS } from '../../schema/sales-summary.schema'
 import { SalesSummaryCriteria } from '../filters/sales-summary-criteria'
+import { SalesSummaryHeadline } from '../summary/sales-summary-headline'
 import { SalesSummaryTable } from '../table/sales-summary-table'
+
+/** "1 Jan – 31 Dec 2026" from two ISO strings, without pulling in a formatter. */
+function readableRange(from: string, to: string): string {
+  const fmt = (iso: string, withYear: boolean) => {
+    const d = new Date(`${iso}T00:00:00`)
+    return d.toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      ...(withYear ? { year: 'numeric' } : {}),
+    })
+  }
+  const sameYear = from.slice(0, 4) === to.slice(0, 4)
+  return `${fmt(from, !sameYear)} – ${fmt(to, true)}`
+}
 
 export function SalesSummaryPage() {
   const { appliedFilters, reset } = useSalesSummaryFilters()
@@ -23,13 +38,18 @@ export function SalesSummaryPage() {
     : ''
 
   return (
-    <div className="flex flex-col gap-6 overflow-x-hidden p-6">
-      <div className="rounded-lg bg-muted/90 p-10">
-        <h1 className="text-3xl font-bold tracking-tight">Sales Summary</h1>
-        <p className="text-muted-foreground">
-          Targets against gross sales, returns, discounts and net sales for a date range
+    <div className="mx-auto flex max-w-[1600px] flex-col gap-5 overflow-x-hidden p-6">
+      <header>
+        <h1 className="text-2xl font-semibold tracking-tight">Sales summary</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">
+          {data
+            ? `By ${groupLabel.toLowerCase()}, ${readableRange(data.from, data.to)}`
+            : 'Targets against gross sales, returns, discounts and net sales'}
         </p>
-      </div>
+      </header>
+
+      {/* The answer comes before the working. */}
+      {data && <SalesSummaryHeadline data={data} />}
 
       <SalesSummaryCriteria data={data} />
 
@@ -39,22 +59,13 @@ export function SalesSummaryPage() {
         <LoadingState />
       ) : isError ? (
         <MessageState
-          icon={<AlertCircle className="h-8 w-8 text-destructive/60" />}
+          icon={<AlertCircle className="h-7 w-7 text-destructive/60" />}
           title="Could not load the sales summary"
-          subtitle={error instanceof Error ? error.message : 'Please try again.'}
+          subtitle={error instanceof Error ? error.message : 'Try again.'}
         />
       ) : data ? (
         <div className="flex flex-col gap-3">
-          <div>
-            <h2 className="text-xl font-semibold tracking-tight">
-              By {groupLabel} ({data.groupCount} rows)
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {data.from} to {data.to}
-            </p>
-          </div>
-
-          {/* Say WHY the target columns are dashes rather than leaving the reader to guess. */}
+          {/* Say why the target columns are dashes rather than leaving the reader to guess. */}
           {!data.targetsAvailable && data.targetsUnavailableReason && (
             <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
               <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -63,12 +74,17 @@ export function SalesSummaryPage() {
           )}
 
           {data.rows.length > 0 ? (
-            <SalesSummaryTable data={data} />
+            // Remounting on the grouping/range resets paging: page 4 of the old grouping is
+            // meaningless against a new one.
+            <SalesSummaryTable
+              key={`${data.groupBy}-${data.from}-${data.to}`}
+              data={data}
+            />
           ) : (
             <MessageState
-              icon={<BarChart3 className="h-8 w-8 text-muted-foreground/40" />}
+              icon={<BarChart3 className="h-7 w-7 text-muted-foreground/40" />}
               title="No approved sales in this range"
-              subtitle="Only bills approved by the distributor are counted. Try a wider date range or fewer filters."
+              subtitle="Only bills approved by the distributor are counted. Widen the date range or remove a filter."
             />
           )}
         </div>
@@ -80,9 +96,9 @@ export function SalesSummaryPage() {
 function EmptyState() {
   return (
     <MessageState
-      icon={<BarChart3 className="h-8 w-8 text-muted-foreground/40" />}
-      title="Pick a date range and a grouping, then press Load report"
-      subtitle="Quantities are shown in packs. Only distributor-approved bills are counted."
+      icon={<BarChart3 className="h-7 w-7 text-muted-foreground/40" />}
+      title="Choose a date range and a grouping, then load the report"
+      subtitle="Quantities are in packs. Only distributor-approved bills are counted."
     />
   )
 }
@@ -90,8 +106,8 @@ function EmptyState() {
 function LoadingState() {
   return (
     <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed py-16 text-center">
-      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground/50" />
-      <p className="text-sm font-medium text-muted-foreground">Building sales summary…</p>
+      <Loader2 className="h-7 w-7 animate-spin text-muted-foreground/50 motion-reduce:animate-none" />
+      <p className="text-sm text-muted-foreground">Building the report…</p>
     </div>
   )
 }
@@ -108,8 +124,8 @@ function MessageState({
   return (
     <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed py-16 text-center">
       {icon}
-      <p className="text-sm font-medium text-muted-foreground">{title}</p>
-      {subtitle && <p className="text-xs text-muted-foreground/60">{subtitle}</p>}
+      <p className="text-sm font-medium">{title}</p>
+      {subtitle && <p className="max-w-md text-xs text-muted-foreground">{subtitle}</p>}
     </div>
   )
 }
