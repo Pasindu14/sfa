@@ -26,6 +26,29 @@ export const getProductsAction = createAction(
   }
 )
 
+/**
+ * Fetcher compatible with AsyncSelect — accepts an optional search string.
+ *
+ * `isActive: true` is sent to the API rather than filtered client-side, so a deactivated product
+ * can never occupy a slot in the 50-row page and push an active one off the end. For products the
+ * parameter is `isActive` (routes and distributors use `status=Active` instead).
+ */
+export const fetchActiveProductsForSelect = async (search?: string): Promise<ProductDto[]> => {
+  const res = await getActiveProductsForSelectAction(search)
+  if (!res.success) return []
+  return res.data.products
+}
+
+export const getActiveProductsForSelectAction = createAction(
+  { name: 'getActiveProductsForSelectAction', requireAuth: true, requiredRole: 'Admin' },
+  async (search?: string) => {
+    const res = await client.get('/api/v1/products', {
+      params: { page: 1, pageSize: 50, isActive: true, search: search || undefined },
+    })
+    return res.data.data as ProductsListResponse
+  }
+)
+
 export const getProductByIdAction = createAction(
   { name: 'getProductByIdAction', requireAuth: true, requiredRole: 'Admin' },
   async (id: number) => {

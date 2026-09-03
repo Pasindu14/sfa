@@ -46,5 +46,14 @@ change when a parent is deactivated.
 - **Sales/financial aggregates** — `Features/Billings/Repositories/BillingRepository.cs` (the
   `GetRep*SalesTotal*` cluster and `GetRepMonthlySalesByProductAsync`): filter bill state + status,
   not the referenced product/outlet.
+- **Sales summary report** — `Features/Reports/Repositories/SalesSummaryRepository.cs`: groups by
+  the raw denormalized FK int and resolves display names in a **separate** `IgnoreQueryFilters()`
+  query. This is deliberate and load-bearing: `Outlet`, `Route` and the geo entities carry a global
+  `IsActive && !IsDeleted` filter and are *required* navigations, so projecting a name through one
+  would make EF fold the filter into an INNER JOIN and drop the whole fact row for anything since
+  deactivated. Its bill universe also excludes `RepStatus == Cancelled` on top of the
+  `DistributorStatus == Approved` check — `BillingService.CancelAsync` never inspects
+  `DistributorStatus`, so an approved-then-cancelled bill is reachable and would otherwise be
+  counted as revenue.
 - **Supervisor dashboard** — `Features/Supervisor/Repositories/SupervisorRepository.cs`: counts
   reps/bills/not-billings filtered to active, non-deleted rows consistently.

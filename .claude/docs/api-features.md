@@ -31,6 +31,7 @@
 | UserGeoAssignments | Assign users to geographic zones (division/territory/area/region) |
 | UserReportingLines | Rep → supervisor reporting hierarchy |
 | MobileSync | Offline-first mobile data sync endpoints |
+| Reports | Cross-dimension sales summary: targets vs gross/net sales, returns and discounts |
 
 ## Geographic Hierarchy
 

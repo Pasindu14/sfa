@@ -12,6 +12,7 @@ export const userSelectKeys = {
   geoAssignment: ['geo-users-for-select'] as const,
   routeAssignment: ['route-assignment-supervisors-for-select'] as const,
   repBillSupervisor: ['rep-bill-supervisors-for-select'] as const,
+  salesSummaryUser: ['sales-summary-users-for-select'] as const,
 }
 
 /** Every cached "all users" dataset — invalidate all of these after a user mutation. */
@@ -20,4 +21,5 @@ export const allUserSelectKeys = [
   userSelectKeys.geoAssignment,
   userSelectKeys.routeAssignment,
   userSelectKeys.repBillSupervisor,
+  userSelectKeys.salesSummaryUser,
 ] as const

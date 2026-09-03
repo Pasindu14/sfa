@@ -49,6 +49,7 @@ sfa_web/
 | Territories | Divisions | Outlets | Products | ProductCategories |
 | ProductCategoryPricings | PurchaseOrders | SalesInvoices | GRNs | Routes |
 | RouteCancellations | Stock | Fleets | UserGeoAssignments | UserReportingLines |
+| SalesTargets | RepBills | BinCard | StockTaking | SalesSummary |
 
 ---
 

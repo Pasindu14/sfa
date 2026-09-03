@@ -25,5 +25,6 @@
 | fleet | (protected)/fleets | Fleet/vehicle management |
 | user-geo-assignment | (protected)/geo-assignments | User geographic assignments |
 | user-reporting-line | (protected)/user-reporting-lines | Rep → supervisor hierarchy |
+| sales-summary | (protected)/sales-summary | Targets vs gross/net sales, returns and discounts over a date range, grouped by any dimension |
 
 The `user` feature is the reference implementation — when generating a new feature, follow its exact patterns for actions, hooks, store, and components.

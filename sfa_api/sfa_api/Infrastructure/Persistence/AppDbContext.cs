@@ -913,6 +913,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => new { x.AreaId,           x.BillingDate });
             e.HasIndex(x => new { x.RegionId,         x.BillingDate });
             e.HasIndex(x => new { x.OutletId,         x.BillingDate });
+            e.HasIndex(x => new { x.DivisionId,       x.BillingDate });
+            // Serves the company-wide sales summary (no dimension filter). Every index above leads
+            // with a dimension, and PostgreSQL has no B-tree skip scan, so a plain BillingDate range
+            // had no usable index at all — the default "this month, whole company" report was a full
+            // sequential scan.
+            e.HasIndex(x => new { x.BillingDate, x.DistributorStatus })
+             .HasFilter("\"IsDeleted\" = false");
             e.HasIndex(x => x.RepStatus);
             e.HasIndex(x => x.DistributorStatus);
             e.HasIndex(x => x.IsDeleted).HasFilter("\"IsDeleted\" = false");
@@ -1137,6 +1144,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => new { x.AreaId,           x.Year, x.Month });
             e.HasIndex(x => new { x.RegionId,         x.Year, x.Month });
             e.HasIndex(x => new { x.ProductId,        x.Year, x.Month });
+            // Company-wide target rollup: every index above leads with a dimension, so an
+            // unfiltered (Year, Month) lookup had nothing to seek on.
+            e.HasIndex(x => new { x.Year, x.Month });
             e.HasIndex(x => x.ImportBatchId);
             e.HasIndex(x => x.IsDeleted);
             e.HasQueryFilter(x => !x.IsDeleted);

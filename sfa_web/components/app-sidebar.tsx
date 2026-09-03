@@ -79,6 +79,7 @@ const navConfig: NavGroup[] = [
       { title: "Sales Invoices", url: "/sales-invoices" },
       { title: "Sales Targets", url: "/sales-targets" },
       { title: "Rep Bills", url: "/rep-bills" },
+      { title: "Sales Summary", url: "/sales-summary" },
       { title: "GRNs", url: "/grns" },
       { title: "Stock", url: "/stock" },
       { title: "Bin Card", url: "/bin-card" },

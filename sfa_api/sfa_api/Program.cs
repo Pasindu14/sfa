@@ -28,6 +28,7 @@ using sfa_api.Features.SalesInvoices;
 using sfa_api.Features.SalesTargets;
 using sfa_api.Features.LocationPings;
 using sfa_api.Features.Notifications;
+using sfa_api.Features.Reports;
 using sfa_api.Features.Stock;
 using sfa_api.Features.StockTaking;
 using sfa_api.Features.Fleets;
@@ -251,6 +252,7 @@ try
     builder.Services.AddSupervisorFeature();
     builder.Services.AddNotificationsFeature();
     builder.Services.AddLocationPingsFeature();
+    builder.Services.AddReportsFeature();
 
     var app = builder.Build();
 
