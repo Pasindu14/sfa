@@ -218,7 +218,9 @@ class _BillDetailPageState extends State<BillDetailPage> {
                   );
                 }
                 return ListView(
-                  padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 40.h),
+                  padding: EdgeInsets.fromLTRB(
+                              16.w, 16.h, 16.w,
+                              40.h + MediaQuery.viewPaddingOf(context).bottom),
                   children: [
                     _InfoCard(bill: bill),
                     if (bill.syncStatus == SyncStatus.failed &&

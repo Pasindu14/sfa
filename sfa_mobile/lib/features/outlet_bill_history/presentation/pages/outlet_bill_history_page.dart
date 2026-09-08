@@ -128,7 +128,9 @@ class _OutletBillHistoryPageState extends State<OutletBillHistoryPage> {
                         )
                       : ListView.separated(
                           controller: _scrollController,
-                          padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 40.h),
+                          padding: EdgeInsets.fromLTRB(
+                              16.w, 16.h, 16.w,
+                              40.h + MediaQuery.viewPaddingOf(context).bottom),
                           itemCount: bills.length + (hasMore ? 1 : 0),
                           separatorBuilder: (_, __) => SizedBox(height: 10.h),
                           itemBuilder: (_, i) {

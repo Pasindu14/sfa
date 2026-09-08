@@ -43,6 +43,18 @@ class CartRow extends StatelessWidget {
 
   CartLine get _primary => caseLine ?? packetLine!;
 
+  // ── Pool availability ──────────────────────────────────────────────────────
+  //
+  // Same rule the server applies in BillingService.CreateAsync, and the same one
+  // the quantity sheet enforces: Sale and Distributor-funded FOC come out of the
+  // Normal pool, Company-funded FOC comes out of the FreeIssue pool. Without
+  // this the rep could switch a committed line onto an empty pool here and only
+  // find out at sync time, when the server rejects the whole bill.
+  bool get _saleEnabled => _primary.product.hasNormalStock;
+  bool get _distributorFocEnabled => _primary.product.hasNormalStock;
+  bool get _companyFocEnabled => _primary.product.hasFreeIssueStock;
+  bool get _freeIssueEnabled => _companyFocEnabled || _distributorFocEnabled;
+
   double get _combinedGross =>
       (caseLine != null ? caseLine!.quantity * caseLine!.unitPrice : 0) +
       (packetLine != null ? packetLine!.quantity * packetLine!.unitPrice : 0);
@@ -128,7 +140,7 @@ class CartRow extends StatelessWidget {
                             SizedBox(width: 8.w),
                             if (_primary.discountRate > 0) ...[
                               Text(
-                                'Rs. ${_combinedGross.toStringAsFixed(0)}',
+                                'Rs. ${_combinedGross.toStringAsFixed(2)}',
                                 style: GoogleFonts.barlowCondensed(
                                   fontSize: 11.sp,
                                   color: const Color(0xFF7A7260),
@@ -140,10 +152,10 @@ class CartRow extends StatelessWidget {
                             ],
                             Text(
                               _primary.isReturn
-                                  ? '−Rs. ${_combinedTotal.toStringAsFixed(0)}'
+                                  ? '−Rs. ${_combinedTotal.toStringAsFixed(2)}'
                                   : _primary.isFreeIssue
-                                      ? 'FOC · Rs. ${_combinedTotal.toStringAsFixed(0)}'
-                                      : 'Rs. ${_combinedTotal.toStringAsFixed(0)}',
+                                      ? 'FOC · Rs. ${_combinedTotal.toStringAsFixed(2)}'
+                                      : 'Rs. ${_combinedTotal.toStringAsFixed(2)}',
                               style: GoogleFonts.barlowCondensed(
                                 fontSize: 15.sp,
                                 fontWeight: FontWeight.w800,
@@ -196,7 +208,7 @@ class CartRow extends StatelessWidget {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(
-                                      '${_primary.product.code} · Rs.${_primary.unitPrice.toStringAsFixed(0)}',
+                                      '${_primary.product.code} · Rs.${_primary.unitPrice.toStringAsFixed(2)}',
                                       style: GoogleFonts.barlow(
                                         fontSize: 10.sp,
                                         fontWeight: FontWeight.w500,
@@ -260,6 +272,8 @@ class CartRow extends StatelessWidget {
                           children: [
                             _TypeToggle(
                               current: _primary.billingItemType,
+                              saleEnabled: _saleEnabled,
+                              freeIssueEnabled: _freeIssueEnabled,
                               onChanged: onTypeChanged,
                             ),
                             if (_primary.isFreeIssue) ...[
@@ -267,12 +281,14 @@ class CartRow extends StatelessWidget {
                               _FreeIssueSourceChip(
                                 label: 'Company',
                                 selected: _primary.freeIssueSource == 'Company',
+                                enabled: _companyFocEnabled,
                                 onTap: () => onFreeIssueSourceChanged('Company'),
                               ),
                               SizedBox(width: 4.w),
                               _FreeIssueSourceChip(
                                 label: 'Distributor',
                                 selected: _primary.freeIssueSource == 'Distributor',
+                                enabled: _distributorFocEnabled,
                                 onTap: () => onFreeIssueSourceChanged('Distributor'),
                               ),
                             ],
@@ -349,7 +365,7 @@ class CartRow extends StatelessWidget {
                             if (_primary.discountRate > 0) ...[
                               SizedBox(width: 6.w),
                               Text(
-                                '−Rs.${_combinedDiscount.toStringAsFixed(0)}',
+                                '−Rs.${_combinedDiscount.toStringAsFixed(2)}',
                                 style: GoogleFonts.barlowCondensed(
                                   fontSize: 11.sp,
                                   fontWeight: FontWeight.w700,
@@ -387,7 +403,7 @@ class CartRow extends StatelessWidget {
 
   Future<void> _showPriceDialog(BuildContext context) async {
     final controller =
-        TextEditingController(text: _primary.unitPrice.toStringAsFixed(0));
+        TextEditingController(text: _primary.unitPrice.toStringAsFixed(2));
     final result = await showDialog<double>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -474,7 +490,18 @@ class _TypeToggle extends StatelessWidget {
   final String current;
   final void Function(String billingItemType) onChanged;
 
-  const _TypeToggle({required this.current, required this.onChanged});
+  /// Pool availability, mirroring the quantity sheet: Sale draws Normal, and
+  /// Free Issue needs at least one funding route with stock behind it. Return
+  /// is always offered — it credits stock rather than consuming it.
+  final bool saleEnabled;
+  final bool freeIssueEnabled;
+
+  const _TypeToggle({
+    required this.current,
+    required this.onChanged,
+    this.saleEnabled = true,
+    this.freeIssueEnabled = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -487,18 +514,22 @@ class _TypeToggle extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _tab('Sale', 'Sale', AppColors.success),
-          _tab('FOC', 'FreeIssue', AppColors.primary),
+          _tab('Sale', 'Sale', AppColors.success, enabled: saleEnabled),
+          _tab('FOC', 'FreeIssue', AppColors.primary, enabled: freeIssueEnabled),
           _tab('Return', 'Return', AppColors.error),
         ],
       ),
     );
   }
 
-  Widget _tab(String label, String value, Color activeColor) {
+  Widget _tab(String label, String value, Color activeColor,
+      {bool enabled = true}) {
     final active = current == value;
+    // A line already sitting on a type stays legible even if its pool has since
+    // emptied; only switching *onto* an empty pool is blocked.
+    final blocked = !enabled && !active;
     return GestureDetector(
-      onTap: active ? null : () => onChanged(value),
+      onTap: active || blocked ? null : () => onChanged(value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         padding: EdgeInsets.symmetric(horizontal: 9.w, vertical: 4.h),
@@ -521,7 +552,11 @@ class _TypeToggle extends StatelessWidget {
             fontSize: 9.sp,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.3,
-            color: active ? activeColor : const Color(0xFF7A7260),
+            color: active
+                ? activeColor
+                : blocked
+                    ? const Color(0xFFB8B4A8)
+                    : const Color(0xFF7A7260),
           ),
         ),
       ),
@@ -536,16 +571,22 @@ class _FreeIssueSourceChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
+  /// False when this source's pool is empty — Company draws FreeIssue,
+  /// Distributor draws Normal.
+  final bool enabled;
+
   const _FreeIssueSourceChip({
     required this.label,
     required this.selected,
     required this.onTap,
+    this.enabled = true,
   });
 
   @override
   Widget build(BuildContext context) {
+    final blocked = !enabled && !selected;
     return GestureDetector(
-      onTap: selected ? null : onTap,
+      onTap: selected || blocked ? null : onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
@@ -566,7 +607,11 @@ class _FreeIssueSourceChip extends StatelessWidget {
             fontSize: 9.sp,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.3,
-            color: selected ? AppColors.primary : const Color(0xFF7A7260),
+            color: selected
+                ? AppColors.primary
+                : blocked
+                    ? const Color(0xFFB8B4A8)
+                    : const Color(0xFF7A7260),
           ),
         ),
       ),

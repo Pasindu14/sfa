@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uswatte/core/errors/app_exception.dart';
+import 'package:uswatte/features/bills/data/datasources/bills_local_datasource.dart';
 import 'package:uswatte/features/bills/domain/entities/bill.dart';
 import 'package:uswatte/features/bills/domain/entities/bill_item.dart';
 import 'package:uswatte/features/bills/domain/entities/sync_status.dart';
@@ -182,9 +183,10 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     }
 
     final nextLine = state.cart.length + 1;
-    // Default new FOC additions to Company-funded; Sale/Return lines must carry no source.
+    // FOC additions default to whichever pool can actually fund them;
+    // Sale/Return lines must carry no source.
     final source = e.billingItemType == 'FreeIssue'
-        ? (e.freeIssueSource ?? 'Company')
+        ? _resolveFreeIssueSource(e.freeIssueSource, e.product)
         : null;
     emit(state.copyWith(cart: [
       ...state.cart,
@@ -249,6 +251,26 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     emit(state.copyWith(cart: updated));
   }
 
+  /// Which pool a funding source draws down, per BillingService.CreateAsync:
+  /// Company takes from the FreeIssue pool, Distributor from Normal.
+  bool _sourceIsFundable(String source, ProductWithPrice product) =>
+      source == 'Company' ? product.hasFreeIssueStock : product.hasNormalStock;
+
+  /// Prefer Company-funded FOC, but fall back to Distributor when the product
+  /// holds no free-issue allocation. Defaulting blindly to Company put the line
+  /// on an empty pool, which the rep only discovered when the server rejected
+  /// the whole bill at sync time.
+  String _defaultFreeIssueSource(ProductWithPrice product) =>
+      product.hasFreeIssueStock ? 'Company' : 'Distributor';
+
+  /// Keeps an already-chosen source when its pool can still fund it, otherwise
+  /// re-picks — so a line switched away from FreeIssue and back cannot carry a
+  /// stale source onto an empty pool.
+  String _resolveFreeIssueSource(String? current, ProductWithPrice product) =>
+      (current != null && _sourceIsFundable(current, product))
+          ? current
+          : _defaultFreeIssueSource(product);
+
   void _onTypeChanged(CartItemTypeChanged e, Emitter<CreateBillState> emit) {
     final updated = state.cart.map((l) {
       if (l.lineNumber != e.lineNumber) return l;
@@ -261,11 +283,12 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
           clearFreeIssueSource: true,
         );
       }
-      // Switching to FreeIssue: default the source to Company; clear return-specific fields.
+      // Switching to FreeIssue: pick a source whose pool has stock behind it;
+      // clear return-specific fields.
       if (e.billingItemType == 'FreeIssue') {
         return l.copyWith(
           billingItemType: 'FreeIssue',
-          freeIssueSource: l.freeIssueSource ?? 'Company',
+          freeIssueSource: _resolveFreeIssueSource(l.freeIssueSource, l.product),
           clearReturnType: true,
           clearExpireDate: true,
         );

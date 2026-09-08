@@ -552,13 +552,22 @@ class _ProductTile extends StatelessWidget {
   bool get _hasPrice =>
       product.dealerPackPrice != null && product.dealerPackPrice! > 0;
 
-  /// Distributor stock. A NULL join result means the distributor holds no
-  /// stock row for this product at all, which counts as zero.
-  bool get _hasStock => (product.normalStock ?? 0) > 0;
+  /// Distributor stock across both pools. A NULL join result means the
+  /// distributor holds no row for that pool at all, which counts as zero.
+  /// Either pool alone is enough to make the product workable — Normal feeds
+  /// Sale lines, FreeIssue feeds Company-funded FOC lines.
+  bool get _hasAnyStock => product.hasAnyStock;
 
-  /// A product can only be added to a bill when it is both priced and in
-  /// stock at the distributor.
-  bool get _isSelectable => _hasPrice && _hasStock;
+  /// Priced but both pools empty. Still tappable so the rep can record a
+  /// Return (which credits stock rather than consuming it), but rendered
+  /// dimmed because there is nothing here to sell or give away.
+  bool get _isReturnOnly => _hasPrice && !_hasAnyStock;
+
+  /// An unpriced product can never be billed, so it stays hard-disabled.
+  bool get _isTappable => _hasPrice;
+
+  /// Drives the full-opacity "ready to sell" styling.
+  bool get _isSelectable => _hasPrice && _hasAnyStock;
 
   @override
   Widget build(BuildContext context) {
@@ -585,7 +594,7 @@ class _ProductTile extends StatelessWidget {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: _isSelectable ? onTap : null,
+            onTap: _isTappable ? onTap : null,
             borderRadius: BorderRadius.only(
               bottomLeft: Radius.circular(isLast ? 12.r : 0),
               bottomRight: Radius.circular(isLast ? 12.r : 0),
@@ -643,7 +652,37 @@ class _ProductTile extends StatelessWidget {
                                 ),
                               ),
                               SizedBox(width: 6.w),
-                              _StockBadge(qty: product.normalStock ?? 0),
+                              _PoolBadge(
+                                label: 'N',
+                                qty: product.normalStock ?? 0,
+                                color: product.hasNormalStock
+                                    ? AppColors.success
+                                    : AppColors.error,
+                              ),
+                              SizedBox(width: 4.w),
+                              _PoolBadge(
+                                label: 'FOC',
+                                qty: product.freeIssueStock ?? 0,
+                                color: product.hasFreeIssueStock
+                                    ? AppColors.warning
+                                    : AppColors.error,
+                              ),
+                              if (_isReturnOnly) ...[
+                                SizedBox(width: 4.w),
+                                Flexible(
+                                  child: Text(
+                                    'Return only',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.barlow(
+                                      fontSize: 9.sp,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.2,
+                                      color: AppColors.foregroundMuted,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ],
@@ -663,7 +702,7 @@ class _ProductTile extends StatelessWidget {
                       ),
                       child: Text(
                         _hasPrice
-                            ? 'Rs. ${product.dealerPackPrice!.toStringAsFixed(0)}'
+                            ? 'Rs. ${product.dealerPackPrice!.toStringAsFixed(2)}'
                             : 'No price',
                         style: GoogleFonts.barlowCondensed(
                           fontSize: 14.sp,
@@ -688,14 +727,22 @@ class _ProductTile extends StatelessWidget {
 
 // ── Stock availability badge ──────────────────────────────────────────────────
 
-class _StockBadge extends StatelessWidget {
-  const _StockBadge({required this.qty});
+/// One inventory pool's balance. Both pools render side by side so the rep can
+/// see at a glance which one has cover. A zero pool is greyed rather than
+/// hidden, keeping "we checked and it is empty" distinct from "we never looked".
+class _PoolBadge extends StatelessWidget {
+  const _PoolBadge({
+    required this.label,
+    required this.qty,
+    required this.color,
+  });
+
+  final String label;
   final double qty;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    final hasStock = qty > 0;
-    final color = hasStock ? AppColors.success : AppColors.error;
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.5.h),
       decoration: BoxDecoration(
@@ -704,7 +751,7 @@ class _StockBadge extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.30)),
       ),
       child: Text(
-        hasStock ? 'Stk: ${qty.toStringAsFixed(0)}' : 'No stock',
+        '$label: ${qty.toStringAsFixed(0)}',
         style: GoogleFonts.barlow(
           fontSize: 9.sp,
           fontWeight: FontWeight.w700,

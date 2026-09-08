@@ -16,9 +16,14 @@ class ProductWithPrice {
   final int packsPerCase;
   final int? categoryId;
   final String? categoryName;
-  /// Normal stock quantity from the locally synced distributor_stocks table.
-  /// Null if stock data has never been synced.
+  /// Saleable ("Normal") pool quantity from the locally synced
+  /// distributor_stocks table. Null if stock data has never been synced.
   final double? normalStock;
+
+  /// Company-funded free-issue ("FreeIssue") pool quantity. A physically
+  /// separate pool on the server: only a FreeIssue line funded by Company
+  /// draws it down, never a Sale. Null if stock has never been synced.
+  final double? freeIssueStock;
 
   const ProductWithPrice({
     required this.id,
@@ -30,7 +35,14 @@ class ProductWithPrice {
     this.categoryId,
     this.categoryName,
     this.normalStock,
+    this.freeIssueStock,
   });
+
+  bool get hasNormalStock => (normalStock ?? 0) > 0;
+  bool get hasFreeIssueStock => (freeIssueStock ?? 0) > 0;
+
+  /// A product is workable in a bill when either pool can supply something.
+  bool get hasAnyStock => hasNormalStock || hasFreeIssueStock;
 }
 
 class BillsLocalDatasource {
@@ -298,13 +310,17 @@ class BillsLocalDatasource {
              p.dealer_case_price      AS dealer_case_price,
              p.category_id,
              pc.name                  AS category_name,
-             ds.quantity_on_hand      AS normal_stock
+             ds.quantity_on_hand      AS normal_stock,
+             dsf.quantity_on_hand     AS free_issue_stock
       FROM products p
       LEFT JOIN product_categories pc
         ON pc.id = p.category_id
       LEFT JOIN distributor_stocks ds
         ON ds.product_id = p.id
        AND ds.stock_type = 'Normal'
+      LEFT JOIN distributor_stocks dsf
+        ON dsf.product_id = p.id
+       AND dsf.stock_type = 'FreeIssue'
       WHERE (p.code LIKE ? OR p.item_description LIKE ?)
       ORDER BY COALESCE(pc.name, 'zzzzz') ASC, p.code ASC
       LIMIT ?
@@ -322,6 +338,7 @@ class BillsLocalDatasource {
               categoryId: r['category_id'] as int?,
               categoryName: r['category_name'] as String?,
               normalStock: (r['normal_stock'] as num?)?.toDouble(),
+              freeIssueStock: (r['free_issue_stock'] as num?)?.toDouble(),
             ))
         .toList();
   }

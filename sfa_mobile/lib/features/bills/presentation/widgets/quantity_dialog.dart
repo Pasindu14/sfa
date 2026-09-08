@@ -96,6 +96,17 @@ class _QuantitySheetState extends State<_QuantitySheet> {
     _casesController = TextEditingController();
     _packetsController = TextEditingController();
     _priceController = TextEditingController(text: _defaultPriceText);
+
+    // Open on the first type the stock actually supports, and pre-select a
+    // funding source whose pool is not empty, so the sheet never lands the rep
+    // on an option they cannot use.
+    if (!_saleEnabled) {
+      _mode = _freeIssueEnabled ? _Mode.freeIssue : _Mode.returnItem;
+      if (_mode == _Mode.returnItem) _returnType = 'Damage';
+    }
+    if (!_companyFocEnabled && _distributorFocEnabled) {
+      _freeIssueSource = 'Distributor';
+    }
   }
 
   @override
@@ -106,6 +117,37 @@ class _QuantitySheetState extends State<_QuantitySheet> {
     _priceController.dispose();
     super.dispose();
   }
+
+  // ── Pool availability ──────────────────────────────────────────────────────
+  //
+  // The server draws each line type from a specific pool
+  // (BillingService.CreateAsync): Sale and Distributor-funded free issue both
+  // come out of Normal, Company-funded free issue comes out of FreeIssue.
+  // Offering a type whose pool is empty only produces an INSUFFICIENT_STOCK 422
+  // at sync time, long after the bill has been queued offline.
+
+  double get _normalStock => widget.product.normalStock ?? 0;
+  double get _freeIssueStock => widget.product.freeIssueStock ?? 0;
+
+  bool get _saleEnabled => widget.product.hasNormalStock;
+  bool get _distributorFocEnabled => widget.product.hasNormalStock;
+  bool get _companyFocEnabled => widget.product.hasFreeIssueStock;
+  bool get _freeIssueEnabled => _companyFocEnabled || _distributorFocEnabled;
+
+  /// Returns credit stock back rather than consuming it, so they stay available
+  /// even for a product that is sold out in both pools.
+  bool _modeEnabled(_Mode mode) {
+    switch (mode) {
+      case _Mode.sale:       return _saleEnabled;
+      case _Mode.freeIssue:  return _freeIssueEnabled;
+      case _Mode.returnItem: return true;
+    }
+  }
+
+  Set<int> get _disabledSegments => {
+        if (!_saleEnabled) 0,
+        if (!_freeIssueEnabled) 1,
+      };
 
   bool get _hasCasesOption => widget.product.packsPerCase > 1;
   bool get _isReturn    => _mode == _Mode.returnItem;
@@ -130,7 +172,7 @@ class _QuantitySheetState extends State<_QuantitySheet> {
       : _modeToBillingItemType(_mode);
 
   String get _defaultPriceText =>
-      (widget.product.dealerPackPrice ?? 0).toStringAsFixed(0);
+      (widget.product.dealerPackPrice ?? 0).toStringAsFixed(2);
 
   void _stashEntry(String key) {
     _entryByKey[key] = (
@@ -407,6 +449,13 @@ class _QuantitySheetState extends State<_QuantitySheet> {
       return;
     }
 
+    final shortage = _validateAgainstStock(staged);
+    if (shortage != null) {
+      _focusEntry(shortage.key, (field: 'qty', message: shortage.message));
+      _showError(shortage.message);
+      return;
+    }
+
     setState(() {
       _qtyError = null;
       _discError = null;
@@ -419,6 +468,64 @@ class _QuantitySheetState extends State<_QuantitySheet> {
       for (final entry in staged) ..._resultsFor(entry.key, entry.entry),
     ]);
   }
+
+  /// Total packs a staged entry represents, in the units the API is sent
+  /// (cases are expanded, matching _resultsFor).
+  double _unitsOf(_QtyEntry e) => (_casesOf(e) * _packsPerCase) + _packetsOf(e);
+
+  /// Sum of every staged entry under [key].
+  double _stagedUnitsFor(
+      List<({String key, _QtyEntry entry})> staged, String key) {
+    var total = 0.0;
+    for (final s in staged) {
+      if (s.key == key) total += _unitsOf(s.entry);
+    }
+    return total;
+  }
+
+  /// Checks the staged quantities against the pool each one actually draws
+  /// from, mirroring BillingService.CreateAsync. Without this the shortage is
+  /// only caught by the server's INSUFFICIENT_STOCK 422 — after the bill has
+  /// already been written to the offline outbox.
+  ///
+  /// Returns are exempt: they credit stock rather than consuming it.
+  ///
+  /// _freeIssueSource is a sheet-level field rather than a per-entry one, so
+  /// all staged free-issue quantity belongs to whichever pool is selected.
+  ({String key, String message})? _validateAgainstStock(
+      List<({String key, _QtyEntry entry})> staged) {
+    final saleQty = _stagedUnitsFor(staged, 'Sale');
+    final focQty = _stagedUnitsFor(staged, 'FreeIssue');
+
+    if (_freeIssueSource == 'Distributor') {
+      // Distributor-funded FOC is given away out of saleable stock, so it
+      // competes with the Sale lines for the same Normal pool.
+      if (saleQty + focQty > _normalStock) {
+        return (
+          key: saleQty > 0 ? 'Sale' : 'FreeIssue',
+          message: 'Sale + free issue needs ${_fmt(saleQty + focQty)} units '
+              'but normal stock has only ${_fmt(_normalStock)}.',
+        );
+      }
+      return null;
+    }
+
+    if (saleQty > _normalStock) {
+      return (
+        key: 'Sale',
+        message: 'Only ${_fmt(_normalStock)} units in normal stock.',
+      );
+    }
+    if (focQty > _freeIssueStock) {
+      return (
+        key: 'FreeIssue',
+        message: 'Only ${_fmt(_freeIssueStock)} units in free issue stock.',
+      );
+    }
+    return null;
+  }
+
+  String _fmt(double v) => v.toStringAsFixed(0);
 
   // ── Staged summary presentation ────────────────────────────────────────────
 
@@ -695,9 +802,13 @@ class _QuantitySheetState extends State<_QuantitySheet> {
                     ],
                   ),
 
-                  if (widget.product.normalStock != null) ...[
+                  if (widget.product.normalStock != null ||
+                      widget.product.freeIssueStock != null) ...[
                     SizedBox(height: 8.h),
-                    _StockInfoRow(qty: widget.product.normalStock!),
+                    _StockInfoRow(
+                      normalQty: widget.product.normalStock,
+                      freeIssueQty: widget.product.freeIssueStock,
+                    ),
                   ],
 
                   SizedBox(height: 20.h),
@@ -718,14 +829,20 @@ class _QuantitySheetState extends State<_QuantitySheet> {
                             ? 1
                             : 2,
                     filledIndices: _filledSegments,
+                    disabledIndices: _disabledSegments,
                     activeColor: _accentColor,
-                    onChanged: (i) => _setMode(
-                      i == 0
+                    // Gate here rather than inside _setMode: _focusEntry calls
+                    // _setMode to surface a validation error on its own tab, and
+                    // a guard in there would silently break error focusing.
+                    onChanged: (i) {
+                      final mode = i == 0
                           ? _Mode.sale
                           : i == 1
                               ? _Mode.freeIssue
-                              : _Mode.returnItem,
-                    ),
+                              : _Mode.returnItem;
+                      if (!_modeEnabled(mode)) return;
+                      _setMode(mode);
+                    },
                   ),
 
                   AnimatedSize(
@@ -746,6 +863,7 @@ class _QuantitySheetState extends State<_QuantitySheet> {
                                     label: 'Company',
                                     icon: Icons.business_rounded,
                                     selected: _freeIssueSource == 'Company',
+                                    enabled: _companyFocEnabled,
                                     onTap: () => setState(
                                         () => _freeIssueSource = 'Company'),
                                   ),
@@ -754,6 +872,7 @@ class _QuantitySheetState extends State<_QuantitySheet> {
                                     label: 'Distributor',
                                     icon: Icons.local_shipping_rounded,
                                     selected: _freeIssueSource == 'Distributor',
+                                    enabled: _distributorFocEnabled,
                                     onTap: () => setState(
                                         () => _freeIssueSource = 'Distributor'),
                                   ),
@@ -1200,12 +1319,16 @@ class _SegmentedTrack extends StatelessWidget {
   /// tab they are not looking at is still staged.
   final Set<int> filledIndices;
 
+  /// Segments whose stock pool is empty. Rendered muted and non-tappable.
+  final Set<int> disabledIndices;
+
   const _SegmentedTrack({
     required this.segments,
     required this.selectedIndex,
     required this.activeColor,
     required this.onChanged,
     this.filledIndices = const {},
+    this.disabledIndices = const {},
   });
 
   @override
@@ -1223,9 +1346,13 @@ class _SegmentedTrack extends StatelessWidget {
           final i = entry.key;
           final seg = entry.value;
           final isActive = selectedIndex == i;
+          final isDisabled = disabledIndices.contains(i);
+          final mutedColor = isDisabled
+              ? AppColors.foregroundMuted.withValues(alpha: 0.40)
+              : AppColors.foregroundMuted;
           return Expanded(
             child: GestureDetector(
-              onTap: isActive ? null : () => onChanged(i),
+              onTap: isActive || isDisabled ? null : () => onChanged(i),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeInOut,
@@ -1246,9 +1373,7 @@ class _SegmentedTrack extends StatelessWidget {
                     Icon(
                       seg.icon,
                       size: 14.r,
-                      color: isActive
-                          ? activeColor
-                          : AppColors.foregroundMuted,
+                      color: isActive ? activeColor : mutedColor,
                     ),
                     SizedBox(width: 5.w),
                     Flexible(
@@ -1260,9 +1385,7 @@ class _SegmentedTrack extends StatelessWidget {
                           fontSize: 13.sp,
                           fontWeight:
                               isActive ? FontWeight.w700 : FontWeight.w500,
-                          color: isActive
-                              ? activeColor
-                              : AppColors.foregroundMuted,
+                          color: isActive ? activeColor : mutedColor,
                         ),
                       ),
                     ),
@@ -1381,54 +1504,60 @@ class _SourceChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
+  /// False when this source's stock pool is empty — Company draws the
+  /// FreeIssue pool, Distributor draws the Normal one.
+  final bool enabled;
+
   const _SourceChip({
     required this.label,
     required this.icon,
     required this.selected,
     required this.onTap,
+    this.enabled = true,
   });
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: GestureDetector(
-        onTap: selected ? null : onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
-          padding: EdgeInsets.symmetric(vertical: 12.h),
-          decoration: BoxDecoration(
-            color: selected
-                ? AppColors.success.withValues(alpha: 0.10)
-                : AppColors.surface,
-            borderRadius: BorderRadius.circular(10.r),
-            border: Border.all(
+      child: Opacity(
+        opacity: enabled ? 1.0 : 0.45,
+        child: GestureDetector(
+          onTap: selected || !enabled ? null : onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            padding: EdgeInsets.symmetric(vertical: 12.h),
+            decoration: BoxDecoration(
               color: selected
-                  ? AppColors.success.withValues(alpha: 0.55)
-                  : AppColors.surfaceVariant,
-              width: 1.5,
+                  ? AppColors.success.withValues(alpha: 0.10)
+                  : AppColors.surface,
+              borderRadius: BorderRadius.circular(10.r),
+              border: Border.all(
+                color: selected
+                    ? AppColors.success.withValues(alpha: 0.55)
+                    : AppColors.surfaceVariant,
+                width: 1.5,
+              ),
             ),
-          ),
-          child: Column(
-            children: [
-              Icon(
-                icon,
-                size: 18.r,
-                color:
-                    selected ? AppColors.success : AppColors.foregroundMuted,
-              ),
-              SizedBox(height: 4.h),
-              Text(
-                label,
-                style: GoogleFonts.barlowCondensed(
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.3,
-                  color:
-                      selected ? AppColors.success : AppColors.foreground,
+            child: Column(
+              children: [
+                Icon(
+                  icon,
+                  size: 18.r,
+                  color: selected ? AppColors.success : AppColors.foregroundMuted,
                 ),
-              ),
-            ],
+                SizedBox(height: 4.h),
+                Text(
+                  label,
+                  style: GoogleFonts.barlowCondensed(
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                    color: selected ? AppColors.success : AppColors.foreground,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1449,40 +1578,82 @@ class _Divider extends StatelessWidget {
 
 // ── Distributor stock info row ────────────────────────────────────────────────
 
+/// Both inventory pools at a glance. They are not interchangeable: Sale and
+/// Distributor-funded free issue draw the Normal pool, Company-funded free
+/// issue draws the FreeIssue pool.
 class _StockInfoRow extends StatelessWidget {
-  const _StockInfoRow({required this.qty});
-  final double qty;
+  const _StockInfoRow({required this.normalQty, required this.freeIssueQty});
+
+  final double? normalQty;
+  final double? freeIssueQty;
 
   @override
   Widget build(BuildContext context) {
-    final hasStock = qty > 0;
-    final color = hasStock ? AppColors.success : AppColors.warning;
-    final icon = hasStock ? Icons.check_circle_outline_rounded : Icons.warning_amber_rounded;
+    final normal = normalQty ?? 0;
+    final freeIssue = freeIssueQty ?? 0;
+    final anyStock = normal > 0 || freeIssue > 0;
+    final frameColor = anyStock ? AppColors.success : AppColors.warning;
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.07),
+        color: frameColor.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(8.r),
-        border: Border.all(color: color.withValues(alpha: 0.20)),
+        border: Border.all(color: frameColor.withValues(alpha: 0.20)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13.r, color: color),
+          Icon(
+            anyStock
+                ? Icons.check_circle_outline_rounded
+                : Icons.warning_amber_rounded,
+            size: 13.r,
+            color: frameColor,
+          ),
           SizedBox(width: 6.w),
+          _PoolFigure(
+            label: 'Normal',
+            qty: normal,
+            color: normal > 0 ? AppColors.success : AppColors.error,
+          ),
           Text(
-            hasStock
-                ? 'Available stock: ${qty.toStringAsFixed(0)} units'
-                : 'No stock available',
+            '  ·  ',
             style: GoogleFonts.barlow(
               fontSize: 11.sp,
               fontWeight: FontWeight.w600,
-              color: color,
+              color: AppColors.foregroundMuted,
             ),
+          ),
+          _PoolFigure(
+            label: 'Free issue',
+            qty: freeIssue,
+            color: freeIssue > 0 ? AppColors.warning : AppColors.error,
           ),
         ],
       ),
     );
   }
+}
+
+class _PoolFigure extends StatelessWidget {
+  const _PoolFigure({
+    required this.label,
+    required this.qty,
+    required this.color,
+  });
+
+  final String label;
+  final double qty;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Text(
+        '$label: ${qty.toStringAsFixed(0)}',
+        style: GoogleFonts.barlow(
+          fontSize: 11.sp,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      );
 }

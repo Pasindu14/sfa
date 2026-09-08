@@ -104,7 +104,9 @@ class _OutletBillDetailPageState extends State<OutletBillDetailPage> {
                     ),
                   OutletBillDetailLoaded(:final bill) => ListView(
                       padding:
-                          EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 40.h),
+                          EdgeInsets.fromLTRB(
+                              16.w, 16.h, 16.w,
+                              40.h + MediaQuery.viewPaddingOf(context).bottom),
                       children: [
                         _InfoCard(bill: bill),
                         SizedBox(height: 16.h),
