@@ -1,7 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:uswatte/core/errors/app_exception.dart';
 import 'package:uswatte/core/network/api_response.dart';
+import 'package:uswatte/features/bills/data/models/bill_item_model.dart';
 import 'package:uswatte/features/bills/data/models/bill_model.dart';
+import 'package:uswatte/features/bills/domain/entities/sync_status.dart';
 
 /// Result of a successful POST /api/v1/billings — only the fields we need
 /// to update the local outbox row.
@@ -80,6 +82,79 @@ class BillsRemoteDatasource {
         message: 'Failed to read create-billing response from server.',
       );
     }
+  }
+
+  /// Pulls the rep's own bills back down from the server.
+  /// GET /api/v1/billings/my-bills/sync?days=N
+  ///
+  /// Bills created on this device carry a `clientBillId`, which is what lets the local store
+  /// recognise a bill it already holds. Bills without one were written elsewhere (the web app),
+  /// so they get a stable synthetic key derived from the server id — stable being the point:
+  /// syncing repeatedly must not keep inserting the same bill under new keys.
+  Future<List<BillModel>> fetchMyBillsForSync({int days = 7}) async {
+    try {
+      final response = await _dio.get(
+        '/api/v1/billings/my-bills/sync',
+        queryParameters: {'days': days},
+      );
+      // Read the envelope directly: ApiResponse.fromJson casts `data` to a Map, so it cannot
+      // carry a list payload.
+      final envelope = response.data as Map<String, dynamic>;
+      final rows = (envelope['data'] as List<dynamic>?) ?? const <dynamic>[];
+      return rows
+          .map((row) => _billFromServer(row as Map<String, dynamic>))
+          .toList();
+    } on AppException {
+      rethrow;
+    } on DioException catch (e) {
+      final passthrough = e.error;
+      if (passthrough is AppException) throw passthrough;
+      throw NetworkException(message: _networkMessage(e));
+    }
+  }
+
+  BillModel _billFromServer(Map<String, dynamic> json) {
+    final serverBillId = json['id'] as int;
+    final clientBillId =
+        (json['clientBillId'] as String?) ?? 'srv-$serverBillId';
+
+    final items = ((json['items'] as List<dynamic>?) ?? const <dynamic>[])
+        .map((raw) {
+      final item = raw as Map<String, dynamic>;
+      final expire = item['expireDate'] as String?;
+      return BillItemModel(
+        clientBillId: clientBillId,
+        productId: item['productId'] as int,
+        quantity: (item['quantity'] as num).toDouble(),
+        unitPrice: (item['unitPrice'] as num).toDouble(),
+        discountRate: (item['discountRate'] as num?)?.toDouble() ?? 0,
+        billingItemType: item['billingItemType'] as String? ?? 'Sale',
+        returnType: item['returnType'] as String?,
+        freeIssueSource: item['freeIssueSource'] as String?,
+        expireDate: expire != null ? DateTime.parse(expire) : null,
+        lineNumber: item['lineNumber'] as int,
+      );
+    }).toList();
+
+    return BillModel(
+      clientBillId: clientBillId,
+      outletId: json['outletId'] as int,
+      billingDate: DateTime.parse(json['billingDate'] as String),
+      billDiscountRate: (json['billDiscountRate'] as num?)?.toDouble() ?? 0,
+      subTotalAmount: (json['subTotalAmount'] as num).toDouble(),
+      billDiscountAmount: (json['billDiscountAmount'] as num?)?.toDouble() ?? 0,
+      totalAmount: (json['totalAmount'] as num).toDouble(),
+      notes: json['notes'] as String?,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      // It is on the server, so by definition it is synced.
+      syncStatus: SyncStatus.synced,
+      serverBillId: serverBillId,
+      serverBillNumber: json['billingNumber'] as String?,
+      outletName: json['outletName'] as String?,
+      items: items,
+    );
   }
 
   /// Cancels a synced billing on the server.

@@ -27,6 +27,20 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
               .AsNoTracking()
               .FirstOrDefaultAsync(x => x.Id == outletId && x.IsActive && !x.IsDeleted, ct);
 
+    public async Task<List<Billing>> GetRepBillsForSyncAsync(
+        int salesRepId, DateOnly since, int max, CancellationToken ct = default)
+        => await _db.Billings
+                    .AsNoTracking()
+                    .Include(x => x.Items)
+                    .Include(x => x.Outlet)
+                    .Where(x => x.SalesRepId == salesRepId
+                             && x.BillingDate >= since
+                             && !x.IsDeleted)
+                    .OrderByDescending(x => x.BillingDate)
+                    .ThenByDescending(x => x.Id)
+                    .Take(max)
+                    .ToListAsync(ct);
+
     public Task<Distributor?> GetDistributorByTerritoryAsync(int territoryId, CancellationToken ct = default)
         => _db.Distributors
               .AsNoTracking()

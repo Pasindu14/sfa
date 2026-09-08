@@ -407,6 +407,46 @@ public class BillingService(
             outletId, distributorId, salesRepId,
             dateFrom, dateTo, paymentType, isCashCollected, billNo, ct);
 
+    // ── Mobile local-store rehydration ────────────────────────────────────
+
+    /// <summary>Hard ceiling on a single sync pull, so the payload to a phone stays bounded.</summary>
+    private const int RepBillSyncMaxRows = 500;
+
+    public async Task<List<RepBillSyncDto>> GetRepBillsForSyncAsync(
+        int salesRepId, DateOnly since, CancellationToken ct = default)
+    {
+        var bills = await _billingRepository.GetRepBillsForSyncAsync(
+            salesRepId, since, RepBillSyncMaxRows, ct);
+
+        return [.. bills.Select(b => new RepBillSyncDto(
+            b.Id,
+            b.BillingNumber,
+            b.ClientBillId,
+            b.BillingDate,
+            b.OutletId,
+            b.Outlet?.Name ?? string.Empty,
+            b.SubTotalAmount,
+            b.BillDiscountRate,
+            b.BillDiscountAmount,
+            b.TotalAmount,
+            b.Notes,
+            b.Latitude,
+            b.Longitude,
+            b.RepStatus,
+            b.DistributorStatus,
+            b.CreatedAt,
+            [.. b.Items.OrderBy(i => i.LineNumber).Select(i => new RepBillSyncItemDto(
+                i.ProductId,
+                i.Quantity,
+                i.UnitPrice,
+                i.DiscountRate,
+                i.BillingItemType,
+                i.ReturnType,
+                i.FreeIssueSource,
+                i.ExpireDate,
+                i.LineNumber))]))];
+    }
+
     // ── Money math (shared by CreateAsync and AdjustItemsAsync) ───────────
 
     /// <summary>

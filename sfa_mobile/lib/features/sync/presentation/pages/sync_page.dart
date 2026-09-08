@@ -6,8 +6,12 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/connectivity/connectivity_service.dart';
 import 'package:uswatte/core/di/injection.dart';
+import 'package:uswatte/core/sync/bill_sync_service.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/core/widgets/app_spinner.dart';
+import 'package:uswatte/features/bills/domain/usecases/get_bills_usecase.dart';
+import 'package:uswatte/features/bills/presentation/bloc/bills_list_bloc.dart';
+import 'package:uswatte/features/bills/presentation/bloc/bills_list_event.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_bloc.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_event.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_state.dart';
@@ -31,10 +35,24 @@ class _SyncPageState extends State<SyncPage> {
   int? _stockItemCount;
   String? _stockErrorMessage;
 
+  bool _billsSyncing = false;
+  DateTime? _billsLastSyncedAt;
+  int? _billsItemCount;
+  String? _billsErrorMessage;
+
+  /// How far back a bill download reaches. Matches the window the bills list itself shows.
+  static const int _billSyncDays = 7;
+
   @override
   void initState() {
     super.initState();
     _loadStockMeta();
+    _loadBillsMeta();
+  }
+
+  Future<void> _loadBillsMeta() async {
+    final bills = await getIt<GetBillsUseCase>()(limit: 500);
+    if (mounted) setState(() => _billsItemCount = bills.length);
   }
 
   Future<void> _loadStockMeta() async {
@@ -76,6 +94,30 @@ class _SyncPageState extends State<SyncPage> {
       );
     }
     return online;
+  }
+
+  /// Pushes anything still queued, then pulls the rep's own bills back down. This is what
+  /// repopulates the bill list on a reinstalled app or a replacement phone.
+  Future<void> _syncBills() async {
+    if (_billsSyncing) return;
+    if (!await _requireOnline()) return;
+    setState(() {
+      _billsSyncing = true;
+      _billsErrorMessage = null;
+    });
+    try {
+      await getIt<BillSyncService>().downloadMyBills(days: _billSyncDays);
+      await _loadBillsMeta();
+      if (mounted) setState(() => _billsLastSyncedAt = DateTime.now());
+      // Refresh the list + home badge so the new rows show without a manual reload.
+      if (mounted) context.read<BillsListBloc>().add(const LoadBillsRequested());
+    } catch (e) {
+      if (mounted) {
+        setState(() => _billsErrorMessage = e.toString());
+      }
+    } finally {
+      if (mounted) setState(() => _billsSyncing = false);
+    }
   }
 
   Future<void> _syncStock() async {
@@ -151,7 +193,8 @@ class _SyncPageState extends State<SyncPage> {
   ) {
     final isAnySyncing =
         _isAnySyncing(productsState, outletsState, hasActiveAssignment) ||
-        _stockSyncing;
+        _stockSyncing ||
+        _billsSyncing;
     final allSynced =
         _isAllSynced(productsState, outletsState, hasActiveAssignment) &&
         _stockLastSyncedAt != null &&
@@ -242,6 +285,22 @@ class _SyncPageState extends State<SyncPage> {
                   onView: () => context.push('/sales-rep/stock'),
                   viewLabel: 'View stock',
                 ),
+                _CategoryCard(
+                  icon: Icons.receipt_long_rounded,
+                  label: 'MY BILLS',
+                  subtitle:
+                      'Your bills from the last $_billSyncDays days — restores them on a new or reinstalled device',
+                  accentColor: const Color(0xFF2563EB),
+                  itemCount: _billsItemCount,
+                  itemUnit: 'bills',
+                  lastSyncedAt: _billsLastSyncedAt,
+                  isSyncing: _billsSyncing,
+                  hasError: _billsErrorMessage != null,
+                  errorMessage: _billsErrorMessage,
+                  onSync: _syncBills,
+                  onView: () => context.push('/sales-rep/bills'),
+                  viewLabel: 'View bills',
+                ),
               ],
             ),
           ),
@@ -265,6 +324,7 @@ class _SyncPageState extends State<SyncPage> {
                           );
                           _syncOutlets(context);
                           _syncStock();
+                          _syncBills();
                         },
                 ),
               ),

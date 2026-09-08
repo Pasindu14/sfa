@@ -81,6 +81,29 @@ class BillSyncService {
     await _emitStatus();
   }
 
+  /// Pulls the rep's own bills down from the server into the local store.
+  ///
+  /// This is the counterpart to [flushAll] — without it the local store is write-only, so a
+  /// reinstall or a new phone leaves the bill list empty even though the server still holds
+  /// every bill. Upload runs first: a pending row that is about to sync should not be shadowed
+  /// by a downloaded copy of the same bill.
+  ///
+  /// Unsynced rows are never overwritten (see [BillsLocalDatasource.upsertFromServer]).
+  /// Returns how many local rows were written.
+  Future<int> downloadMyBills({int days = 7}) async {
+    if (!await _connectivity.hasInternet()) {
+      throw const NetworkException(message: 'No internet connection.');
+    }
+
+    // Push before pulling, so anything still queued locally wins its own row.
+    await flushAll();
+
+    final bills = await _remote.fetchMyBillsForSync(days: days);
+    final written = await _local.upsertFromServer(bills);
+    await _emitStatus();
+    return written;
+  }
+
   Future<void> _purgeOld() async {
     try {
       final cutoff = DateTime.now().toUtc().subtract(retentionWindow);

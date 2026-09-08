@@ -43,6 +43,14 @@ public interface IBillingRepository
         string? billNo = null,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// A rep's own bills with their items, for re-hydrating the mobile local store. Bounded by
+    /// <paramref name="since"/> and <paramref name="max"/> so a long-serving rep can never pull an
+    /// unbounded payload onto a phone.
+    /// </summary>
+    Task<List<Billing>> GetRepBillsForSyncAsync(
+        int salesRepId, DateOnly since, int max, CancellationToken ct = default);
+
     Task<List<OutletBillingSummaryRawRow>> GetOutletSummaryRawAsync(
         int salesRepId, int routeId,
         DateOnly dateFrom, DateOnly dateTo,

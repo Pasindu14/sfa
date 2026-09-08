@@ -681,6 +681,69 @@ public class BillingAdjustmentApiTests
         resp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
+    // ─────────────────────────────────────────────────
+    // GET /my-bills/sync — mobile local-store rehydration
+    // ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task MyBillsSync_ReturnsTheRepsOwnBillsWithClientIdAndItems()
+    {
+        await EnsureSeededAsync();
+
+        var clientBillId = Guid.NewGuid().ToString();
+        SetToken(_repToken);
+        var req = new HttpRequestMessage(HttpMethod.Post, BaseUrl)
+        {
+            Content = JsonContent.Create(new
+            {
+                outletId = _outletId,
+                billDiscountRate = 0m,
+                billingDate = Today(),
+                latitude = 6.9271,
+                longitude = 79.8612,
+                items = new object[]
+                {
+                    new { productId = _saleProductId, quantity = 4m, unitPrice = 12.50m, discountRate = 0m, billingItemType = 0 }
+                }
+            })
+        };
+        req.Headers.Add("X-Idempotency-Key", clientBillId);
+        var create = await _client.SendAsync(req);
+        create.StatusCode.Should().Be(HttpStatusCode.Created, await create.Content.ReadAsStringAsync());
+
+        var resp = await _client.GetAsync($"{BaseUrl}/my-bills/sync?days=7");
+        var raw = await resp.Content.ReadAsStringAsync();
+        resp.StatusCode.Should().Be(HttpStatusCode.OK, raw);
+
+        using var doc = JsonDocument.Parse(raw);
+        var bills = doc.RootElement.GetProperty("data").EnumerateArray().ToList();
+
+        // The clientBillId is what lets the phone recognise a bill it already holds — without it
+        // a re-sync would insert a duplicate row.
+        var mine = bills.Single(b => b.GetProperty("clientBillId").GetString() == clientBillId);
+        mine.GetProperty("outletId").GetInt32().Should().Be(_outletId);
+        mine.GetProperty("totalAmount").GetDecimal().Should().Be(50m);
+        mine.GetProperty("billingNumber").GetString().Should().NotBeNullOrEmpty();
+
+        var item = mine.GetProperty("items").EnumerateArray().Single();
+        item.GetProperty("productId").GetInt32().Should().Be(_saleProductId);
+        item.GetProperty("quantity").GetDecimal().Should().Be(4m);
+        item.GetProperty("unitPrice").GetDecimal().Should().Be(12.50m);
+        item.GetProperty("lineNumber").GetInt32().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task MyBillsSync_AsDistributor_IsForbidden()
+    {
+        await EnsureSeededAsync();
+
+        SetToken(_distToken);
+        var resp = await _client.GetAsync($"{BaseUrl}/my-bills/sync");
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Forbidden,
+            "the sync pull is scoped to the calling rep's own bills");
+    }
+
     [Fact]
     public async Task AdjustItems_EmptyItemList_IsRejectedByTheValidator()
     {

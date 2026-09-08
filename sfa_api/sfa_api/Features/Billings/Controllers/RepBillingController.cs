@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using sfa_api.Common.Errors;
+using sfa_api.Common.Extensions;
 using sfa_api.Features.Billings.Services;
 
 namespace sfa_api.Features.Billings.Controllers;
@@ -66,6 +67,25 @@ public class RepBillingController(IBillingService billingService) : ControllerBa
             ct: ct);
 
         return Ok(ResponseHelper.Paged(items, page, pageSize, total, correlationId));
+    }
+
+    /// <summary>
+    /// GET /api/v1/billings/my-bills/sync?days=N — the calling rep's own bills with items, for
+    /// rebuilding the mobile app's local store after a reinstall or a device change.
+    /// Window defaults to 7 days and is clamped to 30 so a phone can never pull an unbounded payload.
+    /// </summary>
+    [HttpGet("my-bills/sync")]
+    [Authorize(Roles = "SalesRep")]
+    public async Task<IActionResult> GetMyBillsForSync(
+        [FromQuery] int days = 7,
+        CancellationToken ct = default)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var window = Math.Clamp(days, 1, 30);
+        var since  = SriLankaTime.Today.AddDays(-window);
+
+        var result = await billingService.GetRepBillsForSyncAsync(GetCallerId(), since, ct);
+        return Ok(ResponseHelper.Ok(result, correlationId));
     }
 
     /// <summary>GET /api/v1/billings/my-monthly-sales-itemwise — per-product target vs sold for the calling rep.</summary>

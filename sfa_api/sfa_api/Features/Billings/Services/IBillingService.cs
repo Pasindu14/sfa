@@ -39,6 +39,13 @@ public interface IBillingService
     /// into a DistributorReturn line and credited back to the distributor's stock.
     /// </summary>
     Task<BillingDto> AdjustItemsAsync(int billingId, int userId, AdjustBillingItemsRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// The calling rep's own bills since a date, with items — used by the mobile app to rebuild its
+    /// local store after a reinstall or a device change.
+    /// </summary>
+    Task<List<RepBillSyncDto>> GetRepBillsForSyncAsync(
+        int salesRepId, DateOnly since, CancellationToken ct = default);
     Task<BillingDto> UpdatePaymentTypeAsync(int billingId, int userId, PaymentType paymentType, CancellationToken ct = default);
     Task<BillingDto> UpdateCashCollectedAsync(int billingId, int userId, bool isCashCollected, CancellationToken ct = default);
 }

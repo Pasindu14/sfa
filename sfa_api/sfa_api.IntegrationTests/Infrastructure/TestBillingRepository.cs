@@ -40,6 +40,9 @@ public sealed class TestBillingRepository(IBillingRepository inner) : IBillingRe
     public Task<Billing?> GetByIdAsync(int id, CancellationToken ct = default)
         => inner.GetByIdAsync(id, ct);
 
+    public Task<List<Billing>> GetRepBillsForSyncAsync(int salesRepId, DateOnly since, int max, CancellationToken ct = default)
+        => inner.GetRepBillsForSyncAsync(salesRepId, since, max, ct);
+
     public Task<int?> FindIdByClientBillIdAsync(string clientBillId, CancellationToken ct = default)
         => inner.FindIdByClientBillIdAsync(clientBillId, ct);
 

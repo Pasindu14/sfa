@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  html { color-scheme: light dark; }
+  body { margin: 0; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+<title>Distributor Return Flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+  :root {
+    --accent:        #ff4d00;
+    --accent-ink:    #c93c00;
+    --accent-wash:   #fff1ea;
+    --accent-line:   #ffd0ba;
+
+    --ground:        #fbfaf9;
+    --surface:       #ffffff;
+    --surface-sunk:  #f5f2f0;
+
+    --ink:           #1a1614;
+    --ink-soft:      #4a423d;
+    --ink-mute:      #857a74;
+    --border:        #e8e3e0;
+    --border-firm:   #d6cec9;
+
+    --gain:          #0f766e;
+    --gain-wash:     #eafaf7;
+    --strike:        #9c8f88;
+
+    --measure: 68ch;
+    --step--1: 0.8125rem;
+    --step-0:  1rem;
+    --step-1:  1.1875rem;
+    --step-2:  1.5rem;
+    --step-3:  2rem;
+    --step-4:  2.875rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --accent:        #ff5f19;
+      --accent-ink:    #ff8a55;
+      --accent-wash:   #2b1710;
+      --accent-line:   #57291a;
+
+      --ground:        #141110;
+      --surface:       #1c1817;
+      --surface-sunk:  #221d1b;
+
+      --ink:           #f4efec;
+      --ink-soft:      #c8beb8;
+      --ink-mute:      #92867f;
+      --border:        #302926;
+      --border-firm:   #453b37;
+
+      --gain:          #4fd1bd;
+      --gain-wash:     #10241f;
+      --strike:        #7b706a;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --accent:        #ff5f19;
+    --accent-ink:    #ff8a55;
+    --accent-wash:   #2b1710;
+    --accent-line:   #57291a;
+
+    --ground:        #141110;
+    --surface:       #1c1817;
+    --surface-sunk:  #221d1b;
+
+    --ink:           #f4efec;
+    --ink-soft:      #c8beb8;
+    --ink-mute:      #92867f;
+    --border:        #302926;
+    --border-firm:   #453b37;
+
+    --gain:          #4fd1bd;
+    --gain-wash:     #10241f;
+    --strike:        #7b706a;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: 'Jost', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: var(--step-0);
+    line-height: 1.65;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 78rem;
+    margin: 0 auto;
+    padding: clamp(2rem, 5vw, 4.5rem) clamp(1.1rem, 4vw, 3rem) 5rem;
+  }
+
+  code, .mono, th, .num {
+    font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Masthead ─────────────────────────────────────────── */
+  .masthead { border-bottom: 2px solid var(--ink); padding-bottom: 1.75rem; }
+
+  .eyebrow {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: var(--step--1);
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    margin: 0 0 1rem;
+  }
+
+  h1 {
+    font-size: clamp(2.25rem, 6vw, var(--step-4));
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1.02;
+    text-wrap: balance;
+    margin: 0 0 0.85rem;
+  }
+
+  .standfirst {
+    font-size: var(--step-1);
+    font-weight: 300;
+    color: var(--ink-soft);
+    max-width: var(--measure);
+    margin: 0;
+    text-wrap: pretty;
+  }
+
+  .endpoint {
+    display: inline-block;
+    margin-top: 1.5rem;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: var(--step--1);
+    font-weight: 500;
+    background: var(--surface-sunk);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 0.5rem 0.85rem;
+    color: var(--ink-soft);
+    overflow-wrap: anywhere;
+  }
+
+  /* ── Sections ─────────────────────────────────────────── */
+  section { margin-top: clamp(3rem, 7vw, 4.75rem); }
+
+  h2 {
+    font-size: var(--step-2);
+    font-weight: 600;
+    letter-spacing: -0.018em;
+    line-height: 1.15;
+    margin: 0 0 0.5rem;
+    text-wrap: balance;
+  }
+
+  .section-note {
+    color: var(--ink-mute);
+    max-width: var(--measure);
+    margin: 0 0 2rem;
+    font-size: var(--step-0);
+    font-weight: 300;
+  }
+
+  p { max-width: var(--measure); text-wrap: pretty; }
+
+  /* ── The correction banner ────────────────────────────── */
+  .correction {
+    margin-top: 2.5rem;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1.25rem;
+    align-items: start;
+    background: var(--accent-wash);
+    border: 1px solid var(--accent-line);
+    padding: 1.4rem 1.5rem;
+  }
+  .correction .mark {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: var(--step--1);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--accent-ink);
+    padding-top: 0.2rem;
+    white-space: nowrap;
+  }
+  .correction p { margin: 0; color: var(--ink-soft); }
+  .correction strong { color: var(--ink); font-weight: 600; }
+
+  /* ── Flow rail ────────────────────────────────────────── */
+  .flow { list-style: none; padding: 0; margin: 0; position: relative; }
+
+  .flow > li {
+    display: grid;
+    grid-template-columns: 3.25rem 1fr;
+    gap: 0 1.4rem;
+    padding-bottom: 2rem;
+    position: relative;
+  }
+  .flow > li::before {
+    content: "";
+    position: absolute;
+    left: 1.5rem;
+    top: 2.15rem;
+    bottom: -0.25rem;
+    width: 1px;
+    background: var(--border-firm);
+  }
+  .flow > li:last-child { padding-bottom: 0; }
+  .flow > li:last-child::before { display: none; }
+
+  .flow .n {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: var(--step--1);
+    font-weight: 500;
+    color: var(--ink-mute);
+    background: var(--surface);
+    border: 1px solid var(--border-firm);
+    border-radius: 50%;
+    width: 3rem;
+    height: 3rem;
+    display: grid;
+    place-items: center;
+    position: relative;
+    z-index: 1;
+  }
+  .flow li[data-tx] .n {
+    border-color: var(--accent);
+    color: var(--accent-ink);
+    background: var(--accent-wash);
+  }
+
+  .flow h3 {
+    font-size: var(--step-1);
+    font-weight: 500;
+    margin: 0.45rem 0 0.3rem;
+    letter-spacing: -0.012em;
+  }
+  .flow p {
+    margin: 0;
+    color: var(--ink-mute);
+    font-weight: 300;
+    max-width: 58ch;
+  }
+
+  .tx-bracket {
+    grid-column: 2;
+    margin: 0.9rem 0 0;
+    padding: 0.55rem 0.9rem;
+    background: var(--surface-sunk);
+    border-left: 2px solid var(--accent);
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: var(--step--1);
+    color: var(--ink-soft);
+    max-width: 58ch;
+  }
+
+  /* ── Ledger comparison ────────────────────────────────── */
+  .scroller { overflow-x: auto; }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 34rem;
+    font-size: var(--step-0);
+  }
+  caption {
+    text-align: left;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: var(--step--1);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    padding-bottom: 0.7rem;
+  }
+  th {
+    text-align: left;
+    font-size: var(--step--1);
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    border-bottom: 1px solid var(--ink);
+    padding: 0 0.9rem 0.6rem 0;
+  }
+  th:last-child, td:last-child { padding-right: 0; }
+  td {
+    padding: 0.72rem 0.9rem 0.72rem 0;
+    border-bottom: 1px solid var(--border);
+    color: var(--ink-soft);
+    vertical-align: baseline;
+  }
+  .num { text-align: right; font-size: var(--step--1); }
+  th.num { text-align: right; }
+  .was { color: var(--strike); text-decoration: line-through; }
+  .now { color: var(--ink); font-weight: 500; }
+  .hero-row td { background: var(--accent-wash); }
+  .hero-row .now { color: var(--accent-ink); font-weight: 700; }
+  tr.gain td { background: var(--gain-wash); }
+  tr.gain .now { color: var(--gain); font-weight: 600; }
+
+  /* ── Record groups ────────────────────────────────────── */
+  .records { display: grid; gap: 2.5rem; }
+  @media (min-width: 60rem) { .records { grid-template-columns: repeat(3, 1fr); gap: 2.25rem; } }
+
+  .rgroup h3 {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: var(--step--1);
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    margin: 0 0 1rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--accent-line);
+  }
+  .rgroup dl { margin: 0; display: grid; gap: 1.15rem; }
+  .rgroup dt {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: var(--step--1);
+    font-weight: 500;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+  .rgroup dd {
+    margin: 0.2rem 0 0;
+    color: var(--ink-mute);
+    font-size: var(--step--1);
+    font-weight: 300;
+    line-height: 1.6;
+  }
+
+  /* ── The rule callout ─────────────────────────────────── */
+  .rule {
+    background: var(--ink);
+    color: var(--ground);
+    padding: clamp(1.75rem, 4vw, 2.75rem);
+  }
+  .rule .eyebrow { color: var(--accent); }
+  .rule h2 { color: var(--ground); }
+  .rule p { color: color-mix(in srgb, var(--ground) 76%, var(--ink)); max-width: 62ch; }
+  .rule strong { color: var(--accent); font-weight: 600; }
+  .maths {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: var(--step--1);
+    margin-top: 1.6rem;
+    display: grid;
+    gap: 0.5rem;
+  }
+  .maths div { display: flex; gap: 0.9rem; flex-wrap: wrap; align-items: baseline; }
+  .maths .tag {
+    color: var(--accent);
+    min-width: 5.5rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+  }
+  .maths .bad { color: #ff9b7a; }
+
+  /* ── Guards ───────────────────────────────────────────── */
+  .guards td:first-child { width: 1%; white-space: nowrap; }
+  .guards code {
+    font-size: var(--step--1);
+    font-weight: 500;
+    color: var(--accent-ink);
+  }
+
+  .pool { display: inline-flex; align-items: baseline; gap: 0.45rem; }
+  .pool .arrow { color: var(--ink-mute); }
+
+  footer {
+    margin-top: 4.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    color: var(--ink-mute);
+    font-size: var(--step--1);
+    font-weight: 300;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.75rem;
+  }
+  footer .mono { color: var(--ink-soft); }
+
+  a { color: var(--accent-ink); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <header class="masthead">
+    <p class="eyebrow">SFA · Billing</p>
+    <h1>Distributor Return Flow</h1>
+    <p class="standfirst">
+      What the system does when a distributor lowers a quantity while reviewing a pending
+      bill — the records it writes, the stock it moves, and the one figure it deliberately
+      refuses to subtract twice.
+    </p>
+    <p class="endpoint">PATCH /api/v1/billings/{id}/adjust-items &nbsp;·&nbsp; role: Distributor</p>
+  </header>
+
+  <div class="correction">
+    <span class="mark">First,</span>
+    <p>
+      <strong>no separate return bill is ever created.</strong> The distributor doesn't author a
+      return document, and there is no “add return line” control. They lower a quantity on the
+      rep's original bill, and the system records the difference as a return line on that same
+      bill. Everything below happens inside the bill the rep already submitted.
+    </p>
+  </div>
+
+  <section>
+    <h2>The sequence</h2>
+    <p class="section-note">
+      Steps 4 to 7 commit as a single database transaction — the stock movement and the audit
+      trail either both land or neither does.
+    </p>
+
+    <ol class="flow">
+      <li>
+        <span class="n">01</span>
+        <div>
+          <h3>Rep submits the bill</h3>
+          <p>
+            Stock is deducted here, at creation — not at approval. That single fact is why a
+            later reduction has to give stock back rather than simply deduct less.
+            The bill lands as <span class="mono">Pending</span>.
+          </p>
+        </div>
+      </li>
+      <li>
+        <span class="n">02</span>
+        <div>
+          <h3>Distributor lowers a quantity</h3>
+          <p>
+            In the Review dialog. Quantities can only go down, never above what the rep billed.
+            Zero is allowed; the line stays on the bill rather than being deleted.
+          </p>
+        </div>
+      </li>
+      <li>
+        <span class="n">03</span>
+        <div>
+          <h3>Guards run</h3>
+          <p>
+            Is this my bill, is it still Pending, is the line a Sale or Free Issue, and is this
+            actually a decrease. Any failure stops the request before a single row is written.
+          </p>
+        </div>
+      </li>
+      <li data-tx>
+        <span class="n">04</span>
+        <div>
+          <h3>Parent line is reduced and repriced</h3>
+          <p>
+            Quantity drops to the new figure and the line's discount and total are recalculated
+            on its own unchanged unit price.
+          </p>
+        </div>
+        <p class="tx-bracket">┌ one transaction begins</p>
+      </li>
+      <li data-tx>
+        <span class="n">05</span>
+        <div>
+          <h3>Return line is appended</h3>
+          <p>
+            A new billing item for the difference, carrying the <em>billed</em> unit price and the
+            parent's discount rate, and pointing back at the line it came from.
+          </p>
+        </div>
+      </li>
+      <li data-tx>
+        <span class="n">06</span>
+        <div>
+          <h3>Stock is credited back</h3>
+          <p>
+            Into whichever pool the parent line originally drew from, with a ledger row recording
+            the balance before and after.
+          </p>
+        </div>
+      </li>
+      <li data-tx>
+        <span class="n">07</span>
+        <div>
+          <h3>Audit trail is written</h3>
+          <p>
+            Who changed what, from which quantity to which, and what the bill total was before
+            and after.
+          </p>
+        </div>
+        <p class="tx-bracket">└ commit</p>
+      </li>
+      <li>
+        <span class="n">08</span>
+        <div>
+          <h3>Distributor approves</h3>
+          <p>
+            A deliberately separate action, so the recomputed total can be reviewed before it is
+            committed. Approve stays disabled while edits are unsaved.
+          </p>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Worked example</h2>
+    <p class="section-note">
+      The rep bills <span class="mono">10 × LKR 100.00</span> at a 10% line discount. The outlet
+      took 7. The distributor changes the quantity to 7 and saves.
+    </p>
+
+    <div class="scroller">
+      <table>
+        <caption>What changes on the bill</caption>
+        <thead>
+          <tr>
+            <th scope="col">Field</th>
+            <th scope="col" class="num">Before</th>
+            <th scope="col" class="num">After</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Sale line quantity</td>
+            <td class="num was">10</td>
+            <td class="num now">7</td>
+          </tr>
+          <tr>
+            <td>Sale line discount</td>
+            <td class="num was">100.00</td>
+            <td class="num now">70.00</td>
+          </tr>
+          <tr>
+            <td>Sale line total</td>
+            <td class="num was">900.00</td>
+            <td class="num now">630.00</td>
+          </tr>
+          <tr>
+            <td><span class="mono">OriginalQuantity</span></td>
+            <td class="num was">null</td>
+            <td class="num now">10</td>
+          </tr>
+          <tr class="hero-row">
+            <td>Bill <span class="mono">TotalAmount</span></td>
+            <td class="num was">LKR 900.00</td>
+            <td class="num now">LKR 630.00</td>
+          </tr>
+          <tr>
+            <td><span class="mono">DistributorReturnValue</span></td>
+            <td class="num was">0.00</td>
+            <td class="num now">270.00</td>
+          </tr>
+          <tr class="gain">
+            <td>Normal stock on hand</td>
+            <td class="num">n</td>
+            <td class="num now">n + 3</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Every record written</h2>
+    <p class="section-note">
+      Nine records across three areas, all from that one save.
+    </p>
+
+    <div class="records">
+      <div class="rgroup">
+        <h3>On the bill</h3>
+        <dl>
+          <dt>BillingItem <span style="color:var(--ink-mute);font-weight:400">(updated)</span></dt>
+          <dd>
+            The parent sale line. Quantity 10 → 7, repriced, and <span class="mono">OriginalQuantity</span>
+            stamped with 10 — on the first adjustment only, so 10 → 7 → 5 still reports 10.
+          </dd>
+
+          <dt>BillingItem <span style="color:var(--ink-mute);font-weight:400">(new)</span></dt>
+          <dd>
+            Qty 3 · unit price <strong style="color:var(--ink)">LKR 100.00, the billed price</strong> ·
+            discount rate 10% · total 270.00 · type <span class="mono">Return</span> ·
+            <span class="mono">ReturnType = DistributorReturn</span> ·
+            <span class="mono">Source = DistributorReturn</span> ·
+            <span class="mono">SourceBillingItemId</span> → the sale line.
+          </dd>
+
+          <dt>Billing <span style="color:var(--ink-mute);font-weight:400">(header)</span></dt>
+          <dd>
+            Totals rolled up, <span class="mono">LastAdjustedAt</span> set and
+            <span class="mono">AdjustmentCount</span> incremented — which is what drives the
+            “Adjusted” badge in the bill lists.
+          </dd>
+        </dl>
+      </div>
+
+      <div class="rgroup">
+        <h3>In stock</h3>
+        <dl>
+          <dt>DistributorStock</dt>
+          <dd>
+            <span class="mono">QuantityOnHand</span> increased by 3 on the pool the parent line
+            drew from.
+          </dd>
+
+          <dt>StockTransaction</dt>
+          <dd>
+            The immutable ledger row: direction <span class="mono">In</span>, quantity 3, balance
+            before and after snapshotted, referenced to <span class="mono">Billing/{id}</span>,
+            transacted by the distributor user, noted
+            <em>“Distributor return on bill adjustment”</em>.
+          </dd>
+
+          <dt>Which pool</dt>
+          <dd>
+            <span class="pool">Sale <span class="arrow">→</span> Normal</span><br>
+            <span class="pool">Free Issue, distributor-funded <span class="arrow">→</span> Normal</span><br>
+            <span class="pool">Free Issue, company-funded <span class="arrow">→</span> Free Issue</span>
+          </dd>
+        </dl>
+      </div>
+
+      <div class="rgroup">
+        <h3>In the audit trail</h3>
+        <dl>
+          <dt>BillingAdjustment</dt>
+          <dd>
+            One per save round. Who, when, an optional note, and
+            <span class="mono">OldTotalAmount</span> 900.00 →
+            <span class="mono">NewTotalAmount</span> 630.00.
+          </dd>
+
+          <dt>BillingAdjustmentLine</dt>
+          <dd>
+            One per changed line. Product, qty 10 → 7, price 900.00 → 630.00,
+            <span class="mono">ReturnedQuantity</span> 3,
+            <span class="mono">ReturnValue</span> 270.00.
+          </dd>
+
+          <dt>Notification + AuditLog</dt>
+          <dd>
+            The rep is notified that quantities were adjusted, and the audit interceptor writes a
+            row for every changed entity automatically.
+          </dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <section class="rule">
+    <p class="eyebrow">The rule that matters</p>
+    <h2>That 270.00 is recorded, never deducted</h2>
+    <p>
+      The sale line has <strong>already</strong> dropped from 900.00 to 630.00. Subtracting the
+      return's value again would take the same 270.00 off twice. So it sums into
+      <span class="mono">DistributorReturnValue</span> — not
+      <span class="mono">ReturnValue</span>, which <em>is</em> subtracted from the bill total.
+      The portal labels it <em>“Distributor Returns (not deducted)”</em> for exactly this reason.
+    </p>
+
+    <div class="maths">
+      <div><span class="tag">Correct</span> <span>900.00 → sale line reduced to 630.00 → total <strong>630.00</strong></span></div>
+      <div><span class="tag">Wrong</span> <span class="bad">630.00 − 270.00 = 360.00 &nbsp;· the reduction counted twice</span></div>
+    </div>
+
+    <p style="margin-top:1.6rem">
+      The same asymmetry protects your stock. If the bill is later <strong>rejected</strong>, the
+      reversal deliberately skips these return lines and reverses only the reduced parent line —
+      those 3 units were already handed back at adjustment time, and crediting them again would
+      leave the pool 3 units richer than it started.
+    </p>
+  </section>
+
+  <section>
+    <h2>What the system refuses</h2>
+    <p class="section-note">
+      Every guard rejects the whole request before anything is written. All return
+      <span class="mono">422</span>, except schema validation which returns
+      <span class="mono">400</span>.
+    </p>
+
+    <div class="scroller">
+      <table class="guards">
+        <thead>
+          <tr>
+            <th scope="col">Code</th>
+            <th scope="col">Refused because</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>BILLING_QTY_INCREASE_NOT_ALLOWED</code></td>
+            <td>A quantity was raised above what the rep billed. Reductions only ever credit stock, so an increase has no safe counterpart.</td>
+          </tr>
+          <tr>
+            <td><code>BILLING_LINE_NOT_ADJUSTABLE</code></td>
+            <td>The line is a Return, not a Sale or Free Issue. Goods the outlet sent back aren't the distributor's to re-decide.</td>
+          </tr>
+          <tr>
+            <td><code>BILLING_ITEM_NOT_ON_BILL</code></td>
+            <td>The line id belongs to a different bill.</td>
+          </tr>
+          <tr>
+            <td><code>BILLING_ALREADY_ACTIONED</code></td>
+            <td>The bill has already been approved or rejected.</td>
+          </tr>
+          <tr>
+            <td><code>BILLING_NOT_ACTIONABLE</code></td>
+            <td>The rep cancelled the bill.</td>
+          </tr>
+          <tr>
+            <td><code>BILLING_NO_CHANGES</code></td>
+            <td>Nothing was actually reduced.</td>
+          </tr>
+          <tr>
+            <td><code>BILLING_ALL_LINES_ZERO</code></td>
+            <td>Every line would go to zero — that's a rejection, not an adjustment, and the rep should be told so.</td>
+          </tr>
+          <tr>
+            <td><code>BILL_TOTAL_NEGATIVE</code></td>
+            <td>The recomputed total would fall below zero.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="margin-top:2rem;color:var(--ink-mute);font-weight:300">
+      One consequence worth stating plainly: if an outlet took <em>more</em> than was billed, this
+      flow cannot express it. The rep writes a new bill.
+    </p>
+  </section>
+
+  <footer>
+    <span>Concurrency: the same advisory lock as approve, reject and cancel — <span class="mono">billing:transition:{id}</span></span>
+    <span>Ledger type: <span class="mono">BillingReversal</span></span>
+  </footer>
+
+</div>
+</body>
+</html>

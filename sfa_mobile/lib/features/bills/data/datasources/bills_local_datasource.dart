@@ -102,6 +102,58 @@ class BillsLocalDatasource {
         .toList();
   }
 
+  /// Writes bills pulled down from the server into the local store, so the device can rebuild
+  /// its bill list after a reinstall or on a phone that never created them.
+  ///
+  /// Rows holding unsynced work are sacred: anything in `pending`, `failed` or `syncing` is a
+  /// bill the server has not accepted yet, and it exists nowhere else. Those rows are skipped
+  /// outright — a downloaded copy must never overwrite one. Only brand-new keys are inserted,
+  /// and only already-`synced` rows are refreshed.
+  ///
+  /// Returns how many rows were actually written.
+  Future<int> upsertFromServer(List<BillModel> bills) async {
+    if (bills.isEmpty) return 0;
+    final db = await _dbHelper.database;
+    var written = 0;
+
+    await db.transaction((txn) async {
+      for (final bill in bills) {
+        final existing = await txn.query(
+          'bills',
+          columns: ['sync_status'],
+          where: 'client_bill_id = ?',
+          whereArgs: [bill.clientBillId],
+          limit: 1,
+        );
+
+        if (existing.isNotEmpty) {
+          final status = SyncStatusX.fromDb(existing.first['sync_status'] as String);
+          // Unsynced local work — leave it exactly as it is.
+          if (status != SyncStatus.synced) continue;
+        }
+
+        await txn.insert(
+          'bills',
+          bill.toMap(),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+        // Replace the lines rather than merging: the server is authoritative for a synced bill,
+        // and its quantities may have been adjusted by the distributor since it was written.
+        await txn.delete(
+          'bill_items',
+          where: 'client_bill_id = ?',
+          whereArgs: [bill.clientBillId],
+        );
+        for (final item in bill.items) {
+          await txn.insert('bill_items', item.toMap());
+        }
+        written++;
+      }
+    });
+
+    return written;
+  }
+
   Future<BillModel?> getById(String clientBillId) async {
     final db = await _dbHelper.database;
     final billRows = await db.query(
