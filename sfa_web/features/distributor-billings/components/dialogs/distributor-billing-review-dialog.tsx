@@ -203,7 +203,9 @@ export function DistributorBillingReviewDialog({ billing, onClose }: Props) {
   return (
     <>
       <Dialog open={billing !== null} onOpenChange={(v) => { if (!v) handleClose() }}>
-        <DialogContent className="max-w-3xl">
+        {/* The base DialogContent sets `sm:max-w-md`; an unprefixed `max-w-*` does not override a
+            breakpoint-prefixed one, so the width has to be set at the same breakpoint with `!`. */}
+        <DialogContent className="w-[95vw] sm:w-[90vw]! sm:max-w-4xl!">
           <DialogHeader>
             <DialogTitle>Review Billing</DialogTitle>
             {billing && (
@@ -292,8 +294,10 @@ export function DistributorBillingReviewDialog({ billing, onClose }: Props) {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <ScrollArea className="max-h-[320px] rounded-lg border">
-                    <table className="w-full text-sm">
+                  {/* overflow-x-auto keeps a wide row scrolling inside the table instead of
+                      widening the dialog and clipping the labels on the left. */}
+                  <ScrollArea className="max-h-[380px] overflow-x-auto rounded-lg border">
+                    <table className="w-full min-w-[560px] text-sm">
                       <thead className="sticky top-0 bg-muted/60 backdrop-blur">
                         <tr className="text-left">
                           <th className="px-3 py-2 font-medium">Product</th>
