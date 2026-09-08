@@ -10,8 +10,6 @@ import 'package:uswatte/core/sync/bill_sync_service.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/bills/domain/usecases/get_bills_usecase.dart';
-import 'package:uswatte/features/bills/presentation/bloc/bills_list_bloc.dart';
-import 'package:uswatte/features/bills/presentation/bloc/bills_list_event.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_bloc.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_event.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_state.dart';
@@ -109,8 +107,9 @@ class _SyncPageState extends State<SyncPage> {
       await getIt<BillSyncService>().downloadMyBills(days: _billSyncDays);
       await _loadBillsMeta();
       if (mounted) setState(() => _billsLastSyncedAt = DateTime.now());
-      // Refresh the list + home badge so the new rows show without a manual reload.
-      if (mounted) context.read<BillsListBloc>().add(const LoadBillsRequested());
+      // No need to poke BillsListBloc here — it is created per-route (app_router.dart), so it does
+      // not exist above this page, and it already reloads itself off BillSyncService.status$,
+      // which downloadMyBills emits on. Reading it from this context throws ProviderNotFound.
     } catch (e) {
       if (mounted) {
         setState(() => _billsErrorMessage = e.toString());
