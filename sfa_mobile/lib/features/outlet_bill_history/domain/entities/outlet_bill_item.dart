@@ -11,6 +11,15 @@ class OutletBillItem {
   final bool isFreeIssue;
   final String billingItemType;
   final String? returnType;
+
+  /// Where this line came from: 'SalesRep' (the rep entered it) or 'DistributorReturn'
+  /// (the system generated it when the distributor reduced a quantity).
+  final String source;
+
+  /// What the rep originally billed, when the distributor has since reduced this line.
+  /// Null while the line has never been adjusted.
+  final double? originalQuantity;
+
   final DateTime? expireDate;
   final int lineNumber;
 
@@ -27,7 +36,15 @@ class OutletBillItem {
     required this.isFreeIssue,
     required this.billingItemType,
     this.returnType,
+    this.source = 'SalesRep',
+    this.originalQuantity,
     this.expireDate,
     required this.lineNumber,
   });
+
+  /// True when the distributor reduced this line during review.
+  bool get isAdjusted => originalQuantity != null && originalQuantity != quantity;
+
+  /// True when this line is the mirror record of a quantity the distributor sent back.
+  bool get isDistributorReturn => returnType == 'DistributorReturn';
 }

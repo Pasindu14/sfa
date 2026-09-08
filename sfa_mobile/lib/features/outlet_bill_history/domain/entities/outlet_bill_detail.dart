@@ -17,6 +17,17 @@ class OutletBillDetail {
   final String? rejectionReason;
   final String? notes;
   final DateTime createdAt;
+
+  /// When the distributor last reduced a quantity on this bill. Null if never adjusted.
+  final DateTime? lastAdjustedAt;
+
+  /// How many times the distributor has adjusted this bill.
+  final int adjustmentCount;
+
+  /// Value of the quantities the distributor sent back. Informational — already reflected in
+  /// [totalAmount] via the reduced sale lines, never subtracted a second time.
+  final double distributorReturnValue;
+
   final List<OutletBillItem> items;
 
   const OutletBillDetail({
@@ -36,6 +47,11 @@ class OutletBillDetail {
     this.rejectionReason,
     this.notes,
     required this.createdAt,
+    this.lastAdjustedAt,
+    this.adjustmentCount = 0,
+    this.distributorReturnValue = 0,
     required this.items,
   });
+
+  bool get isAdjustedByDistributor => adjustmentCount > 0;
 }

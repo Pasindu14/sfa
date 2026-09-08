@@ -208,6 +208,49 @@ class _InfoCard extends StatelessWidget {
             ),
           ),
 
+        // ── Distributor adjustment banner ─────────────────────────────────────
+        if (bill.isAdjustedByDistributor)
+          Container(
+            margin: EdgeInsets.only(bottom: 12.h),
+            padding: EdgeInsets.all(12.r),
+            decoration: BoxDecoration(
+              color: AppColors.amber.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(10.r),
+              border: Border.all(color: AppColors.amber.withValues(alpha: 0.30)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.edit_note_rounded, size: 16.r, color: AppColors.amber),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Quantities adjusted by Distributor',
+                        style: GoogleFonts.barlowCondensed(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.amber,
+                        ),
+                      ),
+                      SizedBox(height: 3.h),
+                      Text(
+                        'Reduced quantities were returned to distributor stock. '
+                        'Adjusted lines show the billed quantity beside the accepted one.',
+                        style: GoogleFonts.barlow(
+                          fontSize: 12.sp,
+                          color: AppColors.foregroundMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
         // ── Main info card ────────────────────────────────────────────────────
         Container(
           padding: EdgeInsets.all(16.r),
@@ -401,6 +444,11 @@ class _ItemRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final qtyStr = item.quantity.toStringAsFixed(
         item.quantity.truncateToDouble() == item.quantity ? 0 : 1);
+    // When the distributor cut this line, show what was billed alongside what stands.
+    final originalQtyStr = item.originalQuantity?.toStringAsFixed(
+        item.originalQuantity!.truncateToDouble() == item.originalQuantity!
+            ? 0
+            : 1);
 
     return Padding(
       padding: EdgeInsets.fromLTRB(14.w, 12.h, 14.w, 12.h),
@@ -451,11 +499,21 @@ class _ItemRow extends StatelessWidget {
           SizedBox(height: 5.h),
           Row(
             children: [
-              _chip(Icons.tag_rounded, 'Qty: $qtyStr'),
+              _chip(
+                Icons.tag_rounded,
+                item.isAdjusted ? 'Qty: $originalQtyStr → $qtyStr' : 'Qty: $qtyStr',
+              ),
               SizedBox(width: 8.w),
               _chip(Icons.sell_rounded,
                   'Rs. ${item.unitPrice.toStringAsFixed(2)} / pack'),
-              if (item.billingItemType == 'Return') ...[
+              if (item.isDistributorReturn) ...[
+                SizedBox(width: 8.w),
+                _badge(
+                  'Dist. Return',
+                  AppColors.amber,
+                  Icons.undo_rounded,
+                ),
+              ] else if (item.billingItemType == 'Return') ...[
                 SizedBox(width: 8.w),
                 _badge(
                   item.returnType ?? 'Return',

@@ -43,6 +43,7 @@ public record BillingDto(
     decimal FreeIssueValueDistributor,
     decimal ItemWiseTotalDiscount,
     decimal TotalDiscount,
+    decimal DistributorReturnValue,
 
     RepBillingStatus RepStatus,
     DistributorBillingStatus DistributorStatus,
@@ -53,5 +54,10 @@ public record BillingDto(
     double? Latitude,
     double? Longitude,
     DateTime CreatedAt,
-    List<BillingItemDto> Items
+    List<BillingItemDto> Items,
+
+    // Distributor adjustment trail
+    DateTime? LastAdjustedAt,
+    int AdjustmentCount,
+    List<BillingAdjustmentDto> Adjustments
 );

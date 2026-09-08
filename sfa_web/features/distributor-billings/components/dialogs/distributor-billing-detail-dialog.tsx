@@ -16,6 +16,11 @@ import { useMyBillingDetail } from '../../hooks/distributor-billing.hooks'
 import { PaymentTypeBadge } from '../columns/distributor-billing-columns'
 import type { DistributorBillingDetail } from '../../schema/distributor-billing.schema'
 import { formatColombo } from '@/lib/utils/datetime'
+import {
+  BillingAdjustmentHistory,
+  DistributorReturnBadge,
+  AdjustedQuantity,
+} from '@/components/billing/billing-adjustment-history'
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('en-LK', {
@@ -39,11 +44,21 @@ function DistributorStatusBadge({ status }: { status: DistributorBillingDetail['
   return <Badge variant="secondary" className="text-xs">Pending</Badge>
 }
 
-function ItemTypeBadge({ type }: { type: 'Sale' | 'Return' | 'FreeIssue' }) {
+function ItemTypeBadge({
+  type,
+  returnType,
+}: {
+  type: 'Sale' | 'Return' | 'FreeIssue'
+  returnType?: string | null
+}) {
   if (type === 'FreeIssue')
     return <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] px-1.5 py-0">Free</Badge>
   if (type === 'Return')
-    return <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Return</Badge>
+    // A distributor return is a quantity struck off during review — visually distinct from a
+    // return the outlet actually sent back.
+    return returnType === 'DistributorReturn'
+      ? <DistributorReturnBadge />
+      : <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Return</Badge>
   return <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Sale</Badge>
 }
 
@@ -201,16 +216,19 @@ export function DistributorBillingDetailDialog({ id, onClose }: Props) {
                     </thead>
                     <tbody className="divide-y">
                       {billing.items.map((item) => {
+                        const isDistributorReturn = item.returnType === 'DistributorReturn'
                         const rowBg =
                           item.billingItemType === 'FreeIssue'
                             ? 'bg-amber-50/50'
+                            : isDistributorReturn
+                            ? 'bg-orange-50/60'
                             : item.billingItemType === 'Return'
                             ? 'bg-red-50/50'
                             : ''
                         return (
                           <tr key={item.id} className={`transition-colors hover:bg-muted/30 ${rowBg}`}>
                             <td className="border-r px-3 py-2.5 align-top">
-                              <ItemTypeBadge type={item.billingItemType} />
+                              <ItemTypeBadge type={item.billingItemType} returnType={item.returnType} />
                             </td>
                             <td className="border-r px-3 py-2.5 max-w-[200px]">
                               <p className="truncate font-medium" title={item.productDescription}>
@@ -226,7 +244,10 @@ export function DistributorBillingDetailDialog({ id, onClose }: Props) {
                               {item.productCode}
                             </td>
                             <td className="border-r px-3 py-2.5 text-right tabular-nums">
-                              {item.quantity}
+                              <AdjustedQuantity
+                                quantity={item.quantity}
+                                originalQuantity={item.originalQuantity}
+                              />
                             </td>
                             <td className="border-r px-3 py-2.5 text-right tabular-nums">
                               {formatCurrency(item.unitPrice)}
@@ -240,6 +261,8 @@ export function DistributorBillingDetailDialog({ id, onClose }: Props) {
                     </tbody>
                   </table>
                 </div>
+
+                <BillingAdjustmentHistory adjustments={billing.adjustments} />
               </div>
             </ScrollArea>
 
@@ -265,6 +288,13 @@ export function DistributorBillingDetailDialog({ id, onClose }: Props) {
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>Free Issue Value</span>
                   <span className="tabular-nums text-amber-600">{formatCurrency(billing.freeIssueValue)}</span>
+                </div>
+              )}
+              {billing.distributorReturnValue > 0 && (
+                // Informational: the parent lines were already reduced, so this is never deducted.
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Distributor Returns (not deducted)</span>
+                  <span className="tabular-nums text-orange-600">{formatCurrency(billing.distributorReturnValue)}</span>
                 </div>
               )}
               <Separator className="my-1" />

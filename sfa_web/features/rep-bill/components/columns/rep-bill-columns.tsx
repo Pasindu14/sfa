@@ -48,7 +48,14 @@ export function getRepBillColumns(onView: (id: number) => void): ColumnDef<RepBi
       header: 'Bill',
       cell: ({ row }) => (
         <div>
-          <p className="font-mono text-xs font-semibold">{row.original.billingNumber}</p>
+          <p className="flex items-center gap-1.5 font-mono text-xs font-semibold">
+            {row.original.billingNumber}
+            {row.original.isAdjusted && (
+              <Badge className="bg-orange-600 px-1.5 py-0 text-[10px] text-white hover:bg-orange-700">
+                Adjusted
+              </Badge>
+            )}
+          </p>
           <p className="text-xs text-muted-foreground">
             {formatColombo(row.original.billingDate, 'd MMM yyyy')}
           </p>

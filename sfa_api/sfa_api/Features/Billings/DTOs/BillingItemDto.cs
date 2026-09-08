@@ -16,5 +16,8 @@ public record BillingItemDto(
     ReturnType? ReturnType,
     FreeIssueSource? FreeIssueSource,
     DateOnly? ExpireDate,
-    int LineNumber
+    int LineNumber,
+    BillingItemSource Source,
+    int? SourceBillingItemId,
+    decimal? OriginalQuantity
 );

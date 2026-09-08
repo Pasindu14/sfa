@@ -17,6 +17,7 @@ export const distributorBillingListItemSchema = z.object({
   paymentType: z.enum(['Cash', 'Credit']),
   isCashCollected: z.boolean(),
   createdAt: z.string(),
+  isAdjusted: z.boolean().default(false),
 })
 
 export const billingItemSchema = z.object({
@@ -30,9 +31,38 @@ export const billingItemSchema = z.object({
   discountAmount: z.number(),
   totalPrice: z.number(),
   billingItemType: z.enum(['Sale', 'Return', 'FreeIssue']),
-  returnType: z.enum(['MarketResell', 'Damage', 'Expire']).nullable(),
+  // 'DistributorReturn' is a quantity the distributor struck off during review — a strict enum
+  // without it throws on every adjusted bill.
+  returnType: z.enum(['MarketResell', 'Damage', 'Expire', 'DistributorReturn']).nullable(),
   freeIssueSource: z.enum(['Company', 'Distributor']).nullable(),
   lineNumber: z.number(),
+  source: z.enum(['SalesRep', 'DistributorReturn']).default('SalesRep'),
+  sourceBillingItemId: z.number().nullable().default(null),
+  originalQuantity: z.number().nullable().default(null),
+})
+
+export const billingAdjustmentLineSchema = z.object({
+  billingItemId: z.number(),
+  productId: z.number(),
+  productCode: z.string(),
+  productDescription: z.string(),
+  oldQuantity: z.number(),
+  newQuantity: z.number(),
+  oldTotalPrice: z.number(),
+  newTotalPrice: z.number(),
+  returnedQuantity: z.number(),
+  returnValue: z.number(),
+})
+
+export const billingAdjustmentSchema = z.object({
+  id: z.number(),
+  adjustedByUserId: z.number(),
+  adjustedByName: z.string(),
+  adjustedAt: z.string(),
+  note: z.string().nullable(),
+  oldTotalAmount: z.number(),
+  newTotalAmount: z.number(),
+  lines: z.array(billingAdjustmentLineSchema),
 })
 
 export const distributorBillingDetailSchema = distributorBillingListItemSchema.extend({
@@ -43,16 +73,33 @@ export const distributorBillingDetailSchema = distributorBillingListItemSchema.e
   freeIssueValue: z.number(),
   freeIssueValueCompany: z.number(),
   freeIssueValueDistributor: z.number(),
+  distributorReturnValue: z.number().default(0),
   rejectionReason: z.string().nullable().optional(),
   notes: z.string().nullable(),
   items: z.array(billingItemSchema),
+  lastAdjustedAt: z.string().nullable().default(null),
+  adjustmentCount: z.number().default(0),
+  adjustments: z.array(billingAdjustmentSchema).default([]),
 })
 
 export const rejectBillingSchema = z.object({
   reason: z.string().optional(),
 })
 
+export const adjustBillingItemsSchema = z.object({
+  items: z.array(
+    z.object({
+      billingItemId: z.number(),
+      quantity: z.number().min(0, 'Quantity cannot be negative'),
+    }),
+  ),
+  note: z.string().max(1000, 'Note must not exceed 1000 characters').optional(),
+})
+
 export type DistributorBillingListItem = z.infer<typeof distributorBillingListItemSchema>
 export type DistributorBillingDetail = z.infer<typeof distributorBillingDetailSchema>
 export type BillingLineItem = z.infer<typeof billingItemSchema>
+export type BillingAdjustment = z.infer<typeof billingAdjustmentSchema>
+export type BillingAdjustmentLine = z.infer<typeof billingAdjustmentLineSchema>
 export type RejectBillingInput = z.infer<typeof rejectBillingSchema>
+export type AdjustBillingItemsInput = z.infer<typeof adjustBillingItemsSchema>

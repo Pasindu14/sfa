@@ -189,66 +189,34 @@ public class BillingService(
                 throw new InsufficientStockException(shortages);
         }
 
-        // ⑧ Compute amounts
-        // Sale       → discountAmount = qty × price × rate/100; totalPrice = qty×price − discountAmount; counts toward SubTotal
-        // FreeIssue  → discountAmount = 0; totalPrice = qty × price (informational FOC value); excluded from SubTotal
-        // Return     → totalPrice = qty × price; tracked separately, no SubTotal contribution
+        // ⑧ Compute amounts — the per-line and bill-level math both live in ApplyLineMath /
+        // RecomputeTotals so that this path and AdjustItemsAsync can never drift apart.
         var billDiscountRate = request.BillDiscountRate;
-        decimal subTotal                  = 0m;
-        decimal freeIssueValueCompany     = 0m;
-        decimal freeIssueValueDistributor = 0m;
-        decimal returnValue               = 0m;
-        decimal itemWiseTotalDiscount     = 0m;   // Σ discountAmount for Sale lines only
         var lineItems = request.Items.Select((item, idx) =>
         {
-            decimal discountAmount;
-            decimal totalPrice;
-
-            switch (item.BillingItemType)
-            {
-                case BillingItemType.FreeIssue:
-                    discountAmount = 0m;
-                    totalPrice     = Math.Round(item.Quantity * item.UnitPrice, 2);
-                    if (item.FreeIssueSource == FreeIssueSource.Distributor)
-                        freeIssueValueDistributor += totalPrice;
-                    else
-                        freeIssueValueCompany += totalPrice;
-                    break;
-                case BillingItemType.Sale:
-                    discountAmount = Math.Round(item.Quantity * item.UnitPrice * item.DiscountRate / 100m, 2);
-                    totalPrice     = Math.Round(item.Quantity * item.UnitPrice - discountAmount, 2);
-                    subTotal              += totalPrice;
-                    itemWiseTotalDiscount += discountAmount;   // Sale-line discounts only
-                    break;
-                default: // Return
-                    discountAmount = Math.Round(item.Quantity * item.UnitPrice * item.DiscountRate / 100m, 2);
-                    totalPrice     = Math.Round(item.Quantity * item.UnitPrice - discountAmount, 2);
-                    if (item.ReturnType == ReturnType.MarketResell)
-                        returnValue += totalPrice;
-                    break;
-            }
-
-            return new BillingItem
+            var line = new BillingItem
             {
                 ProductId        = item.ProductId,
                 Quantity         = item.Quantity,
                 UnitPrice        = item.UnitPrice,
-                DiscountRate     = item.BillingItemType == BillingItemType.FreeIssue ? 0m : item.DiscountRate,
-                DiscountAmount   = discountAmount,
-                TotalPrice       = totalPrice,
+                DiscountRate     = item.DiscountRate,
                 BillingItemType  = item.BillingItemType,
                 ReturnType       = item.ReturnType,
                 FreeIssueSource  = item.BillingItemType == BillingItemType.FreeIssue ? item.FreeIssueSource : null,
                 ExpireDate       = item.ExpireDate,
                 LineNumber       = idx + 1,
+                Source           = BillingItemSource.SalesRep,
                 CreatedAt        = DateTime.UtcNow
             };
+            ApplyLineMath(line);
+            return line;
         }).ToList();
-        var freeIssueValue = freeIssueValueCompany + freeIssueValueDistributor;
 
-        var billDiscountAmount = Math.Round(subTotal * billDiscountRate / 100m, 2);
-        var totalAmount        = subTotal - billDiscountAmount - returnValue;
-        var totalDiscount      = itemWiseTotalDiscount + billDiscountAmount;
+        var totals             = RecomputeTotals(lineItems, billDiscountRate);
+        var subTotal           = totals.SubTotal;
+        var returnValue        = totals.ReturnValue;
+        var billDiscountAmount = totals.BillDiscountAmount;
+        var totalAmount        = totals.TotalAmount;
 
         // ⑧½ Guard against a negative grand total (finding #4). The bill-level discount plus market
         // returns must not exceed the sale sub-total — otherwise TotalAmount goes negative and is
@@ -290,16 +258,7 @@ public class BillingService(
             TerritoryId       = geo.TerritoryId,
             AreaId            = geo.AreaId,
             RegionId          = geo.RegionId,
-            SubTotalAmount    = subTotal,
             BillDiscountRate  = billDiscountRate,
-            BillDiscountAmount = billDiscountAmount,
-            TotalAmount       = totalAmount,
-            ItemWiseTotalDiscount     = itemWiseTotalDiscount,
-            TotalDiscount             = totalDiscount,
-            ReturnValue               = returnValue,
-            FreeIssueValue            = freeIssueValue,
-            FreeIssueValueCompany     = freeIssueValueCompany,
-            FreeIssueValueDistributor = freeIssueValueDistributor,
             RepStatus         = RepBillingStatus.Submitted,
             DistributorStatus = DistributorBillingStatus.Pending,
             Notes                    = request.Notes,
@@ -311,6 +270,7 @@ public class BillingService(
             CreatedBy         = salesRepId,
             Items             = lineItems
         };
+        ApplyTotals(billing, totals);
 
         // ⑫ ExecutionStrategy + transaction + stock movement (atomic).
         // Wrapped so a ClientBillId unique-index violation from a concurrent duplicate (two
@@ -447,6 +407,112 @@ public class BillingService(
             outletId, distributorId, salesRepId,
             dateFrom, dateTo, paymentType, isCashCollected, billNo, ct);
 
+    // ── Money math (shared by CreateAsync and AdjustItemsAsync) ───────────
+
+    /// <summary>
+    /// Per-line money math. Reads Quantity / UnitPrice / DiscountRate off the line and writes back
+    /// DiscountAmount and TotalPrice.
+    /// Sale + Return → discountAmount = qty × price × rate/100; totalPrice = qty×price − discountAmount.
+    /// FreeIssue     → no discount ever; totalPrice = qty × price (informational FOC value).
+    /// </summary>
+    private static void ApplyLineMath(BillingItem line)
+    {
+        if (line.BillingItemType == BillingItemType.FreeIssue)
+        {
+            line.DiscountRate   = 0m;
+            line.DiscountAmount = 0m;
+            line.TotalPrice     = Math.Round(line.Quantity * line.UnitPrice, 2);
+            return;
+        }
+
+        line.DiscountAmount = Math.Round(line.Quantity * line.UnitPrice * line.DiscountRate / 100m, 2);
+        line.TotalPrice     = Math.Round(line.Quantity * line.UnitPrice - line.DiscountAmount, 2);
+    }
+
+    private readonly record struct BillTotals(
+        decimal SubTotal,
+        decimal BillDiscountAmount,
+        decimal TotalAmount,
+        decimal FreeIssueValue,
+        decimal FreeIssueValueCompany,
+        decimal FreeIssueValueDistributor,
+        decimal ReturnValue,
+        decimal DistributorReturnValue,
+        decimal ItemWiseTotalDiscount,
+        decimal TotalDiscount);
+
+    /// <summary>
+    /// Rolls the bill-level amounts up from the lines. Every line must already have had
+    /// <see cref="ApplyLineMath"/> applied.
+    /// </summary>
+    private static BillTotals RecomputeTotals(IEnumerable<BillingItem> lines, decimal billDiscountRate)
+    {
+        decimal subTotal               = 0m;
+        decimal freeIssueCompany       = 0m;
+        decimal freeIssueDistributor   = 0m;
+        decimal returnValue            = 0m;
+        decimal distributorReturnValue = 0m;
+        decimal itemWiseTotalDiscount  = 0m;   // Σ discountAmount for Sale lines only
+
+        foreach (var line in lines)
+        {
+            switch (line.BillingItemType)
+            {
+                case BillingItemType.FreeIssue:
+                    if (line.FreeIssueSource == FreeIssueSource.Distributor)
+                        freeIssueDistributor += line.TotalPrice;
+                    else
+                        freeIssueCompany += line.TotalPrice;
+                    break;
+
+                case BillingItemType.Sale:
+                    subTotal              += line.TotalPrice;
+                    itemWiseTotalDiscount += line.DiscountAmount;
+                    break;
+
+                default: // Return
+                    if (line.ReturnType == ReturnType.MarketResell)
+                        returnValue += line.TotalPrice;
+                    // A DistributorReturn is tracked separately and deliberately NOT added to
+                    // returnValue. returnValue is subtracted from TotalAmount, but the parent
+                    // Sale/FreeIssue line has already been reduced by this same quantity — counting
+                    // it here too would deduct the distributor's reduction twice.
+                    else if (line.ReturnType == ReturnType.DistributorReturn)
+                        distributorReturnValue += line.TotalPrice;
+                    // Damage / Expire: recorded only, no value contribution.
+                    break;
+            }
+        }
+
+        var billDiscountAmount = Math.Round(subTotal * billDiscountRate / 100m, 2);
+
+        return new BillTotals(
+            SubTotal:                  subTotal,
+            BillDiscountAmount:        billDiscountAmount,
+            TotalAmount:               subTotal - billDiscountAmount - returnValue,
+            FreeIssueValue:            freeIssueCompany + freeIssueDistributor,
+            FreeIssueValueCompany:     freeIssueCompany,
+            FreeIssueValueDistributor: freeIssueDistributor,
+            ReturnValue:               returnValue,
+            DistributorReturnValue:    distributorReturnValue,
+            ItemWiseTotalDiscount:     itemWiseTotalDiscount,
+            TotalDiscount:             itemWiseTotalDiscount + billDiscountAmount);
+    }
+
+    private static void ApplyTotals(Billing billing, BillTotals t)
+    {
+        billing.SubTotalAmount            = t.SubTotal;
+        billing.BillDiscountAmount        = t.BillDiscountAmount;
+        billing.TotalAmount               = t.TotalAmount;
+        billing.FreeIssueValue            = t.FreeIssueValue;
+        billing.FreeIssueValueCompany     = t.FreeIssueValueCompany;
+        billing.FreeIssueValueDistributor = t.FreeIssueValueDistributor;
+        billing.ReturnValue               = t.ReturnValue;
+        billing.DistributorReturnValue    = t.DistributorReturnValue;
+        billing.ItemWiseTotalDiscount     = t.ItemWiseTotalDiscount;
+        billing.TotalDiscount             = t.TotalDiscount;
+    }
+
     // ── Stock reversal ────────────────────────────────────────────────────
 
     /// <summary>
@@ -495,13 +561,253 @@ public class BillingService(
                     break;
 
                 // BillingItemType.Return (Damage / Expire): no stock movement at creation → nothing to reverse
+                //
+                // BillingItemType.Return (DistributorReturn): also nothing to reverse, and the
+                // `when ReturnType == MarketResell` guard above is what keeps it that way. Those units
+                // were already credited back to the distributor by AdjustItemsAsync at the moment the
+                // quantity was reduced, and the parent Sale/FreeIssue line — which this loop does
+                // reverse — now carries only the reduced quantity. Reversing the return line as well
+                // would credit the same physical units twice.
             }
         }
     }
 
+    // ── Distributor quantity adjustment ───────────────────────────────────
+
+    public async Task<BillingDto> AdjustItemsAsync(
+        int billingId, int userId, AdjustBillingItemsRequest request, CancellationToken ct = default)
+    {
+        // Same lock key as approve/reject/cancel/payment-type, so an adjustment can never interleave
+        // with a status transition on the same bill.
+        await using var @lock = await _lockService.AcquireAsync($"billing:transition:{billingId}", ct)
+            ?? throw new ConcurrencyConflictException(new { billingId, message = "Another operation is in progress for this billing." });
+
+        var billing = await _billingRepository.GetTrackedByIdWithItemsAsync(billingId, ct)
+            ?? throw new NotFoundException("Billing", billingId);
+
+        var user = await _userRepository.GetUserByIdAsync(userId, ct);
+        if (user?.DistributorId == null || user.DistributorId != billing.DistributorId)
+            throw new AuthorizationException("Billing");
+
+        if (billing.RepStatus != RepBillingStatus.Submitted)
+            throw new BusinessRuleException(
+                "BILLING_NOT_ACTIONABLE",
+                $"Billing {billing.BillingNumber} cannot be adjusted — rep status is {billing.RepStatus}.");
+
+        if (billing.DistributorStatus != DistributorBillingStatus.Pending)
+            throw new BusinessRuleException(
+                "BILLING_ALREADY_ACTIONED",
+                $"Billing {billing.BillingNumber} has already been {billing.DistributorStatus}.");
+
+        var itemsById = billing.Items.ToDictionary(i => i.Id);
+
+        // ① Validate every requested line against the bill as it stands right now, before mutating
+        //    anything. A second adjustment round compares against the already-reduced quantity.
+        var reductions = new List<(BillingItem Line, decimal OldQuantity, decimal NewQuantity)>();
+        foreach (var requested in request.Items)
+        {
+            if (!itemsById.TryGetValue(requested.BillingItemId, out var line))
+                throw new BusinessRuleException(
+                    "BILLING_ITEM_NOT_ON_BILL",
+                    $"Billing item {requested.BillingItemId} does not belong to bill {billing.BillingNumber}.");
+
+            if (line.BillingItemType is not (BillingItemType.Sale or BillingItemType.FreeIssue))
+                throw new BusinessRuleException(
+                    "BILLING_LINE_NOT_ADJUSTABLE",
+                    $"Line {line.LineNumber} is a {line.BillingItemType} line — only Sale and Free Issue lines can be adjusted.");
+
+            if (requested.Quantity > line.Quantity)
+                throw new BusinessRuleException(
+                    "BILLING_QTY_INCREASE_NOT_ALLOWED",
+                    $"Line {line.LineNumber} cannot be increased above the billed quantity of {line.Quantity:0.####}.",
+                    new { billingItemId = line.Id, currentQuantity = line.Quantity, requestedQuantity = requested.Quantity });
+
+            if (requested.Quantity < 0m)
+                throw new BusinessRuleException(
+                    "BILLING_QTY_NEGATIVE",
+                    $"Line {line.LineNumber} cannot have a negative quantity.");
+
+            if (requested.Quantity < line.Quantity)
+                reductions.Add((line, line.Quantity, requested.Quantity));
+        }
+
+        if (reductions.Count == 0)
+            throw new BusinessRuleException(
+                "BILLING_NO_CHANGES",
+                "No quantities were changed.");
+
+        // ② A bill where every sale and free-issue line ends at zero is not an adjustment — the
+        //    distributor should reject it so the rep is notified and the trail reads correctly.
+        var wouldBeZero = reductions.Where(r => r.NewQuantity == 0m).Select(r => r.Line.Id).ToHashSet();
+        var anyRemaining = billing.Items.Any(i =>
+            i.BillingItemType is BillingItemType.Sale or BillingItemType.FreeIssue
+            && !wouldBeZero.Contains(i.Id)
+            && i.Quantity > 0m);
+        if (!anyRemaining)
+            throw new BusinessRuleException(
+                "BILLING_ALL_LINES_ZERO",
+                "Every line would be reduced to zero. Reject the bill instead of zeroing it.");
+
+        var now              = DateTime.UtcNow;
+        var oldTotalAmount   = billing.TotalAmount;
+        var nextLineNumber   = billing.Items.Count == 0 ? 1 : billing.Items.Max(i => i.LineNumber) + 1;
+        var adjustment = new BillingAdjustment
+        {
+            BillingId        = billing.Id,
+            AdjustedByUserId = userId,
+            AdjustedAt       = now,
+            Note             = request.Note,
+            OldTotalAmount   = oldTotalAmount
+        };
+        var returnLines = new List<BillingItem>();
+
+        // ③ Reduce each line and carve the difference off into a DistributorReturn line, priced at
+        //    the parent line's unit price and discount rate as they stand at this moment.
+        foreach (var (line, oldQuantity, newQuantity) in reductions)
+        {
+            var oldTotalPrice = line.TotalPrice;
+            var returnedQty   = oldQuantity - newQuantity;
+
+            line.OriginalQuantity ??= oldQuantity;   // first adjustment only — 10→7→5 still reports 10
+            line.Quantity           = newQuantity;
+            ApplyLineMath(line);
+
+            var returnLine = new BillingItem
+            {
+                BillingId           = billing.Id,
+                ProductId           = line.ProductId,
+                Quantity            = returnedQty,
+                UnitPrice           = line.UnitPrice,
+                DiscountRate        = line.DiscountRate,
+                BillingItemType     = BillingItemType.Return,
+                ReturnType          = ReturnType.DistributorReturn,
+                // Carried over so a later reversal can tell which stock pool this line's parent drew
+                // from; null on a Sale parent.
+                FreeIssueSource     = line.FreeIssueSource,
+                ExpireDate          = line.ExpireDate,
+                LineNumber          = nextLineNumber++,
+                Source              = BillingItemSource.DistributorReturn,
+                SourceBillingItemId = line.Id,
+                CreatedAt           = now
+            };
+            // DiscountRate is 0 on a FreeIssue parent, so ApplyLineMath prices a FOC return at the
+            // full unit value — the same basis the original line used.
+            ApplyLineMath(returnLine);
+            returnLines.Add(returnLine);
+
+            adjustment.Lines.Add(new BillingAdjustmentLine
+            {
+                BillingItemId    = line.Id,
+                ProductId        = line.ProductId,
+                OldQuantity      = oldQuantity,
+                NewQuantity      = newQuantity,
+                OldTotalPrice    = oldTotalPrice,
+                NewTotalPrice    = line.TotalPrice,
+                ReturnedQuantity = returnedQty,
+                ReturnValue      = returnLine.TotalPrice
+            });
+        }
+
+        foreach (var returnLine in returnLines)
+            billing.Items.Add(returnLine);
+
+        // ④ Roll the header up from the lines, using the same math the create path uses.
+        var totals = RecomputeTotals(billing.Items, billing.BillDiscountRate);
+
+        if (totals.TotalAmount < 0m)
+            throw new BusinessRuleException(
+                "BILL_TOTAL_NEGATIVE",
+                $"Bill total would be negative ({totals.TotalAmount:F2}): sub-total {totals.SubTotal:F2} minus " +
+                $"bill discount {totals.BillDiscountAmount:F2} and returns {totals.ReturnValue:F2}.",
+                new { subTotal = totals.SubTotal, billDiscountAmount = totals.BillDiscountAmount, returnValue = totals.ReturnValue, totalAmount = totals.TotalAmount });
+
+        ApplyTotals(billing, totals);
+        adjustment.NewTotalAmount = billing.TotalAmount;
+        billing.Adjustments.Add(adjustment);
+        billing.LastAdjustedAt = now;
+        billing.AdjustmentCount += 1;
+        billing.UpdatedAt = now;
+        billing.UpdatedBy = userId;
+
+        // ⑤ Persist and credit the returned quantities back, atomically. EnableRetryOnFailure is on,
+        //    so a manual transaction must run inside the execution strategy or it faults in prod.
+        var strategy = _db.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var tx = await _billingRepository.BeginTransactionAsync(ct);
+            try
+            {
+                await _billingRepository.SaveChangesAsync(ct);
+
+                foreach (var (line, oldQuantity, newQuantity) in reductions)
+                {
+                    var returnedQty = oldQuantity - newQuantity;
+
+                    // Credit back into whichever pool the parent line drew from at creation
+                    // (BillingService.CreateAsync ⑫). Company-funded FOC came out of the FreeIssue
+                    // pool; everything else out of Normal.
+                    var pool = line.BillingItemType == BillingItemType.FreeIssue
+                               && line.FreeIssueSource != FreeIssueSource.Distributor
+                        ? StockType.FreeIssue
+                        : StockType.Normal;
+
+                    await _stockRepository.GetStockForUpdateAsync(billing.DistributorId, line.ProductId, pool, ct);
+                    await _stockRepository.CreditStockAsync(
+                        billing.DistributorId, line.ProductId, returnedQty,
+                        pool, StockTransactionType.BillingReversal,
+                        "Billing", billing.Id, userId,
+                        notes: "Distributor return on bill adjustment", ct: ct);
+                }
+
+                await _billingRepository.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+            }
+            catch
+            {
+                await tx.RollbackAsync(ct);
+                throw;
+            }
+        });
+
+        // A pending bill does not move the approved-only sales summary, but it does move the pending
+        // totals on the rep's screens, which are cached the same way.
+        await InvalidateSalesCachesAsync(ct);
+
+        var result = await _billingRepository.GetByIdAsync(billingId, ct)
+            ?? throw new DatabaseUnavailableException();
+
+        await _notificationService.SendToUserAsync(
+            billing.SalesRepId,
+            "Bill Quantities Adjusted",
+            $"The distributor adjusted quantities on bill {result.BillingNumber}. New total: {result.TotalAmount:N2}.",
+            new Dictionary<string, string>
+            {
+                ["type"] = "BILL_ADJUSTED",
+                ["billingId"] = billing.Id.ToString(),
+                ["billingNumber"] = result.BillingNumber
+            }, ct);
+
+        return ProjectToDto(result);
+    }
+
     // ── Projection ────────────────────────────────────────────────────────
 
-    private static BillingDto ProjectToDto(Billing b) => new(
+    private static BillingDto ProjectToDto(Billing b)
+    {
+        // Adjustment lines carry only a ProductId; the products themselves are already loaded on the
+        // bill's items (an adjusted line is by definition a line on this bill), so resolve names from
+        // there rather than issuing another query.
+        var productsById = b.Items
+            .Where(i => i.Product is not null)
+            .GroupBy(i => i.ProductId)
+            .ToDictionary(g => g.Key, g => g.First().Product);
+
+        return ProjectToDto(b, productsById);
+    }
+
+    private static BillingDto ProjectToDto(
+        Billing b,
+        IReadOnlyDictionary<int, sfa_api.Features.Products.Entities.Product> productsById) => new(
         b.Id,
         b.BillingNumber,
         b.BillingDate,
@@ -534,6 +840,7 @@ public class BillingService(
         b.FreeIssueValueDistributor,
         b.ItemWiseTotalDiscount,
         b.TotalDiscount,
+        b.DistributorReturnValue,
         b.RepStatus,
         b.DistributorStatus,
         b.RejectionReason,
@@ -557,7 +864,31 @@ public class BillingService(
             i.ReturnType,
             i.FreeIssueSource,
             i.ExpireDate,
-            i.LineNumber)).ToList()
+            i.LineNumber,
+            i.Source,
+            i.SourceBillingItemId,
+            i.OriginalQuantity)).ToList(),
+        b.LastAdjustedAt,
+        b.AdjustmentCount,
+        b.Adjustments.OrderByDescending(a => a.AdjustedAt).Select(a => new BillingAdjustmentDto(
+            a.Id,
+            a.AdjustedByUserId,
+            a.AdjustedBy?.Name ?? string.Empty,
+            a.AdjustedAt,
+            a.Note,
+            a.OldTotalAmount,
+            a.NewTotalAmount,
+            a.Lines.Select(l => new BillingAdjustmentLineDto(
+                l.BillingItemId,
+                l.ProductId,
+                productsById.TryGetValue(l.ProductId, out var p) ? p.Code : string.Empty,
+                productsById.TryGetValue(l.ProductId, out var p2) ? p2.ItemDescription : string.Empty,
+                l.OldQuantity,
+                l.NewQuantity,
+                l.OldTotalPrice,
+                l.NewTotalPrice,
+                l.ReturnedQuantity,
+                l.ReturnValue)).ToList())).ToList()
     );
 
     public async Task<OutletBillingSummaryResponseDto> GetOutletSummaryAsync(

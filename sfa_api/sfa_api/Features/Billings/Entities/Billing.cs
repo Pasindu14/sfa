@@ -54,6 +54,14 @@ public class Billing
     public decimal FreeIssueValueCompany { get; set; }     // Σ item.TotalPrice for FreeIssue lines funded by the company (drawn from FOC stock pool)
     public decimal FreeIssueValueDistributor { get; set; } // Σ item.TotalPrice for FreeIssue lines funded by the distributor (drawn from Normal stock pool)
     public decimal ReturnValue { get; set; }               // Σ item.TotalPrice for MarketResell return lines — deducted from TotalAmount
+
+    /// <summary>
+    /// Σ item.TotalPrice for DistributorReturn lines — quantities the distributor declined during review.
+    /// Informational ONLY: it is never deducted from <see cref="TotalAmount"/>, because the parent
+    /// Sale/FreeIssue line was already reduced by the same quantity. Subtracting it too would count the
+    /// reduction twice.
+    /// </summary>
+    public decimal DistributorReturnValue { get; set; }
     public decimal ItemWiseTotalDiscount { get; set; }     // Σ item.DiscountAmount for Sale lines only — discount granted at the line level
     public decimal TotalDiscount { get; set; }             // ItemWiseTotalDiscount + BillDiscountAmount — full discount the customer received
 
@@ -65,6 +73,12 @@ public class Billing
     public DateTime? ApprovedAt { get; set; }
     public DateTime? RejectedAt { get; set; }
     public string? Notes { get; set; }
+
+    /// <summary>When the distributor last reduced a quantity on this bill. Null if never adjusted.</summary>
+    public DateTime? LastAdjustedAt { get; set; }
+
+    /// <summary>Number of adjustment rounds. Denormalized so list queries can badge rows without a join.</summary>
+    public int AdjustmentCount { get; set; }
 
     // Location captured on the device at time of billing
     public double? Latitude { get; set; }
@@ -96,4 +110,5 @@ public class Billing
     public User?       Rsm         { get; set; }
     public User?       Nsm         { get; set; }
     public ICollection<BillingItem> Items { get; set; } = [];
+    public ICollection<BillingAdjustment> Adjustments { get; set; } = [];
 }

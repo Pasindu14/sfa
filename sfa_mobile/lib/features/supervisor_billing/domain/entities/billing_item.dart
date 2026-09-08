@@ -2,7 +2,7 @@ import 'package:equatable/equatable.dart';
 
 enum BillingItemType { sale, returnItem, freeIssue }
 
-enum ReturnType { marketResell, damage, expire }
+enum ReturnType { marketResell, damage, expire, distributorReturn }
 
 class BillingItem extends Equatable {
   final int id;

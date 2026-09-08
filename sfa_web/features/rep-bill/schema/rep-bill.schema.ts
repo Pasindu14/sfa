@@ -24,6 +24,7 @@ export const repBillListItemSchema = z.object({
   distributorStatus: z.enum(['Pending', 'Approved', 'Rejected']),
   paymentType: z.enum(['Cash', 'Credit']),
   isCashCollected: z.boolean(),
+  isAdjusted: z.boolean().default(false),
   createdAt: z.string(),
 })
 
@@ -39,10 +40,40 @@ export const repBillItemSchema = z.object({
   discountAmount: z.number(),
   totalPrice: z.number(),
   billingItemType: z.enum(['Sale', 'Return', 'FreeIssue']),
-  returnType: z.enum(['MarketResell', 'Damage', 'Expire']).nullable(),
+  // 'DistributorReturn' is a quantity the distributor struck off while reviewing the bill — a
+  // strict enum without it throws on every adjusted bill.
+  returnType: z.enum(['MarketResell', 'Damage', 'Expire', 'DistributorReturn']).nullable(),
   freeIssueSource: z.enum(['Company', 'Distributor']).nullable(),
   expireDate: z.string().nullable(),
   lineNumber: z.number(),
+  source: z.enum(['SalesRep', 'DistributorReturn']).default('SalesRep'),
+  sourceBillingItemId: z.number().nullable().default(null),
+  originalQuantity: z.number().nullable().default(null),
+})
+
+/** One line of a distributor adjustment round — old → new, with what came back to stock. */
+export const repBillAdjustmentLineSchema = z.object({
+  billingItemId: z.number(),
+  productId: z.number(),
+  productCode: z.string(),
+  productDescription: z.string(),
+  oldQuantity: z.number(),
+  newQuantity: z.number(),
+  oldTotalPrice: z.number(),
+  newTotalPrice: z.number(),
+  returnedQuantity: z.number(),
+  returnValue: z.number(),
+})
+
+export const repBillAdjustmentSchema = z.object({
+  id: z.number(),
+  adjustedByUserId: z.number(),
+  adjustedByName: z.string(),
+  adjustedAt: z.string(),
+  note: z.string().nullable(),
+  oldTotalAmount: z.number(),
+  newTotalAmount: z.number(),
+  lines: z.array(repBillAdjustmentLineSchema),
 })
 
 /**
@@ -77,12 +108,18 @@ export const repBillDetailSchema = repBillListItemSchema.extend({
   freeIssueValueDistributor: z.number(),
   itemWiseTotalDiscount: z.number(),
   totalDiscount: z.number(),
+  distributorReturnValue: z.number().default(0),
 
   rejectionReason: z.string().nullable(),
   notes: z.string().nullable(),
   latitude: z.number().nullable(),
   longitude: z.number().nullable(),
   items: z.array(repBillItemSchema),
+
+  // Distributor adjustment trail
+  lastAdjustedAt: z.string().nullable().default(null),
+  adjustmentCount: z.number().default(0),
+  adjustments: z.array(repBillAdjustmentSchema).default([]),
 })
 
 /** A supervisor option, from `GET /api/v1/users?role=Supervisor`. */
@@ -103,5 +140,6 @@ export const repOptionSchema = z.object({
 export type RepBillListItem = z.infer<typeof repBillListItemSchema>
 export type RepBillDetail = z.infer<typeof repBillDetailSchema>
 export type RepBillLineItem = z.infer<typeof repBillItemSchema>
+export type RepBillAdjustment = z.infer<typeof repBillAdjustmentSchema>
 export type SupervisorOption = z.infer<typeof supervisorOptionSchema>
 export type RepOption = z.infer<typeof repOptionSchema>

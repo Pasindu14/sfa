@@ -742,6 +742,8 @@ class _ItemRow extends StatelessWidget {
         return 'Damage';
       case ReturnType.expire:
         return 'Expire';
+      case ReturnType.distributorReturn:
+        return 'Dist. Return';
     }
   }
 }

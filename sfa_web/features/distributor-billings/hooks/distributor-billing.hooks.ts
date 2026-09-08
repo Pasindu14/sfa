@@ -7,12 +7,16 @@ import {
   getMyBillingDetailAction,
   approveBillingAction,
   rejectBillingAction,
+  adjustBillingItemsAction,
   updatePaymentTypeAction,
   updateCashCollectedAction,
 } from '../actions/distributor-billing.actions'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import { toColomboDateStr } from '@/lib/utils/datetime'
-import type { DistributorBillingListItem } from '../schema/distributor-billing.schema'
+import type {
+  DistributorBillingListItem,
+  AdjustBillingItemsInput,
+} from '../schema/distributor-billing.schema'
 
 // Serialize date filters in Sri Lanka time (not the browser's timezone). See lib/utils/datetime.ts.
 const toLocalDateStr = toColomboDateStr
@@ -191,6 +195,26 @@ export function useRejectBilling(onSuccess?: () => void) {
     },
     onError: (error: any) => {
       handleErrorToast(error, 'billing', 'reject')
+    },
+  })
+}
+
+export function useAdjustBillingItems(onSuccess?: () => void) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, input }: { id: number; input: AdjustBillingItemsInput }) => {
+      const result = await adjustBillingItemsAction(id, input)
+      if (!result.success) throw result
+      return result.data
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: myBillingKeys.all })
+      toast.success('Quantities adjusted — the reduced stock has been returned')
+      onSuccess?.()
+      return data
+    },
+    onError: (error: any) => {
+      handleErrorToast(error, 'billing', 'update')
     },
   })
 }

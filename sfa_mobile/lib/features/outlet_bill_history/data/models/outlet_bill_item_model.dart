@@ -13,6 +13,8 @@ class OutletBillItemModel {
   final bool isFreeIssue;
   final String billingItemType;
   final String? returnType;
+  final String source;
+  final double? originalQuantity;
   final String? expireDate;
   final int lineNumber;
 
@@ -29,6 +31,8 @@ class OutletBillItemModel {
     required this.isFreeIssue,
     required this.billingItemType,
     this.returnType,
+    this.source = 'SalesRep',
+    this.originalQuantity,
     this.expireDate,
     required this.lineNumber,
   });
@@ -47,6 +51,10 @@ class OutletBillItemModel {
         isFreeIssue: (json['billingItemType'] as String) == 'FreeIssue',
         billingItemType: json['billingItemType'] as String,
         returnType: json['returnType'] as String?,
+        // Defaulted rather than required so an older API build (which sends neither field)
+        // still parses instead of crashing the bill detail screen.
+        source: json['source'] as String? ?? 'SalesRep',
+        originalQuantity: (json['originalQuantity'] as num?)?.toDouble(),
         expireDate: json['expireDate'] as String?,
         lineNumber: json['lineNumber'] as int,
       );
@@ -64,6 +72,8 @@ class OutletBillItemModel {
         isFreeIssue: isFreeIssue,
         billingItemType: billingItemType,
         returnType: returnType,
+        source: source,
+        originalQuantity: originalQuantity,
         expireDate: expireDate != null ? DateTime.parse(expireDate!) : null,
         lineNumber: lineNumber,
       );

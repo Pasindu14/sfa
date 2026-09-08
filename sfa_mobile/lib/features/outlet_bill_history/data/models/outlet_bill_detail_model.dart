@@ -18,6 +18,9 @@ class OutletBillDetailModel {
   final String? rejectionReason;
   final String? notes;
   final String createdAt;
+  final String? lastAdjustedAt;
+  final int adjustmentCount;
+  final double distributorReturnValue;
   final List<OutletBillItemModel> items;
 
   const OutletBillDetailModel({
@@ -37,6 +40,9 @@ class OutletBillDetailModel {
     this.rejectionReason,
     this.notes,
     required this.createdAt,
+    this.lastAdjustedAt,
+    this.adjustmentCount = 0,
+    this.distributorReturnValue = 0,
     required this.items,
   });
 
@@ -58,6 +64,11 @@ class OutletBillDetailModel {
         rejectionReason: json['rejectionReason'] as String?,
         notes: json['notes'] as String?,
         createdAt: json['createdAt'] as String,
+        // Tolerant of nulls so an older API build still parses.
+        lastAdjustedAt: json['lastAdjustedAt'] as String?,
+        adjustmentCount: (json['adjustmentCount'] as num?)?.toInt() ?? 0,
+        distributorReturnValue:
+            (json['distributorReturnValue'] as num?)?.toDouble() ?? 0,
         items: (json['items'] as List<dynamic>)
             .map((e) => OutletBillItemModel.fromJson(e as Map<String, dynamic>))
             .toList(),
@@ -80,6 +91,10 @@ class OutletBillDetailModel {
         rejectionReason: rejectionReason,
         notes: notes,
         createdAt: DateTime.parse(createdAt),
+        lastAdjustedAt:
+            lastAdjustedAt != null ? DateTime.parse(lastAdjustedAt!) : null,
+        adjustmentCount: adjustmentCount,
+        distributorReturnValue: distributorReturnValue,
         items: items.map((e) => e.toEntity()).toList(),
       );
 }

@@ -77,6 +77,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<DailyRouteAssignment> DailyRouteAssignments => Set<DailyRouteAssignment>();
     public DbSet<Billing> Billings => Set<Billing>();
     public DbSet<BillingItem> BillingItems => Set<BillingItem>();
+    public DbSet<BillingAdjustment> BillingAdjustments => Set<BillingAdjustment>();
+    public DbSet<BillingAdjustmentLine> BillingAdjustmentLines => Set<BillingAdjustmentLine>();
     public DbSet<NotBilling> NotBillings => Set<NotBilling>();
     public DbSet<SalesTarget> SalesTargets => Set<SalesTarget>();
     public DbSet<SalesTargetImportBatch> SalesTargetImportBatches => Set<SalesTargetImportBatch>();
@@ -898,6 +900,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.FreeIssueValueDistributor).HasColumnType("decimal(18,2)").HasDefaultValue(0m);
             e.Property(x => x.ItemWiseTotalDiscount).HasColumnType("decimal(18,2)").HasDefaultValue(0m);
             e.Property(x => x.TotalDiscount).HasColumnType("decimal(18,2)").HasDefaultValue(0m);
+            e.Property(x => x.DistributorReturnValue).HasColumnType("decimal(18,2)").HasDefaultValue(0m);
+            e.Property(x => x.AdjustmentCount).HasDefaultValue(0);
 
             // Report indexes — every org/geo level paired with BillingDate for range queries
             e.HasIndex(x => new { x.SalesRepId,       x.BillingDate });
@@ -985,6 +989,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .WithOne(i => i.Billing)
              .HasForeignKey(i => i.BillingId)
              .OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Adjustments)
+             .WithOne(a => a.Billing)
+             .HasForeignKey(a => a.BillingId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
 
         // ── BillingItem ───────────────────────────────────────────────────────
@@ -996,18 +1004,62 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.DiscountRate).HasColumnType("decimal(5,2)");
             e.Property(x => x.DiscountAmount).HasColumnType("decimal(18,2)");
             e.Property(x => x.TotalPrice).HasColumnType("decimal(18,2)");
+            e.Property(x => x.OriginalQuantity).HasColumnType("decimal(18,4)");
             e.Property(x => x.BillingItemType).HasConversion<string>().HasMaxLength(10).IsRequired().HasDefaultValue(BillingItemType.Sale);
-            e.Property(x => x.ReturnType).HasConversion<string>().HasMaxLength(15);
+            // 25, not 15: "DistributorReturn" is 17 characters. A too-narrow varchar here does not
+            // fail on write in a way the tests catch — it 500s every subsequent read of the bill.
+            e.Property(x => x.ReturnType).HasConversion<string>().HasMaxLength(25);
             e.Property(x => x.FreeIssueSource).HasConversion<string>().HasMaxLength(15);
+            e.Property(x => x.Source).HasConversion<string>().HasMaxLength(20)
+             .IsRequired().HasDefaultValue(BillingItemSource.SalesRep);
             // Matching filter for Billing's HasQueryFilter
             e.HasQueryFilter(x => !x.IsDeleted);
             e.HasIndex(x => x.BillingId);
             e.HasIndex(x => x.ProductId);
             e.HasIndex(x => x.BillingItemType);
+            e.HasIndex(x => x.Source);
             e.HasOne(x => x.Product)
              .WithMany()
              .HasForeignKey(x => x.ProductId)
              .OnDelete(DeleteBehavior.Restrict);
+            // Self-reference: a DistributorReturn line points at the line it was carved out of.
+            // NoAction — the cascade from Billing already removes both rows together.
+            e.HasOne(x => x.SourceBillingItem)
+             .WithMany()
+             .HasForeignKey(x => x.SourceBillingItemId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // ── BillingAdjustment ─────────────────────────────────────────────────
+        modelBuilder.Entity<BillingAdjustment>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Note).HasMaxLength(1000);
+            e.Property(x => x.OldTotalAmount).HasColumnType("decimal(18,2)");
+            e.Property(x => x.NewTotalAmount).HasColumnType("decimal(18,2)");
+            e.HasIndex(x => new { x.BillingId, x.AdjustedAt });
+            e.HasOne(x => x.AdjustedBy)
+             .WithMany()
+             .HasForeignKey(x => x.AdjustedByUserId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasMany(x => x.Lines)
+             .WithOne(l => l.BillingAdjustment)
+             .HasForeignKey(l => l.BillingAdjustmentId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ── BillingAdjustmentLine ─────────────────────────────────────────────
+        modelBuilder.Entity<BillingAdjustmentLine>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.OldQuantity).HasColumnType("decimal(18,4)");
+            e.Property(x => x.NewQuantity).HasColumnType("decimal(18,4)");
+            e.Property(x => x.ReturnedQuantity).HasColumnType("decimal(18,4)");
+            e.Property(x => x.OldTotalPrice).HasColumnType("decimal(18,2)");
+            e.Property(x => x.NewTotalPrice).HasColumnType("decimal(18,2)");
+            e.Property(x => x.ReturnValue).HasColumnType("decimal(18,2)");
+            e.HasIndex(x => x.BillingAdjustmentId);
         });
 
         // ── NotBilling sequence ───────────────────────────────────────────────

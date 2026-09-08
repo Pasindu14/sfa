@@ -55,6 +55,10 @@ class BillingItemModel extends BillingItem {
         return ReturnType.damage;
       case 'expire':
         return ReturnType.expire;
+      // Must be explicit: the default below is marketResell, so without this case a quantity the
+      // distributor struck off at review would be displayed as a market resell.
+      case 'distributorreturn':
+        return ReturnType.distributorReturn;
       default:
         return ReturnType.marketResell;
     }

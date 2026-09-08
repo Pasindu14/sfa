@@ -17,10 +17,12 @@ namespace sfa_api.Features.Billings.Controllers;
 public class BillingsController(
     IBillingService billingService,
     IValidator<CreateBillingRequest> createValidator,
+    IValidator<AdjustBillingItemsRequest> adjustValidator,
     IUserRepository userRepo) : ControllerBase
 {
     private readonly IBillingService _billingService = billingService;
     private readonly IValidator<CreateBillingRequest> _createValidator = createValidator;
+    private readonly IValidator<AdjustBillingItemsRequest> _adjustValidator = adjustValidator;
     private readonly IUserRepository _userRepo = userRepo;
 
     private int GetCallerId()
@@ -188,6 +190,22 @@ public class BillingsController(
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
         var billing = await _billingService.ApproveAsync(id, GetCallerId(), ct);
+        return Ok(ResponseHelper.Ok(billing, correlationId));
+    }
+
+    /// <summary>
+    /// PATCH /api/v1/billings/{id}/adjust-items
+    /// Distributor only — reduces quantities on a pending billing before approving it.
+    /// Each reduction is recorded as a DistributorReturn line and credited back to distributor stock.
+    /// Kept separate from approve so the distributor can review the recomputed total before committing.
+    /// </summary>
+    [HttpPatch("{id:int}/adjust-items")]
+    [Authorize(Roles = "Distributor")]
+    public async Task<IActionResult> AdjustItems(int id, [FromBody] AdjustBillingItemsRequest request, CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        await _adjustValidator.ValidateOrThrowAsync(request, ct);
+        var billing = await _billingService.AdjustItemsAsync(id, GetCallerId(), request, ct);
         return Ok(ResponseHelper.Ok(billing, correlationId));
     }
 

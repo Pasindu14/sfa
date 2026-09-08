@@ -73,6 +73,10 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
               .Include(x => x.Nsm)
               .Include(x => x.Items)
                   .ThenInclude(i => i.Product)
+              .Include(x => x.Adjustments)
+                  .ThenInclude(a => a.Lines)
+              .Include(x => x.Adjustments)
+                  .ThenInclude(a => a.AdjustedBy)
               .FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted, ct);
 
     public async Task<int?> FindIdByClientBillIdAsync(string clientBillId, CancellationToken ct = default)
@@ -151,7 +155,8 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
                 x.DistributorStatus,
                 x.PaymentType,
                 x.IsCashCollected,
-                x.CreatedAt))
+                x.CreatedAt,
+                x.AdjustmentCount > 0))
             .ToListAsync(ct);
 
         return (items, total);

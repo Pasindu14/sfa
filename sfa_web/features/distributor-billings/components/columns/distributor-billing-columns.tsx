@@ -46,7 +46,14 @@ export function getDistributorBillingColumns(
       header: 'Billing',
       cell: ({ row }) => (
         <div>
-          <p className="font-mono text-xs font-semibold">{row.original.billingNumber}</p>
+          <p className="flex items-center gap-1.5 font-mono text-xs font-semibold">
+            {row.original.billingNumber}
+            {row.original.isAdjusted && (
+              <Badge className="bg-orange-600 hover:bg-orange-700 text-white text-[10px] px-1.5 py-0">
+                Adjusted
+              </Badge>
+            )}
+          </p>
           <p className="text-xs text-muted-foreground">
             {formatColombo(row.original.billingDate, 'd MMM yyyy')}
           </p>

@@ -18,5 +18,6 @@ public record BillingListDto(
     DistributorBillingStatus DistributorStatus,
     PaymentType PaymentType,
     bool IsCashCollected,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    bool IsAdjusted
 );

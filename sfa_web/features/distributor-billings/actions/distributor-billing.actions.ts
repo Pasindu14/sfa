@@ -2,7 +2,11 @@
 
 import { createAction } from '@/lib/actions/wrapper'
 import client from '@/lib/api/client'
-import type { DistributorBillingListItem, DistributorBillingDetail } from '../schema/distributor-billing.schema'
+import type {
+  DistributorBillingListItem,
+  DistributorBillingDetail,
+  AdjustBillingItemsInput,
+} from '../schema/distributor-billing.schema'
 
 export const getMyBillingsAction = createAction(
   { name: 'getMyBillingsAction', requireAuth: true, requiredRole: 'Distributor' },
@@ -62,6 +66,21 @@ export const rejectBillingAction = createAction(
   { name: 'rejectBillingAction', requireAuth: true, requiredRole: 'Distributor' },
   async (id: number, reason?: string) => {
     const res = await client.patch(`/api/v1/billings/${id}/reject`, { reason: reason ?? null })
+    return res.data.data as DistributorBillingDetail
+  }
+)
+
+/**
+ * Reduces quantities on a pending bill. Each reduction is recorded as a Distributor Return line and
+ * the returned stock is credited back. Quantities can only go down, never up.
+ */
+export const adjustBillingItemsAction = createAction(
+  { name: 'adjustBillingItemsAction', requireAuth: true, requiredRole: 'Distributor' },
+  async (id: number, input: AdjustBillingItemsInput) => {
+    const res = await client.patch(`/api/v1/billings/${id}/adjust-items`, {
+      items: input.items,
+      note: input.note?.trim() ? input.note.trim() : null,
+    })
     return res.data.data as DistributorBillingDetail
   }
 )

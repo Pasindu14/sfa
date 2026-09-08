@@ -33,6 +33,12 @@ public interface IBillingService
     Task<BillingDto> CancelAsync(int billingId, int salesRepId, CancellationToken ct = default);
     Task<BillingDto> ApproveAsync(int billingId, int userId, CancellationToken ct = default);
     Task<BillingDto> RejectAsync(int billingId, int userId, string? reason, CancellationToken ct = default);
+
+    /// <summary>
+    /// Distributor-side reduction of quantities on a pending bill. Each reduced quantity is carved off
+    /// into a DistributorReturn line and credited back to the distributor's stock.
+    /// </summary>
+    Task<BillingDto> AdjustItemsAsync(int billingId, int userId, AdjustBillingItemsRequest request, CancellationToken ct = default);
     Task<BillingDto> UpdatePaymentTypeAsync(int billingId, int userId, PaymentType paymentType, CancellationToken ct = default);
     Task<BillingDto> UpdateCashCollectedAsync(int billingId, int userId, bool isCashCollected, CancellationToken ct = default);
 }

@@ -133,6 +133,12 @@ public class SalesSummaryRepository(AppDbContext context) : ISalesSummaryReposit
                 GoodRetQty = g.Sum(x => x.BillingItemType == BillingItemType.Return
                                      && x.ReturnType == ReturnType.MarketResell ? x.Quantity : 0m),
 
+                // ReturnType.DistributorReturn is deliberately in NEITHER bucket. Those lines mirror a
+                // quantity the distributor struck off during review — the parent Sale line was already
+                // reduced by the same amount, and Billing.ReturnValue excludes them too. Counting them
+                // as a return here would subtract the same reduction a second time and break the header
+                // cross-check in SalesSummaryService. They are reported via Billing.DistributorReturnValue.
+                //
                 // Damage/Expire contribute ZERO to every Billing header column
                 // (BillingService.cs:226 accumulates MarketResell only), so they are reachable only
                 // from the item rows — same predicate shape as BinCardRepository.cs:70-76.
