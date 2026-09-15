@@ -47,6 +47,26 @@ const COL = {
   AMOUNT:      14,  // Line total
 } as const
 
+// The exact column-label row the parser is built against. Everything is read by position,
+// so a file whose labels differ (a column added, removed or reordered in the BUSY report)
+// would silently put prices into amounts, units into prices, etc. Rejected up front instead.
+const EXPECTED_HEADERS: ReadonlyArray<readonly [index: number, label: string]> = [
+  [COL.DATE, 'Date'],
+  [COL.SFA_PO, 'SFA PO'],
+  [COL.BUSY_ORDER, 'BUSY PO'],
+  [COL.VCH_BILL_NO, 'Vch/Bill No'],
+  [COL.FREE_ISSUE, 'Free Issue'],
+  [COL.ALIAS, 'Alias'],
+  [7, 'Particulars'],
+  [COL.ITEM_CODE, 'Item Alias'],
+  [COL.ITEM_DESC, 'Item Details'],
+  [COL.QTY, 'Qty.'],
+  [11, 'Gross'],
+  [COL.UNIT, 'Unit'],
+  [COL.RATE, 'Price'],
+  [COL.AMOUNT, 'Amount'],
+]
+
 /** A row the parser could not turn into an invoice, tagged with its Excel row number. */
 export interface ParseIssue {
   /** 1-based Excel row, so the user can jump straight to it in the sheet. */
@@ -119,6 +139,36 @@ function str(raw: unknown): string {
   return String(raw ?? '').trim()
 }
 
+/** Strict numeric read for line values — null for blank or non-numeric, never a silent 0. */
+function parseNumber(raw: unknown): number | null {
+  if (typeof raw === 'number') return Number.isFinite(raw) ? raw : null
+  const s = str(raw).replace(/,/g, '')
+  if (!s) return null
+  const n = Number(s)
+  return Number.isFinite(n) ? n : null
+}
+
+function normaliseLabel(raw: unknown): string {
+  return str(raw).toLowerCase().replace(/\s+/g, ' ').replace(/\.$/, '')
+}
+
+/** Every expected label must sit in its expected column; returns one message per mismatch. */
+function findHeaderMismatches(row: unknown[]): string[] {
+  const mismatches: string[] = []
+  for (const [index, label] of EXPECTED_HEADERS) {
+    const found = str(row[index])
+    if (normaliseLabel(found) === normaliseLabel(label)) continue
+    const where = `column ${XLSX.utils.encode_col(index)}`
+    const actualIndex = row.findIndex(cell => normaliseLabel(cell) === normaliseLabel(label))
+    mismatches.push(
+      actualIndex === -1
+        ? `'${label}' is missing (expected in ${where}${found ? `, found '${found}'` : ''})`
+        : `'${label}' is in column ${XLSX.utils.encode_col(actualIndex)}, expected ${where}`,
+    )
+  }
+  return mismatches
+}
+
 // ── Row classification ────────────────────────────────────────────────────
 
 /** The column-label row BUSY repeats before each voucher block — structure, not an error. */
@@ -151,10 +201,28 @@ export function parseExcelFile(buffer: ArrayBuffer, fileName: string): ParseResu
 
   // Anchor on the column-label row rather than a fixed "skip 7" — the preamble block
   // (company name, voucher series, date range) varies in height between exports.
-  const labelRowIndex = rows.findIndex(isColumnLabelRow)
+  // Anchored on the labels themselves (any position), so a shifted layout is still found and
+  // reported precisely rather than as a generic "header not found".
+  const labelRowIndex = rows.findIndex(
+    row =>
+      Array.isArray(row) &&
+      row.some(cell => normaliseLabel(cell) === 'vch/bill no') &&
+      row.some(cell => normaliseLabel(cell) === 'item alias'),
+  )
   if (labelRowIndex === -1) {
     throw new Error(
       "couldn't find the column header row — expected a row containing 'Vch/Bill No' and 'Item Alias'. Is this a BUSY ERP sales voucher export?",
+    )
+  }
+
+  const headerMismatches = findHeaderMismatches(rows[labelRowIndex])
+  if (headerMismatches.length > 0) {
+    throw new Error(
+      `the columns don't match the BUSY sales voucher layout (header row ${firstSheetRow + labelRowIndex}): ` +
+        headerMismatches.join('; ') +
+        '. Expected columns B–O: ' +
+        EXPECTED_HEADERS.map(([, label]) => label).join(', ') +
+        '.',
     )
   }
 
@@ -171,8 +239,49 @@ export function parseExcelFile(buffer: ArrayBuffer, fileName: string): ParseResu
   let current: ImportInvoicePayload | null = null
   let currentRow = 0
   let lineNumber = 1
+  // Line-level problems for the voucher being built; any one of them drops the whole voucher
+  // (a partial invoice would import with the wrong total).
+  let lineProblems: string[] = []
+
+  function addItem(inv: ImportInvoicePayload, row: unknown[], sheetRow: number, itemErpCode: string) {
+    const quantity = parseNumber(row[COL.QTY])
+    const unitPrice = parseNumber(row[COL.RATE])
+    const totalPrice = parseNumber(row[COL.AMOUNT])
+    const itemDescription = str(row[COL.ITEM_DESC])
+    const unit = str(row[COL.UNIT])
+
+    const problems: string[] = []
+    if (quantity === null) problems.push(`Qty. "${str(row[COL.QTY])}" is not a number`)
+    if (unitPrice === null) problems.push(`Price "${str(row[COL.RATE])}" is not a number`)
+    if (totalPrice === null) problems.push(`Amount "${str(row[COL.AMOUNT])}" is not a number`)
+    if (!itemDescription) problems.push('Item Details is empty')
+    if (!unit) problems.push('Unit is empty')
+    if (problems.length > 0) {
+      lineProblems.push(`row ${sheetRow} (${itemErpCode}): ${problems.join(', ')}`)
+      return
+    }
+
+    inv.items.push({
+      itemErpCode,
+      itemDescription,
+      quantity: quantity!,
+      unit,
+      unitPrice: unitPrice!,
+      totalPrice: totalPrice!,
+      isFreeIssue: str(row[COL.FREE_ISSUE]).toUpperCase() === 'Y',
+      lineNumber: lineNumber++,
+    })
+  }
 
   function finalise(inv: ImportInvoicePayload, headerRow: number) {
+    if (lineProblems.length > 0) {
+      issues.push({
+        row: headerRow,
+        vchBillNo: inv.vchBillNo,
+        message: `invalid line values — ${lineProblems.join('; ')}`,
+      })
+      return
+    }
     if (inv.items.length === 0) {
       issues.push({
         row: headerRow,
@@ -232,7 +341,6 @@ export function parseExcelFile(buffer: ArrayBuffer, fileName: string): ParseResu
       seenVchBillNos.set(vchBillNo, sheetRow)
 
       const itemErpCode = str(row[COL.ITEM_CODE])
-      const isFreeIssue = str(row[COL.FREE_ISSUE]).toUpperCase() === 'Y'
 
       current = {
         vchBillNo,
@@ -246,36 +354,16 @@ export function parseExcelFile(buffer: ArrayBuffer, fileName: string): ParseResu
       }
       currentRow = sheetRow
       lineNumber = 1
+      lineProblems = []
 
       // A voucher header normally carries its first line item on the same row.
-      if (itemErpCode) {
-        current.items.push({
-          itemErpCode,
-          itemDescription: str(row[COL.ITEM_DESC]),
-          quantity:        toNumber(row[COL.QTY]),
-          unit:            str(row[COL.UNIT]),
-          unitPrice:       toNumber(row[COL.RATE]),
-          totalPrice:      toNumber(row[COL.AMOUNT]),
-          isFreeIssue,
-          lineNumber:      lineNumber++,
-        })
-      }
+      if (itemErpCode) addItem(current, row, sheetRow, itemErpCode)
 
     } else if (current) {
       const itemErpCode = str(row[COL.ITEM_CODE])
       if (!itemErpCode) continue   // truly empty continuation row
 
-      const isFreeIssue = str(row[COL.FREE_ISSUE]).toUpperCase() === 'Y'
-      current.items.push({
-        itemErpCode,
-        itemDescription: str(row[COL.ITEM_DESC]),
-        quantity:        toNumber(row[COL.QTY]),
-        unit:            str(row[COL.UNIT]),
-        unitPrice:       toNumber(row[COL.RATE]),
-        totalPrice:      toNumber(row[COL.AMOUNT]),
-        isFreeIssue,
-        lineNumber:      lineNumber++,
-      })
+      addItem(current, row, sheetRow, itemErpCode)
     }
   }
 
