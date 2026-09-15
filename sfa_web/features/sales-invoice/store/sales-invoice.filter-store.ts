@@ -10,6 +10,9 @@ export interface AppliedSalesInvoiceFilters {
   dateFrom: string
   dateTo: string
   distributorId: number | null
+  // Bumped on every Load/Reload so the query key always changes and a press with
+  // unchanged filters still refetches instead of leaving the button stuck on "Loading…"
+  runId: number
 }
 
 interface SalesInvoiceFilterState {
@@ -42,8 +45,11 @@ export const useSalesInvoiceFilterStore = create<SalesInvoiceFilterState>()(
       setDateTo: (dateTo) => set({ dateTo }),
       setDistributorId: (distributorId) => set({ distributorId }),
       applyFilters: () => {
-        const { dateFrom, dateTo, distributorId } = get()
-        set({ appliedFilters: { dateFrom, dateTo, distributorId }, isFetching: true })
+        const { dateFrom, dateTo, distributorId, appliedFilters } = get()
+        set({
+          appliedFilters: { dateFrom, dateTo, distributorId, runId: (appliedFilters?.runId ?? 0) + 1 },
+          isFetching: true,
+        })
       },
       setFetching: (isFetching) => set({ isFetching }),
       reset: () => set({ dateFrom: todayIso(), dateTo: todayIso(), distributorId: null, appliedFilters: null, isFetching: false }),

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import { importSalesInvoicesAction, deleteSalesInvoiceAction } from '../actions/sales-invoice.actions'
@@ -74,13 +74,14 @@ export function useSalesInvoiceDataTable(
         },
       }
     },
+    placeholderData: keepPreviousData,
   })
 
+  // Keyed off `isFetching` rather than `isSuccess || isError`: those only transition on the
+  // first resolution, so a later Reload would leave the button stuck on "Loading…".
   useEffect(() => {
-    if (query.isSuccess || query.isError) {
-      useSalesInvoiceFilterStore.getState().setFetching(false)
-    }
-  }, [query.isSuccess, query.isError])
+    if (!query.isFetching) useSalesInvoiceFilterStore.getState().setFetching(false)
+  }, [query.isFetching])
 
   return query
 }

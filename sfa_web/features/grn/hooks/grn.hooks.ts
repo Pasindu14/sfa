@@ -76,13 +76,14 @@ export function useGrnDataTable(
         },
       }
     },
+    placeholderData: keepPreviousData,
   })
 
+  // Keyed off `isFetching` rather than `isSuccess || isError`: those only transition on the
+  // first resolution, so a later Reload would leave the button stuck on "Loading…".
   useEffect(() => {
-    if (query.isSuccess || query.isError) {
-      useGrnFilterStore.getState().setFetching(false)
-    }
-  }, [query.isSuccess, query.isError])
+    if (!query.isFetching) useGrnFilterStore.getState().setFetching(false)
+  }, [query.isFetching])
 
   return query
 }
