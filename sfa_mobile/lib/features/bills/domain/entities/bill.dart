@@ -16,6 +16,9 @@ class Bill extends Equatable {
   final String? notes;
   final double? latitude;
   final double? longitude;
+
+  /// Accuracy radius (m) of the fix above, as reported by the handset.
+  final double? gpsAccuracyMeters;
   final DateTime createdAt;
   final SyncStatus syncStatus;
   final int syncAttempts;
@@ -38,6 +41,7 @@ class Bill extends Equatable {
     this.notes,
     this.latitude,
     this.longitude,
+    this.gpsAccuracyMeters,
     required this.createdAt,
     required this.syncStatus,
     this.syncAttempts = 0,
@@ -62,6 +66,7 @@ class Bill extends Equatable {
         notes,
         latitude,
         longitude,
+        gpsAccuracyMeters,
         createdAt,
         syncStatus,
         syncAttempts,

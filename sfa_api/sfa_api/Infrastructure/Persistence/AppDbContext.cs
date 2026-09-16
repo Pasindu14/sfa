@@ -26,6 +26,7 @@ using sfa_api.Features.GeoConsistency.Entities;
 using sfa_api.Features.DailyRouteAssignments.Entities;
 using sfa_api.Features.DailyRouteAssignments.Enums;
 using sfa_api.Features.UserGeoAssignments.Entities;
+using sfa_api.Features.UserProximityExemptions.Entities;
 using sfa_api.Features.UserReportingLines.Entities;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Features.SalesTargets.Entities;
@@ -74,6 +75,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<GeoConsistencyFlag> GeoConsistencyFlags => Set<GeoConsistencyFlag>();
     public DbSet<UserReportingLine> UserReportingLines => Set<UserReportingLine>();
     public DbSet<UserGeoAssignment> UserGeoAssignments => Set<UserGeoAssignment>();
+    public DbSet<UserProximityExemption> UserProximityExemptions => Set<UserProximityExemption>();
     public DbSet<DailyRouteAssignment> DailyRouteAssignments => Set<DailyRouteAssignment>();
     public DbSet<Billing> Billings => Set<Billing>();
     public DbSet<BillingItem> BillingItems => Set<BillingItem>();
@@ -362,6 +364,54 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .WithMany()
              .HasForeignKey(x => x.RegionId)
              .IsRequired(false)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // UserProximityExemption — admin-granted, time-bounded relief from the billing geofence.
+        modelBuilder.Entity<UserProximityExemption>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+
+            // Stored as the enum member name so the value stays readable in the DB
+            // and in exports. 40 chars leaves room for a longer reason code later —
+            // a column sized to today's longest name silently 500s the first time
+            // someone adds a longer one.
+            e.Property(x => x.Reason)
+             .HasConversion<string>()
+             .HasMaxLength(40)
+             .IsRequired();
+
+            e.Property(x => x.Notes).HasMaxLength(500);
+
+            // The resolver's hot path: "live grant for this rep covering now",
+            // ordered by ValidTo. Filtered so soft-deleted rows stay out of the index.
+            e.HasIndex(x => new { x.UserId, x.IsActive, x.ValidTo })
+             .HasFilter("\"IsDeleted\" = false")
+             .HasDatabaseName("IX_UserProximityExemptions_UserId_IsActive_ValidTo_Active");
+            e.HasIndex(x => x.UserId);
+            e.HasIndex(x => x.ValidTo);
+            e.HasIndex(x => x.IsActive);
+            e.HasIndex(x => x.IsDeleted);
+
+            e.HasQueryFilter(x => !x.IsDeleted);
+
+            e.Property(x => x.RowVersion)
+             .IsRowVersion()
+             .HasColumnName("xmin")
+             .HasColumnType("xid");
+
+            // Restrict on both — an exemption is audit history and must outlive any
+            // attempt to remove the rep or the admin who granted it.
+            e.HasOne(x => x.User)
+             .WithMany()
+             .HasForeignKey(x => x.UserId)
+             .IsRequired()
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.GrantedByUser)
+             .WithMany()
+             .HasForeignKey(x => x.GrantedByUserId)
+             .IsRequired()
              .OnDelete(DeleteBehavior.Restrict);
         });
 

@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:uswatte/core/db/database_helper.dart';
 import 'package:uswatte/features/outlets/data/models/outlet_model.dart';
+import 'package:uswatte/features/outlets/domain/entities/proximity_policy.dart';
 
 class OutletsLocalDatasource {
   final DatabaseHelper _dbHelper;
@@ -108,23 +109,64 @@ class OutletsLocalDatasource {
     return rows.first['value'] as String?;
   }
 
-  Future<void> saveGeofenceRadiusMeters(double meters) async {
+  /// Caches the whole geofence policy — radius plus whether it is currently
+  /// enforced and, if not, when enforcement resumes.
+  ///
+  /// Stored as separate `metadata` keys rather than a new table: the existing
+  /// `geofence_radius_meters` key already lives here, and adding keys needs no
+  /// schema version bump (which would have to be idempotent across the three
+  /// isolates sharing this database).
+  Future<void> saveProximityPolicy(ProximityPolicy policy) async {
     final db = await _dbHelper.database;
-    await db.insert(
-      'metadata',
-      {'key': 'geofence_radius_meters', 'value': meters.toString()},
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    final batch = db.batch();
+    void put(String key, String value) => batch.insert(
+          'metadata',
+          {'key': key, 'value': value},
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+
+    put('geofence_radius_meters', policy.radiusMeters.toString());
+    put('geofence_enforced', policy.enforced ? '1' : '0');
+    // Null means "nothing scheduled" — write the empty string rather than
+    // deleting, so a stale value from a previous grant can never be read back.
+    put('geofence_enforced_from', policy.enforcedFrom?.toUtc().toIso8601String() ?? '');
+    put('geofence_exemption_reason', policy.exemptionReason ?? '');
+
+    await batch.commit(noResult: true);
   }
 
-  Future<double?> getGeofenceRadiusMeters() async {
+  Future<ProximityPolicy?> getProximityPolicy() async {
     final db = await _dbHelper.database;
     final rows = await db.query(
       'metadata',
-      where: 'key = ?',
-      whereArgs: ['geofence_radius_meters'],
+      where: 'key IN (?, ?, ?, ?)',
+      whereArgs: const [
+        'geofence_radius_meters',
+        'geofence_enforced',
+        'geofence_enforced_from',
+        'geofence_exemption_reason',
+      ],
     );
     if (rows.isEmpty) return null;
-    return double.tryParse(rows.first['value'] as String);
+
+    final map = {
+      for (final r in rows) r['key'] as String: r['value'] as String,
+    };
+
+    final radius = double.tryParse(map['geofence_radius_meters'] ?? '');
+    if (radius == null) return null;
+
+    final from = map['geofence_enforced_from'];
+    final reason = map['geofence_exemption_reason'];
+
+    return ProximityPolicy(
+      // Absent key = a device that cached a radius before exemptions existed.
+      // Default to enforced.
+      enforced: (map['geofence_enforced'] ?? '1') == '1',
+      radiusMeters: radius,
+      enforcedFrom:
+          (from == null || from.isEmpty) ? null : DateTime.tryParse(from),
+      exemptionReason: (reason == null || reason.isEmpty) ? null : reason,
+    );
   }
 }

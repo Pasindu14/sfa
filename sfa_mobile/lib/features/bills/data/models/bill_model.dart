@@ -14,6 +14,7 @@ class BillModel {
   final String? notes;
   final double? latitude;
   final double? longitude;
+  final double? gpsAccuracyMeters;
   final DateTime createdAt;
   final SyncStatus syncStatus;
   final int syncAttempts;
@@ -36,6 +37,7 @@ class BillModel {
     this.notes,
     this.latitude,
     this.longitude,
+    this.gpsAccuracyMeters,
     required this.createdAt,
     required this.syncStatus,
     this.syncAttempts = 0,
@@ -59,6 +61,7 @@ class BillModel {
         notes: map['notes'] as String?,
         latitude: (map['latitude'] as num?)?.toDouble(),
         longitude: (map['longitude'] as num?)?.toDouble(),
+        gpsAccuracyMeters: (map['gps_accuracy_meters'] as num?)?.toDouble(),
         createdAt: DateTime.parse(map['created_at'] as String),
         syncStatus: SyncStatusX.fromDb(map['sync_status'] as String),
         syncAttempts: map['sync_attempts'] as int? ?? 0,
@@ -87,6 +90,7 @@ class BillModel {
         'notes': notes,
         'latitude': latitude,
         'longitude': longitude,
+        'gps_accuracy_meters': gpsAccuracyMeters,
         'created_at': createdAt.toIso8601String(),
         'sync_status': syncStatus.dbValue,
         'sync_attempts': syncAttempts,
@@ -107,6 +111,7 @@ class BillModel {
         'notes': notes,
         if (latitude != null) 'latitude': latitude,
         if (longitude != null) 'longitude': longitude,
+        if (gpsAccuracyMeters != null) 'gpsAccuracyMeters': gpsAccuracyMeters,
         'items': items.map((i) => i.toCreateRequestJson()).toList(),
       };
 
@@ -121,6 +126,7 @@ class BillModel {
         notes: notes,
         latitude: latitude,
         longitude: longitude,
+        gpsAccuracyMeters: gpsAccuracyMeters,
         createdAt: createdAt,
         syncStatus: syncStatus,
         syncAttempts: syncAttempts,
@@ -152,6 +158,7 @@ class BillModel {
         notes: notes,
         latitude: latitude,
         longitude: longitude,
+        gpsAccuracyMeters: gpsAccuracyMeters,
         createdAt: createdAt,
         syncStatus: syncStatus ?? this.syncStatus,
         syncAttempts: syncAttempts ?? this.syncAttempts,

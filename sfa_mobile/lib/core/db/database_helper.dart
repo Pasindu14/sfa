@@ -129,6 +129,7 @@ class DatabaseHelper {
 
     await _ensureColumn(db, 'bills', 'latitude', 'REAL');
     await _ensureColumn(db, 'bills', 'longitude', 'REAL');
+    await _ensureColumn(db, 'bills', 'gps_accuracy_meters', 'REAL');
     await _ensureColumn(db, 'bills', 'outlet_name', 'TEXT');
     await _ensureColumn(db, 'bills', 'outlet_category', 'TEXT');
 
@@ -272,6 +273,7 @@ class DatabaseHelper {
         notes                TEXT,
         latitude             REAL,
         longitude            REAL,
+        gps_accuracy_meters  REAL,
         outlet_name          TEXT,
         outlet_category      TEXT,
         created_at           TEXT    NOT NULL,

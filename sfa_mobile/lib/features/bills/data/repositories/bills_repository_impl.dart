@@ -41,6 +41,7 @@ class BillsRepositoryImpl implements BillsRepository {
       notes: bill.notes,
       latitude: bill.latitude,
       longitude: bill.longitude,
+      gpsAccuracyMeters: bill.gpsAccuracyMeters,
       createdAt: bill.createdAt,
       syncStatus: SyncStatus.pending,
       items: bill.items

@@ -25,7 +25,7 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     on<BillLocationCaptured>(_onLocationCaptured);
     on<BillLocationStatusChanged>(_onLocationStatusChanged);
     on<LocationCheckRetried>(_onLocationCheckRetried);
-    on<RadiusMetersLoaded>(_onRadiusMetersLoaded);
+    on<ProximityPolicyLoaded>(_onProximityPolicyLoaded);
     on<OutletSelected>(_onOutletSelected);
     on<ProductAdded>(_onProductAdded);
     on<CartItemQtyChanged>(_onQtyChanged);
@@ -72,7 +72,8 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
               const Duration(minutes: 2);
       if (hasFreshCache) {
         add(const BillLocationStatusChanged(LocationCheckStatus.ready));
-        add(BillLocationCaptured(cached.latitude, cached.longitude));
+        add(BillLocationCaptured(cached.latitude, cached.longitude,
+            accuracyMeters: cached.accuracy));
       }
 
       try {
@@ -82,7 +83,8 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
           ),
         ).timeout(const Duration(seconds: 20));
         add(const BillLocationStatusChanged(LocationCheckStatus.ready));
-        add(BillLocationCaptured(position.latitude, position.longitude));
+        add(BillLocationCaptured(position.latitude, position.longitude,
+            accuracyMeters: position.accuracy));
       } on TimeoutException {
         // Fresh fix took too long. Already unblocked via the cached fix
         // above (if any) — otherwise there's truly nothing to show yet.
@@ -102,7 +104,11 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
   void _onLocationCaptured(
       BillLocationCaptured e, Emitter<CreateBillState> emit) {
     if (e.latitude != null && e.longitude != null) {
-      emit(state.copyWith(latitude: e.latitude, longitude: e.longitude));
+      emit(state.copyWith(
+        latitude: e.latitude,
+        longitude: e.longitude,
+        gpsAccuracyMeters: e.accuracyMeters,
+      ));
     }
   }
 
@@ -117,9 +123,9 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     _captureLocation();
   }
 
-  void _onRadiusMetersLoaded(
-      RadiusMetersLoaded e, Emitter<CreateBillState> emit) {
-    emit(state.copyWith(radiusMeters: e.radiusMeters));
+  void _onProximityPolicyLoaded(
+      ProximityPolicyLoaded e, Emitter<CreateBillState> emit) {
+    emit(state.copyWith(policy: e.policy));
   }
 
   Future<void> _onLocationRefreshRequested(
@@ -136,6 +142,7 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
         refreshingLocation: false,
         latitude: position.latitude,
         longitude: position.longitude,
+        gpsAccuracyMeters: position.accuracy,
       ));
     } catch (_) {
       emit(state.copyWith(
@@ -149,11 +156,15 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     // Defensive guard: silently ignore if rep is outside range.
     // The OutletPicker already filters the list; this prevents any edge-case
     // where a stale/re-ordered list lets a far outlet slip through.
+    //
+    // Skipped entirely while an exemption is live — this is the second of the two
+    // client-side geofence checks, and leaving it armed would let the picker offer
+    // a distant outlet that then silently refused to be selected.
     final lat = state.latitude;
     final lng = state.longitude;
     final hasCoord =
         e.outlet.latitude != 0.0 || e.outlet.longitude != 0.0;
-    if (lat != null && lng != null && hasCoord) {
+    if (state.proximityEnforced && lat != null && lng != null && hasCoord) {
       final meters = Geolocator.distanceBetween(
           lat, lng, e.outlet.latitude, e.outlet.longitude);
       if (meters > state.radiusMeters) return;
@@ -381,6 +392,7 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
       totalAmount: state.total,
       notes: (e.notes?.trim().isEmpty ?? true) ? null : e.notes!.trim(),
       latitude: state.latitude,
+      gpsAccuracyMeters: state.gpsAccuracyMeters,
       longitude: state.longitude,
       createdAt: now,
       syncStatus: SyncStatus.pending,

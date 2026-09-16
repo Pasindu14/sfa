@@ -17,7 +17,7 @@ namespace sfa_api.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.30")
+                .HasAnnotation("ProductVersion", "8.0.31")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -302,6 +302,9 @@ namespace sfa_api.Migrations
                         .HasColumnType("decimal(18,2)")
                         .HasDefaultValue(0m);
 
+                    b.Property<double?>("GpsAccuracyMeters")
+                        .HasColumnType("double precision");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -341,6 +344,12 @@ namespace sfa_api.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)")
                         .HasDefaultValue("Cash");
+
+                    b.Property<int?>("ProximityExemptionId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("ProximityOverridden")
+                        .HasColumnType("boolean");
 
                     b.Property<int?>("RegionId")
                         .HasColumnType("integer");
@@ -2808,6 +2817,84 @@ namespace sfa_api.Migrations
                     b.ToTable("UserGeoAssignments");
                 });
 
+            modelBuilder.Entity("sfa_api.Features.UserProximityExemptions.Entities.UserProximityExemption", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("GrantedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("RevokedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("ValidFrom")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ValidTo")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GrantedByUserId");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("IsDeleted");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ValidTo");
+
+                    b.HasIndex("UserId", "IsActive", "ValidTo")
+                        .HasDatabaseName("IX_UserProximityExemptions_UserId_IsActive_ValidTo_Active")
+                        .HasFilter("\"IsDeleted\" = false");
+
+                    b.ToTable("UserProximityExemptions");
+                });
+
             modelBuilder.Entity("sfa_api.Features.UserReportingLines.Entities.UserReportingLine", b =>
                 {
                     b.Property<int>("Id")
@@ -3837,6 +3924,25 @@ namespace sfa_api.Migrations
                     b.Navigation("Region");
 
                     b.Navigation("Territory");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("sfa_api.Features.UserProximityExemptions.Entities.UserProximityExemption", b =>
+                {
+                    b.HasOne("sfa_api.Features.Users.Entities.User", "GrantedByUser")
+                        .WithMany()
+                        .HasForeignKey("GrantedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("sfa_api.Features.Users.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("GrantedByUser");
 
                     b.Navigation("User");
                 });

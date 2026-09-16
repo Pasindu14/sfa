@@ -44,8 +44,18 @@ public record OutletListDto(
 );
 
 // Returned by GET /api/v1/outlets/by-route/{routeId} — wraps the outlet list with the
-// server-configured proximity radius so the mobile app never needs a separate config call.
+// calling rep's effective proximity policy so the mobile app never needs a separate
+// config call.
+//
+// GeofenceEnforced is false while the rep holds a live proximity exemption; the app
+// then stops hiding out-of-range outlets. GeofenceEnforcedFrom carries the instant
+// enforcement resumes, so a cached policy expires on the device on its own instead
+// of waiting for the next sync. Both are per-caller and therefore resolved outside
+// the shared per-route outlet cache.
 public record MobileOutletSyncDto(
     IEnumerable<OutletDto> Outlets,
-    double GeofenceRadiusMeters
+    double GeofenceRadiusMeters,
+    bool GeofenceEnforced = true,
+    DateTime? GeofenceEnforcedFrom = null,
+    string? ExemptionReason = null
 );

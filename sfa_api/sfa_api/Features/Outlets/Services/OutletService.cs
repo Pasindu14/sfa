@@ -7,6 +7,7 @@ using sfa_api.Features.Outlets.Entities;
 using sfa_api.Features.Outlets.Repositories;
 using sfa_api.Features.Outlets.Requests;
 using sfa_api.Features.UserGeoAssignments.Repositories;
+using sfa_api.Features.UserProximityExemptions.Services;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Features.Users.Repositories;
 using sfa_api.Infrastructure.Caching;
@@ -20,8 +21,10 @@ public class OutletService(
     IOptions<BillingGeoOptions> geoOptions,
     IUserGeoAssignmentRepository geoRepo,
     IUserRepository userRepo,
-    IDistributorRepository distributorRepo) : IOutletService
+    IDistributorRepository distributorRepo,
+    IProximityPolicyResolver policyResolver) : IOutletService
 {
+    private readonly IProximityPolicyResolver _policyResolver = policyResolver;
     private readonly IOutletRepository _repo = repo;
     private readonly ICacheService _cache = cache;
     private readonly ILogger<OutletService> _logger = logger;
@@ -119,18 +122,29 @@ public class OutletService(
         return outlets.Select(MapToDto);
     }
 
-    public async Task<MobileOutletSyncDto> GetByRouteIdAsync(int routeId, CancellationToken ct = default)
+    public async Task<MobileOutletSyncDto> GetByRouteIdAsync(int routeId, int callerId, CancellationToken ct = default)
     {
-        var cacheKey = $"{RouteCachePrefix}{routeId}";
-        var cached = await _cache.GetAsync<MobileOutletSyncDto>(cacheKey, ct);
-        if (cached is not null) return cached;
+        // Only the outlet list is cached, and only by route. The geofence policy is
+        // per-rep (one rep may hold an exemption while their colleague on the same
+        // route does not), so caching the assembled response would hand one rep the
+        // other's policy for up to 30 minutes.
+        var cacheKey = $"{RouteCachePrefix}v2:{routeId}";
+        var outletDtos = await _cache.GetAsync<List<OutletDto>>(cacheKey, ct);
+        if (outletDtos is null)
+        {
+            var outlets = await _repo.GetByRouteIdAsync(routeId, ct);
+            outletDtos = outlets.Select(MapToDto).ToList();
+            await _cache.SetAsync(cacheKey, outletDtos, RouteCacheTtl, ct);
+        }
 
-        var outlets = await _repo.GetByRouteIdAsync(routeId, ct);
-        var result = new MobileOutletSyncDto(
-            Outlets: outlets.Select(MapToDto).ToList(),
-            GeofenceRadiusMeters: _geoOptions.Value.RadiusMeters);
-        await _cache.SetAsync(cacheKey, result, RouteCacheTtl, ct);
-        return result;
+        var policy = await _policyResolver.ResolveAsync(callerId, ct: ct);
+
+        return new MobileOutletSyncDto(
+            Outlets: outletDtos,
+            GeofenceRadiusMeters: policy.RadiusMeters,
+            GeofenceEnforced: policy.Enforced,
+            GeofenceEnforcedFrom: policy.EnforcedFrom,
+            ExemptionReason: policy.Reason?.ToString());
     }
 
     public async Task<IEnumerable<OutletMapPointDto>> GetMapPointsAsync(CancellationToken ct = default)

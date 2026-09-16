@@ -53,6 +53,13 @@ public record BillingDto(
     string? Notes,
     double? Latitude,
     double? Longitude,
+
+    // Geofence evidence — how far the rep was, how good the fix was, and whether
+    // the bill was let through out of range by a proximity exemption.
+    double? DistanceFromOutletMeters,
+    double? GpsAccuracyMeters,
+    bool ProximityOverridden,
+
     DateTime CreatedAt,
     List<BillingItemDto> Items,
 

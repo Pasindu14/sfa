@@ -17,6 +17,7 @@ using sfa_api.Features.Stock.Entities;
 using sfa_api.Features.Stock.Enums;
 using sfa_api.Features.Territories.Entities;
 using sfa_api.Features.UserGeoAssignments.Entities;
+using sfa_api.Features.UserProximityExemptions.Entities;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Infrastructure.Persistence;
 using sfa_api.IntegrationTests.Infrastructure;
@@ -193,6 +194,241 @@ public class BillingsApiTests
         // Clone so the element stays valid after the JsonDocument is disposed.
         var data = doc.RootElement.GetProperty("data").Clone();
         return (resp.StatusCode, data, raw);
+    }
+
+    /// <summary>
+    /// Creates an outlet on the seeded route carrying real coordinates. The shared
+    /// seed outlet is deliberately at (0,0) — GeoMath's "no coordinate" sentinel,
+    /// which skips the proximity gate — so any test that needs the gate to actually
+    /// run has to bring its own outlet rather than mutate the shared one.
+    /// </summary>
+    private async Task<int> CreateOutletWithCoordinatesAsync(double lat, double lng)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var seed = db.Outlets.First(o => o.Id == _outletId);
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+
+        var outlet = new Outlet
+        {
+            Name = $"GeoOutlet-{suffix}", Address = "3 Geo St", Tel = $"03{suffix}",
+            NicNo = $"NICG{suffix}", RouteId = seed.RouteId, DivisionId = seed.DivisionId,
+            TerritoryId = seed.TerritoryId, AreaId = seed.AreaId, RegionId = seed.RegionId,
+            Latitude = lat, Longitude = lng, IsActive = true
+        };
+        db.Outlets.Add(outlet);
+        await db.SaveChangesAsync();
+        return outlet.Id;
+    }
+
+    /// Inserts a live exemption straight into the table. The grant endpoint is
+    /// covered by ProximityExemptionsApiTests; here we only need the effect.
+    private async Task<int> GrantExemptionAsync(int userId, ProximityExemptionReason reason)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var now = DateTime.UtcNow;
+        var grant = new UserProximityExemption
+        {
+            UserId = userId,
+            ValidFrom = now.AddMinutes(-1),
+            ValidTo = now.AddDays(1),
+            Reason = reason,
+            GrantedByUserId = userId,   // FK only needs to resolve under SQLite
+            IsActive = true
+        };
+        db.UserProximityExemptions.Add(grant);
+        await db.SaveChangesAsync();
+        return grant.Id;
+    }
+
+    private async Task RevokeAllExemptionsAsync(int userId)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        foreach (var row in db.UserProximityExemptions.Where(x => x.UserId == userId).ToList())
+            row.IsActive = false;
+        await db.SaveChangesAsync();
+    }
+
+    // ─────────────────────────────────────────────────
+    // CreateAsync — proximity exemptions
+    // ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CreateBilling_FarFromOutlet_WithoutExemption_IsRefused()
+    {
+        // Baseline for the test below: with the geofence armed, a rep ~300 km away
+        // cannot bill. If this ever passes, the exemption feature is meaningless
+        // because nothing was being enforced in the first place.
+        await EnsureSeededAsync();
+        await RevokeAllExemptionsAsync(_repId);
+        SetToken(_repToken);
+        var outletId = await CreateOutletWithCoordinatesAsync(6.9271, 79.8612);
+
+        var payload = new
+        {
+            outletId,
+            billDiscountRate = 0m,
+            notes = "far away, no exemption",
+            billingDate = Today(),
+            latitude = 9.6615,      // Jaffna — far outside any sane radius
+            longitude = 80.0255,
+            items = new object[]
+            {
+                new { productId = _productAId, quantity = 1m, unitPrice = 10m, discountRate = 0m, billingItemType = 0 }
+            }
+        };
+
+        var (status, _, raw) = await PostBillingAsync(payload);
+
+        status.Should().Be(HttpStatusCode.UnprocessableEntity, raw);
+        raw.Should().Contain("OUTLET_OUT_OF_RANGE");
+    }
+
+    [Fact]
+    public async Task CreateBilling_FarFromOutlet_WithLiveExemption_IsAcceptedAndStamped()
+    {
+        // The whole point of the feature. It must also leave evidence: an accepted
+        // out-of-range bill that is not flagged is invisible to any later review,
+        // which is exactly the hole the exemption would otherwise open.
+        await EnsureSeededAsync();
+        SetToken(_repToken);
+        var outletId = await CreateOutletWithCoordinatesAsync(6.9271, 79.8612);
+        var exemptionId = await GrantExemptionAsync(_repId, ProximityExemptionReason.SharedCoordinateMarket);
+
+        try
+        {
+            var payload = new
+            {
+                outletId,
+                billDiscountRate = 0m,
+                notes = "far away, exempt",
+                billingDate = Today(),
+                latitude = 9.6615,
+                longitude = 80.0255,
+                items = new object[]
+                {
+                    new { productId = _productAId, quantity = 1m, unitPrice = 10m, discountRate = 0m, billingItemType = 0 }
+                }
+            };
+
+            var (status, data, raw) = await PostBillingAsync(payload);
+
+            status.Should().Be(HttpStatusCode.Created, raw);
+            data.GetProperty("proximityOverridden").GetBoolean().Should().BeTrue(
+                "an out-of-range bill let through by an exemption must be reportable");
+
+            using var scope = _factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var saved = db.Billings.OrderByDescending(b => b.Id).First();
+            saved.ProximityOverridden.Should().BeTrue();
+            saved.ProximityExemptionId.Should().Be(exemptionId,
+                "the report has to be able to name the grant and its reason");
+            saved.DistanceFromOutletMeters.Should().BeGreaterThan(100_000,
+                "the real distance is recorded even when the gate is relaxed");
+        }
+        finally
+        {
+            // The rep is shared across this collection — leaving the grant live
+            // would silently disarm the geofence for every later test.
+            await RevokeAllExemptionsAsync(_repId);
+        }
+    }
+
+    [Fact]
+    public async Task CreateBilling_NearOutlet_WithLiveExemption_IsNotFlaggedAsOverridden()
+    {
+        // An exempt rep standing at the shop is doing nothing unusual. Flagging it
+        // would bury the genuine exceptions in noise.
+        await EnsureSeededAsync();
+        SetToken(_repToken);
+        var outletId = await CreateOutletWithCoordinatesAsync(6.9271, 79.8612);
+        await GrantExemptionAsync(_repId, ProximityExemptionReason.DeviceGpsFault);
+
+        try
+        {
+            var payload = new
+            {
+                outletId,
+                billDiscountRate = 0m,
+                notes = "on the doorstep, exempt",
+                billingDate = Today(),
+                latitude = 6.9272,      // ~10 m away
+                longitude = 79.8613,
+                items = new object[]
+                {
+                    new { productId = _productAId, quantity = 1m, unitPrice = 10m, discountRate = 0m, billingItemType = 0 }
+                }
+            };
+
+            var (status, data, raw) = await PostBillingAsync(payload);
+
+            status.Should().Be(HttpStatusCode.Created, raw);
+            data.GetProperty("proximityOverridden").GetBoolean().Should().BeFalse();
+        }
+        finally
+        {
+            await RevokeAllExemptionsAsync(_repId);
+        }
+    }
+
+    [Fact]
+    public async Task CreateBilling_RecordsGpsAccuracyWhenSent()
+    {
+        await EnsureSeededAsync();
+        SetToken(_repToken);
+
+        var payload = new
+        {
+            outletId = _outletId,
+            billDiscountRate = 0m,
+            notes = "accuracy stamp",
+            billingDate = Today(),
+            latitude = 6.9271,
+            longitude = 79.8612,
+            gpsAccuracyMeters = 12.5,
+            items = new object[]
+            {
+                new { productId = _productAId, quantity = 1m, unitPrice = 10m, discountRate = 0m, billingItemType = 0 }
+            }
+        };
+
+        var (status, _, raw) = await PostBillingAsync(payload);
+
+        status.Should().Be(HttpStatusCode.Created, raw);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.Billings.OrderByDescending(b => b.Id).First()
+          .GpsAccuracyMeters.Should().Be(12.5);
+    }
+
+    [Fact]
+    public async Task CreateBilling_WithoutGpsAccuracy_StillSucceeds()
+    {
+        // Older app builds do not send it. Refusing the bill over a missing
+        // diagnostic field would strand every rep who has not updated.
+        await EnsureSeededAsync();
+        SetToken(_repToken);
+
+        var payload = new
+        {
+            outletId = _outletId,
+            billDiscountRate = 0m,
+            notes = "no accuracy field",
+            billingDate = Today(),
+            latitude = 6.9271,
+            longitude = 79.8612,
+            items = new object[]
+            {
+                new { productId = _productAId, quantity = 1m, unitPrice = 10m, discountRate = 0m, billingItemType = 0 }
+            }
+        };
+
+        var (status, _, raw) = await PostBillingAsync(payload);
+
+        status.Should().Be(HttpStatusCode.Created, raw);
     }
 
     // ─────────────────────────────────────────────────

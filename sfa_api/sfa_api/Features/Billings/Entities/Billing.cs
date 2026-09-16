@@ -89,6 +89,21 @@ public class Billing
     // Used to measure real-world distribution before tightening the gate.
     public double? DistanceFromOutletMeters { get; set; }
 
+    // Accuracy radius (metres) the handset reported for the position above.
+    // A 2 km "fix" that happens to land near the outlet is not evidence of a visit,
+    // so the distance is only interpretable alongside this.
+    public double? GpsAccuracyMeters { get; set; }
+
+    // True when this bill was accepted outside the geofence because the rep held a
+    // live proximity exemption. Set only when the bill was genuinely out of range —
+    // an exempt rep billing from the doorstep is an ordinary bill.
+    //
+    // This is what makes out-of-range billing reportable rather than invisible.
+    public bool ProximityOverridden { get; set; }
+
+    // The grant that allowed it, so the report can name the reason and the approver.
+    public int? ProximityExemptionId { get; set; }
+
     // Audit
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

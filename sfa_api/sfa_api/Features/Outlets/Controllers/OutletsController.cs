@@ -82,13 +82,16 @@ public class OutletsController(
     /// <summary>
     /// GET /api/v1/outlets/by-route/{routeId}
     /// Returns all active outlets for a route — used by mobile for offline sync.
+    /// The response also carries the caller's effective geofence policy, so it is
+    /// per-caller and must not be cached by route alone.
     /// </summary>
     [HttpGet("by-route/{routeId:int}")]
     [Authorize]
     public async Task<IActionResult> GetByRoute(int routeId, CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
-        var result = await _service.GetByRouteIdAsync(routeId, ct);
+        var (callerId, _) = GetCallerInfo();
+        var result = await _service.GetByRouteIdAsync(routeId, callerId, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 

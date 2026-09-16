@@ -1,6 +1,7 @@
 import 'package:uswatte/features/outlets/data/datasources/outlets_local_datasource.dart';
 import 'package:uswatte/features/outlets/data/datasources/outlets_remote_datasource.dart';
 import 'package:uswatte/features/outlets/domain/entities/outlet.dart';
+import 'package:uswatte/features/outlets/domain/entities/proximity_policy.dart';
 import 'package:uswatte/features/outlets/domain/repositories/outlets_repository.dart';
 
 class OutletsRepositoryImpl implements OutletsRepository {
@@ -16,16 +17,16 @@ class OutletsRepositoryImpl implements OutletsRepository {
   }
 
   @override
-  Future<({List<Outlet> outlets, double geofenceRadiusMeters})> syncOutlets(
+  Future<({List<Outlet> outlets, ProximityPolicy policy})> syncOutlets(
       int routeId, String routeName) async {
     await _local.saveCurrentRoute(routeId, routeName);
     final sync = await _remote.getOutletsByRoute(routeId);
     await _local.replaceAll(sync.outlets);
-    await _local.saveGeofenceRadiusMeters(sync.geofenceRadiusMeters);
+    await _local.saveProximityPolicy(sync.policy);
     await _local.saveLastSyncedAt(DateTime.now());
     return (
       outlets: sync.outlets.map((m) => m.toEntity()).toList(),
-      geofenceRadiusMeters: sync.geofenceRadiusMeters,
+      policy: sync.policy,
     );
   }
 
@@ -36,7 +37,7 @@ class OutletsRepositoryImpl implements OutletsRepository {
   Future<int?> getCurrentRouteId() => _local.getCurrentRouteId();
 
   @override
-  Future<double?> getGeofenceRadiusMeters() => _local.getGeofenceRadiusMeters();
+  Future<ProximityPolicy?> getProximityPolicy() => _local.getProximityPolicy();
 
   @override
   Future<void> clearDailyOutlets() => _local.clearDailyOutlets();

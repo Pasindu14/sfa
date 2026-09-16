@@ -46,7 +46,7 @@ import 'package:uswatte/features/outlets/domain/repositories/outlets_repository.
 import 'package:uswatte/features/outlets/domain/usecases/clear_daily_outlets_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_outlets_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_current_route_id_usecase.dart';
-import 'package:uswatte/features/outlets/domain/usecases/get_geofence_radius_usecase.dart';
+import 'package:uswatte/features/outlets/domain/usecases/get_proximity_policy_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_outlets_last_synced_at_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/sync_outlets_usecase.dart';
 import 'package:uswatte/core/connectivity/connectivity_service.dart';
@@ -270,7 +270,7 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton(
       () => GetOutletsLastSyncedAtUseCase(getIt<OutletsRepository>()));
   getIt.registerLazySingleton(
-      () => GetGeofenceRadiusUseCase(getIt<OutletsRepository>()));
+      () => GetProximityPolicyUseCase(getIt<OutletsRepository>()));
   getIt.registerLazySingleton(
       () => ClearDailyOutletsUseCase(getIt<OutletsRepository>()));
 

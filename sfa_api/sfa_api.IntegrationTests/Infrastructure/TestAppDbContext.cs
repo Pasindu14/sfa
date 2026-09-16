@@ -10,6 +10,7 @@ using sfa_api.Features.PurchaseOrders.Entities;
 using sfa_api.Features.Regions.Entities;
 using sfa_api.Features.SalesInvoices.Entities;
 using sfa_api.Features.Territories.Entities;
+using sfa_api.Features.UserProximityExemptions.Entities;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Infrastructure.Persistence;
 
@@ -131,6 +132,11 @@ public class TestAppDbContext(DbContextOptions<AppDbContext> options) : AppDbCon
             () => modelBuilder.Entity<GRN>().Property(x => x.RowVersion)
                     .HasColumnType("INTEGER").HasDefaultValue(1u).ValueGeneratedOnAdd().IsConcurrencyToken(false),
             () => modelBuilder.Entity<PurchaseOrder>().Property(x => x.RowVersion)
+                    .HasColumnType("INTEGER").HasDefaultValue(1u).ValueGeneratedOnAdd().IsConcurrencyToken(false),
+            // Proximity exemptions carry xmin so two admins cannot silently overwrite
+            // one another's revoke. That 409 path is PostgreSQL-only, as above — here
+            // the column just has to be insertable.
+            () => modelBuilder.Entity<UserProximityExemption>().Property(x => x.RowVersion)
                     .HasColumnType("INTEGER").HasDefaultValue(1u).ValueGeneratedOnAdd().IsConcurrencyToken(false),
         })
             patch();

@@ -10,4 +10,9 @@ public class BillingGeoOptions
     /// Extra tolerance on top of RadiusMeters to absorb GPS jitter and
     /// outlet-coordinate inaccuracy. Server enforces RadiusMeters + ToleranceMeters.
     public double ToleranceMeters { get; set; } = 200.0;
+
+    /// Hard ceiling (days) on a single proximity-exemption grant. Exists so an
+    /// exemption cannot quietly become permanent: renewal has to be a deliberate
+    /// new grant, which also keeps the history honest about how often it is needed.
+    public int MaxExemptionDays { get; set; } = 30;
 }

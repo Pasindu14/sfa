@@ -32,6 +32,19 @@ public static class SriLankaTime
     public static int Year => Now.Year;
 
     /// <summary>
+    /// The Sri Lanka business day an absolute instant falls on — the inverse of
+    /// <see cref="StartOfDayUtc"/>. Use it to render a stored UTC instant back as
+    /// the business date a user originally picked, instead of reaching for
+    /// <c>DateOnly.FromDateTime(utc)</c>, which files anything between 18:30 and
+    /// 23:59 UTC under the previous Sri Lankan day.
+    /// </summary>
+    public static DateOnly BusinessDateOf(DateTime instant)
+    {
+        var utc = instant.Kind == DateTimeKind.Utc ? instant : instant.ToUniversalTime();
+        return DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(utc, Tz));
+    }
+
+    /// <summary>
     /// The instant Sri Lankan midnight falls on <paramref name="date"/>, as UTC.
     /// For 2026-06-15 that is 2026-06-14T18:30:00Z.
     ///

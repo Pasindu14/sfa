@@ -37,6 +37,7 @@ using sfa_api.Features.Routes;
 using sfa_api.Features.Territories;
 using sfa_api.Features.DailyRouteAssignments;
 using sfa_api.Features.UserGeoAssignments;
+using sfa_api.Features.UserProximityExemptions;
 using sfa_api.Features.UserReportingLines;
 using sfa_api.Features.Users;
 using FirebaseAdmin;
@@ -234,6 +235,7 @@ try
     builder.Services.AddDivisionsFeature();
     builder.Services.AddUserReportingLinesFeature();
     builder.Services.AddUserGeoAssignmentsFeature();
+    builder.Services.AddUserProximityExemptionsFeature();
     builder.Services.AddDailyRouteAssignmentsFeature();
     builder.Services.AddRoutesFeature();
     builder.Services.AddOutletsFeature();

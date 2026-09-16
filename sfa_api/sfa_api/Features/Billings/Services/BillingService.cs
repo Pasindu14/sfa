@@ -17,9 +17,8 @@ using sfa_api.Infrastructure.Caching;
 using sfa_api.Infrastructure.Locking;
 using sfa_api.Infrastructure.Notifications;
 using sfa_api.Infrastructure.Persistence;
-using Microsoft.Extensions.Options;
 using sfa_api.Common.Geo;
-using sfa_api.Features.Billings.Options;
+using sfa_api.Features.UserProximityExemptions.Services;
 
 namespace sfa_api.Features.Billings.Services;
 
@@ -35,7 +34,7 @@ public class BillingService(
     IUserRepository userRepository,
     INotificationService notificationService,
     AppDbContext db,
-    IOptions<BillingGeoOptions> geoOptions) : IBillingService
+    IProximityPolicyResolver policyResolver) : IBillingService
 {
     private readonly IBillingRepository _billingRepository = billingRepository;
     private readonly IStockRepository _stockRepository = stockRepository;
@@ -48,7 +47,7 @@ public class BillingService(
     private readonly IUserRepository _userRepository = userRepository;
     private readonly INotificationService _notificationService = notificationService;
     private readonly AppDbContext _db = db;
-    private readonly IOptions<BillingGeoOptions> _geoOptions = geoOptions;
+    private readonly IProximityPolicyResolver _policyResolver = policyResolver;
 
     private static readonly TimeSpan SalesCacheTtl = TimeSpan.FromMinutes(5);
 
@@ -79,23 +78,37 @@ public class BillingService(
         // validator, so that a direct service call cannot bypass the geofence by
         // simply omitting the coordinates. (0,0) is rejected for the same reason:
         // GeoMath treats it as "no coordinate", which would skip the check.
-        var geo0 = _geoOptions.Value;
+        //
+        // This is the real gate. The mobile app's own distance filter is UX — a
+        // rooted handset or a spoofed GPS makes a client-side check worthless —
+        // so the policy is resolved here per rep, from the same resolver the
+        // outlet sync reads, and never from the config options directly.
         if (request.Latitude is not { } repLat
             || request.Longitude is not { } repLng
             || (repLat == 0 && repLng == 0))
             throw new BillingLocationRequiredException();
+
+        var policy = await _policyResolver.ResolveAsync(salesRepId, ct: ct);
 
         // A MaxValue distance means the OUTLET has no stored coordinates (a 0,0
         // placeholder). Those outlets stay billable from anywhere until someone
         // captures their real position — the alternative is computing them as
         // ~10,000 km away and making them permanently unbillable.
         double? distanceFromOutletMeters = null;
+        var proximityOverridden = false;
         var dist = GeoMath.HaversineMeters(repLat, repLng, outlet.Latitude, outlet.Longitude);
         if (dist < double.MaxValue)
         {
             distanceFromOutletMeters = dist;
-            if (geo0.EnforceProximity && dist > geo0.RadiusMeters + geo0.ToleranceMeters)
-                throw new OutletProximityException(dist, geo0.RadiusMeters);
+            var outOfRange = dist > policy.LimitMeters;
+
+            if (outOfRange && policy.Enforced)
+                throw new OutletProximityException(dist, policy.RadiusMeters);
+
+            // Stamp the bill only when the exemption actually did something. A bill
+            // taken inside the radius by an exempt rep is an ordinary bill, and
+            // flagging it would drown the exception report in noise.
+            proximityOverridden = outOfRange;
         }
 
         // ③ Validate all products exist and are active
@@ -265,6 +278,9 @@ public class BillingService(
             Latitude                 = request.Latitude,
             Longitude                = request.Longitude,
             DistanceFromOutletMeters = distanceFromOutletMeters,
+            GpsAccuracyMeters        = request.GpsAccuracyMeters,
+            ProximityOverridden      = proximityOverridden,
+            ProximityExemptionId     = proximityOverridden ? policy.ExemptionId : null,
             CreatedAt                = DateTime.UtcNow,
             UpdatedAt         = DateTime.UtcNow,
             CreatedBy         = salesRepId,
@@ -889,6 +905,9 @@ public class BillingService(
         b.Notes,
         b.Latitude,
         b.Longitude,
+        b.DistanceFromOutletMeters,
+        b.GpsAccuracyMeters,
+        b.ProximityOverridden,
         b.CreatedAt,
         b.Items.OrderBy(i => i.LineNumber).Select(i => new BillingItemDto(
             i.Id,

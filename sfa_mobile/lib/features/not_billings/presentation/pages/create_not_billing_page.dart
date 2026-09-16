@@ -135,8 +135,11 @@ class _CreateNotBillingPageState extends State<CreateNotBillingPage> {
                   final outlets = outletsState is OutletsLoaded
                       ? outletsState.outlets
                       : <Outlet>[];
+                  // Not-billing has no proximity gate at all (repLat/repLng are
+                  // passed as null below), so only the radius is needed here —
+                  // for the picker's label, not for any filtering.
                   final radiusMeters = outletsState is OutletsLoaded
-                      ? outletsState.geofenceRadiusMeters
+                      ? outletsState.policy.radiusMeters
                       : AppConstants.billingProximityRadiusMeters;
 
                   return SingleChildScrollView(

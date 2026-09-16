@@ -24,6 +24,7 @@ import {
   useDeleteDialog,
   useResetPasswordDialog,
   useResetDeviceDialog,
+  useLocationPolicyDialog,
   useActivateDialog,
   useDeactivateDialog,
 } from '../../store'
@@ -39,6 +40,7 @@ import {
 } from '../../hooks/user.hooks'
 import { UserForm } from '../forms/user-form'
 import { ResetPasswordForm } from '../forms/reset-password-form'
+import { LocationPolicyDialog } from '@/features/proximity-exemption/components/dialogs/location-policy-dialog'
 import type { CreateUserInput, UpdateUserInput, ResetPasswordInput } from '../../schema/user.schema'
 
 // --- Create ---
@@ -279,6 +281,23 @@ function DeactivateDialog() {
 
 // --- Combined export ---
 
+// --- Location policy (billing geofence) ---
+
+function UserLocationPolicyDialog() {
+  const { isOpen, selectedId, close } = useLocationPolicyDialog()
+  // Only for the rep's name in the header — the dialog works without it.
+  const { data: user } = useUser(isOpen ? selectedId : null)
+
+  return (
+    <LocationPolicyDialog
+      isOpen={isOpen}
+      userId={selectedId}
+      userName={user?.name}
+      onClose={close}
+    />
+  )
+}
+
 export function UserDialogs() {
   return (
     <>
@@ -287,6 +306,7 @@ export function UserDialogs() {
       <DeleteUserDialog />
       <ResetPasswordDialog />
       <ResetDeviceDialog />
+      <UserLocationPolicyDialog />
       <ActivateDialog />
       <DeactivateDialog />
     </>

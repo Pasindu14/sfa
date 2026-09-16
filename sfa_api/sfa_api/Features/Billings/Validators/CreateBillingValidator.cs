@@ -54,6 +54,13 @@ public class CreateBillingValidator : AbstractValidator<CreateBillingRequest>
                 .WithMessage("A valid device location is required — (0, 0) is not an acceptable position.")
             .When(x => x.Latitude.HasValue && x.Longitude.HasValue);
 
+        // Optional — older app builds omit it. Bounded only to catch nonsense: a
+        // negative radius, or a "fix" so coarse it says nothing about where the rep is.
+        RuleFor(x => x.GpsAccuracyMeters)
+            .Must(v => v is > 0 and <= 100_000)
+                .WithMessage("GpsAccuracyMeters must be between 0 and 100000.")
+            .When(x => x.GpsAccuracyMeters.HasValue);
+
         RuleFor(x => x.Items)
             .NotEmpty().WithMessage("At least one billing item is required.")
             .Must(items => items.Count <= 100).WithMessage("A billing may not have more than 100 items.")

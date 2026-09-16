@@ -34,6 +34,7 @@ export interface UserColumnActions {
   openDelete: (id: number) => void
   openResetPassword: (id: number) => void
   openResetDevice: (id: number) => void
+  openLocationPolicy: (id: number) => void
   openActivate: (id: number) => void
   openDeactivate: (id: number) => void
 }
@@ -44,6 +45,7 @@ export function getUserColumns(actions: UserColumnActions): ColumnDef<UserDto>[]
     openDelete,
     openResetPassword,
     openResetDevice,
+    openLocationPolicy,
     openActivate,
     openDeactivate,
   } = actions
@@ -140,6 +142,19 @@ export function getUserColumns(actions: UserColumnActions): ColumnDef<UserDto>[]
                 title={user.deviceId ? undefined : 'No device is registered for this user'}
               >
                 Reset Device ID
+              </DropdownMenuItem>
+              {/* Only sales reps are geofenced when billing, so an exemption on
+                  any other role would be a control that quietly does nothing. */}
+              <DropdownMenuItem
+                onClick={() => openLocationPolicy(user.id)}
+                disabled={user.role !== 'SalesRep'}
+                title={
+                  user.role === 'SalesRep'
+                    ? undefined
+                    : 'The billing geofence only applies to sales reps'
+                }
+              >
+                Location Policy
               </DropdownMenuItem>
               {user.isActive ? (
                 <DropdownMenuItem onClick={() => openDeactivate(user.id)}>Deactivate</DropdownMenuItem>

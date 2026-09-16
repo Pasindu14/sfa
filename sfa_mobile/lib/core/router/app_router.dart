@@ -8,7 +8,7 @@ import 'package:uswatte/features/create_outlet/presentation/bloc/create_outlet_b
 import 'package:uswatte/features/create_outlet/presentation/pages/create_outlet_page.dart';
 import 'package:uswatte/features/outlets/domain/usecases/clear_daily_outlets_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_current_route_id_usecase.dart';
-import 'package:uswatte/features/outlets/domain/usecases/get_geofence_radius_usecase.dart';
+import 'package:uswatte/features/outlets/domain/usecases/get_proximity_policy_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_outlets_last_synced_at_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/get_outlets_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/sync_outlets_usecase.dart';
@@ -201,8 +201,7 @@ class AppRouter {
                           getIt<GetCurrentRouteIdUseCase>(),
                       getOutletsLastSyncedAtUseCase:
                           getIt<GetOutletsLastSyncedAtUseCase>(),
-                      getGeofenceRadiusUseCase:
-                          getIt<GetGeofenceRadiusUseCase>(),
+                      getProximityPolicyUseCase: getIt<GetProximityPolicyUseCase>(),
                       clearDailyOutletsUseCase:
                           getIt<ClearDailyOutletsUseCase>(),
                     )..add(const LoadOutletsRequested()),
@@ -290,8 +289,7 @@ class AppRouter {
                           getIt<GetCurrentRouteIdUseCase>(),
                       getOutletsLastSyncedAtUseCase:
                           getIt<GetOutletsLastSyncedAtUseCase>(),
-                      getGeofenceRadiusUseCase:
-                          getIt<GetGeofenceRadiusUseCase>(),
+                      getProximityPolicyUseCase: getIt<GetProximityPolicyUseCase>(),
                       clearDailyOutletsUseCase:
                           getIt<ClearDailyOutletsUseCase>(),
                     )..add(const LoadOutletsRequested()),
@@ -310,7 +308,7 @@ class AppRouter {
                   getCurrentRouteIdUseCase: getIt<GetCurrentRouteIdUseCase>(),
                   getOutletsLastSyncedAtUseCase:
                       getIt<GetOutletsLastSyncedAtUseCase>(),
-                  getGeofenceRadiusUseCase: getIt<GetGeofenceRadiusUseCase>(),
+                  getProximityPolicyUseCase: getIt<GetProximityPolicyUseCase>(),
                   clearDailyOutletsUseCase: getIt<ClearDailyOutletsUseCase>(),
                 )..add(const LoadOutletsRequested()),
                 child: const OutletsPage(),
@@ -368,8 +366,7 @@ class AppRouter {
                           getIt<GetCurrentRouteIdUseCase>(),
                       getOutletsLastSyncedAtUseCase:
                           getIt<GetOutletsLastSyncedAtUseCase>(),
-                      getGeofenceRadiusUseCase:
-                          getIt<GetGeofenceRadiusUseCase>(),
+                      getProximityPolicyUseCase: getIt<GetProximityPolicyUseCase>(),
                       clearDailyOutletsUseCase:
                           getIt<ClearDailyOutletsUseCase>(),
                     )..add(const LoadOutletsRequested()),
@@ -396,8 +393,7 @@ class AppRouter {
                               getIt<GetCurrentRouteIdUseCase>(),
                           getOutletsLastSyncedAtUseCase:
                               getIt<GetOutletsLastSyncedAtUseCase>(),
-                          getGeofenceRadiusUseCase:
-                              getIt<GetGeofenceRadiusUseCase>(),
+                          getProximityPolicyUseCase: getIt<GetProximityPolicyUseCase>(),
                           clearDailyOutletsUseCase:
                               getIt<ClearDailyOutletsUseCase>(),
                         )..add(const LoadOutletsRequested()),
@@ -493,8 +489,7 @@ class AppRouter {
                               getIt<GetCurrentRouteIdUseCase>(),
                           getOutletsLastSyncedAtUseCase:
                               getIt<GetOutletsLastSyncedAtUseCase>(),
-                          getGeofenceRadiusUseCase:
-                              getIt<GetGeofenceRadiusUseCase>(),
+                          getProximityPolicyUseCase: getIt<GetProximityPolicyUseCase>(),
                           clearDailyOutletsUseCase:
                               getIt<ClearDailyOutletsUseCase>(),
                         )..add(const LoadOutletsRequested()),

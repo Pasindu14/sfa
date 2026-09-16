@@ -55,6 +55,16 @@ export const useResetDeviceDialog = () =>
     }))
   )
 
+export const useLocationPolicyDialog = () =>
+  useUserDialogStore(
+    useShallow((s) => ({
+      isOpen: s.isLocationPolicyOpen,
+      selectedId: s.selectedUserId,
+      open: s.openLocationPolicy,
+      close: s.closeLocationPolicy,
+    }))
+  )
+
 export const useActivateDialog = () =>
   useUserDialogStore(
     useShallow((s) => ({

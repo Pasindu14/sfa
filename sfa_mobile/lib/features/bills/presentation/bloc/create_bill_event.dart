@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:uswatte/features/bills/data/datasources/bills_local_datasource.dart';
 import 'package:uswatte/features/bills/presentation/bloc/create_bill_state.dart';
 import 'package:uswatte/features/outlets/domain/entities/outlet.dart';
+import 'package:uswatte/features/outlets/domain/entities/proximity_policy.dart';
 
 sealed class CreateBillEvent extends Equatable {
   const CreateBillEvent();
@@ -135,9 +136,20 @@ final class SubmitPressed extends CreateBillEvent {
 final class BillLocationCaptured extends CreateBillEvent {
   final double? latitude;
   final double? longitude;
-  const BillLocationCaptured(this.latitude, this.longitude);
+
+  /// Accuracy radius (m) the platform reported for this fix. Stamped on the bill
+  /// so a distance can later be judged against the quality of the fix that
+  /// produced it — a 2 km "fix" that happens to land near an outlet proves nothing.
+  final double? accuracyMeters;
+
+  const BillLocationCaptured(
+    this.latitude,
+    this.longitude, {
+    this.accuracyMeters,
+  });
+
   @override
-  List<Object?> get props => [latitude, longitude];
+  List<Object?> get props => [latitude, longitude, accuracyMeters];
 }
 
 final class BillLocationStatusChanged extends CreateBillEvent {
@@ -159,9 +171,11 @@ final class LocationRefreshRequested extends CreateBillEvent {
   const LocationRefreshRequested();
 }
 
-final class RadiusMetersLoaded extends CreateBillEvent {
-  final double radiusMeters;
-  const RadiusMetersLoaded(this.radiusMeters);
+/// Mirrors the rep's geofence policy across from OutletsBloc, which owns it
+/// because it arrives on the daily outlet sync.
+final class ProximityPolicyLoaded extends CreateBillEvent {
+  final ProximityPolicy policy;
+  const ProximityPolicyLoaded(this.policy);
   @override
-  List<Object?> get props => [radiusMeters];
+  List<Object?> get props => [policy];
 }

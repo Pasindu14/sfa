@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:uswatte/core/constants/app_constants.dart';
 import 'package:uswatte/features/bills/data/datasources/bills_local_datasource.dart';
 import 'package:uswatte/features/outlets/domain/entities/outlet.dart';
+import 'package:uswatte/features/outlets/domain/entities/proximity_policy.dart';
 
 enum LocationCheckStatus {
   checking,
@@ -114,8 +115,13 @@ class CreateBillState extends Equatable {
   final double? latitude;
   final double? longitude;
   final LocationCheckStatus locationStatus;
-  final double radiusMeters;
   final bool refreshingLocation;
+
+  /// Accuracy radius (m) the handset reported for the captured fix.
+  final double? gpsAccuracyMeters;
+
+  /// The rep's effective geofence policy, mirrored from OutletsBloc.
+  final ProximityPolicy policy;
 
   const CreateBillState({
     this.outlet,
@@ -127,9 +133,20 @@ class CreateBillState extends Equatable {
     this.latitude,
     this.longitude,
     this.locationStatus = LocationCheckStatus.checking,
-    this.radiusMeters = AppConstants.billingProximityRadiusMeters,
     this.refreshingLocation = false,
+    this.gpsAccuracyMeters,
+    this.policy = const ProximityPolicy.enforcedAt(
+        AppConstants.billingProximityRadiusMeters),
   });
+
+  /// The radius the UI should describe to the rep. Kept as a getter so the many
+  /// existing `state.radiusMeters` call sites keep working now that the policy,
+  /// not a bare number, is the thing being carried.
+  double get radiusMeters => policy.radiusMeters;
+
+  /// Whether the distance filter applies right now. Ask this, never
+  /// `policy.enforced` — a cached exemption has to expire on its own.
+  bool get proximityEnforced => policy.isEnforcedNow;
 
   // Aggregates — each line type contributes to its own bucket only.
   double get saleSubTotal    => cart.where((l) => l.isSale     ).fold<double>(0, (s, l) => s + l.lineTotal);
@@ -167,7 +184,8 @@ class CreateBillState extends Equatable {
     double? latitude,
     double? longitude,
     LocationCheckStatus? locationStatus,
-    double? radiusMeters,
+    double? gpsAccuracyMeters,
+    ProximityPolicy? policy,
     bool? refreshingLocation,
   }) =>
       CreateBillState(
@@ -181,7 +199,8 @@ class CreateBillState extends Equatable {
         latitude: latitude ?? this.latitude,
         longitude: longitude ?? this.longitude,
         locationStatus: locationStatus ?? this.locationStatus,
-        radiusMeters: radiusMeters ?? this.radiusMeters,
+        gpsAccuracyMeters: gpsAccuracyMeters ?? this.gpsAccuracyMeters,
+        policy: policy ?? this.policy,
         refreshingLocation: refreshingLocation ?? this.refreshingLocation,
       );
 
@@ -196,7 +215,8 @@ class CreateBillState extends Equatable {
         latitude,
         longitude,
         locationStatus,
-        radiusMeters,
+        gpsAccuracyMeters,
+        policy,
         refreshingLocation,
       ];
 }

@@ -16,6 +16,8 @@ using sfa_api.Features.Billings.Options;
 using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.UserGeoAssignments.Entities;
 using sfa_api.Features.UserGeoAssignments.Repositories;
+using sfa_api.Features.UserProximityExemptions.DTOs;
+using sfa_api.Features.UserProximityExemptions.Services;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Features.Users.Repositories;
 using RouteEntity = sfa_api.Features.Routes.Entities.Route;
@@ -29,15 +31,24 @@ public class OutletServiceTests
     private readonly Mock<IUserGeoAssignmentRepository> _geoRepoMock = new();
     private readonly Mock<IUserRepository> _userRepoMock = new();
     private readonly Mock<IDistributorRepository> _distributorRepoMock = new();
+    private readonly Mock<IProximityPolicyResolver> _policyResolverMock = new();
     private readonly OutletService _sut;
 
     public OutletServiceTests()
     {
         _repoMock  = new Mock<IOutletRepository>();
         _cacheMock = new Mock<ICacheService>();
+
+        // Default: geofence enforced, no exemption — the state almost every test wants.
+        var geo = new BillingGeoOptions();
+        _policyResolverMock
+            .Setup(r => r.ResolveAsync(It.IsAny<int>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ProximityPolicy(true, geo.RadiusMeters, geo.ToleranceMeters, null, null, null));
+
         _sut = new OutletService(_repoMock.Object, _cacheMock.Object, NullLogger<OutletService>.Instance,
-            Options.Create(new BillingGeoOptions()),
-            _geoRepoMock.Object, _userRepoMock.Object, _distributorRepoMock.Object);
+            Options.Create(geo),
+            _geoRepoMock.Object, _userRepoMock.Object, _distributorRepoMock.Object,
+            _policyResolverMock.Object);
     }
 
     // ─────────────────────────────────────────────────

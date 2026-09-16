@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:uswatte/core/constants/app_constants.dart';
 import 'package:uswatte/features/outlets/domain/entities/outlet.dart';
+import 'package:uswatte/features/outlets/domain/entities/proximity_policy.dart';
 
 sealed class OutletsState extends Equatable {
   const OutletsState();
@@ -22,14 +23,19 @@ final class OutletsLoaded extends OutletsState {
   final bool isSyncing;
   final DateTime? lastSyncedAt;
   final bool hasActiveAssignment;
-  final double geofenceRadiusMeters;
+
+  /// The rep's effective geofence policy, as last received from the server.
+  /// Consumers must ask `policy.isEnforcedNow`, not `policy.enforced`, so a
+  /// cached exemption expires on time without waiting for a sync.
+  final ProximityPolicy policy;
 
   const OutletsLoaded({
     required this.outlets,
     required this.isSyncing,
     this.lastSyncedAt,
     this.hasActiveAssignment = false,
-    this.geofenceRadiusMeters = AppConstants.billingProximityRadiusMeters,
+    this.policy = const ProximityPolicy.enforcedAt(
+        AppConstants.billingProximityRadiusMeters),
   });
 
   OutletsLoaded copyWith({
@@ -37,19 +43,19 @@ final class OutletsLoaded extends OutletsState {
     bool? isSyncing,
     DateTime? lastSyncedAt,
     bool? hasActiveAssignment,
-    double? geofenceRadiusMeters,
+    ProximityPolicy? policy,
   }) =>
       OutletsLoaded(
         outlets: outlets ?? this.outlets,
         isSyncing: isSyncing ?? this.isSyncing,
         lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
         hasActiveAssignment: hasActiveAssignment ?? this.hasActiveAssignment,
-        geofenceRadiusMeters: geofenceRadiusMeters ?? this.geofenceRadiusMeters,
+        policy: policy ?? this.policy,
       );
 
   @override
   List<Object?> get props =>
-      [outlets, isSyncing, lastSyncedAt, hasActiveAssignment, geofenceRadiusMeters];
+      [outlets, isSyncing, lastSyncedAt, hasActiveAssignment, policy];
 }
 
 final class OutletsError extends OutletsState {

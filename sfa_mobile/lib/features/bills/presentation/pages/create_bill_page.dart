@@ -30,17 +30,17 @@ class CreateBillPage extends StatelessWidget {
 
     return MultiBlocListener(
       listeners: [
-        // Fires RadiusMetersLoaded whenever the outlet sync delivers a new radius.
+        // Mirrors the geofence policy across whenever the outlet sync delivers a
+        // new one — the radius, and whether an exemption is relaxing it right now.
         BlocListener<OutletsBloc, OutletsState>(
           listenWhen: (prev, curr) =>
               curr is OutletsLoaded &&
-              (prev is! OutletsLoaded ||
-                  prev.geofenceRadiusMeters != curr.geofenceRadiusMeters),
+              (prev is! OutletsLoaded || prev.policy != curr.policy),
           listener: (ctx, oState) {
             if (oState is OutletsLoaded) {
               ctx
                   .read<CreateBillBloc>()
-                  .add(RadiusMetersLoaded(oState.geofenceRadiusMeters));
+                  .add(ProximityPolicyLoaded(oState.policy));
             }
           },
         ),
@@ -129,7 +129,7 @@ class CreateBillPage extends StatelessWidget {
                                     p.outlet != c.outlet ||
                                     p.latitude != c.latitude ||
                                     p.longitude != c.longitude ||
-                                    p.radiusMeters != c.radiusMeters,
+                                    p.policy != c.policy,
                                 builder: (ctx, state) =>
                                     BlocBuilder<OutletsBloc, OutletsState>(
                                   builder: (oCtx, oState) {
@@ -154,6 +154,10 @@ class CreateBillPage extends StatelessWidget {
                                           repLat: state.latitude,
                                           repLng: state.longitude,
                                           radiusMeters: state.radiusMeters,
+                                          proximityEnforced:
+                                              state.proximityEnforced,
+                                          exemptionUntil:
+                                              state.policy.enforcedFrom,
                                         ),
                                         if (state.outlet != null) ...[
                                           SizedBox(height: 8.h),

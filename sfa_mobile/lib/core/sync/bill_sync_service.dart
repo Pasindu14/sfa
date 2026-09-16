@@ -113,7 +113,16 @@ class BillSyncService {
     }
   }
 
-  static const _terminalErrorCodes = {'INSUFFICIENT_STOCK', 'VALIDATION_FAILED'};
+  // Geofence rejections are terminal: the server refused this bill for where it
+  // was taken, and retrying the same stored coordinates can never succeed. Left
+  // out of this set they would retry until the outbox gave up.
+  // Keep in sync with _ActionRow._terminalCodes in bill_detail_page.dart.
+  static const _terminalErrorCodes = {
+    'INSUFFICIENT_STOCK',
+    'VALIDATION_FAILED',
+    'OUTLET_OUT_OF_RANGE',
+    'BILLING_LOCATION_REQUIRED',
+  };
 
   /// Attempt to sync one row by its client ID. No-ops if the row doesn't exist,
   /// is already synced, in-flight, or failed with a terminal error code that

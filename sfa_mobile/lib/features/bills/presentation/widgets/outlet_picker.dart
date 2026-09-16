@@ -15,6 +15,14 @@ class OutletPicker extends StatelessWidget {
   final double? repLng;
   final double radiusMeters;
 
+  /// False while an admin-granted proximity exemption is in force, in which case
+  /// the distance filter is skipped and the whole route is offered.
+  final bool proximityEnforced;
+
+  /// When the exemption lapses — shown to the rep so the relaxed behaviour is
+  /// visible and dated rather than mysterious.
+  final DateTime? exemptionUntil;
+
   const OutletPicker({
     super.key,
     required this.selected,
@@ -24,6 +32,8 @@ class OutletPicker extends StatelessWidget {
     this.repLat,
     this.repLng,
     required this.radiusMeters,
+    this.proximityEnforced = true,
+    this.exemptionUntil,
   });
 
   @override
@@ -203,6 +213,8 @@ class OutletPicker extends StatelessWidget {
             repLat: repLat,
             repLng: repLng,
             radiusMeters: radiusMeters,
+            proximityEnforced: proximityEnforced,
+            exemptionUntil: exemptionUntil,
           ),
     );
     if (picked != null) onSelected(picked);
@@ -216,6 +228,8 @@ class _OutletSheet extends StatefulWidget {
   final double? repLat;
   final double? repLng;
   final double radiusMeters;
+  final bool proximityEnforced;
+  final DateTime? exemptionUntil;
 
   const _OutletSheet({
     required this.outlets,
@@ -224,6 +238,8 @@ class _OutletSheet extends StatefulWidget {
     required this.repLat,
     required this.repLng,
     required this.radiusMeters,
+    required this.proximityEnforced,
+    required this.exemptionUntil,
   });
 
   @override
@@ -243,7 +259,16 @@ class _OutletSheetState extends State<_OutletSheet> {
     final repLat = widget.repLat;
     final repLng = widget.repLng;
 
-    if (repLat != null && repLng != null) {
+    if (repLat != null && repLng != null && !widget.proximityEnforced) {
+      // Exempt: show the whole route, but still measure and sort by distance so
+      // the nearest shop is still the easiest one to tap.
+      _nearby = const FilterNearbyOutlets()(
+        repLat: repLat,
+        repLng: repLng,
+        outlets: widget.outlets,
+        radiusMeters: double.infinity,
+      );
+    } else if (repLat != null && repLng != null) {
       _nearby = const FilterNearbyOutlets()(
         repLat: repLat,
         repLng: repLng,
@@ -311,34 +336,23 @@ class _OutletSheetState extends State<_OutletSheet> {
                 ),
                 if (hasGps) ...[
                   const Spacer(),
-                  Container(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(20.r),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.my_location_rounded,
-                            size: 10.r, color: AppColors.primary),
-                        SizedBox(width: 4.w),
-                        Text(
-                          'Within $radiusLabel',
-                          style: GoogleFonts.barlowCondensed(
-                            fontSize: 10.sp,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
+                  // The chip is the rep's only signal that the distance rule is
+                  // off. A silent exemption reads as a loophole; a labelled one
+                  // reads as a supervised allowance — and it saves the support
+                  // call asking why distant shops suddenly appeared.
+                  _chip(
+                    label: widget.proximityEnforced
+                        ? 'Within $radiusLabel'
+                        : 'Distance check off',
+                    color: widget.proximityEnforced
+                        ? AppColors.primary
+                        : AppColors.warning,
                   ),
                 ],
               ],
             ),
           ),
+          if (!widget.proximityEnforced) _exemptionBanner(),
           SizedBox(height: 12.h),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 16.w),
@@ -467,7 +481,108 @@ class _OutletSheetState extends State<_OutletSheet> {
     );
   }
 
+  Widget _chip({required String label, required Color color}) => Container(
+        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(20.r),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.my_location_rounded, size: 10.r, color: color),
+            SizedBox(width: 4.w),
+            Text(
+              label,
+              style: GoogleFonts.barlowCondensed(
+                fontSize: 10.sp,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      );
+
+  /// Explains the relaxed behaviour in the rep's own terms, and dates it, so an
+  /// exemption never looks like the app quietly losing its rules.
+  Widget _exemptionBanner() {
+    final until = widget.exemptionUntil;
+    const accent = AppColors.warning;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 0),
+      child: Container(
+        padding: EdgeInsets.all(12.r),
+        decoration: BoxDecoration(
+          color: accent.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(color: accent.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.location_searching_rounded, size: 20.r, color: accent),
+            SizedBox(width: 10.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Distance check turned off',
+                    style: GoogleFonts.barlowCondensed(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w700,
+                      color: accent,
+                    ),
+                  ),
+                  SizedBox(height: 2.h),
+                  Text(
+                    until == null
+                        ? 'You can bill any outlet on today\'s route, whatever the distance.'
+                        : 'You can bill any outlet on today\'s route until '
+                            '${_formatUntil(until)}, whatever the distance.',
+                    style: GoogleFonts.barlow(
+                      fontSize: 12.sp,
+                      height: 1.3,
+                      color: AppColors.foregroundMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Local wall-clock rendering — the rep thinks in Sri Lanka time, and the
+  /// instant arrives from the server as UTC.
+  static String _formatUntil(DateTime utc) {
+    final local = utc.toLocal();
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    // ValidTo is the exclusive midnight boundary, so the last day the rep can
+    // actually use it is the day before — say that, not the boundary date.
+    final lastDay = local.subtract(const Duration(minutes: 1));
+    return '${lastDay.day} ${months[lastDay.month - 1]}';
+  }
+
   Widget _emptyState(bool hasGps, String radiusLabel) {
+    // With the distance rule off, an empty list means the route itself is empty —
+    // telling the rep to "move closer" would be nonsense.
+    if (!widget.proximityEnforced && _query.isEmpty) {
+      return Center(
+        child: Text(
+          'No outlets on today\'s route.',
+          style: GoogleFonts.barlow(
+              fontSize: 13.sp, color: AppColors.foregroundMuted),
+        ),
+      );
+    }
     if (!hasGps) {
       return Center(
         child: Text(

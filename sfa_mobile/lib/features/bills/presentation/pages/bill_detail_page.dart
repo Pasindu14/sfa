@@ -971,7 +971,13 @@ class _ActionRow extends StatelessWidget {
   final VoidCallback onReload;
   const _ActionRow({required this.bill, required this.onReload});
 
-  static const _terminalCodes = {'INSUFFICIENT_STOCK', 'VALIDATION_FAILED'};
+  // Keep in sync with BillSyncService._terminalErrorCodes.
+  static const _terminalCodes = {
+    'INSUFFICIENT_STOCK',
+    'VALIDATION_FAILED',
+    'OUTLET_OUT_OF_RANGE',
+    'BILLING_LOCATION_REQUIRED',
+  };
 
   bool get _isTerminalFailure =>
       _terminalCodes.contains(bill.lastSyncErrorCode);
