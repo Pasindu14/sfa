@@ -1,11 +1,15 @@
 'use client'
 
 import { useCallback } from 'react'
+import { Plus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/data-table/data-table'
 import { getProximityExemptionColumns } from '../columns/proximity-exemption-columns'
 import { useProximityExemptionDataTable } from '../../hooks/proximity-exemption.hooks'
+import { useGrantDialog } from '../../store'
 
 export function ProximityExemptionTable() {
+  const { open: openGrant } = useGrantDialog()
   const getColumns = useCallback(() => getProximityExemptionColumns(), [])
 
   return (
@@ -52,6 +56,12 @@ export function ProximityExemptionTable() {
           'notes',
         ],
       }}
+      renderToolbarContent={() => (
+        <Button onClick={openGrant} className="gap-2">
+          <Plus className="h-4 w-4" />
+          Grant Exemption
+        </Button>
+      )}
     />
   )
 }

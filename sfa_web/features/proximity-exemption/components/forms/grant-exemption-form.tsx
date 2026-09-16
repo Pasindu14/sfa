@@ -133,7 +133,10 @@ export function GrantExemptionForm({
                   getDisplayValue={(u) => <span>{u.name}</span>}
                   renderOption={(u) => <RepOption user={u} />}
                   noResultsMessage="No active sales rep matches that search."
-                  triggerClassName="w-full"
+                  // AsyncSelect writes width as an inline style (default 200px),
+                  // which outranks any Tailwind class — so w-full does nothing
+                  // here and the width has to come through this prop.
+                  width="100%"
                   clearable
                 />
                 {fieldState.error && (
