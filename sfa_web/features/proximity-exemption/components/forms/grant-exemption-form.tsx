@@ -1,14 +1,18 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { useCallback, useEffect } from 'react'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { AsyncSelect } from '@/components/async-select'
+import { getUsersAction } from '@/features/user/actions/user.actions'
+import type { UserDto } from '@/features/user/schema/user.schema'
 import {
   grantExemptionSchema,
+  grantExemptionWithRepSchema,
   exemptionReasonEnum,
   exemptionReasonLabels,
   MAX_EXEMPTION_DAYS,
-  type GrantExemptionInput,
+  type GrantExemptionWithRepInput,
 } from '../../schema/proximity-exemption.schema'
 import { toColomboDateStr } from '@/lib/utils/datetime'
 import { Button } from '@/components/ui/button'
@@ -33,9 +37,35 @@ import {
 import { Spinner } from '@/components/ui/spinner'
 
 interface GrantExemptionFormProps {
-  onSubmit: (data: GrantExemptionInput) => void
+  onSubmit: (data: GrantExemptionWithRepInput) => void
   isLoading: boolean
   fieldErrors?: Record<string, string> | null
+  /// When true the form picks the rep itself — used on the Proximity Exemptions
+  /// page, where there is no row to imply one. The Users-page dialog leaves this
+  /// off because the rep is already known and re-asking would invite picking the
+  /// wrong one.
+  withRepPicker?: boolean
+}
+
+/// Searches active sales reps only. Both filters are applied server-side: `role`
+/// so managers and distributors never appear (the geofence does not apply to
+/// them, and the API would reject the grant anyway), and `isActive` so a
+/// deactivated rep cannot be handed an exemption they can never use.
+function useSalesRepFetcher() {
+  return useCallback(async (query?: string): Promise<UserDto[]> => {
+    const result = await getUsersAction(1, 50, query?.trim() || undefined, 'SalesRep', true)
+    if (!result.success) return []
+    return result.data.users
+  }, [])
+}
+
+function RepOption({ user }: { user: UserDto }) {
+  return (
+    <div className="flex flex-col">
+      <span className="text-sm font-medium">{user.name}</span>
+      <span className="text-muted-foreground text-xs">@{user.username}</span>
+    </div>
+  )
 }
 
 /// Both bounds go through toColomboDateStr rather than `.toISOString().split('T')[0]`,
@@ -55,10 +85,18 @@ export function GrantExemptionForm({
   onSubmit,
   isLoading,
   fieldErrors,
+  withRepPicker = false,
 }: GrantExemptionFormProps) {
-  const form = useForm<GrantExemptionInput>({
-    resolver: zodResolver(grantExemptionSchema),
+  const salesRepFetcher = useSalesRepFetcher()
+
+  const form = useForm<GrantExemptionWithRepInput>({
+    resolver: zodResolver(
+      (withRepPicker
+        ? grantExemptionWithRepSchema
+        : grantExemptionSchema) as typeof grantExemptionWithRepSchema,
+    ),
     defaultValues: {
+      userId: 0,
       validUntil: colomboToday(),
       reason: 'BadOutletCoordinates',
       notes: '',
@@ -70,7 +108,7 @@ export function GrantExemptionForm({
   useEffect(() => {
     if (fieldErrors) {
       Object.entries(fieldErrors).forEach(([field, message]) => {
-        setError(field as keyof GrantExemptionInput, { message })
+        setError(field as keyof GrantExemptionWithRepInput, { message })
       })
     }
   }, [fieldErrors, setError])
@@ -78,6 +116,34 @@ export function GrantExemptionForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {withRepPicker && (
+          <Controller
+            control={form.control}
+            name="userId"
+            render={({ field, fieldState }) => (
+              <div className="space-y-1">
+                <AsyncSelect<UserDto>
+                  fetcher={salesRepFetcher}
+                  preload={false}
+                  label="Sales Rep"
+                  placeholder="Type to search a sales rep…"
+                  value={field.value > 0 ? String(field.value) : ''}
+                  onChange={(v) => field.onChange(v ? Number(v) : 0)}
+                  getOptionValue={(u) => String(u.id)}
+                  getDisplayValue={(u) => <span>{u.name}</span>}
+                  renderOption={(u) => <RepOption user={u} />}
+                  noResultsMessage="No active sales rep matches that search."
+                  triggerClassName="w-full"
+                  clearable
+                />
+                {fieldState.error && (
+                  <p className="text-destructive text-sm">{fieldState.error.message}</p>
+                )}
+              </div>
+            )}
+          />
+        )}
+
         <FormField
           control={form.control}
           name="validUntil"

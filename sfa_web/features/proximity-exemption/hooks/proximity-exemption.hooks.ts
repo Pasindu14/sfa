@@ -15,10 +15,13 @@ import {
   grantExemptionAction,
   revokeExemptionAction,
 } from '../actions/proximity-exemption.actions'
-import { useRevokeDialog } from '../store'
+import { useGrantDialog, useRevokeDialog } from '../store'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { ActionFailure } from '@/lib/types/actions'
-import type { GrantExemptionInput } from '../schema/proximity-exemption.schema'
+import type {
+  GrantExemptionInput,
+  GrantExemptionWithRepInput,
+} from '../schema/proximity-exemption.schema'
 
 export const exemptionKeys = {
   all: ['proximity-exemptions'] as const,
@@ -121,6 +124,36 @@ export function useGrantExemption(userId: number | null) {
       setFieldErrors(null)
       // The dialog deliberately stays open: the admin's next move is almost
       // always to check the grant now shows as active, and closing would hide it.
+      toast.success('Proximity exemption granted')
+    },
+    onError: (error: ActionFailure) => {
+      if (error.fields) setFieldErrors(error.fields)
+      handleErrorToast(error, 'proximity exemption', 'create')
+    },
+  })
+
+  return { ...mutation, fieldErrors, clearFieldErrors: () => setFieldErrors(null) }
+}
+
+/// List-page variant of granting: the rep is chosen inside the form, so the user
+/// id arrives with the submission rather than being fixed when the hook is made.
+export function useGrantExemptionForRep() {
+  const queryClient = useQueryClient()
+  const { close } = useGrantDialog()
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null)
+
+  const mutation = useMutation({
+    mutationFn: async ({ userId, ...data }: GrantExemptionWithRepInput) => {
+      const result = await grantExemptionAction(userId, data)
+      if (!result.success) throw result
+      return result.data
+    },
+    onSuccess: (_data, variables) => {
+      invalidateForUser(queryClient, variables.userId)
+      setFieldErrors(null)
+      // Unlike the Users-page dialog, this one closes: the admin's next move is
+      // reading the row that just appeared in the list behind it.
+      close()
       toast.success('Proximity exemption granted')
     },
     onError: (error: ActionFailure) => {

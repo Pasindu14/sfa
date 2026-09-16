@@ -1,6 +1,13 @@
 'use client'
 
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -11,8 +18,45 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Spinner } from '@/components/ui/spinner'
-import { useRevokeDialog } from '../../store'
-import { useRevokeExemptionFromList } from '../../hooks/proximity-exemption.hooks'
+import { useGrantDialog, useRevokeDialog } from '../../store'
+import {
+  useGrantExemptionForRep,
+  useRevokeExemptionFromList,
+} from '../../hooks/proximity-exemption.hooks'
+import { GrantExemptionForm } from '../forms/grant-exemption-form'
+
+function GrantExemptionDialog() {
+  const { isOpen, close } = useGrantDialog()
+  const { mutate, isPending, fieldErrors, clearFieldErrors } = useGrantExemptionForRep()
+
+  return (
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          close()
+          clearFieldErrors()
+        }
+      }}
+    >
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Grant proximity exemption</DialogTitle>
+          <DialogDescription>
+            Let one sales rep bill outlets outside the geofence for a bounded period.
+            Granting to a rep who already has a live exemption replaces it.
+          </DialogDescription>
+        </DialogHeader>
+        <GrantExemptionForm
+          withRepPicker
+          onSubmit={(data) => mutate(data)}
+          isLoading={isPending}
+          fieldErrors={fieldErrors}
+        />
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 function RevokeExemptionDialog() {
   const { isOpen, selectedId, selectedRowVersion, selectedUserId, selectedName, close } =
@@ -61,5 +105,10 @@ function RevokeExemptionDialog() {
 }
 
 export function ProximityExemptionDialogs() {
-  return <RevokeExemptionDialog />
+  return (
+    <>
+      <GrantExemptionDialog />
+      <RevokeExemptionDialog />
+    </>
+  )
 }

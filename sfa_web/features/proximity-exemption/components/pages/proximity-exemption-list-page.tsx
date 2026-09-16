@@ -1,10 +1,12 @@
 'use client'
 
-import { ShieldOff } from 'lucide-react'
+import { Plus, ShieldOff } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ProximityExemptionTable } from '../table/proximity-exemption-table'
 import { ProximityExemptionDialogs } from '../dialogs/proximity-exemption-dialogs'
 import { useProximityExemptionDataTable } from '../../hooks/proximity-exemption.hooks'
+import { useGrantDialog } from '../../store'
 
 function ExemptCountCard() {
   // Page size 1 — only the pagination total is wanted, not the rows.
@@ -40,18 +42,29 @@ function ExemptCountCard() {
   )
 }
 
+function GrantExemptionButton() {
+  const { open } = useGrantDialog()
+
+  return (
+    <Button onClick={open} className="shrink-0">
+      <Plus className="mr-2 h-4 w-4" />
+      Grant Exemption
+    </Button>
+  )
+}
+
 export function ProximityExemptionListPage() {
   return (
     <div className="flex flex-col gap-6 p-6">
       {/* Header */}
-      <div className="bg-muted/90 flex items-center justify-between rounded-lg p-10">
+      <div className="bg-muted/90 flex items-center justify-between gap-6 rounded-lg p-10">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Proximity Exemptions</h1>
           <p className="text-muted-foreground">
-            Sales reps currently allowed to bill outlets outside the geofence. Grant a new
-            exemption from a rep&apos;s row on the Users page.
+            Sales reps currently allowed to bill outlets outside the geofence.
           </p>
         </div>
+        <GrantExemptionButton />
       </div>
 
       {/* KPI */}

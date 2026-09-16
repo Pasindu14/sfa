@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 
 interface ProximityExemptionDialogState {
+  isGrantOpen: boolean
   isRevokeOpen: boolean
   /// The grant being acted on. rowVersion is kept alongside the id because the
   /// revoke endpoint needs the concurrency token the row was read with.
@@ -16,11 +17,14 @@ interface ProximityExemptionDialogState {
     name: string
   }) => void
   closeRevoke: () => void
+  openGrant: () => void
+  closeGrant: () => void
 }
 
 export const useProximityExemptionDialogStore = create<ProximityExemptionDialogState>()(
   devtools(
     (set) => ({
+      isGrantOpen: false,
       isRevokeOpen: false,
       selectedId: null,
       selectedRowVersion: null,
@@ -42,6 +46,8 @@ export const useProximityExemptionDialogStore = create<ProximityExemptionDialogS
           selectedUserId: null,
           selectedName: null,
         }),
+      openGrant: () => set({ isGrantOpen: true }),
+      closeGrant: () => set({ isGrantOpen: false }),
     }),
     { name: 'ProximityExemptionDialogStore' }
   )

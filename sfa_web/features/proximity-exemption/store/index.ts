@@ -3,6 +3,15 @@ import { useProximityExemptionDialogStore } from './proximity-exemption.dialog-s
 
 export { useProximityExemptionDialogStore }
 
+export const useGrantDialog = () =>
+  useProximityExemptionDialogStore(
+    useShallow((s) => ({
+      isOpen: s.isGrantOpen,
+      open: s.openGrant,
+      close: s.closeGrant,
+    }))
+  )
+
 export const useRevokeDialog = () =>
   useProximityExemptionDialogStore(
     useShallow((s) => ({

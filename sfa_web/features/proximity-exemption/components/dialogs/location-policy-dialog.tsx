@@ -107,7 +107,9 @@ export function LocationPolicyDialog({
                 {live ? 'Replace this exemption' : 'Grant an exemption'}
               </h4>
               <GrantExemptionForm
-                onSubmit={(data) => grant.mutate(data)}
+                // The rep is already known here, so the picker stays off and its
+                // placeholder userId is dropped rather than sent in the body.
+                onSubmit={({ userId: _userId, ...data }) => grant.mutate(data)}
                 isLoading={grant.isPending}
                 fieldErrors={grant.fieldErrors}
               />

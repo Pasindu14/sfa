@@ -30,6 +30,14 @@ export const grantExemptionSchema = z.object({
 
 export type GrantExemptionInput = z.infer<typeof grantExemptionSchema>
 
+/// Used when granting from the Proximity Exemptions page, where the rep is
+/// chosen in the form rather than implied by the row the dialog opened from.
+export const grantExemptionWithRepSchema = grantExemptionSchema.extend({
+  userId: z.number().int().positive('Select a sales rep'),
+})
+
+export type GrantExemptionWithRepInput = z.infer<typeof grantExemptionWithRepSchema>
+
 export type ProximityExemptionDto = {
   id: number
   userId: number
