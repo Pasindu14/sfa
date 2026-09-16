@@ -11,6 +11,23 @@ import type {
 // Every action is Admin-gated here as well as on the API endpoint. Hiding the
 // menu item in the UI is cosmetic; these two are the real checks.
 
+/// Every rep currently exempt — the oversight list. Uses the paged envelope, so
+/// the totals come from `pagination`, not from the data array.
+export const getActiveExemptionsAction = createAction(
+  { name: 'getActiveExemptionsAction', requireAuth: true, requiredRole: 'Admin' },
+  async (page: number = 1, pageSize: number = 10, search?: string) => {
+    const res = await client.get('/api/v1/proximity-exemptions', {
+      params: { page, pageSize, search: search || undefined },
+    })
+    return {
+      items: res.data.data as ProximityExemptionDto[],
+      totalCount: (res.data.pagination?.total ?? 0) as number,
+      page: (res.data.pagination?.page ?? page) as number,
+      pageSize: (res.data.pagination?.pageSize ?? pageSize) as number,
+    }
+  }
+)
+
 export const getExemptionHistoryAction = createAction(
   { name: 'getExemptionHistoryAction', requireAuth: true, requiredRole: 'Admin' },
   async (userId: number) => {
