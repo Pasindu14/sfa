@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/utils/search_filter_cache.dart';
 import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/products/domain/entities/product.dart';
 import 'package:uswatte/features/products/presentation/bloc/products_bloc.dart';
@@ -21,6 +22,12 @@ class ProductsPage extends StatefulWidget {
 class _ProductsPageState extends State<ProductsPage> {
   final _searchController = TextEditingController();
   String _query = '';
+
+  // Lives in the page state (not the rebuilt _ProductList) so the lowercased
+  // code/description index and the last result survive rebuilds.
+  final _filter = SearchFilterCache<Product>(
+    (p) => [p.code, p.itemDescription],
+  );
 
   @override
   void dispose() {
@@ -63,6 +70,7 @@ class _ProductsPageState extends State<ProductsPage> {
                 _ProductList(
                   products: state.products,
                   query: _query,
+                  filter: _filter,
                 )
               else
                 const SliverFillRemaining(child: _LoadingView()),
@@ -233,19 +241,19 @@ class _SearchBar extends StatelessWidget {
 // ── Product list ──────────────────────────────────────────────────────────────
 
 class _ProductList extends StatelessWidget {
-  const _ProductList({required this.products, required this.query});
+  const _ProductList({
+    required this.products,
+    required this.query,
+    required this.filter,
+  });
 
   final List<Product> products;
-  final String query;
 
-  List<Product> get _filtered {
-    if (query.isEmpty) return products;
-    return products
-        .where((p) =>
-            p.code.toLowerCase().contains(query) ||
-            p.itemDescription.toLowerCase().contains(query))
-        .toList();
-  }
+  /// Already trimmed and lowercased by the page.
+  final String query;
+  final SearchFilterCache<Product> filter;
+
+  List<Product> get _filtered => filter.apply(products, query);
 
   @override
   Widget build(BuildContext context) {

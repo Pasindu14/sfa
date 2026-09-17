@@ -446,13 +446,7 @@ class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
             BlocProvider<AuthBloc>.value(value: widget.authBloc),
           ],
           child: AnnotatedRegion<SystemUiOverlayStyle>(
-            value: const SystemUiOverlayStyle(
-              statusBarColor: Colors.transparent,
-              statusBarIconBrightness: Brightness.dark,
-              statusBarBrightness: Brightness.light,
-              systemNavigationBarColor: Colors.transparent,
-              systemNavigationBarIconBrightness: Brightness.dark,
-            ),
+            value: AppTheme.systemOverlayStyle,
             child: MaterialApp.router(
               title: 'SFA Uswatte',
               debugShowCheckedModeBanner: false,

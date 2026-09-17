@@ -45,6 +45,48 @@ class ProductWithPrice {
   bool get hasAnyStock => hasNormalStock || hasFreeIssueStock;
 }
 
+/// Max bound parameters per `IN (...)` lookup, kept under SQLite's historical
+/// 999-variable limit.
+const int maxInClauseParams = 500;
+
+/// Splits [ids] into consecutive chunks of at most [size] for `IN (...)` queries.
+List<List<String>> chunkForInClause(
+  List<String> ids, {
+  int size = maxInClauseParams,
+}) {
+  final chunks = <List<String>>[];
+  for (var i = 0; i < ids.length; i += size) {
+    chunks.add(ids.sublist(i, i + size > ids.length ? ids.length : i + size));
+  }
+  return chunks;
+}
+
+/// Decides which server bills [BillsLocalDatasource.upsertFromServer] writes, in order.
+///
+/// [existingStatuses] maps `client_bill_id` to the `sync_status` stored locally before the
+/// write. A bill is written when no local row exists or the local row is `synced`; any other
+/// status (`pending`, `failed`, `syncing`, `cancelled`, unknown) is unsynced work and skipped.
+///
+/// Mirrors the old per-bill SELECT-then-write loop exactly, including a key repeated within
+/// [bills]: once a bill is written, later occurrences see the status that write stored.
+List<BillModel> planServerUpsert(
+  List<BillModel> bills,
+  Map<String, String> existingStatuses,
+) {
+  final statuses = Map<String, String>.of(existingStatuses);
+  final toWrite = <BillModel>[];
+  for (final bill in bills) {
+    final current = statuses[bill.clientBillId];
+    // Unsynced local work — leave it exactly as it is.
+    if (current != null && SyncStatusX.fromDb(current) != SyncStatus.synced) {
+      continue;
+    }
+    toWrite.add(bill);
+    statuses[bill.clientBillId] = bill.syncStatus.dbValue;
+  }
+  return toWrite;
+}
+
 class BillsLocalDatasource {
   final DatabaseHelper _dbHelper;
 
@@ -60,9 +102,14 @@ class BillsLocalDatasource {
         bill.toMap(),
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
+      if (bill.items.isEmpty) return;
+      // One round-trip for every line instead of one await per line. No caller
+      // needs the inserted row ids, so the results are discarded.
+      final batch = txn.batch();
       for (final item in bill.items) {
-        await txn.insert('bill_items', item.toMap());
+        batch.insert('bill_items', item.toMap());
       }
+      await batch.commit(noResult: true);
     });
   }
 
@@ -117,38 +164,47 @@ class BillsLocalDatasource {
     var written = 0;
 
     await db.transaction((txn) async {
-      for (final bill in bills) {
-        final existing = await txn.query(
+      // One status lookup per chunk of keys instead of a SELECT per bill.
+      final ids = <String>{for (final b in bills) b.clientBillId}.toList();
+      final existing = <String, String>{};
+      for (final chunk in chunkForInClause(ids)) {
+        final placeholders = List.filled(chunk.length, '?').join(',');
+        final rows = await txn.query(
           'bills',
-          columns: ['sync_status'],
-          where: 'client_bill_id = ?',
-          whereArgs: [bill.clientBillId],
-          limit: 1,
+          columns: ['client_bill_id', 'sync_status'],
+          where: 'client_bill_id IN ($placeholders)',
+          whereArgs: chunk,
         );
-
-        if (existing.isNotEmpty) {
-          final status = SyncStatusX.fromDb(existing.first['sync_status'] as String);
-          // Unsynced local work — leave it exactly as it is.
-          if (status != SyncStatus.synced) continue;
+        for (final row in rows) {
+          existing[row['client_bill_id'] as String] =
+              row['sync_status'] as String;
         }
+      }
 
-        await txn.insert(
+      final toWrite = planServerUpsert(bills, existing);
+      if (toWrite.isEmpty) return;
+
+      final batch = txn.batch();
+      for (final bill in toWrite) {
+        batch.insert(
           'bills',
           bill.toMap(),
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
         // Replace the lines rather than merging: the server is authoritative for a synced bill,
         // and its quantities may have been adjusted by the distributor since it was written.
-        await txn.delete(
+        batch.delete(
           'bill_items',
           where: 'client_bill_id = ?',
           whereArgs: [bill.clientBillId],
         );
         for (final item in bill.items) {
-          await txn.insert('bill_items', item.toMap());
+          batch.insert('bill_items', item.toMap());
         }
-        written++;
       }
+      // Operations run in order inside the transaction; nothing reads the row ids back.
+      await batch.commit(noResult: true);
+      written = toWrite.length;
     });
 
     return written;

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/di/injection.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/utils/search_filter_cache.dart';
 import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/stock/data/datasources/distributor_stock_local_datasource.dart';
 import 'package:uswatte/features/stock/domain/usecases/sync_distributor_stock_usecase.dart';
@@ -72,60 +73,59 @@ class _StockCatalogPageState extends State<StockCatalogPage> {
     }
   }
 
-  List<StockWithProduct> get _filtered {
-    if (_query.isEmpty) return _items;
-    final q = _query.toLowerCase();
-    return _items
-        .where((s) =>
-            s.productCode.toLowerCase().contains(q) ||
-            s.productName.toLowerCase().contains(q))
-        .toList();
-  }
+  // Lowercases each row's code/name once per loaded list, and reuses the result
+  // until the list or the query changes.
+  final _filter = SearchFilterCache<StockWithProduct>(
+    (s) => [s.productCode, s.productName],
+  );
+
+  List<StockWithProduct> get _filtered => _filter.apply(_items, _query);
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-    ));
-
     final filtered = _filtered;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: CustomScrollView(
-        slivers: [
-          _AppBar(
-            isSyncing: _syncing,
-            lastSyncedAt: _lastSyncedAt,
-            onSync: _sync,
-            onBack: () => context.pop(),
-          ),
-          SliverToBoxAdapter(
-            child: _SearchBar(
-              controller: _searchController,
-              onChanged: (v) => setState(() => _query = v.trim()),
+    // The status bar style that has always actually rendered on this page is
+    // the app-wide one: the light-icon SystemChrome call that used to sit here
+    // was overridden in the same frame by the app-level AnnotatedRegion.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: AppTheme.systemOverlayStyle,
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: CustomScrollView(
+          slivers: [
+            _AppBar(
+              isSyncing: _syncing,
+              lastSyncedAt: _lastSyncedAt,
+              onSync: _sync,
+              onBack: () => context.pop(),
             ),
-          ),
-          if (_loading)
-            const SliverFillRemaining(
-              child: Center(child: AppSpinner()),
-            )
-          else if (_items.isEmpty)
-            SliverFillRemaining(child: _EmptyView(onSync: _sync))
-          else if (filtered.isEmpty)
-            SliverFillRemaining(
-              child: Center(
-                child: Text(
-                  'No results for "$_query"',
-                  style: GoogleFonts.barlow(
-                      fontSize: 13.sp, color: AppColors.foregroundMuted),
-                ),
+            SliverToBoxAdapter(
+              child: _SearchBar(
+                controller: _searchController,
+                onChanged: (v) => setState(() => _query = v.trim()),
               ),
-            )
-          else
-            _StockList(items: filtered),
-        ],
+            ),
+            if (_loading)
+              const SliverFillRemaining(
+                child: Center(child: AppSpinner()),
+              )
+            else if (_items.isEmpty)
+              SliverFillRemaining(child: _EmptyView(onSync: _sync))
+            else if (filtered.isEmpty)
+              SliverFillRemaining(
+                child: Center(
+                  child: Text(
+                    'No results for "$_query"',
+                    style: GoogleFonts.barlow(
+                        fontSize: 13.sp, color: AppColors.foregroundMuted),
+                  ),
+                ),
+              )
+            else
+              _StockList(items: filtered),
+          ],
+        ),
       ),
     );
   }

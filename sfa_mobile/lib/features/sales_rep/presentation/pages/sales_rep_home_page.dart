@@ -85,12 +85,12 @@ class _SalesRepHomePageState extends State<SalesRepHomePage>
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-    ));
-
-    return BlocListener<AssignmentsBloc, AssignmentsState>(
+    // Dark status bar icons, declared instead of set imperatively from build().
+    // Uses the full app-wide style (not just the icon brightness) so the values
+    // sent to the platform are exactly what rendered before.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: AppTheme.systemOverlayStyle,
+      child: BlocListener<AssignmentsBloc, AssignmentsState>(
       listenWhen: (_, curr) => curr is AssignmentsLoaded,
       listener: (context, state) {
         if (state is AssignmentsLoaded) {
@@ -191,6 +191,7 @@ class _SalesRepHomePageState extends State<SalesRepHomePage>
           ),
           SliverToBoxAdapter(child: SizedBox(height: 40.h)),
         ],
+      ),
       ),
       ),
       ),

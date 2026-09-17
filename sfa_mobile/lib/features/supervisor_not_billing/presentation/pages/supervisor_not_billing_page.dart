@@ -234,98 +234,136 @@ class _ReadyBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(16.w, 20.h, 16.w, 40.h),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Step 1: Sales Rep ────────────────────────────────────────────────
-          _StepCard(
-            step: '01',
-            label: 'SALES REP',
-            icon: Icons.person_rounded,
-            isComplete: state.selectedRep != null,
-            child: _SearchableSelectField<RepSummary>(
-              value: state.selectedRep,
-              items: state.reps,
-              labelBuilder: (r) => r.userName,
-              placeholder: 'Select a sales rep...',
-              sheetTitle: 'SELECT SALES REP',
-              enabled: !state.isLoadingNotBillings,
-              onChanged: (rep) {
-                if (rep != null) {
-                  context
-                      .read<SupervisorNotBillingBloc>()
-                      .add(RepSelected(rep));
-                }
-              },
-            ),
-          ),
-          _StepConnector(),
-
-          // ── Step 2: Date ─────────────────────────────────────────────────────
-          _StepCard(
-            step: '02',
-            label: 'DATE',
-            icon: Icons.calendar_month_rounded,
-            isComplete: true,
-            child: _DatePickerField(
-              selectedDate: state.selectedDate,
-              enabled: !state.isLoadingNotBillings,
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: state.selectedDate,
-                  firstDate:
-                      DateTime.now().subtract(const Duration(days: 365)),
-                  lastDate: DateTime.now(),
-                  builder: (context, child) => Theme(
-                    data: Theme.of(context).copyWith(
-                      colorScheme: ColorScheme.light(
-                        primary: AppColors.primary,
-                        onPrimary: Colors.white,
-                        surface: Colors.white,
+    final notBillings =
+        state.hasResults ? state.notBillings! : const <NotBillingSummary>[];
+    // Slivers so only the visible record cards are built. The form above the
+    // list is one box adapter (always kept alive, same as before); each card
+    // sits in an Align so it gets the same loose width the old Column with
+    // CrossAxisAlignment.start gave it.
+    return CustomScrollView(
+      slivers: [
+        SliverPadding(
+          padding: EdgeInsets.fromLTRB(16.w, 20.h, 16.w, 40.h),
+          sliver: SliverMainAxisGroup(
+            slivers: [
+              SliverToBoxAdapter(child: _buildForm(context)),
+              if (notBillings.isNotEmpty)
+                SliverList.builder(
+                  itemCount: notBillings.length,
+                  itemBuilder: (context, index) {
+                    final nb = notBillings[index];
+                    return Align(
+                      alignment: AlignmentDirectional.topStart,
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: 10.h),
+                        child: _NotBillingCard(
+                          notBilling: nb,
+                          onTap: () => context.push(
+                            '/supervisor/not-billing/${nb.id}',
+                            extra: nb.notBillingNumber,
+                          ),
+                        ),
                       ),
+                    );
+                  },
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildForm(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Step 1: Sales Rep ────────────────────────────────────────────────
+        _StepCard(
+          step: '01',
+          label: 'SALES REP',
+          icon: Icons.person_rounded,
+          isComplete: state.selectedRep != null,
+          child: _SearchableSelectField<RepSummary>(
+            value: state.selectedRep,
+            items: state.reps,
+            labelBuilder: (r) => r.userName,
+            placeholder: 'Select a sales rep...',
+            sheetTitle: 'SELECT SALES REP',
+            enabled: !state.isLoadingNotBillings,
+            onChanged: (rep) {
+              if (rep != null) {
+                context
+                    .read<SupervisorNotBillingBloc>()
+                    .add(RepSelected(rep));
+              }
+            },
+          ),
+        ),
+        _StepConnector(),
+
+        // ── Step 2: Date ─────────────────────────────────────────────────────
+        _StepCard(
+          step: '02',
+          label: 'DATE',
+          icon: Icons.calendar_month_rounded,
+          isComplete: true,
+          child: _DatePickerField(
+            selectedDate: state.selectedDate,
+            enabled: !state.isLoadingNotBillings,
+            onTap: () async {
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: state.selectedDate,
+                firstDate:
+                    DateTime.now().subtract(const Duration(days: 365)),
+                lastDate: DateTime.now(),
+                builder: (context, child) => Theme(
+                  data: Theme.of(context).copyWith(
+                    colorScheme: ColorScheme.light(
+                      primary: AppColors.primary,
+                      onPrimary: Colors.white,
+                      surface: Colors.white,
                     ),
-                    child: child!,
                   ),
-                );
-                if (picked != null && context.mounted) {
-                  context
-                      .read<SupervisorNotBillingBloc>()
-                      .add(DateSelected(picked));
-                }
-              },
-            ),
+                  child: child!,
+                ),
+              );
+              if (picked != null && context.mounted) {
+                context
+                    .read<SupervisorNotBillingBloc>()
+                    .add(DateSelected(picked));
+              }
+            },
           ),
-          SizedBox(height: 24.h),
+        ),
+        SizedBox(height: 24.h),
 
-          // ── Error banner ──────────────────────────────────────────────────────
-          if (state.notBillingsError != null) ...[
-            _ErrorBanner(message: state.notBillingsError!),
-            SizedBox(height: 16.h),
-          ],
-
-          // ── Get Non-Billings button ───────────────────────────────────────────
-          _GetNotBillingsButton(
-            canLoad: state.canLoad,
-            isLoading: state.isLoadingNotBillings,
-            onTap: () => context
-                .read<SupervisorNotBillingBloc>()
-                .add(const LoadNotBillingsRequested()),
-          ),
-
-          // ── Results ───────────────────────────────────────────────────────────
-          if (state.hasResults) ...[
-            SizedBox(height: 28.h),
-            _ResultsSection(
-              notBillings: state.notBillings!,
-              repName: state.selectedRep?.userName ?? '',
-              date: state.selectedDate,
-            ),
-          ],
+        // ── Error banner ──────────────────────────────────────────────────────
+        if (state.notBillingsError != null) ...[
+          _ErrorBanner(message: state.notBillingsError!),
+          SizedBox(height: 16.h),
         ],
-      ),
+
+        // ── Get Non-Billings button ───────────────────────────────────────────
+        _GetNotBillingsButton(
+          canLoad: state.canLoad,
+          isLoading: state.isLoadingNotBillings,
+          onTap: () => context
+              .read<SupervisorNotBillingBloc>()
+              .add(const LoadNotBillingsRequested()),
+        ),
+
+        // ── Results ───────────────────────────────────────────────────────────
+        if (state.hasResults) ...[
+          SizedBox(height: 28.h),
+          _ResultsSection(
+            notBillings: state.notBillings!,
+            repName: state.selectedRep?.userName ?? '',
+            date: state.selectedDate,
+          ),
+        ],
+      ],
     );
   }
 }
@@ -1155,19 +1193,8 @@ class _ResultsSection extends StatelessWidget {
           ],
         ),
         SizedBox(height: 12.h),
-        if (notBillings.isEmpty)
-          _EmptyState(repName: repName, date: date)
-        else
-          ...notBillings.map((nb) => Padding(
-                padding: EdgeInsets.only(bottom: 10.h),
-                child: _NotBillingCard(
-                  notBilling: nb,
-                  onTap: () => context.push(
-                    '/supervisor/not-billing/${nb.id}',
-                    extra: nb.notBillingNumber,
-                  ),
-                ),
-              )),
+        // The record cards themselves are a lazy SliverList in _ReadyBody.
+        if (notBillings.isEmpty) _EmptyState(repName: repName, date: date),
       ],
     );
   }

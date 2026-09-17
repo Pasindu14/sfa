@@ -33,6 +33,21 @@ class AppColors {
 class AppTheme {
   AppTheme._();
 
+  /// App-wide status/navigation bar style, applied by the [AnnotatedRegion] that
+  /// wraps the whole app in `main.dart`.
+  ///
+  /// Every frame Flutter applies the innermost [AnnotatedRegion] under the status
+  /// bar, so an imperative `SystemChrome.setSystemUIOverlayStyle` call made from a
+  /// page's `build()` is overridden by this style in the same frame. A page that
+  /// wants a different style must wrap itself in its own [AnnotatedRegion].
+  static const SystemUiOverlayStyle systemOverlayStyle = SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.dark,
+    statusBarBrightness: Brightness.light,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarIconBrightness: Brightness.dark,
+  );
+
   // ── Typography ──
   static TextTheme _buildTextTheme() {
     final condensed = GoogleFonts.barlowCondensedTextTheme().copyWith(

@@ -23,22 +23,32 @@ import 'package:uswatte/core/network/token_cache.dart';
 ///   4. On failure: fire [SessionExpiredNotifier], reject with [UnauthorizedException].
 ///
 /// The refresh call uses a plain Dio instance (no interceptors) to avoid
-/// re-entering this interceptor recursively.
+/// re-entering this interceptor recursively. That one instance is created on
+/// first use and reused for every refresh and every retry, so its HTTP
+/// connection pool is kept instead of a new client per call.
 class TokenInterceptor extends Interceptor {
   final FlutterSecureStorage _storage;
   final TokenCache _cache;
   final DeviceIdService _deviceIdService;
   final SessionExpiredNotifier _sessionExpiredNotifier;
+  final Dio Function() _rawDioFactory;
 
   // Mutex: non-null while a refresh is in flight.
   Completer<bool>? _refreshCompleter;
 
+  Dio? _rawDio;
+
+  /// [rawDioFactory] exists for tests; production uses [buildRawDio].
   TokenInterceptor(
     this._storage,
     this._cache,
     this._deviceIdService,
-    this._sessionExpiredNotifier,
-  );
+    this._sessionExpiredNotifier, {
+    @visibleForTesting Dio Function()? rawDioFactory,
+  }) : _rawDioFactory = rawDioFactory ?? buildRawDio;
+
+  /// The shared interceptor-free Dio, created lazily.
+  Dio get _raw => _rawDio ??= _rawDioFactory();
 
   @override
   Future<void> onRequest(
@@ -79,8 +89,7 @@ class TokenInterceptor extends Interceptor {
         final retryOptions = err.requestOptions;
         retryOptions.headers['Authorization'] = 'Bearer ${_cache.accessToken}';
 
-        final dio = _buildRawDio();
-        final response = await dio.fetch(retryOptions);
+        final response = await _raw.fetch(retryOptions);
         handler.resolve(response);
       } catch (e) {
         handler.next(err);
@@ -115,9 +124,7 @@ class TokenInterceptor extends Interceptor {
       }
 
       final deviceId = await _deviceIdService.getDeviceId();
-      final dio = _buildRawDio();
-
-      final response = await dio.post(
+      final response = await _raw.post(
         '/api/v1/auth/refresh',
         data: {'refreshToken': refreshToken, 'deviceId': deviceId},
       );
@@ -158,7 +165,7 @@ class TokenInterceptor extends Interceptor {
 
   /// A plain Dio with no interceptors — used exclusively for the refresh call
   /// and for retrying the original request after a successful refresh.
-  Dio _buildRawDio() {
+  static Dio buildRawDio() {
     final dio = Dio(
       BaseOptions(
         baseUrl: AppEnv.apiBaseUrl,
