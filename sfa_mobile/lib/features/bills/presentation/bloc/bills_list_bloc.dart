@@ -78,7 +78,8 @@ class BillsListBloc extends Bloc<BillsListEvent, BillsListState> {
 
   Future<void> _onFlushAll(
       FlushAllRequested e, Emitter<BillsListState> emit) async {
-    await _syncService.flushAll();
+    // Explicit user action — skip retry backoff.
+    await _syncService.flushAll(force: true);
   }
 
   @override

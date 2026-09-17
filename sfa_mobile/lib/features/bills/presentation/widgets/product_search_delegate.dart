@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -40,6 +42,17 @@ void showProductSearch(
     ),
   );
 }
+
+/// Typing pause before the picker queries. Short enough to feel live, long
+/// enough that a code typed in one burst runs one query instead of one per key.
+@visibleForTesting
+const productSearchDebounce = Duration(milliseconds: 275);
+
+/// How recent the last category sync must be for opening the picker to skip
+/// another one. Categories rarely change mid-route, and every full sync
+/// (login, Sync page, background task) refreshes them anyway.
+@visibleForTesting
+const productPickerCategoryMaxAge = Duration(minutes: 30);
 
 // ── Grouped list item sealed types ────────────────────────────────────────────
 
@@ -90,23 +103,44 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
   Future<List<ProductWithPrice>>? _searchFuture;
   final Set<String> _expandedCategories = {};
 
+  /// Pending debounced query, cancelled by the next keystroke.
+  Timer? _debounce;
+
+  /// Results of the last completed query. Shown while a newer query runs so
+  /// the list doesn't flash to a spinner on every keystroke.
+  List<ProductWithPrice>? _lastResults;
+
+  /// Drives the clear button. Tracked separately because [_query] now lags
+  /// the text field by the debounce.
+  bool _hasText = false;
+
   @override
   void initState() {
     super.initState();
     _searchFuture = _search('');
+    _controller.addListener(_onTextChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
       ));
-      getIt<SyncProductCategoriesUseCase>()().then((_) {
-        if (mounted) setState(() => _searchFuture = _search(_query));
+      // Skip the network round-trip when categories were synced recently.
+      // Offline or failing syncs are swallowed as before; the picker keeps
+      // working off the local tables.
+      getIt<SyncProductCategoriesUseCase>()
+          .syncIfStale(productPickerCategoryMaxAge)
+          .then((synced) {
+        if (synced && mounted) {
+          setState(() => _searchFuture = _search(_query));
+        }
       }).ignore();
     });
   }
 
   @override
   void dispose() {
+    _debounce?.cancel();
+    _controller.removeListener(_onTextChanged);
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -115,7 +149,27 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
   Future<List<ProductWithPrice>> _search(String q) =>
       widget.searchUseCase(q);
 
+  /// Rebuilds only when the field flips between empty and non-empty.
+  void _onTextChanged() {
+    final hasText = _controller.text.isNotEmpty;
+    if (hasText != _hasText && mounted) setState(() => _hasText = hasText);
+  }
+
+  /// Keystrokes: wait for a pause in typing before querying.
   void _onQueryChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(productSearchDebounce, () => _applyQuery(value));
+  }
+
+  /// Clear button: no reason to wait.
+  void _clearQuery() {
+    _debounce?.cancel();
+    _controller.clear();
+    _applyQuery('');
+  }
+
+  void _applyQuery(String value) {
+    if (!mounted) return;
     final trimmed = value.trim();
     if (trimmed == _query) return;
     setState(() {
@@ -145,6 +199,7 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
         result.priceType,
       );
     }
+    _debounce?.cancel();
     _controller.clear();
     setState(() {
       _query = '';
@@ -321,15 +376,12 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
                               color: AppColors.foregroundMuted),
                           prefixIcon: Icon(Icons.search_rounded,
                               size: 18.r, color: AppColors.primary),
-                          suffixIcon: _controller.text.isNotEmpty
+                          suffixIcon: _hasText
                               ? IconButton(
                                   icon: Icon(Icons.clear_rounded,
                                       size: 16.r,
                                       color: AppColors.foregroundMuted),
-                                  onPressed: () {
-                                    _controller.clear();
-                                    _onQueryChanged('');
-                                  },
+                                  onPressed: _clearQuery,
                                 )
                               : null,
                           border: InputBorder.none,
@@ -349,7 +401,16 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
             child: FutureBuilder<List<ProductWithPrice>>(
               future: _searchFuture,
               builder: (ctx, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+                final List<ProductWithPrice>? results;
+                if (snapshot.connectionState == ConnectionState.done) {
+                  results = snapshot.data ?? [];
+                  _lastResults = results;
+                } else {
+                  // A newer query is running: keep showing the previous
+                  // results instead of flashing the spinner.
+                  results = _lastResults;
+                }
+                if (results == null) {
                   return Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -367,7 +428,6 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
                     ),
                   );
                 }
-                final results = snapshot.data ?? [];
                 if (results.isEmpty) {
                   return _Prompt(
                     icon: Icons.inventory_2_outlined,

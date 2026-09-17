@@ -256,9 +256,16 @@ class BillsLocalDatasource {
          SET sync_status = ?,
              sync_attempts = sync_attempts + 1,
              last_sync_error_code = ?,
-             last_sync_error = ?
+             last_sync_error = ?,
+             last_attempt_at = ?
          WHERE client_bill_id = ?''',
-      [SyncStatus.failed.dbValue, errorCode, errorMessage, clientBillId],
+      [
+        SyncStatus.failed.dbValue,
+        errorCode,
+        errorMessage,
+        DateTime.now().toUtc().toIso8601String(),
+        clientBillId,
+      ],
     );
   }
 
@@ -268,9 +275,14 @@ class BillsLocalDatasource {
     await db.rawUpdate(
       '''UPDATE bills
          SET sync_status = ?,
-             sync_attempts = sync_attempts + 1
+             sync_attempts = sync_attempts + 1,
+             last_attempt_at = ?
          WHERE client_bill_id = ?''',
-      [SyncStatus.pending.dbValue, clientBillId],
+      [
+        SyncStatus.pending.dbValue,
+        DateTime.now().toUtc().toIso8601String(),
+        clientBillId,
+      ],
     );
   }
 

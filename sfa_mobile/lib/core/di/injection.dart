@@ -51,6 +51,7 @@ import 'package:uswatte/features/outlets/domain/usecases/get_outlets_last_synced
 import 'package:uswatte/features/outlets/domain/usecases/sync_outlets_usecase.dart';
 import 'package:uswatte/core/connectivity/connectivity_service.dart';
 import 'package:uswatte/core/sync/bill_sync_service.dart';
+import 'package:uswatte/core/sync/etag_store.dart';
 import 'package:uswatte/features/bills/data/datasources/bills_local_datasource.dart';
 import 'package:uswatte/features/bills/data/datasources/bills_remote_datasource.dart';
 import 'package:uswatte/features/bills/data/repositories/bills_repository_impl.dart';
@@ -188,7 +189,11 @@ Future<void> configureDependencies() async {
 
   // ── Auth use cases ───────────────────────────────────────────────────────────
   getIt.registerLazySingleton(() => LoginUseCase(getIt<AuthRepository>()));
-  getIt.registerLazySingleton(() => LogoutUseCase(getIt<AuthRepository>()));
+  getIt.registerLazySingleton(() => LogoutUseCase(
+        getIt<AuthRepository>(),
+        // Resolved at logout time, not registration time.
+        onLoggedOut: () => getIt<EtagStore>().clearAll(),
+      ));
   getIt.registerLazySingleton(
       () => GetCurrentAuthUseCase(getIt<AuthRepository>()));
 
@@ -215,6 +220,7 @@ Future<void> configureDependencies() async {
 
   // ── Products ─────────────────────────────────────────────────────────────────
   getIt.registerLazySingleton(() => DatabaseHelper.instance);
+  getIt.registerLazySingleton(() => EtagStore(getIt<DatabaseHelper>()));
   getIt.registerLazySingleton(
       () => ProductsLocalDatasource(getIt<DatabaseHelper>()));
   getIt.registerLazySingleton(
@@ -223,6 +229,7 @@ Future<void> configureDependencies() async {
     () => ProductsRepositoryImpl(
       getIt<ProductsRemoteDatasource>(),
       getIt<ProductsLocalDatasource>(),
+      getIt<EtagStore>(),
     ),
   );
   getIt.registerLazySingleton(
@@ -239,6 +246,7 @@ Future<void> configureDependencies() async {
     () => ProductCategoriesRepositoryImpl(
       getIt<ProductCategoriesRemoteDatasource>(),
       getIt<ProductCategoriesLocalDatasource>(),
+      getIt<EtagStore>(),
     ),
   );
   getIt.registerLazySingleton(

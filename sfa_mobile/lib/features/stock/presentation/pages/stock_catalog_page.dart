@@ -55,7 +55,7 @@ class _StockCatalogPageState extends State<StockCatalogPage> {
     if (_syncing) return;
     setState(() => _syncing = true);
     try {
-      await getIt<SyncDistributorStockUseCase>()();
+      await getIt<SyncDistributorStockUseCase>()(force: true);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:uswatte/core/errors/app_exception.dart';
 import 'package:uswatte/core/network/api_response.dart';
+import 'package:uswatte/core/network/conditional_get.dart';
 import 'package:uswatte/features/products/data/models/product_model.dart';
 
 class ProductsRemoteDatasource {
@@ -8,9 +9,22 @@ class ProductsRemoteDatasource {
 
   const ProductsRemoteDatasource(this._dio);
 
-  Future<ProductListResponseModel> getProducts() async {
+  /// Fetches the product list. With [ifNoneMatch] the request is conditional
+  /// and a 304 comes back as [NotModified]; without it the request is sent
+  /// exactly as before conditional GETs existed.
+  Future<ConditionalResponse<ProductListResponseModel>> getProducts({
+    String? ifNoneMatch,
+  }) async {
     try {
-      final response = await _dio.get('/api/v1/mobile/products');
+      final options = conditionalGetOptions(ifNoneMatch);
+      final response = await _dio.get(
+        '/api/v1/mobile/products',
+        options: options,
+      );
+
+      if (options != null && response.statusCode == 304) {
+        return const NotModified();
+      }
 
       final apiResponse = ApiResponse.fromJson(
         response.data as Map<String, dynamic>,
@@ -25,7 +39,7 @@ class ProductsRemoteDatasource {
         );
       }
 
-      return data;
+      return Fetched(data, readEtag(response));
     } on AppException {
       rethrow;
     } on DioException catch (e) {

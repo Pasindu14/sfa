@@ -6,6 +6,7 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:uswatte/core/background/location_ping_uploader.dart';
 import 'package:uswatte/core/constants/app_constants.dart';
 import 'package:uswatte/core/db/database_helper.dart';
 import 'package:uswatte/core/di/injection.dart';
@@ -58,11 +59,32 @@ void locationServiceEntry(ServiceInstance service) async {
   await Future<void>.delayed(_firstTickDelay);
   if (stopped) return;
 
-  // Capture + flush, then repeat every 5 minutes.
+  // Capture every 5 minutes; upload on the ticks [_uploadCadence] allows.
   await _tick();
-  timer = Timer.periodic(const Duration(minutes: 5), (_) async {
+  timer = Timer.periodic(_captureInterval, (_) async {
     await _tick();
   });
+}
+
+/// GPS capture period. Unchanged by the upload cadence below.
+const _captureInterval = Duration(minutes: 5);
+
+/// Upload at most every 10 minutes (every other capture). The web live map
+/// marks a rep stale after 15 minutes, so this must never approach that.
+final _uploadCadence = UploadCadence(
+  window: const Duration(minutes: 10),
+  tickInterval: _captureInterval,
+);
+
+/// The most recent failed capture not yet reported. The server keeps only the
+/// latest status per rep, so holding just the newest one until the upload
+/// window leaves the server in the same end state as reporting every tick.
+_PendingSkip? _pendingSkip;
+
+class _PendingSkip {
+  _PendingSkip(this.skip, this.occurredAt);
+  final _SkipReason skip;
+  final DateTime occurredAt;
 }
 
 @pragma('vm:entry-point')
@@ -93,25 +115,40 @@ Future<void> _tick() async {
   } catch (_) {
     skipped = _SkipReason.captureError;
   }
+
+  // Only recorded when the tick captured nothing. A healthy rep's pings are already the
+  // signal, so this adds no traffic on a good day — but it means an empty map can say
+  // WHY it is empty instead of looking identical to a dead service.
+  if (skipped != null) {
+    _pendingSkip = _PendingSkip(skipped, DateTime.now().toUtc());
+  }
+
+  final now = DateTime.now();
+  if (!_uploadCadence.isDue(now)) return;
+  _uploadCadence.markAttempt(now);
+
   try {
     await _flushQueue();
   } catch (_) {}
 
-  // Only reported when the tick captured nothing. A healthy rep's pings are already the
-  // signal, so this adds no traffic on a good day — but it means an empty map can say
-  // WHY it is empty instead of looking identical to a dead service.
-  if (skipped != null) {
+  // The status endpoint is separate from the ping batch (the API's
+  // CreateLocationPingsRequest has no status field), so it goes as its own
+  // call — but in the same upload window instead of on every tick.
+  final pending = _pendingSkip;
+  if (pending != null) {
     try {
-      await _reportSkip(skipped);
+      await _reportSkip(pending.skip, pending.occurredAt);
+      // Don't clear a newer skip that landed while this one was in flight.
+      if (identical(_pendingSkip, pending)) _pendingSkip = null;
     } catch (_) {}
   }
 }
 
-Future<void> _reportSkip(_SkipReason skip) async {
+Future<void> _reportSkip(_SkipReason skip, DateTime occurredAt) async {
   final dio = getIt<Dio>();
   await dio.post('/api/v1/location-pings/status', data: {
     'reason': skip.reason,
-    'occurredAt': DateTime.now().toUtc().toIso8601String(),
+    'occurredAt': occurredAt.toUtc().toIso8601String(),
     if (skip.accuracyMetres != null) 'accuracyMeters': skip.accuracyMetres,
   });
 }
@@ -176,36 +213,31 @@ Future<_SkipReason?> _captureAndQueue() async {
   return null; // captured and queued
 }
 
+/// Uploads the outbox oldest-first in chunks of [locationPingChunkSize]. Each
+/// chunk's rows are deleted only after that chunk is accepted; the first
+/// failure stops the drain and is rethrown, and the remainder waits for the
+/// next window. See [LocationPingUploader].
 Future<void> _flushQueue() async {
   final database = await DatabaseHelper.instance.database;
-  final rows =
-      await database.query('pending_location_pings', orderBy: 'id ASC');
-  if (rows.isEmpty) {
-    return;
-  }
-
-  final payload = rows
-      .map((r) => {
-            'latitude': r['lat'],
-            'longitude': r['lng'],
-            'accuracy': r['accuracy'],
-            'recordedAt': r['recorded_at'],
-          })
-      .toList();
-
   final dio = getIt<Dio>();
-  await dio.post('/api/v1/location-pings', data: {'pings': payload});
-
-  // Only delete rows that were successfully uploaded.
-  final ids = rows.map((r) => r['id'] as int).toList();
-  final placeholders = ids.map((_) => '?').join(',');
-  await database.rawDelete(
-    'DELETE FROM pending_location_pings WHERE id IN ($placeholders)',
-    ids,
-  );
+  await LocationPingUploader(
+    loadOldest: (limit) => database.query(
+      'pending_location_pings',
+      orderBy: 'id ASC',
+      limit: limit,
+    ),
+    post: (pings) =>
+        dio.post('/api/v1/location-pings', data: {'pings': pings}),
+    deleteIds: (ids) => database.rawDelete(
+      'DELETE FROM pending_location_pings '
+      'WHERE id IN (${List.filled(ids.length, '?').join(',')})',
+      ids,
+    ),
+  ).flush();
 }
 
 /// Public flush entrypoint — called by BackgroundSyncService as a backstop.
+/// Not subject to the service's upload cadence.
 Future<void> flushLocationPingQueue() => _flushQueue();
 
 // ── Public API ──────────────────────────────────────────────────────────────
@@ -213,9 +245,23 @@ Future<void> flushLocationPingQueue() => _flushQueue();
 class LocationTrackingService {
   static final _service = FlutterBackgroundService();
 
-  /// Call once from main() after Firebase init, before the app widget is built.
-  /// Creates the Android notification channel required before a foreground
-  /// service can post its persistent notification (Android 8+ requirement).
+  static Future<void>? _initializing;
+
+  /// Creates the notification channel and configures the service, once per
+  /// isolate. main() calls it after the first frame; [start] also awaits it,
+  /// so a login or session restore that beats the first frame still gets the
+  /// channel + configuration before `startService`, exactly as before. A
+  /// failed attempt is forgotten so the next caller retries.
+  static Future<void> ensureInitialized() {
+    return _initializing ??= initialize().catchError((Object e) {
+      _initializing = null;
+      throw e;
+    });
+  }
+
+  /// Prefer [ensureInitialized]. Creates the Android notification channel
+  /// required before a foreground service can post its persistent
+  /// notification (Android 8+ requirement), then configures the service.
   static Future<void> initialize() async {
     const channel = AndroidNotificationChannel(
       _channelId,
@@ -270,6 +316,14 @@ class LocationTrackingService {
           .write(key: AppConstants.trackingEnabledKey, value: '1');
     } catch (_) {
       // Fall through — a running service is still better than none.
+    }
+
+    try {
+      await ensureInitialized();
+    } catch (e) {
+      // Same reasoning: the platform keeps the last configuration, so still
+      // try to start.
+      debugPrint('LocationTrackingService init failed: $e');
     }
 
     final isRunning = await _service.isRunning();

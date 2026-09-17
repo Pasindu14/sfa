@@ -48,6 +48,7 @@ class BackgroundSyncService {
   final GetAssignmentsUseCase _getAssignments;
   final BillSyncService _billSync;
   final NotBillingSyncService _notBillingSync;
+  final Future<void> Function() _flushLocationPings;
 
   BackgroundSyncService({
     required SyncProductsUseCase syncProducts,
@@ -58,6 +59,7 @@ class BackgroundSyncService {
     required GetAssignmentsUseCase getAssignments,
     required BillSyncService billSync,
     required NotBillingSyncService notBillingSync,
+    @visibleForTesting Future<void> Function()? flushLocationPings,
   })  : _syncProducts = syncProducts,
         _syncCategories = syncCategories,
         _syncOutlets = syncOutlets,
@@ -65,71 +67,83 @@ class BackgroundSyncService {
         _syncStock = syncStock,
         _getAssignments = getAssignments,
         _billSync = billSync,
-        _notBillingSync = notBillingSync;
+        _notBillingSync = notBillingSync,
+        _flushLocationPings = flushLocationPings ?? flushLocationPingQueue;
 
   /// Live progress for the UI. Never replaced — listeners attach once.
   final ValueNotifier<AppSyncProgress> progress =
       ValueNotifier<AppSyncProgress>(const AppSyncProgress.idle());
 
-  /// Runs all sync steps sequentially. Each step is individually guarded so
-  /// one failure never blocks the rest. Always returns true — WorkManager
-  /// interprets a false/exception return as a signal to retry immediately,
-  /// which is undesirable for a periodic background task.
+  /// Runs every sync step. Each step is individually guarded so one failure
+  /// never blocks the rest. Always returns true — WorkManager interprets a
+  /// false/exception return as a signal to retry immediately, which is
+  /// undesirable for a periodic background task.
+  ///
+  /// Order:
+  ///   1. Master-data downloads, in parallel — products, categories, and the
+  ///      assignment → outlets chain. They write disjoint tables (products,
+  ///      product_categories, daily_outlets + their own metadata keys), and
+  ///      sqflite serializes the transactions, so running them together only
+  ///      removes network wait. Outlets still wait for the assignment.
+  ///   2. Outbox uploads (bills, then not-billings).
+  ///   3. Stock — after the bill flush, because a flush that synced bills
+  ///      already force-refreshed stock, and the stock use case skips a
+  ///      non-forced call within its throttle window. So a run with synced
+  ///      bills downloads stock once instead of twice.
+  ///   4. Location ping backstop.
   Future<bool> runSync() async {
-    progress.value = const AppSyncProgress.running('Products');
-    try {
-      await _syncProducts();
-    } catch (_) {}
-
-    try {
-      await _syncCategories();
-    } catch (_) {}
-
-    progress.value = const AppSyncProgress.running('Outlets');
-
-    try {
-      // Always re-confirm today's assignment from the server before syncing
-      // outlets — never fall back to the routeId already on the device. That
-      // fallback used to let the periodic background task re-sync a stale
-      // route (from the last day the rep actually had one) and stamp
-      // lastSyncedAt as "today", which made OutletsBloc treat days with no
-      // assignment as if today's outlets were ready.
-      final result = await _getAssignments(date: DateTime.now());
-      final assignment =
-          result.assignments.isEmpty ? null : result.assignments.first;
-
-      if (assignment != null) {
-        await _syncOutlets(assignment.routeId, assignment.routeName);
-      } else {
-        // No assignment today — actively wipe any outlets + sync stamp left
-        // over from a previous day (or an earlier buggy sync). Merely
-        // skipping the sync isn't enough: a stale lastSyncedAt already
-        // stamped "today" would keep OutletsBloc's _isSyncedToday gate
-        // fooled into showing yesterday's outlets as valid for today.
-        await _clearDailyOutlets();
-      }
-    } catch (_) {}
-
-    progress.value = const AppSyncProgress.running('Stock');
-    try {
-      await _syncStock();
-    } catch (_) {}
+    progress.value = const AppSyncProgress.running('Downloading');
+    await Future.wait([
+      _guard(() => _syncProducts()),
+      _guard(() => _syncCategories()),
+      _guard(_syncTodaysOutlets),
+    ]);
 
     progress.value = const AppSyncProgress.running('Uploading');
-    try {
-      await _billSync.flushAll();
-    } catch (_) {}
+    await _guard(() => _billSync.flushAll());
+    await _guard(() => _notBillingSync.flushAll());
 
-    try {
-      await _notBillingSync.flushAll();
-    } catch (_) {}
+    progress.value = const AppSyncProgress.running('Stock');
+    await _guard(() => _syncStock());
 
     // Backstop flush for any pings queued while the foreground service was offline.
-    try {
-      await flushLocationPingQueue();
-    } catch (_) {}
+    await _guard(_flushLocationPings);
 
     progress.value = AppSyncProgress.done(DateTime.now());
     return true;
+  }
+
+  Future<void> _syncTodaysOutlets() async {
+    // Always re-confirm today's assignment from the server before syncing
+    // outlets — never fall back to the routeId already on the device. That
+    // fallback used to let the periodic background task re-sync a stale
+    // route (from the last day the rep actually had one) and stamp
+    // lastSyncedAt as "today", which made OutletsBloc treat days with no
+    // assignment as if today's outlets were ready.
+    final result = await _getAssignments(date: DateTime.now());
+    final assignment =
+        result.assignments.isEmpty ? null : result.assignments.first;
+
+    if (assignment != null) {
+      await _syncOutlets(assignment.routeId, assignment.routeName);
+    } else {
+      // No assignment today — actively wipe any outlets + sync stamp left
+      // over from a previous day (or an earlier buggy sync). Merely
+      // skipping the sync isn't enough: a stale lastSyncedAt already
+      // stamped "today" would keep OutletsBloc's _isSyncedToday gate
+      // fooled into showing yesterday's outlets as valid for today.
+      await _clearDailyOutlets();
+    }
+  }
+
+  /// Runs one step, swallowing its failure — same contract every step had
+  /// when they ran one after another. Never throws, so `Future.wait` over
+  /// guarded steps always lets every step finish.
+  static Future<void> _guard(Future<void> Function() step) async {
+    try {
+      await step();
+    } catch (e) {
+      if (kDebugMode) debugPrint('BackgroundSyncService step failed: $e');
+    }
   }
 }

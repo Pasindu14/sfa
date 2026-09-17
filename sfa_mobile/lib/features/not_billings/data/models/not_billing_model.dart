@@ -15,6 +15,9 @@ class NotBillingModel {
   final int syncAttempts;
   final String? lastSyncError;
   final String? lastSyncErrorCode;
+
+  /// When the outbox last tried to send this row (UTC). Drives retry backoff.
+  final DateTime? lastAttemptAt;
   final int? serverNotBillingId;
   final String? serverNotBillingNumber;
 
@@ -31,6 +34,7 @@ class NotBillingModel {
     this.syncAttempts = 0,
     this.lastSyncError,
     this.lastSyncErrorCode,
+    this.lastAttemptAt,
     this.serverNotBillingId,
     this.serverNotBillingNumber,
   });
@@ -48,6 +52,9 @@ class NotBillingModel {
         syncAttempts: map['sync_attempts'] as int? ?? 0,
         lastSyncError: map['last_sync_error'] as String?,
         lastSyncErrorCode: map['last_sync_error_code'] as String?,
+        lastAttemptAt: map['last_attempt_at'] == null
+            ? null
+            : DateTime.tryParse(map['last_attempt_at'] as String),
         serverNotBillingId: map['server_not_billing_id'] as int?,
         serverNotBillingNumber: map['server_not_billing_number'] as String?,
       );
@@ -65,6 +72,7 @@ class NotBillingModel {
         'sync_attempts': syncAttempts,
         'last_sync_error': lastSyncError,
         'last_sync_error_code': lastSyncErrorCode,
+        'last_attempt_at': lastAttemptAt?.toUtc().toIso8601String(),
         'server_not_billing_id': serverNotBillingId,
         'server_not_billing_number': serverNotBillingNumber,
       };
@@ -116,6 +124,7 @@ class NotBillingModel {
         syncAttempts: syncAttempts ?? this.syncAttempts,
         lastSyncError: lastSyncError ?? this.lastSyncError,
         lastSyncErrorCode: lastSyncErrorCode ?? this.lastSyncErrorCode,
+        lastAttemptAt: lastAttemptAt,
         serverNotBillingId: serverNotBillingId ?? this.serverNotBillingId,
         serverNotBillingNumber: serverNotBillingNumber ?? this.serverNotBillingNumber,
       );

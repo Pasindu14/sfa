@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -31,7 +32,7 @@ import 'package:sqflite/sqflite.dart';
 /// the race above.
 class DatabaseHelper {
   static const _dbName = 'sfa_local.db';
-  static const _dbVersion = 19;
+  static const _dbVersion = 21;
 
   DatabaseHelper._private();
   static final DatabaseHelper instance = DatabaseHelper._private();
@@ -95,6 +96,8 @@ class DatabaseHelper {
     if (oldVersion < 17) await _migrateBillItemsPriceTypeV17(db);
     if (oldVersion < 18) await _createLocationPingsTable(db);
     if (oldVersion < 19) await _migrateDistributorStocksFleetV19(db);
+    if (oldVersion < 20) await _migrateOutboxLastAttemptV20(db);
+    if (oldVersion < 21) await _createPerformanceIndexesV21(db);
 
     await _ensureSchemaColumns(db);
   }
@@ -148,6 +151,33 @@ class DatabaseHelper {
 
     await _ensureColumn(db, 'distributor_stocks', 'fleet_id', 'INTEGER');
     await _ensureColumn(db, 'distributor_stocks', 'fleet_name', 'TEXT');
+
+    await _ensureColumn(db, 'bills', 'last_attempt_at', 'TEXT');
+    await _ensureColumn(db, 'not_billings', 'last_attempt_at', 'TEXT');
+
+    // Last: an index on a column must come after the column exists.
+    await ensurePerformanceIndexes(db);
+  }
+
+  /// Read-path indexes added in v21: bill lists order/filter by created_at and
+  /// billing_date, the product picker searches by code and groups by
+  /// category. `IF NOT EXISTS` makes each statement safe to re-run — see the
+  /// class doc. Every indexed column is in the CREATE TABLE in
+  /// [_createAllTables]; products.category_id on very old files is added by
+  /// [_ensureSchemaColumns] before this runs.
+  @visibleForTesting
+  static const performanceIndexStatements = <String>[
+    'CREATE INDEX IF NOT EXISTS idx_bills_created_at ON bills(created_at)',
+    'CREATE INDEX IF NOT EXISTS idx_bills_billing_date ON bills(billing_date)',
+    'CREATE INDEX IF NOT EXISTS idx_products_code ON products(code)',
+    'CREATE INDEX IF NOT EXISTS idx_products_category_id ON products(category_id)',
+  ];
+
+  @visibleForTesting
+  static Future<void> ensurePerformanceIndexes(DatabaseExecutor db) async {
+    for (final sql in performanceIndexStatements) {
+      await db.execute(sql);
+    }
   }
 
   /// Every table at its current shape. Called from both onCreate and onUpgrade.
@@ -193,6 +223,19 @@ class DatabaseHelper {
   }
 
   // ── Migrations ─────────────────────────────────────────────────────────────
+
+  /// Read-path indexes — see [performanceIndexStatements].
+  Future<void> _createPerformanceIndexesV21(Database db) async {
+    // Belt and braces for a half-migrated file: the column must exist first.
+    await _ensureColumn(db, 'products', 'category_id', 'INTEGER');
+    await ensurePerformanceIndexes(db);
+  }
+
+  /// Outbox retry backoff needs to know when a row was last attempted.
+  Future<void> _migrateOutboxLastAttemptV20(Database db) async {
+    await _ensureColumn(db, 'bills', 'last_attempt_at', 'TEXT');
+    await _ensureColumn(db, 'not_billings', 'last_attempt_at', 'TEXT');
+  }
 
   /// Fleet is denormalized onto each stock row server-side. No backfill needed —
   /// distributor_stocks is a cache that is fully replaced on the next sync.
@@ -281,6 +324,7 @@ class DatabaseHelper {
         sync_attempts        INTEGER NOT NULL DEFAULT 0,
         last_sync_error      TEXT,
         last_sync_error_code TEXT,
+        last_attempt_at      TEXT,
         server_bill_id       INTEGER,
         server_bill_number   TEXT
       )
@@ -338,6 +382,7 @@ class DatabaseHelper {
         sync_attempts          INTEGER NOT NULL DEFAULT 0,
         last_sync_error        TEXT,
         last_sync_error_code   TEXT,
+        last_attempt_at        TEXT,
         server_not_billing_id     INTEGER,
         server_not_billing_number TEXT
       )

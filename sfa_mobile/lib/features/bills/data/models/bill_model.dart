@@ -20,6 +20,9 @@ class BillModel {
   final int syncAttempts;
   final String? lastSyncError;
   final String? lastSyncErrorCode;
+
+  /// When the outbox last tried to send this row (UTC). Drives retry backoff.
+  final DateTime? lastAttemptAt;
   final int? serverBillId;
   final String? serverBillNumber;
   final String? outletName;
@@ -43,6 +46,7 @@ class BillModel {
     this.syncAttempts = 0,
     this.lastSyncError,
     this.lastSyncErrorCode,
+    this.lastAttemptAt,
     this.serverBillId,
     this.serverBillNumber,
     this.outletName,
@@ -67,6 +71,9 @@ class BillModel {
         syncAttempts: map['sync_attempts'] as int? ?? 0,
         lastSyncError: map['last_sync_error'] as String?,
         lastSyncErrorCode: map['last_sync_error_code'] as String?,
+        lastAttemptAt: map['last_attempt_at'] == null
+            ? null
+            : DateTime.tryParse(map['last_attempt_at'] as String),
         serverBillId: map['server_bill_id'] as int?,
         serverBillNumber: map['server_bill_number'] as String?,
         outletName: map['outlet_name'] as String?,
@@ -96,6 +103,7 @@ class BillModel {
         'sync_attempts': syncAttempts,
         'last_sync_error': lastSyncError,
         'last_sync_error_code': lastSyncErrorCode,
+        'last_attempt_at': lastAttemptAt?.toUtc().toIso8601String(),
         'server_bill_id': serverBillId,
         'server_bill_number': serverBillNumber,
         'outlet_name': outletName,
@@ -164,6 +172,7 @@ class BillModel {
         syncAttempts: syncAttempts ?? this.syncAttempts,
         lastSyncError: lastSyncError ?? this.lastSyncError,
         lastSyncErrorCode: lastSyncErrorCode ?? this.lastSyncErrorCode,
+        lastAttemptAt: lastAttemptAt,
         serverBillId: serverBillId ?? this.serverBillId,
         serverBillNumber: serverBillNumber ?? this.serverBillNumber,
         outletName: outletName,

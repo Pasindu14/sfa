@@ -105,6 +105,11 @@ flutter:
   assets:
     - assets/images/uswatte-logo.png
     - shorebird.yaml
+    # Pre-bundled google_fonts faces (runtime fetching is disabled in main.dart).
+    # Filenames must stay `Family-WeightStyle.ttf` — that is how google_fonts
+    # matches a requested weight to an asset. Every weight the app requests
+    # must have a file here; test/core/theme/bundled_fonts_test.dart enforces it.
+    - google_fonts/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

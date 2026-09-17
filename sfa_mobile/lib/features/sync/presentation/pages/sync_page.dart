@@ -13,6 +13,7 @@ import 'package:uswatte/features/bills/domain/usecases/get_bills_usecase.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_bloc.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_event.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_state.dart';
+import 'package:uswatte/features/products/domain/usecases/sync_product_categories_usecase.dart';
 import 'package:uswatte/features/products/presentation/bloc/products_bloc.dart';
 import 'package:uswatte/features/products/presentation/bloc/products_event.dart';
 import 'package:uswatte/features/products/presentation/bloc/products_state.dart';
@@ -119,15 +120,20 @@ class _SyncPageState extends State<SyncPage> {
     }
   }
 
-  Future<void> _syncStock() async {
+  /// [force] (the stock card's own button) always downloads. Sync All passes
+  /// false because it runs this right after the bill flush, which has already
+  /// force-refreshed stock if any bill synced — the use case then skips the
+  /// duplicate download instead of fetching the same snapshot twice.
+  Future<void> _syncStock({bool force = true}) async {
     if (_stockSyncing) return;
     if (!await _requireOnline()) return;
+    if (!mounted) return;
     setState(() {
       _stockSyncing = true;
       _stockErrorMessage = null;
     });
     try {
-      await getIt<SyncDistributorStockUseCase>()();
+      await getIt<SyncDistributorStockUseCase>()(force: force);
       await _loadStockMeta();
     } catch (e) {
       if (mounted) {
@@ -321,9 +327,18 @@ class _SyncPageState extends State<SyncPage> {
                           context.read<ProductsBloc>().add(
                             const SyncProductsRequested(),
                           );
+                          // Categories have no card, but bill search groups
+                          // by them; with an ETag this is a cheap 304.
+                          getIt<SyncProductCategoriesUseCase>()()
+                              .then<void>((_) {}, onError: (Object _) {})
+                              .ignore();
                           _syncOutlets(context);
-                          _syncStock();
-                          _syncBills();
+                          // Bills first: the flush inside it refreshes stock
+                          // when bills sync, so stock after it doesn't
+                          // download the same snapshot twice.
+                          _syncBills()
+                              .then((_) => _syncStock(force: false))
+                              .ignore();
                         },
                 ),
               ),

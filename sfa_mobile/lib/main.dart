@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/background/background_sync_service.dart';
 import 'package:uswatte/core/background/location_tracking_service.dart';
 import 'package:uswatte/core/device/device_id_service.dart';
@@ -60,38 +62,27 @@ void callbackDispatcher() {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await configureDependencies();
 
-  // Create/migrate the SQLite schema here, on the UI isolate, BEFORE any
-  // background isolate can open the same file. Two isolates opening it
-  // concurrently makes sqflite force a ROLLBACK on the shared native
-  // connection, aborting the schema transaction half-way. See DatabaseHelper.
-  await DatabaseHelper.instance.database;
+  // Every face the app uses ships in google_fonts/ (see pubspec). Never hit the
+  // network for a font: a rep's first launch is often offline, and a fetched
+  // face swaps in mid-render.
+  GoogleFonts.config.allowRuntimeFetching = false;
+  _registerBundledFontLicenses();
 
-  // Register the 4-hour background sync task. ExistingWorkPolicy.keep means
-  // relaunching the app does not reset the timer for an already-queued task.
-  await LocationTrackingService.initialize();
-  await Workmanager().initialize(callbackDispatcher);
-  await Workmanager().registerPeriodicTask(
-    'com.sfa.uswatte.background_sync',
-    _backgroundSyncTask,
-    frequency: const Duration(hours: 4),
-    constraints: Constraints(networkType: NetworkType.connected),
-    existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
-  );
-
-  // Watchdog: restart location tracking if it should be running but isn't.
-  // WorkManager survives the process death that kills the foreground service, and
-  // 15 minutes is its minimum period. No network constraint — starting a service
-  // needs none, and requiring connectivity would leave a dead service dead through
-  // exactly the offline stretch we still want positions recorded for.
-  await Workmanager().registerPeriodicTask(
-    'com.sfa.uswatte.tracking_watchdog',
-    _trackingWatchdogTask,
-    frequency: const Duration(minutes: 15),
-    existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
-  );
+  // Independent of each other, so run them together:
+  //  - Firebase: FirebaseMessaging is used in SfaApp.initState.
+  //  - DI: everything below resolves through getIt.
+  //  - SQLite: create/migrate the schema here, on the UI isolate, BEFORE any
+  //    background isolate can open the same file. Two isolates opening it
+  //    concurrently makes sqflite force a ROLLBACK on the shared native
+  //    connection, aborting the schema transaction half-way. The location
+  //    service and the WorkManager tasks are only started/registered after
+  //    this completes. See DatabaseHelper.
+  await Future.wait<void>([
+    Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform),
+    configureDependencies(),
+    DatabaseHelper.instance.database,
+  ]);
 
   // Composition root: wire use cases explicitly — presentation never touches getIt
   final authBloc = AuthBloc(
@@ -103,6 +94,79 @@ void main() async {
   )..add(const AppStarted());
 
   runApp(SfaApp(authBloc: authBloc));
+
+  // Nothing the first frame draws depends on these, so they no longer hold up
+  // the splash screen. Safe to defer:
+  //  - LocationTrackingService.start() (login / session restore) awaits
+  //    LocationTrackingService.ensureInitialized() itself, so a start that
+  //    wins the race still creates the channel and configures the service
+  //    first — the same order as before.
+  //  - WorkManager registrations use ExistingPeriodicWorkPolicy.keep, so
+  //    registering a few hundred ms later changes no schedule.
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(_initBackgroundWork());
+  });
+}
+
+/// Post-first-frame platform setup. Each part logs its own failure so one
+/// never stops the other.
+Future<void> _initBackgroundWork() async {
+  await Future.wait<void>([
+    _logFailure(
+      'location tracking init',
+      LocationTrackingService.ensureInitialized,
+    ),
+    _logFailure('workmanager registration', _registerBackgroundTasks),
+  ]);
+}
+
+Future<void> _registerBackgroundTasks() async {
+  await Workmanager().initialize(callbackDispatcher);
+  await Future.wait<void>([
+    // The 4-hour background sync task. ExistingWorkPolicy.keep means
+    // relaunching the app does not reset the timer for an already-queued task.
+    Workmanager().registerPeriodicTask(
+      'com.sfa.uswatte.background_sync',
+      _backgroundSyncTask,
+      frequency: const Duration(hours: 4),
+      constraints: Constraints(networkType: NetworkType.connected),
+      existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
+    ),
+    // Watchdog: restart location tracking if it should be running but isn't.
+    // WorkManager survives the process death that kills the foreground service, and
+    // 15 minutes is its minimum period. No network constraint — starting a service
+    // needs none, and requiring connectivity would leave a dead service dead through
+    // exactly the offline stretch we still want positions recorded for.
+    Workmanager().registerPeriodicTask(
+      'com.sfa.uswatte.tracking_watchdog',
+      _trackingWatchdogTask,
+      frequency: const Duration(minutes: 15),
+      existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
+    ),
+  ]);
+}
+
+Future<void> _logFailure(String what, Future<void> Function() op) async {
+  try {
+    await op();
+  } catch (e, stack) {
+    debugPrint('STARTUP: $what failed: $e\n$stack');
+  }
+}
+
+/// The bundled font files are OFL-licensed; the licence asks for its text to
+/// travel with them, so it shows up on the platform licence page.
+void _registerBundledFontLicenses() {
+  LicenseRegistry.addLicense(() async* {
+    for (final (packages, asset) in const [
+      (['google_fonts', 'Barlow', 'Barlow Condensed'], 'OFL-Barlow.txt'),
+      (['google_fonts', 'Roboto Mono'], 'OFL-RobotoMono.txt'),
+      (['google_fonts', 'Source Code Pro'], 'OFL-SourceCodePro.txt'),
+    ]) {
+      final text = await rootBundle.loadString('google_fonts/$asset');
+      yield LicenseEntryWithLineBreaks(packages, text);
+    }
+  });
 }
 
 class SfaApp extends StatefulWidget {
@@ -147,16 +211,31 @@ class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
     if (widget.authBloc.state is AuthAuthenticated) {
       _onAuthStateChanged(widget.authBloc.state);
     }
-    // Sync distributor stock whenever connectivity is restored (fire-and-forget).
+    // Refresh distributor stock whenever connectivity is restored
+    // (fire-and-forget). The outbox services flush off the same event; this
+    // joins that flush instead of racing it — see [_flushThenRefreshStock].
     _connectivityStockSub = getIt<ConnectivityService>()
         .onConnectionRestored
-        .listen((_) => unawaited(
-              getIt<SyncDistributorStockUseCase>()().catchError((_) {}),
-            ));
+        .listen((_) => unawaited(_flushThenRefreshStock()));
     _setupNotificationHandlers();
     // Staggered so the check doesn't compete with launch work (schema open,
     // auth restore, first sync).
     Future.delayed(const Duration(seconds: 8), _checkForPatch);
+  }
+
+  /// Waits on the bill outbox flush, then refreshes stock only if that flush
+  /// didn't. `flushAll` is single-flight, so this joins a flush the service
+  /// already started off the same connectivity event rather than starting a
+  /// second one. A flush that synced any bill refreshes stock itself, and the
+  /// stock use case skips a sync that ran in the last minute — so this is at
+  /// most one download instead of one from each trigger.
+  Future<void> _flushThenRefreshStock() async {
+    try {
+      await getIt<BillSyncService>().flushAll();
+    } catch (_) {}
+    try {
+      await getIt<SyncDistributorStockUseCase>()();
+    } catch (_) {}
   }
 
   // ── Post-login sync ─────────────────────────────────────────────────────────
@@ -346,9 +425,8 @@ class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
       // staged patch out from under them.
       _autoRestartTimer?.cancel();
       _autoRestartTimer = null;
-      // Fire-and-forget; errors are contained inside the service.
-      getIt<BillSyncService>().flushAll();
-      unawaited(getIt<SyncDistributorStockUseCase>()().catchError((_) {}));
+      // Fire-and-forget; errors are contained inside the helper.
+      unawaited(_flushThenRefreshStock());
       unawaited(_checkForPatch());
     } else if (state == AppLifecycleState.paused) {
       _scheduleAutoRestart();

@@ -27,6 +27,15 @@ class ProductCategoriesLocalDatasource {
     });
   }
 
+  /// True when the local product_categories table holds at least one row. A
+  /// conditional GET is only safe against a non-empty cache — a 304 would
+  /// otherwise leave the rep with no categories.
+  Future<bool> hasAny() async {
+    final db = await _dbHelper.database;
+    final rows = await db.rawQuery('SELECT 1 FROM product_categories LIMIT 1');
+    return rows.isNotEmpty;
+  }
+
   Future<DateTime?> getLastSyncedAt() async {
     final db = await _dbHelper.database;
     final rows = await db.query(

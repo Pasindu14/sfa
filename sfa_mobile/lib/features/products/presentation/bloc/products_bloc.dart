@@ -54,7 +54,7 @@ class ProductsBloc extends Bloc<ProductsEvent, ProductsState> {
 
     emit(current.copyWith(isSyncing: true));
     try {
-      final (synced, cachedAt) = await _syncProducts();
+      final (synced, cachedAt) = await _syncProducts(force: event.force);
       emit(ProductsLoaded(
           products: synced, isSyncing: false, lastSyncedAt: cachedAt));
     } on AppException {

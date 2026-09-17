@@ -98,9 +98,16 @@ class NotBillingsLocalDatasource {
          SET sync_status = ?,
              sync_attempts = sync_attempts + 1,
              last_sync_error_code = ?,
-             last_sync_error = ?
+             last_sync_error = ?,
+             last_attempt_at = ?
          WHERE client_not_billing_id = ?''',
-      [SyncStatus.failed.dbValue, errorCode, errorMessage, clientNotBillingId],
+      [
+        SyncStatus.failed.dbValue,
+        errorCode,
+        errorMessage,
+        DateTime.now().toUtc().toIso8601String(),
+        clientNotBillingId,
+      ],
     );
   }
 
@@ -109,9 +116,14 @@ class NotBillingsLocalDatasource {
     await db.rawUpdate(
       '''UPDATE not_billings
          SET sync_status = ?,
-             sync_attempts = sync_attempts + 1
+             sync_attempts = sync_attempts + 1,
+             last_attempt_at = ?
          WHERE client_not_billing_id = ?''',
-      [SyncStatus.pending.dbValue, clientNotBillingId],
+      [
+        SyncStatus.pending.dbValue,
+        DateTime.now().toUtc().toIso8601String(),
+        clientNotBillingId,
+      ],
     );
   }
 

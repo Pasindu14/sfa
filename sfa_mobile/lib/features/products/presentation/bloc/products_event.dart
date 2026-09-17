@@ -14,5 +14,12 @@ final class LoadProductsRequested extends ProductsEvent {
 
 /// Explicit user-triggered sync (pull-to-refresh or sync button).
 final class SyncProductsRequested extends ProductsEvent {
-  const SyncProductsRequested();
+  /// Skip the stored ETag and always download the full list. The default
+  /// still refreshes: an unchanged list just comes back as a cheap 304.
+  final bool force;
+
+  const SyncProductsRequested({this.force = false});
+
+  @override
+  List<Object?> get props => [force];
 }

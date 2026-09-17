@@ -5,5 +5,6 @@ class SyncProductsUseCase {
   final ProductsRepository _repository;
   const SyncProductsUseCase(this._repository);
 
-  Future<(List<Product>, DateTime)> call() => _repository.syncProducts();
+  Future<(List<Product>, DateTime)> call({bool force = false}) =>
+      _repository.syncProducts(force: force);
 }

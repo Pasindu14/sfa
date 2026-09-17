@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:uswatte/core/connectivity/connectivity_service.dart';
 import 'package:uswatte/core/errors/app_exception.dart';
+import 'package:uswatte/core/sync/sync_backoff.dart';
 import 'package:uswatte/features/bills/data/datasources/bills_local_datasource.dart';
 import 'package:uswatte/features/bills/data/datasources/bills_remote_datasource.dart';
 import 'package:uswatte/features/bills/data/models/bill_model.dart';
@@ -59,26 +60,89 @@ class BillSyncService {
   /// re-sending a row that's still being posted.
   final Set<String> _inFlight = {};
 
-  BillSyncService(this._local, this._remote, this._connectivity, this._syncStock, this._outletsLocal) {
+  /// Rows another path attempted since the running flush read its batch. A
+  /// [flushOne] (new bill / manual retry) can finish a row while flushAll is
+  /// still working through a stale list that holds it as pending.
+  final Set<String> _attemptedDuringFlush = {};
+
+  /// The flush currently running, if any. Overlapping triggers share it rather
+  /// than reading the same pending rows and POSTing them a second time.
+  Future<void>? _flushing;
+
+  final DateTime Function() _now;
+
+  BillSyncService(
+    this._local,
+    this._remote,
+    this._connectivity,
+    this._syncStock,
+    this._outletsLocal, {
+    DateTime Function()? clock,
+  }) : _now = clock ?? DateTime.now {
     _connectivitySub = _connectivity.onConnectionRestored.listen((_) {
       // Fire-and-forget: swallow errors so the listener stays alive.
-      flushAll();
+      flushAll().catchError((_) {});
     });
   }
 
   Stream<BillOutboxStatus> get status$ => _statusCtrl.stream;
 
-  /// Attempt to sync every pending/failed row. Safe to call concurrently —
-  /// rows already in-flight are skipped. Opportunistically purges synced bills
-  /// older than [retentionWindow] at the end so the local DB stays bounded.
-  Future<void> flushAll() async {
-    final rows = await _local.getPendingForSync();
-    for (final row in rows) {
-      if (_terminalErrorCodes.contains(row.lastSyncErrorCode)) continue;
-      await _sync(row);
+  /// True while a [flushAll] pass is running.
+  bool get isFlushing => _flushing != null;
+
+  /// Attempt to sync every pending/failed row. Safe to call concurrently — a
+  /// call made while a flush is running returns that flush's future, and rows
+  /// already in-flight are skipped. Failed rows wait out [SyncBackoff] unless
+  /// [force] is set (manual "sync now"); a forced call that lands during an
+  /// unforced flush runs its own pass once that one finishes.
+  ///
+  /// Distributor stock is refreshed once at the end if at least one bill
+  /// synced. Opportunistically purges synced bills older than
+  /// [retentionWindow] so the local DB stays bounded.
+  Future<void> flushAll({bool force = false}) {
+    final running = _flushing;
+    if (running != null) {
+      if (!force) return running;
+      return running.then((_) => flushAll(force: true));
     }
+    final future = _flushAll(force: force);
+    _flushing = future;
+    return future.whenComplete(() {
+      if (identical(_flushing, future)) _flushing = null;
+    });
+  }
+
+  Future<void> _flushAll({required bool force}) async {
+    _attemptedDuringFlush.clear();
+    final rows = await _local.getPendingForSync();
+    var synced = 0;
+    for (final row in rows) {
+      if (_inFlight.contains(row.clientBillId)) continue;
+      if (_attemptedDuringFlush.contains(row.clientBillId)) continue;
+      if (_terminalErrorCodes.contains(row.lastSyncErrorCode)) continue;
+      if (!force && !_isDue(row)) continue;
+      if (await _sync(row)) synced++;
+    }
+    if (synced > 0) await _refreshStock();
     await _purgeOld();
     await _emitStatus();
+  }
+
+  bool _isDue(BillModel row) {
+    if (row.syncStatus != SyncStatus.failed) return true;
+    return SyncBackoff.isDue(
+      attempts: row.syncAttempts,
+      lastAttemptAt: row.lastAttemptAt,
+      now: _now(),
+    );
+  }
+
+  /// Refresh local stock after bills synced — best-effort, never blocks. Forced
+  /// because the server's counts just changed, so a recent sync is stale.
+  Future<void> _refreshStock() async {
+    try {
+      await _syncStock(force: true);
+    } catch (_) {}
   }
 
   /// Pulls the rep's own bills down from the server into the local store.
@@ -96,7 +160,8 @@ class BillSyncService {
     }
 
     // Push before pulling, so anything still queued locally wins its own row.
-    await flushAll();
+    // This is the Sync page's explicit action, so it skips retry backoff.
+    await flushAll(force: true);
 
     final bills = await _remote.fetchMyBillsForSync(days: days);
     final written = await _local.upsertFromServer(bills);
@@ -127,6 +192,8 @@ class BillSyncService {
   /// Attempt to sync one row by its client ID. No-ops if the row doesn't exist,
   /// is already synced, in-flight, or failed with a terminal error code that
   /// the rep must resolve manually (e.g. out of stock, validation failure).
+  /// Used for a fresh create and the manual retry button, so retry backoff does
+  /// not apply. Refreshes distributor stock on success.
   Future<void> flushOne(String clientBillId) async {
     if (_inFlight.contains(clientBillId)) return;
     final row = await _local.getById(clientBillId);
@@ -135,7 +202,7 @@ class BillSyncService {
     if (row.syncStatus.dbValue == 'syncing') return;
     if (_terminalErrorCodes.contains(row.lastSyncErrorCode)) return;
 
-    await _sync(row);
+    if (await _sync(row)) await _refreshStock();
     await _emitStatus();
   }
 
@@ -158,8 +225,11 @@ class BillSyncService {
     await _emitStatus();
   }
 
-  Future<void> _sync(BillModel row) async {
-    _inFlight.add(row.clientBillId);
+  /// Sends one row. Returns true when the server accepted it.
+  Future<bool> _sync(BillModel row) async {
+    // Claim synchronously (no await before this) so a concurrent caller that
+    // checked _inFlight a moment earlier can't also send the row.
+    if (!_inFlight.add(row.clientBillId)) return false;
     try {
       await _local.markSyncing(row.clientBillId);
       _statusCtrl.add(BillOutboxStatus(
@@ -179,10 +249,8 @@ class BillSyncService {
         await _outletsLocal.stampLastBillDate(row.outletId, row.billingDate);
       } catch (_) {}
 
-      // Refresh local stock after a successful bill — best-effort, never blocks.
-      try {
-        await _syncStock();
-      } catch (_) {}
+      // Stock is refreshed by the caller — once per flushAll, not per bill.
+      return true;
     } on NetworkException {
       // Reversible: stay pending, try again on next trigger.
       await _local.markPendingAfterNetworkError(row.clientBillId);
@@ -198,7 +266,9 @@ class BillSyncService {
       await _local.markPendingAfterNetworkError(row.clientBillId);
     } finally {
       _inFlight.remove(row.clientBillId);
+      if (_flushing != null) _attemptedDuringFlush.add(row.clientBillId);
     }
+    return false;
   }
 
   String _flattenMessage(AppException e) {

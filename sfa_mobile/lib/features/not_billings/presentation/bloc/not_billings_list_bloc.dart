@@ -80,7 +80,8 @@ class NotBillingsListBloc
 
   Future<void> _onFlushAll(
       FlushAllNotBillingsRequested e, Emitter<NotBillingsListState> emit) async {
-    await _syncService.flushAll();
+    // Explicit user action — skip retry backoff.
+    await _syncService.flushAll(force: true);
   }
 
   @override
