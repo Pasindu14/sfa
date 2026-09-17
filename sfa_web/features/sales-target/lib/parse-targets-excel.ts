@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx'
+import { loadXlsx } from '@/lib/utils/load-excel'
 import type { ImportSalesTargetsPayload } from '../schema/sales-target.schema'
 
 // Excel layout (0-indexed):
@@ -43,10 +43,11 @@ export function toApiPayload(data: ParsedTargetsData): ImportSalesTargetsPayload
   }
 }
 
-export function parseTargetsExcel(
+export async function parseTargetsExcel(
   buffer: ArrayBuffer,
   fileName: string,
-): ParsedTargetsData {
+): Promise<ParsedTargetsData> {
+  const XLSX = await loadXlsx()
   const wb = XLSX.read(buffer, { type: 'array' })
   const ws = wb.Sheets[wb.SheetNames[0]]
   const aoa: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' })

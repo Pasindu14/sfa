@@ -5,13 +5,14 @@ import { useQuery } from '@tanstack/react-query'
 import { getActiveDivisionsAction } from '../../actions/division.actions'
 import { AsyncSelect } from '@/components/async-select'
 import type { DivisionDto } from '../types/division.types'
+import { ActionError } from '@/lib/actions/action-error'
 
 function useActiveDivisionsSelect() {
   return useQuery({
     queryKey: ['divisions', 'active'] as const,
     queryFn: async () => {
       const result = await getActiveDivisionsAction()
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
   })

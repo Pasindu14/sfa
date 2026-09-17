@@ -5,13 +5,14 @@ import { useQuery } from '@tanstack/react-query'
 import { getActiveTerritoriesAction } from '../../actions/territory.actions'
 import { AsyncSelect } from '@/components/async-select'
 import type { TerritoryDto } from '../types/territory.types'
+import { ActionError } from '@/lib/actions/action-error'
 
 function useActiveTerritories() {
   return useQuery({
     queryKey: ['territories', 'active'] as const,
     queryFn: async () => {
       const result = await getActiveTerritoriesAction()
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
   })

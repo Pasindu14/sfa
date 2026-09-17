@@ -14,6 +14,7 @@ import {
 } from '../actions/sales-summary.actions'
 import { useSalesSummaryFilterStore } from '../store'
 import type { UserOption } from '../schema/sales-summary.schema'
+import { ActionError } from '@/lib/actions/action-error'
 
 // ── Query keys ──────────────────────────────────────────────────────────────
 
@@ -55,7 +56,7 @@ export function useSalesSummary() {
         nsmId: applied.nsmId,
         productId: applied.productId,
       })
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: !!applied,
@@ -85,7 +86,7 @@ export function useUsersByRoleFetcher(role: string | null) {
         queryKey: [...salesSummaryKeys.users, role, search ?? ''] as const,
         queryFn: async () => {
           const result = await getUsersByRoleForSelectAction(role, search)
-          if (!result.success) throw new Error(result.error)
+          if (!result.success) throw new ActionError(result)
           return result.data
         },
         staleTime: SELECT_STALE_TIME,
@@ -115,7 +116,7 @@ function useGeoFetcher<T>(
       queryKey: salesSummaryKeys.geo(level, parentId),
       queryFn: async () => {
         const result = await action(parentId)
-        if (!result.success) throw new Error(result.error)
+        if (!result.success) throw new ActionError(result)
         return result.data
       },
       staleTime: SELECT_STALE_TIME,
@@ -132,7 +133,7 @@ export function useRegionsFetcher() {
         queryKey: salesSummaryKeys.geo('regions', null),
         queryFn: async () => {
           const result = await getActiveRegionsAction()
-          if (!result.success) throw new Error(result.error)
+          if (!result.success) throw new ActionError(result)
           return result.data
         },
         staleTime: SELECT_STALE_TIME,

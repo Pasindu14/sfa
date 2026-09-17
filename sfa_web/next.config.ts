@@ -7,6 +7,11 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "5mb",
     },
+    // Barrel packages imported as `import { X } from "pkg"` that are NOT already in Next's
+    // built-in optimizePackageImports list (lucide-react, date-fns, recharts, react-icons/*
+    // are covered by default; motion/react-icons aren't imported anywhere). Next merges this
+    // with its defaults.
+    optimizePackageImports: ["radix-ui", "@radix-ui/react-icons"],
   },
   async headers() {
     return [

@@ -1,4 +1,4 @@
-import ExcelJS from 'exceljs'
+import { loadExcelJS } from '@/lib/utils/load-excel'
 import { BIN_CARD_COLUMNS } from '../components/columns/bin-card-columns'
 import type { BinCardResponse } from '../schema/bin-card.schema'
 
@@ -21,6 +21,7 @@ function downloadBlob(blob: Blob, filename: string): void {
 // ── Excel ───────────────────────────────────────────────────────────────────
 
 export async function exportBinCardExcel(data: BinCardResponse): Promise<void> {
+  const ExcelJS = await loadExcelJS()
   const wb = new ExcelJS.Workbook()
   const ws = wb.addWorksheet('Bin Card')
 

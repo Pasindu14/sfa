@@ -103,3 +103,26 @@ export type BillingAdjustment = z.infer<typeof billingAdjustmentSchema>
 export type BillingAdjustmentLine = z.infer<typeof billingAdjustmentLineSchema>
 export type RejectBillingInput = z.infer<typeof rejectBillingSchema>
 export type AdjustBillingItemsInput = z.infer<typeof adjustBillingItemsSchema>
+
+// GET /api/v1/billings/portal/dashboard-summary — server-side aggregates for the distributor dashboard.
+// Revenue fields exclude rep-cancelled bills; counts include every bill issued.
+export const distributorBillingDashboardDaySchema = z.object({
+  date: z.string(), // YYYY-MM-DD (Sri Lanka business date)
+  totalRevenue: z.number(),
+  totalCount: z.number(),
+  approvedRevenue: z.number(),
+  approvedCount: z.number(),
+  pendingRevenue: z.number(),
+  pendingCount: z.number(),
+})
+
+export const distributorBillingDashboardSummarySchema = distributorBillingDashboardDaySchema
+  .omit({ date: true })
+  .extend({
+    dateFrom: z.string(),
+    dateTo: z.string(),
+    days: z.array(distributorBillingDashboardDaySchema),
+  })
+
+export type DistributorBillingDashboardDay = z.infer<typeof distributorBillingDashboardDaySchema>
+export type DistributorBillingDashboardSummary = z.infer<typeof distributorBillingDashboardSummarySchema>

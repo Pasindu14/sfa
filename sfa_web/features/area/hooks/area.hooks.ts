@@ -23,6 +23,7 @@ import {
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { ActionFailure } from '@/lib/types/actions'
 import type { CreateAreaInput, UpdateAreaInput } from '../schema/area.schema'
+import { ActionError } from '@/lib/actions/action-error'
 
 // --- Query key factory ---
 
@@ -41,7 +42,7 @@ export function areaQueryOptions(page: number, pageSize: number) {
     queryKey: areaKeys.list({ page, pageSize }),
     queryFn: async () => {
       const result = await getAreasAction(page, pageSize)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
   })
@@ -58,7 +59,7 @@ export function useArea(id: number | null) {
     queryKey: areaKeys.detail(id!),
     queryFn: async () => {
       const result = await getAreaByIdAction(id!)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: id !== null,
@@ -72,7 +73,7 @@ export function useActiveAreas() {
     queryKey: [...areaKeys.all, 'active'] as const,
     queryFn: async () => {
       const result = await getActiveAreasAction()
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
   })
@@ -94,7 +95,7 @@ export function useAreaDataTable(
     queryKey: areaKeys.list({ page, pageSize, search, customFilters }),
     queryFn: async () => {
       const result = await getAreasAction(page, pageSize, search || undefined)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const { areas, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,

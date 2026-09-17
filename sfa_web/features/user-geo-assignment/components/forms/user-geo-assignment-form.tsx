@@ -31,7 +31,6 @@ import {
   type UpdateUserGeoAssignmentInput,
 } from "../../schema/user-geo-assignment.schema";
 import {
-  useUsersForGeoSelect,
   useRegionsForSelect,
   useAreasForSelect,
   useTerritoriesForSelect,
@@ -209,8 +208,9 @@ export type UserGeoAssignmentFormProps = CreateFormProps | EditFormProps;
 // ── Main export ───────────────────────────────────────────────────────────────
 
 export function UserGeoAssignmentForm(props: UserGeoAssignmentFormProps) {
-  const { data: users = [], isLoading: isLoadingUsers } =
-    useUsersForGeoSelect();
+  // The user picker searches the API as you type (see useAssignableUserFetcher), so there is
+  // no up-front user list to download or wait for.
+  const isLoadingUsers = false;
   const { data: regions = [], isLoading: isLoadingRegions } =
     useRegionsForSelect();
   const { data: areas = [], isLoading: isLoadingAreas } = useAreasForSelect();
@@ -229,7 +229,6 @@ export function UserGeoAssignmentForm(props: UserGeoAssignmentFormProps) {
     return (
       <CreateForm
         {...props}
-        users={users}
         isLoadingUsers={isLoadingUsers}
         regions={regions}
         areas={areas}
@@ -242,7 +241,6 @@ export function UserGeoAssignmentForm(props: UserGeoAssignmentFormProps) {
   return (
     <EditForm
       {...props}
-      users={users}
       isLoadingUsers={isLoadingUsers}
       regions={regions}
       areas={areas}
@@ -429,7 +427,6 @@ function CreateForm({
   onCancel,
   isLoading,
   fieldErrors,
-  users,
   isLoadingUsers,
   regions,
   areas,
@@ -437,7 +434,6 @@ function CreateForm({
   divisions,
   isLoadingGeo,
 }: Omit<CreateFormProps, "mode"> & {
-  users: UserDto[];
   isLoadingUsers: boolean;
   regions: RegionDto[];
   areas: AreaDto[];
@@ -618,7 +614,6 @@ function EditForm({
   onCancel,
   isLoading,
   fieldErrors,
-  users,
   isLoadingUsers,
   regions,
   areas,
@@ -626,7 +621,6 @@ function EditForm({
   divisions,
   isLoadingGeo,
 }: Omit<EditFormProps, "mode"> & {
-  users: UserDto[];
   isLoadingUsers: boolean;
   regions: RegionDto[];
   areas: AreaDto[];

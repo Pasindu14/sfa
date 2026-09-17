@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { queryOptions, useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
@@ -20,6 +20,8 @@ import type {
   CreateUserReportingLineInput,
   UpdateUserReportingLineInput,
 } from '../schema/user-reporting-line.schema'
+import type { UserDto } from '@/features/user/schema/user.schema'
+import { ActionError } from '@/lib/actions/action-error'
 
 // --- Query key factory ---
 
@@ -41,7 +43,7 @@ export function userReportingLineQueryOptions(page: number, pageSize: number) {
     queryKey: userReportingLineKeys.list({ page, pageSize }),
     queryFn: async () => {
       const result = await getUserReportingLinesAction(page, pageSize)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
   })
@@ -54,25 +56,52 @@ export function useUserReportingLine(id: number | null) {
     queryKey: userReportingLineKeys.detail(id!),
     queryFn: async () => {
       const result = await getUserReportingLineByIdAction(id!)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: id !== null,
   })
 }
 
-// Preloads all users once with a 5-minute stale time — avoids repeated fetches
-// each time the create/edit dialog opens
-export function useUsersForSelect() {
-  return useQuery({
-    queryKey: userReportingLineKeys.usersForSelect,
-    queryFn: async () => {
-      const result = await getUsersForSelectAction()
-      if (!result.success) throw new Error(result.error)
-      return result.data
+/**
+ * AsyncSelect fetcher: server-side search over active users in any of `roles`.
+ *
+ * The users endpoint filters by a single role, so a multi-role picker issues one request per
+ * role (each capped at 50) and merges them — a single unfiltered page would let one role crowd
+ * the others out. Each request goes through `fetchQuery` under `userSelectKeys.reportingLine`,
+ * so re-opening a picker is a cache hit and the Users feature's mutations still invalidate it.
+ *
+ * `requireQuery` keeps the "type to search" behaviour of pickers that start empty.
+ */
+export function useUsersForSelectFetcher(roles: readonly string[], requireQuery = false) {
+  const queryClient = useQueryClient()
+  const rolesKey = roles.join(',')
+
+  return useCallback(
+    async (search?: string): Promise<UserDto[]> => {
+      const term = search?.trim() ?? ''
+      if (requireQuery && !term) return []
+      const roleList = rolesKey ? rolesKey.split(',') : []
+      const pages = await Promise.all(
+        roleList.map((role) =>
+          queryClient.fetchQuery({
+            queryKey: [...userReportingLineKeys.usersForSelect, role, term] as const,
+            queryFn: async () => {
+              const result = await getUsersForSelectAction(role, term || undefined)
+              if (!result.success) throw new ActionError(result)
+              return result.data
+            },
+            staleTime: 5 * 60 * 1000,
+          }),
+        ),
+      )
+      const merged = pages.flat()
+      return roleList.length > 1
+        ? merged.sort((a, b) => a.name.localeCompare(b.name))
+        : merged
     },
-    staleTime: 5 * 60 * 1000,
-  })
+    [queryClient, rolesKey, requireQuery],
+  )
 }
 
 // --- DataTable hook ---
@@ -98,7 +127,7 @@ export function useUserReportingLineDataTable(
         customFilters?.reportsToUserId || undefined,
         customFilters?.isActive || undefined,
       )
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const { userReportingLines, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,

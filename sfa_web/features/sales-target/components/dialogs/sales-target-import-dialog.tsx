@@ -203,7 +203,7 @@ function FilePicker({ onParsed }: { onParsed: (d: ParsedTargetsData) => void }) 
     setParseError(null)
     try {
       const buffer = await file.arrayBuffer()
-      const data = parseTargetsExcel(buffer, file.name)
+      const data = await parseTargetsExcel(buffer, file.name)
       if (data.rows.length === 0) {
         setParseError('No data rows found — check the file format.')
         return

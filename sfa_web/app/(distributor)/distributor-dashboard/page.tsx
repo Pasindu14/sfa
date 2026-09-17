@@ -8,7 +8,7 @@ import {
   CheckCircle2, Boxes, Activity, ChevronRight,
 } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts"
+import dynamic from "next/dynamic"
 import { useMyBillingsTodaySummary, useMyBillingWeeklyTrend, useMyPendingBillingCount } from "@/features/distributor-billings/hooks/distributor-billing.hooks"
 import { useMyStockSummary } from "@/features/distributor-stock/hooks/distributor-stock.hooks"
 import { useMyGrnPendingCount } from "@/features/distributor-grn/hooks/distributor-grn.hooks"
@@ -125,6 +125,12 @@ function TodaysPulse() {
 
 // ── Section 3: Weekly Billing Trend ───────────────────────────────────────
 
+// recharts is loaded on demand; the skeleton fills the same 190px chart slot meanwhile.
+const WeeklyTrendChart = dynamic(
+  () => import("./weekly-trend-chart").then((m) => ({ default: m.WeeklyTrendChart })),
+  { ssr: false, loading: () => <Skeleton className="h-full w-full rounded-lg" /> },
+)
+
 function WeeklyTrend() {
   const { data, isLoading } = useMyBillingWeeklyTrend()
 
@@ -151,36 +157,7 @@ function WeeklyTrend() {
           </div>
         ) : (
           <div className="h-[190px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data} barCategoryGap="28%" barGap={2}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.6} />
-                <XAxis dataKey="day" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                <YAxis tickFormatter={v => formatCurrency(v)} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={58} />
-                <Tooltip
-                  cursor={{ fill: "hsl(var(--muted))", opacity: 0.5 }}
-                  content={({ active, payload, label }) => {
-                    if (!active || !payload?.length) return null
-                    const entry = data?.find(d => d.day === label)
-                    return (
-                      <div className="rounded-lg border bg-popover px-3 py-2 text-xs shadow-lg">
-                        <p className="font-semibold mb-1.5 text-foreground">{entry?.date ?? label}</p>
-                        {payload.map((p) => (
-                          <div key={p.dataKey} className="flex items-center gap-2 justify-between mt-1">
-                            <span className="flex items-center gap-1.5 text-muted-foreground capitalize">
-                              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: p.color }} />
-                              {p.name}
-                            </span>
-                            <span className="font-mono font-medium ml-6 text-foreground">{formatCurrencyFull(p.value as number)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )
-                  }}
-                />
-                <Bar dataKey="approved" name="Approved" fill="#10b981" radius={[3, 3, 0, 0]} />
-                <Bar dataKey="pending" name="Pending" fill="#fbbf24" radius={[3, 3, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <WeeklyTrendChart data={data ?? []} formatCurrency={formatCurrency} formatCurrencyFull={formatCurrencyFull} />
           </div>
         )}
       </div>

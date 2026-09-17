@@ -3,6 +3,7 @@
 import { useQuery, useIsFetching } from '@tanstack/react-query'
 import { getDistributorStockAction, getStockTransactionsAction } from '../actions/stock.actions'
 import { useStockFilterStore } from '../store'
+import { ActionError } from '@/lib/actions/action-error'
 
 // ── Query key factory ──────────────────────────────────────────────────────
 
@@ -37,7 +38,7 @@ export function useStockDataTable(
     ),
     queryFn: async () => {
       const result = await getDistributorStockAction(appliedFilters!.distributorId)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
 
       // Client-side search + type filter + pagination (stock items per distributor are bounded)
       let items = result.data
@@ -93,7 +94,7 @@ export function useDistributorStock(distributorId: number | null) {
     queryKey: stockKeys.distributor(distributorId!),
     queryFn: async () => {
       const result = await getDistributorStockAction(distributorId!)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: distributorId !== null,
@@ -112,7 +113,7 @@ export function useStockTransactions(
     queryKey: stockKeys.transactions(distributorId!, productId!, page),
     queryFn: async () => {
       const result = await getStockTransactionsAction(distributorId!, productId!, page, pageSize)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: distributorId !== null && productId !== null,

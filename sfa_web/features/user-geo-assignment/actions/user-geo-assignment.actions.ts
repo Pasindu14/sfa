@@ -9,7 +9,6 @@ import type {
   UserAssignmentDto,
   UserAssignmentStatsDto,
 } from '../schema/user-geo-assignment.schema'
-import type { UserDto } from '@/features/user/schema/user.schema'
 import type { RegionDto } from '@/features/region/schema/region.schema'
 import type { AreaDto } from '@/features/area/schema/area.schema'
 import type { TerritoryDto } from '@/features/territory/schema/territory.schema'
@@ -17,13 +16,6 @@ import type { DivisionDto } from '@/features/division/schema/division.schema'
 
 type UserAssignmentsListResponse = {
   userAssignments: UserAssignmentDto[]
-  totalCount: number
-  page: number
-  pageSize: number
-}
-
-type UsersListResponse = {
-  users: UserDto[]
   totalCount: number
   page: number
   pageSize: number
@@ -112,14 +104,7 @@ export const activateUserAssignmentAction = createAction(
 
 // ── Select data loaders ──────────────────────────────────────────────────────
 // Pre-load once, shared across form and filter — no extra calls per keystroke.
-
-export const getUsersForGeoSelectAction = createAction(
-  { name: 'getUsersForGeoSelectAction', requireAuth: true, requiredRole: 'Admin' },
-  async () => {
-    const res = await client.get('/api/v1/users', { params: { page: 1, pageSize: 200, isActive: true } })
-    return (res.data.data as UsersListResponse).users
-  },
-)
+// (Users are NOT preloaded: the form's user picker searches the API as you type.)
 
 export const getActiveRegionsForSelectAction = createAction(
   { name: 'getActiveRegionsForSelectAction', requireAuth: true, requiredRole: 'Admin' },

@@ -23,6 +23,7 @@ import {
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { ActionFailure } from '@/lib/types/actions'
 import type { CreateRegionInput, UpdateRegionInput } from '../schema/region.schema'
+import { ActionError } from '@/lib/actions/action-error'
 
 // --- Query key factory ---
 
@@ -41,7 +42,7 @@ export function regionQueryOptions(page: number, pageSize: number) {
     queryKey: regionKeys.list({ page, pageSize }),
     queryFn: async () => {
       const result = await getRegionsAction(page, pageSize)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
   })
@@ -58,7 +59,7 @@ export function useRegion(id: number | null) {
     queryKey: regionKeys.detail(id!),
     queryFn: async () => {
       const result = await getRegionByIdAction(id!)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: id !== null,
@@ -72,7 +73,7 @@ export function useActiveRegions() {
     queryKey: [...regionKeys.all, 'active'] as const,
     queryFn: async () => {
       const result = await getActiveRegionsAction()
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
   })
@@ -94,7 +95,7 @@ export function useRegionDataTable(
     queryKey: regionKeys.list({ page, pageSize, search, customFilters }),
     queryFn: async () => {
       const result = await getRegionsAction(page, pageSize, search || undefined)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const { regions, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,

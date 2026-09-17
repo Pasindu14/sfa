@@ -17,7 +17,6 @@ import {
   updateUserAssignmentAction,
   deactivateUserAssignmentAction,
   activateUserAssignmentAction,
-  getUsersForGeoSelectAction,
   getActiveRegionsForSelectAction,
   getActiveAreasForSelectAction,
   getActiveTerritoriesForSelectAction,
@@ -32,6 +31,7 @@ import type {
   CreateUserGeoAssignmentInput,
   UpdateUserGeoAssignmentInput,
 } from '../schema/user-geo-assignment.schema'
+import { ActionError } from '@/lib/actions/action-error'
 
 // --- Query key factory ---
 
@@ -58,7 +58,7 @@ export function userGeoAssignmentQueryOptions(page: number, pageSize: number) {
     queryKey: userGeoAssignmentKeys.list({ page, pageSize }),
     queryFn: async () => {
       const result = await getUserAssignmentsAction(page, pageSize)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
   })
@@ -71,7 +71,7 @@ export function useUserAssignment(id: number | null) {
     queryKey: userGeoAssignmentKeys.detail(id!),
     queryFn: async () => {
       const result = await getUserAssignmentByIdAction(id!)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: id !== null,
@@ -83,7 +83,7 @@ export function useUserAssignmentStats() {
     queryKey: userGeoAssignmentKeys.stats,
     queryFn: async () => {
       const result = await getUserAssignmentStatsAction()
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     staleTime: 60 * 1000,
@@ -93,24 +93,12 @@ export function useUserAssignmentStats() {
 // Pre-load all select data with 5-minute stale time — avoids repeated fetches
 // each time the create/edit dialog opens.
 
-export function useUsersForGeoSelect() {
-  return useQuery({
-    queryKey: userGeoAssignmentKeys.usersForSelect,
-    queryFn: async () => {
-      const result = await getUsersForGeoSelectAction()
-      if (!result.success) throw new Error(result.error)
-      return result.data
-    },
-    staleTime: 5 * 60 * 1000,
-  })
-}
-
 export function useRegionsForSelect() {
   return useQuery({
     queryKey: userGeoAssignmentKeys.regionsForSelect,
     queryFn: async () => {
       const result = await getActiveRegionsForSelectAction()
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     staleTime: 5 * 60 * 1000,
@@ -122,7 +110,7 @@ export function useAreasForSelect() {
     queryKey: userGeoAssignmentKeys.areasForSelect,
     queryFn: async () => {
       const result = await getActiveAreasForSelectAction()
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     staleTime: 5 * 60 * 1000,
@@ -134,7 +122,7 @@ export function useTerritoriesForSelect() {
     queryKey: userGeoAssignmentKeys.territoriesForSelect,
     queryFn: async () => {
       const result = await getActiveTerritoriesForSelectAction()
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     staleTime: 5 * 60 * 1000,
@@ -146,7 +134,7 @@ export function useDivisionsForSelect() {
     queryKey: userGeoAssignmentKeys.divisionsForSelect,
     queryFn: async () => {
       const result = await getActiveDivisionsForSelectAction()
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     staleTime: 5 * 60 * 1000,
@@ -185,7 +173,7 @@ export function useUserGeoAssignmentDataTable(
         committed?.divisionId,
         committed?.isActive,
       )
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const { userAssignments, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,

@@ -90,16 +90,15 @@ export const activateUserReportingLineAction = createAction(
   },
 )
 
-// Shared: load all assignable users for select dropdowns
-// Uses a large pageSize to avoid pagination — org is small (~200 users max)
+// Shared: search active users of ONE role for the subordinate/manager AsyncSelect pickers.
+// role + isActive=true + search are all applied server-side, so the picker never downloads the
+// whole user table and a deactivated user can never occupy a result slot. For users the
+// active parameter is `isActive` (routes and distributors use `status=Active` instead).
 export const getUsersForSelectAction = createAction(
   { name: 'getUsersForSelectAction', requireAuth: true, requiredRole: 'Admin' },
-  async () => {
+  async (role: string, search?: string) => {
     const res = await client.get('/api/v1/users', {
-      // isActive=true is applied server-side so the 200-row cap is spent entirely on
-      // selectable users — a large pool of deactivated accounts could otherwise
-      // crowd active ones out of the dropdown before it is even rendered.
-      params: { page: 1, pageSize: 200, isActive: true },
+      params: { page: 1, pageSize: 50, isActive: true, role, search: search || undefined },
     })
     return (res.data.data as UsersListResponse).users
   },

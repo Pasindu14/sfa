@@ -1,6 +1,6 @@
 import axios from "axios";
 import https from "https";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/auth/session";
 
 // ─────────────────────────────────────────────────────────────
 // API contract types — mirrors C# records in Common/Errors/ApiResponse.cs
@@ -110,7 +110,7 @@ const MUTATING_METHODS = new Set(["post", "put", "patch", "delete"]);
 
 // Attach Bearer token from Next-Auth session on every request
 client.interceptors.request.use(async (config) => {
-  const session = await auth();
+  const session = await getSession();
   if (session?.user?.accessToken) {
     config.headers.Authorization = `Bearer ${session.user.accessToken}`;
   }

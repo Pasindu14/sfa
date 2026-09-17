@@ -25,6 +25,7 @@ import {
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { ActionFailure } from '@/lib/types/actions'
 import type { CreateOutletInput, UpdateOutletInput } from '../schema/outlet.schema'
+import { ActionError } from '@/lib/actions/action-error'
 
 // --- Query key factory ---
 
@@ -44,7 +45,7 @@ export function outletQueryOptions(page: number, pageSize: number) {
     queryKey: outletKeys.list({ page, pageSize }),
     queryFn: async () => {
       const result = await getOutletsAction(page, pageSize)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
   })
@@ -61,7 +62,7 @@ export function useOutlet(id: number | null) {
     queryKey: outletKeys.detail(id!),
     queryFn: async () => {
       const result = await getOutletByIdAction(id!)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: id !== null,
@@ -73,7 +74,7 @@ export function useActiveOutlets() {
     queryKey: outletKeys.active(),
     queryFn: async () => {
       const result = await getActiveOutletsAction()
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
   })
@@ -84,7 +85,7 @@ export function useOutletsForMap() {
     queryKey: [...outletKeys.all, 'map'] as const,
     queryFn: async () => {
       const result = await getOutletMapPointsAction()
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
   })
@@ -109,7 +110,7 @@ export function useOutletDataTable(
       const territoryId = customFilters?.territoryId ? Number(customFilters.territoryId) : undefined
       const routeId = customFilters?.routeId ? Number(customFilters.routeId) : undefined
       const result = await getOutletsAction(page, pageSize, search || undefined, status || undefined, territoryId, routeId)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const { outlets, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,
@@ -145,7 +146,7 @@ export function useMyOutletDataTable(
     queryFn: async () => {
       const status = customFilters?.status as string | undefined
       const result = await getMyOutletsAction(page, pageSize, search || undefined, status || undefined)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const { outlets, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useCallback, useState } from 'react'
+import { useEffect, useCallback, useRef, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowDown } from 'lucide-react'
@@ -23,7 +23,7 @@ import {
   type RepRouteDto,
   type SupervisorRepDto,
 } from '../../schema/daily-route-assignment.schema'
-import { useSupervisorsForSelect, useSupervisorReps, useRepRoutes } from '../../hooks/daily-route-assignment.hooks'
+import { useSupervisorSearchFetcher, useSupervisorReps, useRepRoutes } from '../../hooks/daily-route-assignment.hooks'
 import type { UserDto } from '@/features/user/schema/user.schema'
 
 const roleBadgeClass: Record<string, string> = {
@@ -111,8 +111,13 @@ export function DailyRouteAssignmentForm({
   isLoading,
   fieldErrors,
 }: DailyRouteAssignmentFormProps) {
-  const { data: supervisors = [], isLoading: isLoadingSupervisors } = useSupervisorsForSelect()
+  // Supervisors are searched server-side on demand — nothing to preload or wait for.
+  const isLoadingSupervisors = false
+  const searchSupervisors = useSupervisorSearchFetcher()
   const [supervisorId, setSupervisorId] = useState(0)
+  // Remembers every supervisor the picker has returned, so the preview card can render the
+  // selected one (AsyncSelect only reports the id back).
+  const supervisorCacheRef = useRef<Map<number, UserDto>>(new Map())
 
   const { data: reps = [], isFetching: isLoadingReps } = useSupervisorReps(supervisorId)
 
@@ -131,17 +136,17 @@ export function DailyRouteAssignmentForm({
 
   const { data: repRoutes = [], isFetching: isLoadingRepRoutes } = useRepRoutes(userId)
 
-  const selectedSupervisor = supervisors.find((u) => u.id === supervisorId)
+  const selectedSupervisor = supervisorId > 0 ? supervisorCacheRef.current.get(supervisorId) : undefined
   const selectedRep = reps.find((r) => r.userId === userId)
   const selectedRoute = repRoutes.find((r) => r.routeId === routeId)
 
   const supervisorFetcher = useCallback(
     async (query?: string): Promise<UserDto[]> => {
-      const pool = supervisors.filter((u) => u.role === 'Supervisor' && u.isActive)
-      if (!query) return pool
-      return pool.filter((u) => u.name.toLowerCase().includes(query.toLowerCase()))
+      const users = await searchSupervisors(query)
+      users.forEach((u) => supervisorCacheRef.current.set(u.id, u))
+      return users
     },
-    [supervisors],
+    [searchSupervisors],
   )
 
   const repFetcher = useCallback(

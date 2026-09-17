@@ -23,6 +23,7 @@ import {
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { ActionFailure } from '@/lib/types/actions'
 import type { CreateDivisionInput, UpdateDivisionInput } from '../schema/division.schema'
+import { ActionError } from '@/lib/actions/action-error'
 
 // --- Query key factory ---
 
@@ -41,7 +42,7 @@ export function divisionQueryOptions(page: number, pageSize: number) {
     queryKey: divisionKeys.list({ page, pageSize }),
     queryFn: async () => {
       const result = await getDivisionsAction(page, pageSize)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
   })
@@ -58,7 +59,7 @@ export function useDivision(id: number | null) {
     queryKey: divisionKeys.detail(id!),
     queryFn: async () => {
       const result = await getDivisionByIdAction(id!)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: id !== null,
@@ -72,7 +73,7 @@ export function useActiveDivisions() {
     queryKey: [...divisionKeys.all, 'active'] as const,
     queryFn: async () => {
       const result = await getActiveDivisionsAction()
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
   })
@@ -94,7 +95,7 @@ export function useDivisionDataTable(
     queryKey: divisionKeys.list({ page, pageSize, search, customFilters }),
     queryFn: async () => {
       const result = await getDivisionsAction(page, pageSize, search || undefined)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const { divisions, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,

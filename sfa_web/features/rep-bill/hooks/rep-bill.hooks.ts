@@ -11,6 +11,7 @@ import { useRepBillFilterStore } from '../store/rep-bill.filter-store'
 import { getSupervisorRepsAction } from '@/features/daily-route-assignment/actions/daily-route-assignment.actions'
 import { userSelectKeys } from '@/lib/api/query-keys'
 import type { RepBillListItem, RepOption, SupervisorOption } from '../schema/rep-bill.schema'
+import { ActionError } from '@/lib/actions/action-error'
 
 export const repBillKeys = {
   all: ['rep-bills'] as const,
@@ -73,7 +74,7 @@ export function useRepBillDataTable(
         distributorStatus || undefined,
         paymentType || undefined,
       )
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
 
       const { bills, totalCount, page: p, pageSize: ps } = result.data
       return {
@@ -111,7 +112,7 @@ export function useRepBillDetail(id: number | null) {
     queryKey: repBillKeys.detail(id ?? 0),
     queryFn: async () => {
       const result = await getRepBillDetailAction(id!)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: id !== null,
@@ -134,7 +135,7 @@ export function useSupervisorSearchFetcher() {
         queryKey: [...repBillKeys.supervisors, search ?? ''] as const,
         queryFn: async () => {
           const result = await getSupervisorsForSelectAction(search)
-          if (!result.success) throw new Error(result.error)
+          if (!result.success) throw new ActionError(result)
           return result.data
         },
         staleTime: 5 * 60 * 1000,
@@ -164,7 +165,7 @@ export function useSupervisorRepsFetcher(supervisorId: number | null) {
         queryKey: [...repBillKeys.all, 'reps', supervisorId] as const,
         queryFn: async () => {
           const result = await getSupervisorRepsAction(supervisorId)
-          if (!result.success) throw new Error(result.error)
+          if (!result.success) throw new ActionError(result)
           return result.data
         },
         staleTime: 5 * 60 * 1000,

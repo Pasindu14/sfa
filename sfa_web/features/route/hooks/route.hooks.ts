@@ -24,6 +24,7 @@ import {
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { ActionFailure } from '@/lib/types/actions'
 import type { CreateRouteInput, UpdateRouteInput } from '../schema/route.schema'
+import { ActionError } from '@/lib/actions/action-error'
 
 // --- Query key factory ---
 
@@ -42,7 +43,7 @@ export function routeQueryOptions(page: number, pageSize: number) {
     queryKey: routeKeys.list({ page, pageSize }),
     queryFn: async () => {
       const result = await getRoutesAction(page, pageSize)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
   })
@@ -59,7 +60,7 @@ export function useRoute(id: number | null) {
     queryKey: routeKeys.detail(id!),
     queryFn: async () => {
       const result = await getRouteByIdAction(id!)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: id !== null,
@@ -74,7 +75,7 @@ export function useActiveRoutes(territoryId?: number, options?: { enabled?: bool
     queryKey: [...routeKeys.all, 'active', territoryId ?? null] as const,
     queryFn: async () => {
       const result = await getActiveRoutesAction(territoryId)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: options?.enabled ?? true,
@@ -88,7 +89,7 @@ export function useSearchRoutes(search: string) {
     queryKey: [...routeKeys.all, 'search', search] as const,
     queryFn: async () => {
       const result = await searchActiveRoutesAction(search)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: search.length >= 1,
@@ -115,7 +116,7 @@ export function useRouteDataTable(
       const areaId = customFilters?.areaId ? Number(customFilters.areaId) : undefined
       const territoryId = customFilters?.territoryId ? Number(customFilters.territoryId) : undefined
       const result = await getRoutesAction(page, pageSize, search || undefined, areaId, territoryId)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const { routes, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,

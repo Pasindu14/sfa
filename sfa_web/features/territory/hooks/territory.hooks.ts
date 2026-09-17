@@ -23,6 +23,7 @@ import {
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { ActionFailure } from '@/lib/types/actions'
 import type { CreateTerritoryInput, UpdateTerritoryInput } from '../schema/territory.schema'
+import { ActionError } from '@/lib/actions/action-error'
 
 // --- Query key factory ---
 
@@ -41,7 +42,7 @@ export function territoryQueryOptions(page: number, pageSize: number) {
     queryKey: territoryKeys.list({ page, pageSize }),
     queryFn: async () => {
       const result = await getTerritoriesAction(page, pageSize)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
   })
@@ -58,7 +59,7 @@ export function useTerritory(id: number | null) {
     queryKey: territoryKeys.detail(id!),
     queryFn: async () => {
       const result = await getTerritoryByIdAction(id!)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: id !== null,
@@ -73,7 +74,7 @@ export function useActiveTerritories(areaId?: number, options?: { enabled?: bool
     queryKey: [...territoryKeys.all, 'active', areaId ?? null] as const,
     queryFn: async () => {
       const result = await getActiveTerritoriesAction(areaId)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: options?.enabled ?? true,
@@ -96,7 +97,7 @@ export function useTerritoryDataTable(
     queryKey: territoryKeys.list({ page, pageSize, search, customFilters }),
     queryFn: async () => {
       const result = await getTerritoriesAction(page, pageSize, search || undefined)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const { territories, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,

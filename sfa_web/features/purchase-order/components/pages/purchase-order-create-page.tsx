@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useForm, useFieldArray, useWatch, Controller } from "react-hook-form"
@@ -19,7 +19,6 @@ import {
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useSession } from 'next-auth/react'
-import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -41,8 +40,10 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { AsyncSelect } from '@/components/async-select'
 import { useAllActiveProducts } from '@/features/product/hooks/product.hooks'
-import { getDistributorsAction } from '@/features/distributor/actions/distributor.actions'
+import { fetchActiveDistributorsForSelect } from '@/features/distributor/actions/distributor.actions'
+import type { DistributorDto } from '@/features/distributor/schema/distributor.schema'
 import { useProductCategoryPricings } from '@/features/product-category-pricing/hooks/product-category-pricing.hooks'
 import { useCreatePurchaseOrder, useSubmitPurchaseOrder } from '../../hooks/purchase-order.hooks'
 import {
@@ -50,23 +51,6 @@ import {
   type CreatePurchaseOrderInput,
 } from '../../schema/purchase-order.schema'
 import { formatCurrency } from '../../utils/format'
-
-// ── Distributor query ─────────────────────────────────────────────────────
-
-function useDistributors() {
-  return useQuery({
-    queryKey: ['distributors', 'list', { pageSize: 1000, activeOnly: true }],
-    queryFn: async () => {
-      // Filtered server-side: the old client-side .filter(d => d.isActive) ran
-      // *after* the 1000-row page cap, so inactive rows consumed slots that
-      // active distributors needed.
-      const result = await getDistributorsAction(1, 1000, undefined, 'Active')
-      if (!result.success) throw new Error(result.error)
-      return result.data.distributors
-    },
-    staleTime: 5 * 60 * 1000,
-  })
-}
 
 // ── Workflow step indicator ────────────────────────────────────────────────
 
@@ -137,7 +121,16 @@ export function PurchaseOrderCreatePage() {
 
   const { data: products, isLoading: isLoadingProducts } = useAllActiveProducts()
   const { data: categoryPricings = [], isLoading: isLoadingCategoryPricings } = useProductCategoryPricings()
-  const { data: distributors, isLoading: isLoadingDistributors } = useDistributors()
+  // Distributors are searched server-side as you type (fetchActiveDistributorsForSelect pins
+  // status=Active), instead of downloading up to 1000 rows up front. The picked DTO is kept in
+  // state because its `category` drives every line price.
+  const distributorCacheRef = useRef<Map<number, DistributorDto>>(new Map())
+  const [pickedDistributor, setPickedDistributor] = useState<DistributorDto | null>(null)
+  const distributorFetcher = useCallback(async (search?: string): Promise<DistributorDto[]> => {
+    const result = await fetchActiveDistributorsForSelect(search)
+    result.forEach((d) => distributorCacheRef.current.set(d.id, d))
+    return result
+  }, [])
   const router = useRouter()
   const { mutate: createOrder, isPending, fieldErrors } = useCreatePurchaseOrder()
   const { mutate: submitOrder } = useSubmitPurchaseOrder()
@@ -159,10 +152,11 @@ export function PurchaseOrderCreatePage() {
   const watchedItems = useWatch({ control: form.control, name: 'items' })
   const watchedDistributorId = useWatch({ control: form.control, name: 'distributorId' })
 
-  const isLoading = isLoadingProducts || isLoadingCategoryPricings || isLoadingDistributors
+  const isLoading = isLoadingProducts || isLoadingCategoryPricings
 
   // Derive the selected distributor's category (A/B/C/D)
-  const selectedDistributor = distributors?.find((d) => d.id === watchedDistributorId)
+  const selectedDistributor =
+    watchedDistributorId && pickedDistributor?.id === watchedDistributorId ? pickedDistributor : null
   const distributorCategory = selectedDistributor?.category ?? null
 
   // Look up the category-specific price for a product
@@ -185,9 +179,8 @@ export function PurchaseOrderCreatePage() {
   }, [form, getCategoryPrice])
 
   // When the distributor changes, re-price every already-selected item
-  const handleDistributorChange = useCallback((newDistributorId: number | null) => {
-    if (!newDistributorId) return
-    const newDist = distributors?.find((d) => d.id === newDistributorId)
+  const handleDistributorChange = useCallback((newDist: DistributorDto | null) => {
+    if (!newDist) return
     const newCategory = newDist?.category ?? null
     if (!newCategory) return
     const currentItems = form.getValues('items')
@@ -201,7 +194,7 @@ export function PurchaseOrderCreatePage() {
         form.setValue(`items.${index}.unitPrice`, price)
       }
     })
-  }, [distributors, categoryPricings, form])
+  }, [categoryPricings, form])
 
   const subtotal = watchedItems.reduce((sum, item) => {
     const line = (item.unitPrice ?? 0) * (item.quantity ?? 0)
@@ -312,27 +305,38 @@ export function PurchaseOrderCreatePage() {
                               <span className="text-muted-foreground text-xs font-normal">(optional)</span>
                             )}
                           </FormLabel>
-                          <Select
-                            value={field.value ? String(field.value) : ""}
-                            onValueChange={(v) => {
-                              const newId = v ? Number(v) : null
-                              field.onChange(newId)
-                              handleDistributorChange(newId)
-                            }}
-                          >
-                            <FormControl>
-                              <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Select distributor..." />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {distributors?.map((d) => (
-                                <SelectItem key={d.id} value={String(d.id)}>
-                                  {d.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <FormControl>
+                            <AsyncSelect<DistributorDto>
+                              label="Distributor"
+                              placeholder="Select distributor..."
+                              fetcher={distributorFetcher}
+                              value={field.value ? String(field.value) : ""}
+                              onChange={(v) => {
+                                const newId = v ? Number(v) : null
+                                const newDist = newId ? (distributorCacheRef.current.get(newId) ?? null) : null
+                                field.onChange(newId)
+                                setPickedDistributor(newDist)
+                                handleDistributorChange(newDist)
+                              }}
+                              getOptionValue={(d) => String(d.id)}
+                              getDisplayValue={(d) => <span className="truncate">{d.name}</span>}
+                              renderOption={(d) => (
+                                <div className="flex flex-col gap-0.5 py-0.5">
+                                  <span className="text-sm font-medium">{d.name}</span>
+                                  {d.phone && <span className="text-xs text-muted-foreground">{d.phone}</span>}
+                                </div>
+                              )}
+                              notFound={
+                                <div className="py-4 text-center text-sm text-muted-foreground">
+                                  Type to search distributors…
+                                </div>
+                              }
+                              noResultsMessage="No distributors found"
+                              width="100%"
+                              triggerClassName="w-full font-normal"
+                              clearable
+                            />
+                          </FormControl>
                           <FormMessage />
                           {fieldErrors?.distributorId && (
                             <p className="text-sm text-destructive">

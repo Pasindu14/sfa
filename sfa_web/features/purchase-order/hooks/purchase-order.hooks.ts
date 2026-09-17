@@ -33,6 +33,7 @@ import type {
   UpdatePurchaseOrderInput,
   RejectPurchaseOrderInput,
 } from '../schema/purchase-order.schema'
+import { ActionError } from '@/lib/actions/action-error'
 
 // ── Query key factory ──────────────────────────────────────────────────────
 
@@ -52,7 +53,7 @@ export function usePurchaseOrder(id: number) {
     queryKey: purchaseOrderKeys.detail(id),
     queryFn: async () => {
       const result = await getPurchaseOrderByIdAction(id)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: id > 0,
@@ -66,7 +67,7 @@ export function usePurchaseOrderStats(fromDate?: string, toDate?: string) {
     queryKey: [...purchaseOrderKeys.stats, { fromDate, toDate }],
     queryFn: async () => {
       const result = await getPurchaseOrderStatsAction(fromDate, toDate)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     staleTime: 60 * 1000,
@@ -104,7 +105,7 @@ export function usePurchaseOrderDataTable(
         dateRange?.from_date || undefined,
         dateRange?.to_date || undefined,
       )
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const { purchaseOrders, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,

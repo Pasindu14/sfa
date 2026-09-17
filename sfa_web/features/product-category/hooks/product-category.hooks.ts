@@ -20,6 +20,7 @@ import {
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { ActionFailure } from '@/lib/types/actions'
 import type { CreateProductCategoryInput, UpdateProductCategoryInput } from '../schema/product-category.schema'
+import { ActionError } from '@/lib/actions/action-error'
 
 // --- Query key factory ---
 
@@ -38,7 +39,7 @@ export function useProductCategory(id: number | null) {
     queryKey: productCategoryKeys.detail(id!),
     queryFn: async () => {
       const result = await getProductCategoryByIdAction(id!)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: id !== null,
@@ -61,7 +62,7 @@ export function useProductCategoryDataTable(
     queryKey: productCategoryKeys.list({ page, pageSize, search, customFilters }),
     queryFn: async () => {
       const result = await getProductCategoriesAction(page, pageSize, search || undefined)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const { productCategories, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,

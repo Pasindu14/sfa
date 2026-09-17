@@ -1,5 +1,5 @@
 // lib/actions/wrapper.ts
-import { auth } from '@/auth'
+import { getSession } from '@/lib/auth/session'
 import { logger } from '@/lib/logger'
 import { ZodError } from 'zod'
 import { AppError, UnauthorizedError, ForbiddenError } from '@/lib/errors'
@@ -45,7 +45,7 @@ export function createAction<TInput extends any[], TOutput>(
 
       // Authentication check
       if (requireAuth) {
-        const session = await auth()
+        const session = await getSession()
 
         if (!session?.user) {
           throw new UnauthorizedError('You must be logged in')

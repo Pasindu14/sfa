@@ -7,6 +7,7 @@ import { getMyGrnsAction, getMyGrnDetailAction, confirmMyGrnAction } from '../ac
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { MyGrnListItem, ConfirmMyGrnInput } from '../schema/distributor-grn.schema'
 import type { ActionFailure } from '@/lib/types/actions'
+import { ActionError } from '@/lib/actions/action-error'
 
 export const myGrnKeys = {
   all: ['my-grns'] as const,
@@ -38,7 +39,7 @@ export function useMyGrnsDataTable(
         dateTo || undefined,
         search || undefined,
       )
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const { grns, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,
@@ -61,7 +62,7 @@ export function useMyGrnPendingCount() {
     queryKey: [...myGrnKeys.all, 'pending-count'] as const,
     queryFn: async () => {
       const result = await getMyGrnsAction(1, 1, 'Pending')
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data.totalCount
     },
     staleTime: 60_000,
@@ -73,7 +74,7 @@ export function useMyGrnDetail(id: number | null) {
     queryKey: myGrnKeys.detail(id!),
     queryFn: async () => {
       const result = await getMyGrnDetailAction(id!)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: id !== null,

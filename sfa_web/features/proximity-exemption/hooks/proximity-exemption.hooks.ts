@@ -22,6 +22,7 @@ import type {
   GrantExemptionInput,
   GrantExemptionWithRepInput,
 } from '../schema/proximity-exemption.schema'
+import { ActionError } from '@/lib/actions/action-error'
 
 export const exemptionKeys = {
   all: ['proximity-exemptions'] as const,
@@ -59,7 +60,7 @@ export function useProximityExemptionDataTable(
     queryKey: exemptionKeys.list({ page, pageSize, search }),
     queryFn: async () => {
       const result = await getActiveExemptionsAction(page, pageSize, search || undefined)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const { items, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,
@@ -88,7 +89,7 @@ export function useExemptionHistory(userId: number | null) {
     queryKey: exemptionKeys.byUser(userId!),
     queryFn: async () => {
       const result = await getExemptionHistoryAction(userId!)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: userId !== null,
@@ -100,7 +101,7 @@ export function useCurrentExemption(userId: number | null) {
     queryKey: exemptionKeys.currentByUser(userId!),
     queryFn: async () => {
       const result = await getCurrentExemptionAction(userId!)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: userId !== null,

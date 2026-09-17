@@ -11,6 +11,7 @@ import { useApproveDialog, useRejectDialog } from '../store'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { ActionFailure } from '@/lib/types/actions'
 import type { RejectCancellationInput } from '../schema/route-cancellation.schema'
+import { ActionError } from '@/lib/actions/action-error'
 
 // ── Query key factory ──────────────────────────────────────────────────────
 
@@ -36,7 +37,7 @@ export function useRouteCancellationDataTable(
     queryKey: routeCancellationKeys.list({ page, pageSize, search }),
     queryFn: async () => {
       const result = await getPendingCancellationsAction(page, pageSize, search || undefined)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const { assignments, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,

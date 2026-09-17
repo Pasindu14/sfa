@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { getMyDistributorStockAction } from '../actions/distributor-stock.actions'
+import { ActionError } from '@/lib/actions/action-error'
 
 export const myStockKeys = {
   all: ['my-stock'] as const,
@@ -25,7 +26,7 @@ export function useMyStockDataTable(
     queryFn: async () => {
       // Zero-fill: the balance sheet lists every active product, not just the SKUs holding stock.
       const result = await getMyDistributorStockAction(true)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
 
       // Placeholders all come back with id 0. DataTable keys rows off `id`, so give each one a
       // unique synthetic key — negative to keep it distinct from any real stock row id.
@@ -70,7 +71,7 @@ export function useMyStockSummary() {
     queryKey: [...myStockKeys.all, 'summary'] as const,
     queryFn: async () => {
       const result = await getMyDistributorStockAction()
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const items = result.data
 
       const normalItems = items.filter((i) => i.stockType === 'Normal')

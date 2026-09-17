@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import ExcelJS from "exceljs";
+import { loadExcelJS } from "@/lib/utils/load-excel";
 
 
 // Generic type for exportable data - should have string keys and values that can be converted to string
@@ -188,7 +188,8 @@ export async function exportToExcel<T extends ExportableData>(
         return acc;
       }, {} as Record<string, string>);
 
-    // Create a new workbook and worksheet
+    // Create a new workbook and worksheet (exceljs is loaded on demand)
+    const ExcelJS = await loadExcelJS();
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Data");
 

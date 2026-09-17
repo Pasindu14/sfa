@@ -23,6 +23,7 @@ import {
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { ActionFailure } from '@/lib/types/actions'
 import type { CreateProductInput, UpdateProductInput } from '../schema/product.schema'
+import { ActionError } from '@/lib/actions/action-error'
 
 // --- Query key factory ---
 
@@ -41,7 +42,7 @@ export function productQueryOptions(page: number, pageSize: number) {
     queryKey: productKeys.list({ page, pageSize }),
     queryFn: async () => {
       const result = await getProductsAction(page, pageSize)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
   })
@@ -58,7 +59,7 @@ export function useProduct(id: number | null) {
     queryKey: productKeys.detail(id!),
     queryFn: async () => {
       const result = await getProductByIdAction(id!)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: id !== null,
@@ -82,7 +83,7 @@ export function useProductDataTable(
     queryKey: productKeys.list({ page, pageSize, search }),
     queryFn: async () => {
       const result = await getProductsAction(page, pageSize, search || undefined)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const { products, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,
@@ -106,7 +107,7 @@ export function useAllActiveProducts() {
     queryKey: [...productKeys.all, 'active-all'] as const,
     queryFn: async () => {
       const result = await getAllActiveProductsAction()
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     staleTime: 5 * 60 * 1000, // 5 min — product list changes infrequently

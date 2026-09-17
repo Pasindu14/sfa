@@ -97,6 +97,8 @@ function EditUserReportingLineDialog() {
                     effectiveFrom: line.effectiveFrom,
                     userName: line.userName,
                     userRole: line.userRole,
+                    reportsToUserName: line.reportsToUserName,
+                    reportsToUserRole: line.reportsToUserRole,
                   }
                 : undefined
             }

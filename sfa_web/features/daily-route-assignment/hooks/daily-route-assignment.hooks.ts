@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
@@ -16,6 +16,8 @@ import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import { userSelectKeys } from '@/lib/api/query-keys'
 import type { ActionFailure } from '@/lib/types/actions'
 import type { CreateDailyRouteAssignmentInput } from '../schema/daily-route-assignment.schema'
+import type { UserDto } from '@/features/user/schema/user.schema'
+import { ActionError } from '@/lib/actions/action-error'
 
 // --- Query key factory ---
 
@@ -32,18 +34,30 @@ export const dailyRouteAssignmentKeys = {
 
 // --- Select-picker hooks ---
 
-// Preloads all active users once with a 5-minute stale time — filtered to
-// role === 'Supervisor' by the caller.
-export function useSupervisorsForSelect() {
-  return useQuery({
-    queryKey: dailyRouteAssignmentKeys.supervisorsForSelect,
-    queryFn: async () => {
-      const result = await getSupervisorsForSelectAction()
-      if (!result.success) throw new Error(result.error)
-      return result.data
+/**
+ * AsyncSelect fetcher for the Supervisor picker — server-side search (role=Supervisor,
+ * isActive=true). Bridged through `fetchQuery` under the shared `userSelectKeys.routeAssignment`
+ * namespace so re-opening the picker is a cache hit and the Users feature's mutations still
+ * drop a deactivated supervisor immediately.
+ */
+export function useSupervisorSearchFetcher() {
+  const queryClient = useQueryClient()
+
+  return useCallback(
+    (search?: string): Promise<UserDto[]> => {
+      const term = search?.trim() ?? ''
+      return queryClient.fetchQuery({
+        queryKey: [...dailyRouteAssignmentKeys.supervisorsForSelect, term] as const,
+        queryFn: async () => {
+          const result = await getSupervisorsForSelectAction(term || undefined)
+          if (!result.success) throw new ActionError(result)
+          return result.data
+        },
+        staleTime: 5 * 60 * 1000,
+      })
     },
-    staleTime: 5 * 60 * 1000,
-  })
+    [queryClient],
+  )
 }
 
 export function useSupervisorReps(supervisorId: number) {
@@ -51,7 +65,7 @@ export function useSupervisorReps(supervisorId: number) {
     queryKey: dailyRouteAssignmentKeys.reps(supervisorId),
     queryFn: async () => {
       const result = await getSupervisorRepsAction(supervisorId)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: supervisorId > 0,
@@ -63,7 +77,7 @@ export function useRepRoutes(userId: number) {
     queryKey: dailyRouteAssignmentKeys.routes(userId),
     queryFn: async () => {
       const result = await getRepRoutesAction(userId)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: userId > 0,
@@ -92,7 +106,7 @@ export function useDailyRouteAssignmentDataTable(
         customFilters?.routeId || undefined,
         customFilters?.date || undefined,
       )
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const { assignments, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,

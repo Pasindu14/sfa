@@ -8,6 +8,7 @@ import { useConfirmDialog, useDeleteDialog, useGrnFilterStore } from '../store'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { ActionFailure } from '@/lib/types/actions'
 import type { CreateGrnInput, ConfirmGrnInput } from '../schema/grn.schema'
+import { ActionError } from '@/lib/actions/action-error'
 
 // ── Query key factory ──────────────────────────────────────────────────────
 
@@ -31,7 +32,7 @@ export function useGrns(
     queryKey: grnKeys.list({ page, pageSize, status, distributorId }),
     queryFn: async () => {
       const result = await getGrnsAction(page, pageSize, status || undefined, distributorId || undefined)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     placeholderData: keepPreviousData,
@@ -63,7 +64,7 @@ export function useGrnDataTable(
         appliedFilters?.dateFrom,
         appliedFilters?.dateTo,
       )
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const { grns, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,
@@ -97,7 +98,7 @@ export function useGrn(id: number | null) {
     queryKey: grnKeys.detail(id!),
     queryFn: async () => {
       const result = await getGrnByIdAction(id!)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: id !== null,

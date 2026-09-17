@@ -292,7 +292,7 @@ function FilePicker({
     setParseIssues([]);
     try {
       const buffer = await file.arrayBuffer();
-      const { payload, issues } = parseExcelFile(buffer, file.name);
+      const { payload, issues } = await parseExcelFile(buffer, file.name);
       if (payload.invoices.length === 0) {
         setParseError(
           issues.length > 0

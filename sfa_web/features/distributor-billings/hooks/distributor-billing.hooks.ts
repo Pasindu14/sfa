@@ -10,6 +10,7 @@ import {
   adjustBillingItemsAction,
   updatePaymentTypeAction,
   updateCashCollectedAction,
+  getMyBillingDashboardSummaryAction,
 } from '../actions/distributor-billing.actions'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import { toColomboDateStr } from '@/lib/utils/datetime'
@@ -17,6 +18,7 @@ import type {
   DistributorBillingListItem,
   AdjustBillingItemsInput,
 } from '../schema/distributor-billing.schema'
+import { ActionError } from '@/lib/actions/action-error'
 
 // Serialize date filters in Sri Lanka time (not the browser's timezone). See lib/utils/datetime.ts.
 const toLocalDateStr = toColomboDateStr
@@ -55,7 +57,7 @@ export function useMyBillingsDataTable(
         paymentType || undefined, isCashCollected || undefined,
         outletId,
       )
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const { billings, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,
@@ -74,20 +76,22 @@ export function useMyBillingsDataTable(
 
 ;(useMyBillingsDataTable as unknown as Record<string, unknown>).isQueryHook = true
 
+// Dashboard figures are aggregated by the API (GET /billings/portal/dashboard-summary) instead of
+// summing a capped page of bills in the browser. Revenue excludes rep-cancelled bills.
 export function useMyBillingsTodaySummary() {
   const today = toLocalDateStr(new Date())
   return useQuery({
-    queryKey: myBillingKeys.list({ page: 1, pageSize: 500, dateFrom: today, dateTo: today, _summary: true }),
+    queryKey: [...myBillingKeys.all, 'dashboard-summary', { dateFrom: today, dateTo: today }] as const,
     queryFn: async () => {
-      const result = await getMyBillingsAction(1, 500, undefined, undefined, undefined, today, today)
-      if (!result.success) throw new Error(result.error)
-      const bills = result.data.billings
+      const result = await getMyBillingDashboardSummaryAction(today, today)
+      if (!result.success) throw new ActionError(result)
+      const s = result.data
       return {
-        totalRevenue: bills.reduce((s, b) => s + b.totalAmount, 0),
-        totalCount: result.data.totalCount,
-        approvedRevenue: bills.filter(b => b.distributorStatus === 'Approved').reduce((s, b) => s + b.totalAmount, 0),
-        approvedCount: bills.filter(b => b.distributorStatus === 'Approved').length,
-        pendingCount: bills.filter(b => b.distributorStatus === 'Pending').length,
+        totalRevenue: s.totalRevenue,
+        totalCount: s.totalCount,
+        approvedRevenue: s.approvedRevenue,
+        approvedCount: s.approvedCount,
+        pendingCount: s.pendingCount,
       }
     },
     staleTime: 60_000,
@@ -108,18 +112,18 @@ export function useMyBillingWeeklyTrend() {
       const dateFrom = toLocalDateStr(days[0])
       const dateTo = toLocalDateStr(days[6])
 
-      const result = await getMyBillingsAction(1, 500, undefined, undefined, undefined, dateFrom, dateTo)
-      if (!result.success) throw new Error(result.error)
+      const result = await getMyBillingDashboardSummaryAction(dateFrom, dateTo)
+      if (!result.success) throw new ActionError(result)
 
       const byDate: Record<string, { approved: number; pending: number }> = {}
       for (const d of days) {
         byDate[toLocalDateStr(d)] = { approved: 0, pending: 0 }
       }
-      for (const b of result.data.billings) {
-        const key = b.billingDate.slice(0, 10)
+      for (const day of result.data.days) {
+        const key = day.date.slice(0, 10)
         if (!byDate[key]) continue
-        if (b.distributorStatus === 'Approved') byDate[key].approved += b.totalAmount
-        else if (b.distributorStatus === 'Pending') byDate[key].pending += b.totalAmount
+        byDate[key].approved += day.approvedRevenue
+        byDate[key].pending += day.pendingRevenue
       }
 
       const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -142,7 +146,7 @@ export function useMyPendingBillingCount() {
     queryKey: [...myBillingKeys.all, 'pending-count'] as const,
     queryFn: async () => {
       const result = await getMyBillingsAction(1, 1, undefined, undefined, 'Pending')
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data.totalCount
     },
     staleTime: 60_000,
@@ -154,7 +158,7 @@ export function useMyBillingDetail(id: number | null) {
     queryKey: myBillingKeys.detail(id!),
     queryFn: async () => {
       const result = await getMyBillingDetailAction(id!)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: id !== null,

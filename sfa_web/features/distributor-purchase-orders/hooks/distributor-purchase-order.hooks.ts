@@ -24,6 +24,7 @@ import type {
   MyPurchaseOrderSummaryDto,
 } from '../schema/distributor-purchase-order.schema'
 import type { ActionFailure } from '@/lib/types/actions'
+import { ActionError } from '@/lib/actions/action-error'
 
 // ── Query key factory ─────────────────────────────────────────────────────
 
@@ -62,7 +63,7 @@ export function useMyPurchaseOrdersDataTable(
         dateFrom || undefined,
         dateTo || undefined,
       )
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const { purchaseOrders, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,
@@ -87,7 +88,7 @@ export function useMyPurchaseOrder(id: number | null) {
     queryKey: myPurchaseOrderKeys.detail(id!),
     queryFn: async () => {
       const result = await getMyPurchaseOrderAction(id!)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: id !== null,
@@ -101,7 +102,7 @@ export function useMyPurchaseOrderStats(fromDate?: string, toDate?: string) {
     queryKey: [...myPurchaseOrderKeys.stats, { fromDate, toDate }],
     queryFn: async () => {
       const result = await getMyPurchaseOrderStatsAction(fromDate, toDate)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     staleTime: 60_000,
@@ -115,7 +116,7 @@ export function useMyDistributorProfile() {
     queryKey: myPurchaseOrderKeys.profile,
     queryFn: async () => {
       const result = await getMyDistributorProfileAction()
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     staleTime: 5 * 60_000,
@@ -127,7 +128,7 @@ export function useMyProductCategoryPricings() {
     queryKey: myPurchaseOrderKeys.pricing,
     queryFn: async () => {
       const result = await getMyProductCategoryPricingsAction()
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data ?? []
     },
     staleTime: 5 * 60_000,

@@ -34,6 +34,7 @@ import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import { allUserSelectKeys } from '@/lib/api/query-keys'
 import type { ActionFailure } from '@/lib/types/actions'
 import type { CreateUserInput, UpdateUserInput, ResetPasswordInput } from '../schema/user.schema'
+import { ActionError } from '@/lib/actions/action-error'
 
 // --- Query key factory ---
 
@@ -61,7 +62,7 @@ export function userQueryOptions(page: number, pageSize: number) {
     queryKey: userKeys.list({ page, pageSize }),
     queryFn: async () => {
       const result = await getUsersAction(page, pageSize)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
   })
@@ -78,7 +79,7 @@ export function useUser(id: number | null) {
     queryKey: userKeys.detail(id!),
     queryFn: async () => {
       const result = await getUserByIdAction(id!)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: id !== null,
@@ -101,7 +102,7 @@ export function useUserDataTable(
     queryKey: userKeys.list({ page, pageSize, search, customFilters }),
     queryFn: async () => {
       const result = await getUsersAction(page, pageSize, search || undefined, customFilters?.role || undefined)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const { users, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,

@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { getFieldRepsLiveAction } from '../actions/field-rep.actions'
+import { ActionError } from '@/lib/actions/action-error'
 
 export const fieldRepKeys = {
   all: ['field-reps'] as const,
@@ -13,7 +14,7 @@ export function useFieldRepsLive() {
     queryKey: fieldRepKeys.live(),
     queryFn: async () => {
       const result = await getFieldRepsLiveAction()
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     // Poll every 30 seconds — pings arrive every 5 minutes, 30s is generous

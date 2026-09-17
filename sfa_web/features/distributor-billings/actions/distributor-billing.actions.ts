@@ -6,6 +6,7 @@ import type {
   DistributorBillingListItem,
   DistributorBillingDetail,
   AdjustBillingItemsInput,
+  DistributorBillingDashboardSummary,
 } from '../schema/distributor-billing.schema'
 
 export const getMyBillingsAction = createAction(
@@ -98,5 +99,19 @@ export const updateCashCollectedAction = createAction(
   async (id: number, isCashCollected: boolean) => {
     const res = await client.patch(`/api/v1/billings/${id}/cash-collected`, { isCashCollected })
     return res.data.data as DistributorBillingDetail
+  }
+)
+
+/**
+ * Dashboard billing totals for the logged-in distributor, aggregated by the API over an inclusive
+ * Sri Lanka date range (YYYY-MM-DD). The distributor is resolved server-side from the JWT.
+ */
+export const getMyBillingDashboardSummaryAction = createAction(
+  { name: 'getMyBillingDashboardSummaryAction', requireAuth: true, requiredRole: 'Distributor' },
+  async (dateFrom: string, dateTo: string) => {
+    const res = await client.get('/api/v1/billings/portal/dashboard-summary', {
+      params: { dateFrom, dateTo },
+    })
+    return res.data.data as DistributorBillingDashboardSummary
   }
 )

@@ -22,6 +22,7 @@ import {
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { ActionFailure } from '@/lib/types/actions'
 import type { CreateDistributorInput, UpdateDistributorInput } from '../schema/distributor.schema'
+import { ActionError } from '@/lib/actions/action-error'
 
 // --- Query key factory ---
 
@@ -40,7 +41,7 @@ export function distributorQueryOptions(page: number, pageSize: number) {
     queryKey: distributorKeys.list({ page, pageSize }),
     queryFn: async () => {
       const result = await getDistributorsAction(page, pageSize)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
   })
@@ -57,7 +58,7 @@ export function useDistributor(id: number | null) {
     queryKey: distributorKeys.detail(id!),
     queryFn: async () => {
       const result = await getDistributorByIdAction(id!)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: id !== null,
@@ -73,7 +74,7 @@ export function useDistributorsForSelect() {
     queryKey: [...distributorKeys.all, 'select', 'active'] as const,
     queryFn: async () => {
       const result = await getDistributorsAction(1, 1000, undefined, 'Active')
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data.distributors
     },
   })
@@ -97,7 +98,7 @@ export function useDistributorDataTable(
     queryFn: async () => {
       const status = customFilters?.status as string | undefined
       const result = await getDistributorsAction(page, pageSize, search || undefined, status || undefined)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const { distributors, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,

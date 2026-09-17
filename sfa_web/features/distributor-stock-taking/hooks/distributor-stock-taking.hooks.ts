@@ -12,6 +12,7 @@ import {
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { ActionFailure } from '@/lib/types/actions'
 import type { UpsertDraftInput } from '../schema/distributor-stock-taking.schema'
+import { ActionError } from '@/lib/actions/action-error'
 
 export const distributorStockTakingKeys = {
   all: ['distributor-stock-taking'] as const,
@@ -25,7 +26,7 @@ export function useOpenPeriods() {
     queryKey: distributorStockTakingKeys.periods(),
     queryFn: async () => {
       const result = await getOpenPeriodsAction()
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
   })
@@ -36,7 +37,7 @@ export function useMySubmission(periodId: number | null) {
     queryKey: distributorStockTakingKeys.submission(periodId ?? 0),
     queryFn: async () => {
       const result = await getMySubmissionAction(periodId!)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: periodId !== null,

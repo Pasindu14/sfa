@@ -21,6 +21,7 @@ import {
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { ActionFailure } from '@/lib/types/actions'
 import type { CreatePeriodInput, AdjustLineInput } from '../schema/stock-taking.schema'
+import { ActionError } from '@/lib/actions/action-error'
 
 export const stockTakingKeys = {
   all: ['stock-taking'] as const,
@@ -48,7 +49,7 @@ export function useStockTakingDataTable(
     queryKey: stockTakingKeys.list({ page, pageSize, search }),
     queryFn: async () => {
       const result = await getPeriodsAction(page, pageSize, search || undefined)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const { items, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,
@@ -74,7 +75,7 @@ export function usePeriod(id: number | null) {
     queryKey: stockTakingKeys.detail(id!),
     queryFn: async () => {
       const result = await getPeriodByIdAction(id!)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: id !== null,
@@ -88,7 +89,7 @@ export function useSubmissionForAdmin(periodId: number, distributorId: number | 
     queryKey: stockTakingKeys.submission(periodId, distributorId ?? 0),
     queryFn: async () => {
       const result = await getSubmissionForAdminAction(periodId, distributorId!)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: distributorId !== null && distributorId > 0,

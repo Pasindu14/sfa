@@ -1,4 +1,4 @@
-import ExcelJS from 'exceljs'
+import { loadExcelJS } from '@/lib/utils/load-excel'
 import { buildSalesSummaryColumns } from '../components/columns/sales-summary-columns'
 import type { SalesSummaryResponse } from '../schema/sales-summary.schema'
 
@@ -26,6 +26,7 @@ function downloadBlob(blob: Blob, filename: string): void {
 export async function exportSalesSummaryExcel(data: SalesSummaryResponse): Promise<void> {
   const columns = buildSalesSummaryColumns(data.groupBy)
 
+  const ExcelJS = await loadExcelJS()
   const wb = new ExcelJS.Workbook()
   const ws = wb.addWorksheet('Sales Summary')
 

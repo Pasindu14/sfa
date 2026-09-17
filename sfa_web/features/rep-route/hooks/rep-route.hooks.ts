@@ -4,6 +4,7 @@ import { useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getRepRouteAction, getRepsForSelectAction } from '../actions/rep-route.actions'
 import type { RepOptionDto } from '../schema/rep-route.schema'
+import { ActionError } from '@/lib/actions/action-error'
 
 export const repRouteKeys = {
   all: ['rep-route'] as const,
@@ -22,7 +23,7 @@ export function useRepRoute(repId: number | null, date: string | null) {
     queryKey: repRouteKeys.route(repId ?? 0, date ?? ''),
     queryFn: async () => {
       const result = await getRepRouteAction(repId!, date!)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: !!repId && !!date,
@@ -47,7 +48,7 @@ export function useRepSearchFetcher() {
         queryKey: [...repRouteKeys.all, 'reps', search ?? ''] as const,
         queryFn: async () => {
           const result = await getRepsForSelectAction(search)
-          if (!result.success) throw new Error(result.error)
+          if (!result.success) throw new ActionError(result)
           return result.data
         },
         staleTime: 5 * 60 * 1000,

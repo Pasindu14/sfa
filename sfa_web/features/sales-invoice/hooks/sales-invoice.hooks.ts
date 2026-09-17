@@ -9,6 +9,7 @@ import { getSalesInvoicesAction, getSalesInvoiceByIdAction } from '../actions/sa
 import { useImportDialog, useDeleteDialog, useSalesInvoiceFilterStore } from '../store'
 import type { ImportBatchResult, ImportSalesInvoicesPayload } from '../schema/sales-invoice.schema'
 import type { SalesInvoiceListItem } from '../schema/sales-invoice-list.schema'
+import { ActionError } from '@/lib/actions/action-error'
 
 // ── Query key factory ──────────────────────────────────────────────────────
 
@@ -27,7 +28,7 @@ export function useSalesInvoiceDetail(id: number | null) {
     queryKey: salesInvoiceKeys.detail(id!),
     queryFn: async () => {
       const result = await getSalesInvoiceByIdAction(id!)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: id !== null,
@@ -61,7 +62,7 @@ export function useSalesInvoiceDataTable(
         appliedFilters?.dateTo,
         appliedFilters?.distributorId ?? undefined,
       )
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const { invoices, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,

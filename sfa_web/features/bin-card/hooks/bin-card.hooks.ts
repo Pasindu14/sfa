@@ -3,6 +3,7 @@
 import { useQuery, useIsFetching } from '@tanstack/react-query'
 import { getBinCardAction } from '../actions/bin-card.actions'
 import { useBinCardFilterStore } from '../store'
+import { ActionError } from '@/lib/actions/action-error'
 
 // ── Query key factory ──────────────────────────────────────────────────────
 
@@ -23,7 +24,7 @@ export function useBinCard() {
       : [...binCardKeys.all, 'idle'],
     queryFn: async () => {
       const result = await getBinCardAction(applied!.distributorId, applied!.from, applied!.to)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       return result.data
     },
     enabled: !!applied,

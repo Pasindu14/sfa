@@ -24,11 +24,15 @@
 // when its Date cell holds a *parseable date* — never merely a non-empty cell. Parsing
 // starts after the first such label row rather than at a fixed offset.
 
-import * as XLSX from 'xlsx'
+import { loadXlsx } from '@/lib/utils/load-excel'
 import type {
   ImportInvoicePayload,
   ImportSalesInvoicesPayload,
 } from '../schema/sales-invoice.schema'
+
+// Bound by parseExcelFile() before any helper below runs — xlsx is loaded on demand so it
+// stays out of the page bundle until the user actually imports a file.
+let XLSX: Awaited<ReturnType<typeof loadXlsx>>
 
 const COL = {
   DATE:        1,
@@ -185,7 +189,9 @@ function isTotalsRow(row: unknown[]): boolean {
 
 // ── Main parse function ───────────────────────────────────────────────────
 
-export function parseExcelFile(buffer: ArrayBuffer, fileName: string): ParseResult {
+export async function parseExcelFile(buffer: ArrayBuffer, fileName: string): Promise<ParseResult> {
+  // xlsx is loaded on demand; the module-level binding lets the row helpers above use it.
+  XLSX = await loadXlsx()
   const workbook = XLSX.read(buffer, { type: 'array' })
   const sheetName = workbook.SheetNames[0]
   const sheet = sheetName ? workbook.Sheets[sheetName] : undefined

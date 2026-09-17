@@ -12,6 +12,7 @@ import {
 } from '../actions/sales-target.actions'
 import { useImportTargetDialog, useEditTargetDialog } from '../store/sales-target-dialog.store'
 import type { ImportSalesTargetsPayload, ImportSalesTargetsResult, UpdateTargetQuantityInput } from '../schema/sales-target.schema'
+import { ActionError } from '@/lib/actions/action-error'
 
 // ── Query key factory ──────────────────────────────────────────────────────
 
@@ -46,7 +47,7 @@ export function useSalesTargetsDataTable(
         customFilters?.month,
         customFilters?.salesRepId,
       )
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const { targets, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,
@@ -75,7 +76,7 @@ export function useImportBatchesDataTable(
     queryKey: salesTargetKeys.batchList({ page, pageSize }),
     queryFn: async () => {
       const result = await getImportBatchesAction(page, pageSize)
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new ActionError(result)
       const { batches, totalCount, page: p, pageSize: ps } = result.data
       return {
         success: true as const,

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowDown, CheckCircle2 } from 'lucide-react'
@@ -30,7 +30,7 @@ import {
   type CreateUserReportingLineInput,
   type UpdateUserReportingLineInput,
 } from '../../schema/user-reporting-line.schema'
-import { useUsersForSelect } from '../../hooks/user-reporting-line.hooks'
+import { useUsersForSelectFetcher } from '../../hooks/user-reporting-line.hooks'
 import type { UserDto } from '@/features/user/schema/user.schema'
 
 const ASSIGNABLE_ROLES = ['NSM', 'RSM', 'ASM', 'Supervisor', 'SalesRep']
@@ -93,31 +93,46 @@ function UserOption({ user }: { user: UserDto }) {
   )
 }
 
-// --- Fetcher hooks (backed by TanStack Query cache — no extra API calls per keystroke) ---
+// --- Fetcher hooks (server-side search, cached per role+term via TanStack Query) ---
 
-function useSubordinateFetcher(users: UserDto[]) {
+/**
+ * Wraps a server-search fetcher so that:
+ * - every returned user is remembered in `cacheRef`, letting the form render the preview card
+ *   for whichever option was picked (AsyncSelect only reports the id back);
+ * - AsyncSelect's mount-time `fetcher(value)` call — which passes the selected *id* as the
+ *   search term — is treated as an empty search instead of a name search for "42", which
+ *   would otherwise race the real initial load and could leave the list empty.
+ */
+function useCachingFetcher(
+  base: (search?: string) => Promise<UserDto[]>,
+  cacheRef: { current: Map<number, UserDto> },
+  selectedId: number,
+) {
   return useCallback(
     async (query?: string): Promise<UserDto[]> => {
-      if (!query) return []
-      const pool = users.filter((u) => ASSIGNABLE_ROLES.includes(u.role) && u.isActive)
-      return pool.filter((u) => u.name.toLowerCase().includes(query.toLowerCase()))
+      const term = query && selectedId > 0 && query === String(selectedId) ? '' : query
+      const users = await base(term)
+      users.forEach((u) => cacheRef.current.set(u.id, u))
+      return users
     },
-    [users],
+    [base, cacheRef, selectedId],
   )
 }
 
-function useManagerFetcher(users: UserDto[], role: string) {
-  return useCallback(
-    async (query?: string): Promise<UserDto[]> => {
-      const pool = role
-        ? users.filter((u) => u.role === role && u.isActive)
-        : users.filter((u) => MANAGER_ROLES.includes(u.role) && u.isActive)
-      // Show all immediately on open; filter when user types
-      if (!query) return pool
-      return pool.filter((u) => u.name.toLowerCase().includes(query.toLowerCase()))
-    },
-    [users, role],
-  )
+function useSubordinateFetcher(cacheRef: { current: Map<number, UserDto> }, selectedId: number) {
+  // Type-to-search: the subordinate picker starts empty, as before.
+  const base = useUsersForSelectFetcher(ASSIGNABLE_ROLES, true)
+  return useCachingFetcher(base, cacheRef, selectedId)
+}
+
+function useManagerFetcher(
+  role: string,
+  cacheRef: { current: Map<number, UserDto> },
+  selectedId: number,
+) {
+  // Show all (active) managers of the role immediately on open; search when the user types.
+  const base = useUsersForSelectFetcher(role ? [role] : MANAGER_ROLES)
+  return useCachingFetcher(base, cacheRef, selectedId)
 }
 
 const SUBORDINATE_NO_RESULTS = 'Type to search…'
@@ -136,7 +151,12 @@ interface CreateFormProps {
 
 interface EditFormProps {
   mode: 'edit'
-  defaultValues?: Partial<UpdateUserReportingLineInput> & { userName?: string; userRole?: string }
+  defaultValues?: Partial<UpdateUserReportingLineInput> & {
+    userName?: string
+    userRole?: string
+    reportsToUserName?: string
+    reportsToUserRole?: string
+  }
   onSubmit: (data: UpdateUserReportingLineInput) => void
   onCancel?: () => void
   isLoading: boolean
@@ -148,12 +168,13 @@ type UserReportingLineFormProps = CreateFormProps | EditFormProps
 // --- Main export ---
 
 export function UserReportingLineForm(props: UserReportingLineFormProps) {
-  const { data: users = [], isLoading: isLoadingUsers } = useUsersForSelect()
+  // Pickers search the API on demand, so there is no up-front user list to wait for.
+  const isLoadingUsers = false
 
   if (props.mode === 'create') {
-    return <CreateForm {...props} users={users} isLoadingUsers={isLoadingUsers} />
+    return <CreateForm {...props} isLoadingUsers={isLoadingUsers} />
   }
-  return <EditForm {...props} users={users} isLoadingUsers={isLoadingUsers} />
+  return <EditForm {...props} isLoadingUsers={isLoadingUsers} />
 }
 
 // --- Create form ---
@@ -163,9 +184,8 @@ function CreateForm({
   onCancel,
   isLoading,
   fieldErrors,
-  users,
   isLoadingUsers,
-}: Omit<CreateFormProps, 'mode'> & { users: UserDto[]; isLoadingUsers: boolean }) {
+}: Omit<CreateFormProps, 'mode'> & { isLoadingUsers: boolean }) {
   const form = useForm<CreateUserReportingLineInput>({
     resolver: zodResolver(createUserReportingLineSchema),
     defaultValues: {
@@ -180,11 +200,12 @@ function CreateForm({
   const reportsToUserId = watch('reportsToUserId')
   const [managerRole, setManagerRole] = useState('')
 
-  const selectedUser = users.find((u) => u.id === userId)
-  const selectedManager = users.find((u) => u.id === reportsToUserId)
+  const userCacheRef = useRef<Map<number, UserDto>>(new Map())
+  const selectedUser = userId > 0 ? userCacheRef.current.get(userId) : undefined
+  const selectedManager = reportsToUserId > 0 ? userCacheRef.current.get(reportsToUserId) : undefined
 
-  const subordinateFetcher = useSubordinateFetcher(users)
-  const managerFetcher = useManagerFetcher(users, managerRole)
+  const subordinateFetcher = useSubordinateFetcher(userCacheRef, userId)
+  const managerFetcher = useManagerFetcher(managerRole, userCacheRef, reportsToUserId)
 
   function handleManagerRoleChange(role: string) {
     setManagerRole(role)
@@ -373,10 +394,19 @@ function EditForm({
   onCancel,
   isLoading,
   fieldErrors,
-  users,
   isLoadingUsers,
-}: Omit<EditFormProps, 'mode'> & { users: UserDto[]; isLoadingUsers: boolean }) {
-  const existingManager = users.find((u) => u.id === defaultValues?.reportsToUserId)
+}: Omit<EditFormProps, 'mode'> & { isLoadingUsers: boolean }) {
+  // The current manager comes straight from the reporting-line DTO, so its label renders
+  // immediately without loading (and without needing to find it in) any user list.
+  const existingManager: UserDto | null =
+    defaultValues?.reportsToUserId && defaultValues.reportsToUserName
+      ? ({
+          id: defaultValues.reportsToUserId,
+          name: defaultValues.reportsToUserName,
+          role: defaultValues.reportsToUserRole ?? '',
+          isActive: true,
+        } as UserDto)
+      : null
   const [managerRole, setManagerRole] = useState(existingManager?.role ?? '')
 
   const form = useForm<UpdateUserReportingLineInput>({
@@ -389,16 +419,14 @@ function EditForm({
 
   const { setError, setValue, watch } = form
   const reportsToUserId = watch('reportsToUserId')
-  const selectedManager = users.find((u) => u.id === reportsToUserId)
+  const userCacheRef = useRef<Map<number, UserDto>>(new Map())
+  const selectedManager =
+    reportsToUserId > 0
+      ? (userCacheRef.current.get(reportsToUserId) ??
+        (existingManager && existingManager.id === reportsToUserId ? existingManager : undefined))
+      : undefined
 
-  const managerFetcher = useManagerFetcher(users, managerRole)
-
-  // Sync manager role once users list loads (async after dialog open)
-  useEffect(() => {
-    if (existingManager && !managerRole) {
-      setManagerRole(existingManager.role)
-    }
-  }, [existingManager, managerRole])
+  const managerFetcher = useManagerFetcher(managerRole, userCacheRef, reportsToUserId)
 
   function handleManagerRoleChange(role: string) {
     setManagerRole(role)
@@ -509,7 +537,9 @@ function EditForm({
                     disabled={isLoadingUsers}
                     width="100%"
                     triggerClassName="w-full"
-                    initialOption={existingManager ?? null}
+                    initialOption={
+                      existingManager && field.value === existingManager.id ? existingManager : null
+                    }
                   />
                   {fieldState.error && (
                     <p className="text-xs text-destructive">{fieldState.error.message}</p>
