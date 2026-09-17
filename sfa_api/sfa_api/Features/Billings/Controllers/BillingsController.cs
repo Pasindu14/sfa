@@ -160,6 +160,36 @@ public class BillingsController(
     }
 
     /// <summary>
+    /// GET /api/v1/billings/portal/dashboard-summary?dateFrom=YYYY-MM-DD&amp;dateTo=YYYY-MM-DD
+    /// Distributor only — billing totals for the caller's own distributor (resolved from the JWT),
+    /// aggregated in SQL over an inclusive Sri Lanka business-date range with a per-day breakdown.
+    /// Both dates default to today (Asia/Colombo); range capped at 92 days.
+    /// </summary>
+    [HttpGet("portal/dashboard-summary")]
+    [Authorize(Roles = "Distributor")]
+    public async Task<IActionResult> GetPortalDashboardSummary(
+        [FromServices] IDistributorBillingDashboardService dashboardService,
+        [FromQuery] string? dateFrom = null,
+        [FromQuery] string? dateTo = null,
+        CancellationToken ct = default)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+
+        DateOnly? parsedFrom = null, parsedTo = null;
+        if (!string.IsNullOrWhiteSpace(dateFrom))
+            parsedFrom = DateOnly.TryParseExact(dateFrom, "yyyy-MM-dd", out var df) ? df
+                : throw new sfa_api.Common.Errors.ValidationException(new Dictionary<string, string[]>
+                    { ["dateFrom"] = ["dateFrom must be a date in YYYY-MM-DD format."] });
+        if (!string.IsNullOrWhiteSpace(dateTo))
+            parsedTo = DateOnly.TryParseExact(dateTo, "yyyy-MM-dd", out var dt) ? dt
+                : throw new sfa_api.Common.Errors.ValidationException(new Dictionary<string, string[]>
+                    { ["dateTo"] = ["dateTo must be a date in YYYY-MM-DD format."] });
+
+        var result = await dashboardService.GetSummaryAsync(GetCallerId(), parsedFrom, parsedTo, ct);
+        return Ok(ResponseHelper.Ok(result, correlationId));
+    }
+
+    /// <summary>
     /// GET /api/v1/billings/portal/{id}
     /// Distributor only — returns full billing detail, enforcing ownership.
     /// </summary>

@@ -78,6 +78,10 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
     public Task<Billing?> GetByIdAsync(int id, CancellationToken ct = default)
         => _db.Billings
               .AsNoTracking()
+              // Split: 7 reference Includes + Items→Product + Adjustments→Lines/AdjustedBy in one JOIN
+              // multiplies rows (items × adjustments × lines). Read-only callers only (AsNoTracking) —
+              // collection order is made explicit in BillingService.ProjectToDto.
+              .AsSplitQuery()
               .Include(x => x.Outlet)
               .Include(x => x.SalesRep)
               .Include(x => x.Distributor)

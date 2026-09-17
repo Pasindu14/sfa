@@ -16,12 +16,20 @@ public class MobileSyncController(IMobileSyncService mobileSyncService) : Contro
     /// GET /api/v1/mobile/products
     /// Returns all active products for mobile catalog sync.
     /// Cached server-side for 1 hour; evicted on any product mutation.
+    /// Conditional GET: 200 carries a weak <c>ETag</c>; a matching <c>If-None-Match</c> gets
+    /// 304 Not Modified with an empty body. Without If-None-Match the response is unchanged.
     /// </summary>
     [HttpGet("products")]
     public async Task<IActionResult> GetProducts(CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
         var result = await _mobileSyncService.GetProductsAsync(ct);
+
+        var etag = MobileSyncETag.Compute(result.Products);
+        Response.Headers.ETag = etag;
+        if (MobileSyncETag.IfNoneMatchMatches(Request, etag))
+            return StatusCode(StatusCodes.Status304NotModified);
+
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 
@@ -29,12 +37,19 @@ public class MobileSyncController(IMobileSyncService mobileSyncService) : Contro
     /// GET /api/v1/mobile/product-categories
     /// Returns all active product categories for mobile catalog sync.
     /// Cached server-side for 1 hour.
+    /// Conditional GET: same ETag / If-None-Match / 304 contract as /products.
     /// </summary>
     [HttpGet("product-categories")]
     public async Task<IActionResult> GetProductCategories(CancellationToken ct)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
         var result = await _mobileSyncService.GetProductCategoriesAsync(ct);
+
+        var etag = MobileSyncETag.Compute(result.Categories);
+        Response.Headers.ETag = etag;
+        if (MobileSyncETag.IfNoneMatchMatches(Request, etag))
+            return StatusCode(StatusCodes.Status304NotModified);
+
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 }

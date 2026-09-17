@@ -14,6 +14,7 @@ using sfa_api.Features.SalesInvoices.Entities;
 using sfa_api.Features.SalesInvoices.Enums;
 using sfa_api.Features.Stock.Entities;
 using sfa_api.Features.Stock.Enums;
+using sfa_api.Features.Stock.Repositories;
 using sfa_api.Infrastructure.Locking;
 using sfa_api.Infrastructure.Persistence;
 
@@ -314,10 +315,15 @@ public class GrnServiceTests
             .Setup(r => r.GetGrnWithItemsAsync(grn.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(grn);
 
-        // Stock lock
+        // Stock lock — one batched call; a fresh dictionary per call because the service adds to it.
         _repoMock
-            .Setup(r => r.GetStockForUpdateAsync(DistributorId, ProductId, It.IsAny<StockType>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(existingStock);
+            .Setup(r => r.LockStocksForUpdateAsync(It.IsAny<IEnumerable<StockKey>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => existingStock is null
+                ? new Dictionary<StockKey, DistributorStock>()
+                : new Dictionary<StockKey, DistributorStock>
+                {
+                    [new StockKey(existingStock.DistributorId, existingStock.ProductId, existingStock.StockType)] = existingStock
+                });
 
         _repoMock
             .Setup(r => r.AddStockAsync(It.IsAny<DistributorStock>(), It.IsAny<CancellationToken>()))
@@ -480,15 +486,10 @@ public class GrnServiceTests
             .Callback<DistributorStock, CancellationToken>((s, _) => capturedStock = s)
             .Returns(Task.CompletedTask);
 
-        // Re-lock after create returns the same stock object (simulates the re-fetch after flush)
-        int stockLockCallCount = 0;
+        // No stock row exists yet — the batched lock returns nothing for this key.
         _repoMock
-            .Setup(r => r.GetStockForUpdateAsync(DistributorId, ProductId, It.IsAny<StockType>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() =>
-            {
-                stockLockCallCount++;
-                return stockLockCallCount == 1 ? null : capturedStock;
-            });
+            .Setup(r => r.LockStocksForUpdateAsync(It.IsAny<IEnumerable<StockKey>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => new Dictionary<StockKey, DistributorStock>());
 
         // Capture the stock transaction to verify QuantityBefore = 0 (initial stock)
         sfa_api.Features.Stock.Entities.StockTransaction? capturedTx = null;
@@ -540,6 +541,49 @@ public class GrnServiceTests
     }
 
     [Fact]
+    public async Task ConfirmAsync_MultipleItems_LocksAllStockRowsInOneBatchedCall()
+    {
+        var grn = PendingGrn();
+        grn.Items.Add(new GRNItem
+        {
+            Id = 2, ProductId = ProductId + 1, Quantity = 4m, Unit = "CTN", IsFreeIssue = true,
+            Product = new Product { Id = ProductId + 1, Code = "CF02", ItemDescription = "Second", PiecesPerPack = 1 }
+        });
+        var existingStock = new DistributorStock
+        {
+            DistributorId  = DistributorId,
+            ProductId      = ProductId,
+            QuantityOnHand = 5m,
+            LastUpdatedAt  = DateTime.UtcNow
+        };
+        SetupConfirmHappyPath(grn, existingStock);
+        SetupConfirmReloadAfterCommit(grn);
+
+        List<StockKey>? lockedKeys = null;
+        _repoMock
+            .Setup(r => r.LockStocksForUpdateAsync(It.IsAny<IEnumerable<StockKey>>(), It.IsAny<CancellationToken>()))
+            .Callback<IEnumerable<StockKey>, CancellationToken>((keys, _) => lockedKeys = keys.ToList())
+            .ReturnsAsync(() => new Dictionary<StockKey, DistributorStock>
+            {
+                [new StockKey(DistributorId, ProductId, StockType.Normal)] = existingStock
+            });
+
+        await _sut.ConfirmAsync(grn.Id, new ConfirmGrnRequest(DateTime.UtcNow), CallerId);
+
+        _repoMock.Verify(r => r.LockStocksForUpdateAsync(It.IsAny<IEnumerable<StockKey>>(), It.IsAny<CancellationToken>()), Times.Once);
+        lockedKeys.Should().BeEquivalentTo(new[]
+        {
+            new StockKey(DistributorId, ProductId, StockType.Normal),
+            new StockKey(DistributorId, ProductId + 1, StockType.FreeIssue),
+        });
+        existingStock.QuantityOnHand.Should().Be(15m);                       // existing row credited in place
+        _repoMock.Verify(r => r.AddStockAsync(                                // missing FOC row created once
+            It.Is<DistributorStock>(s => s.ProductId == ProductId + 1 && s.StockType == StockType.FreeIssue && s.QuantityOnHand == 4m),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _repoMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once); // no mid-loop flush
+    }
+
+    [Fact]
     public async Task ConfirmAsync_ValidGrn_CommitsTransaction()
     {
         var grn = PendingGrn();
@@ -581,7 +625,7 @@ public class GrnServiceTests
 
         // Simulate a failure inside the stock update loop
         _repoMock
-            .Setup(r => r.GetStockForUpdateAsync(DistributorId, ProductId, It.IsAny<StockType>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.LockStocksForUpdateAsync(It.IsAny<IEnumerable<StockKey>>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("Simulated DB failure"));
 
         var act = () => _sut.ConfirmAsync(grn.Id, new ConfirmGrnRequest(DateTime.UtcNow), CallerId);
@@ -781,14 +825,10 @@ public class GrnServiceTests
             .Callback<DistributorStock, CancellationToken>((s, _) => capturedStock = s)
             .Returns(Task.CompletedTask);
 
-        int stockLockCallCount = 0;
+        // No stock row exists yet — the batched lock returns nothing for this key.
         _repoMock
-            .Setup(r => r.GetStockForUpdateAsync(DistributorId, ProductId, It.IsAny<StockType>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() =>
-            {
-                stockLockCallCount++;
-                return stockLockCallCount == 1 ? null : capturedStock;
-            });
+            .Setup(r => r.LockStocksForUpdateAsync(It.IsAny<IEnumerable<StockKey>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => new Dictionary<StockKey, DistributorStock>());
 
         StockTransaction? capturedTx = null;
         _repoMock
@@ -849,14 +889,10 @@ public class GrnServiceTests
             .Callback<DistributorStock, CancellationToken>((s, _) => capturedStock = s)
             .Returns(Task.CompletedTask);
 
-        int stockLockCallCount = 0;
+        // No stock row exists yet — the batched lock returns nothing for this key.
         _repoMock
-            .Setup(r => r.GetStockForUpdateAsync(DistributorId, ProductId, It.IsAny<StockType>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() =>
-            {
-                stockLockCallCount++;
-                return stockLockCallCount == 1 ? null : capturedStock;
-            });
+            .Setup(r => r.LockStocksForUpdateAsync(It.IsAny<IEnumerable<StockKey>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => new Dictionary<StockKey, DistributorStock>());
 
         SetupConfirmReloadAfterCommit(grn);
 

@@ -244,144 +244,166 @@ public class BillingService(
                 $"or return quantities.",
                 new { subTotal, billDiscountAmount, returnValue, totalAmount });
 
-        // ⑨ Acquire advisory lock scoped to sales rep (BillingId not yet known)
-        await using var advisoryLock = await _lockService.AcquireAsync($"billing:create:{salesRepId}", ct)
+        // ⑨ Acquire advisory lock scoped to sales rep (BillingId not yet known). It guards the
+        // number + insert + stock movement only, and is released the moment that transaction has
+        // committed (or failed) — the post-commit stamp, cache invalidation, re-fetch and
+        // notification below don't need it, and holding it through them only widens the window in
+        // which a rep's next submission is bounced with a 409. Idempotency doesn't rely on it: the
+        // ClientBillId fast-path and unique index cover replays.
+        var advisoryLock = await _lockService.AcquireAsync($"billing:create:{salesRepId}", ct)
             ?? throw new ConcurrencyConflictException(
                 new { salesRepId, message = "Another billing creation is already in progress for this sales rep." });
 
-        // ⑩ Generate billing number
-        var seqNo         = await _billingRepository.GetNextBillingNumberAsync(ct);
-        var billingNumber = $"BIL-{SriLankaTime.Year}-{seqNo:D5}";
-
-        // ⑪ Build entity
-        var billing = new Billing
-        {
-            BillingNumber = billingNumber,
-            ClientBillId  = clientBillId,
-            BillingDate   = request.BillingDate ?? SriLankaTime.Today,
-            OutletId          = request.OutletId,
-            SalesRepId        = salesRepId,
-            DistributorId     = distributor.Id,
-            SupervisorUserId  = supervisorId,
-            AsmUserId         = asmId,
-            RsmUserId         = rsmId,
-            NsmUserId         = nsmId,
-            RouteId           = outlet.RouteId,
-            DivisionId        = outlet.DivisionId,
-            TerritoryId       = geo.TerritoryId,
-            AreaId            = geo.AreaId,
-            RegionId          = geo.RegionId,
-            BillDiscountRate  = billDiscountRate,
-            RepStatus         = RepBillingStatus.Submitted,
-            DistributorStatus = DistributorBillingStatus.Pending,
-            Notes                    = request.Notes,
-            Latitude                 = request.Latitude,
-            Longitude                = request.Longitude,
-            DistanceFromOutletMeters = distanceFromOutletMeters,
-            GpsAccuracyMeters        = request.GpsAccuracyMeters,
-            ProximityOverridden      = proximityOverridden,
-            ProximityExemptionId     = proximityOverridden ? policy.ExemptionId : null,
-            CreatedAt                = DateTime.UtcNow,
-            UpdatedAt         = DateTime.UtcNow,
-            CreatedBy         = salesRepId,
-            Items             = lineItems
-        };
-        ApplyTotals(billing, totals);
-
-        // ⑫ ExecutionStrategy + transaction + stock movement (atomic).
-        // Wrapped so a ClientBillId unique-index violation from a concurrent duplicate (two
-        // replays of the same client bill id arriving at once) becomes an idempotent success:
-        // we return the bill the winning request created instead of surfacing a 500.
-        var strategy = _db.Database.CreateExecutionStrategy();
+        Billing billing;
         try
         {
-        await strategy.ExecuteAsync(async () =>
-        {
-            await using var transaction = await _billingRepository.BeginTransactionAsync(ct);
+            // ⑩ Generate billing number
+            var seqNo         = await _billingRepository.GetNextBillingNumberAsync(ct);
+            var billingNumber = $"BIL-{SriLankaTime.Year}-{seqNo:D5}";
+
+            // ⑪ Build entity
+            billing = new Billing
+            {
+                BillingNumber = billingNumber,
+                ClientBillId  = clientBillId,
+                BillingDate   = request.BillingDate ?? SriLankaTime.Today,
+                OutletId          = request.OutletId,
+                SalesRepId        = salesRepId,
+                DistributorId     = distributor.Id,
+                SupervisorUserId  = supervisorId,
+                AsmUserId         = asmId,
+                RsmUserId         = rsmId,
+                NsmUserId         = nsmId,
+                RouteId           = outlet.RouteId,
+                DivisionId        = outlet.DivisionId,
+                TerritoryId       = geo.TerritoryId,
+                AreaId            = geo.AreaId,
+                RegionId          = geo.RegionId,
+                BillDiscountRate  = billDiscountRate,
+                RepStatus         = RepBillingStatus.Submitted,
+                DistributorStatus = DistributorBillingStatus.Pending,
+                Notes                    = request.Notes,
+                Latitude                 = request.Latitude,
+                Longitude                = request.Longitude,
+                DistanceFromOutletMeters = distanceFromOutletMeters,
+                GpsAccuracyMeters        = request.GpsAccuracyMeters,
+                ProximityOverridden      = proximityOverridden,
+                ProximityExemptionId     = proximityOverridden ? policy.ExemptionId : null,
+                CreatedAt                = DateTime.UtcNow,
+                UpdatedAt         = DateTime.UtcNow,
+                CreatedBy         = salesRepId,
+                Items             = lineItems
+            };
+            ApplyTotals(billing, totals);
+
+            // ⑫ ExecutionStrategy + transaction + stock movement (atomic).
+            // Wrapped so a ClientBillId unique-index violation from a concurrent duplicate (two
+            // replays of the same client bill id arriving at once) becomes an idempotent success:
+            // we return the bill the winning request created instead of surfacing a 500.
+            var strategy = _db.Database.CreateExecutionStrategy();
             try
             {
-                await _billingRepository.AddAsync(billing, ct);
-                await _billingRepository.SaveChangesAsync(ct);  // billingId assigned here
-
-                foreach (var item in billing.Items)
+                await strategy.ExecuteAsync(async () =>
                 {
-                    switch (item.BillingItemType)
+                    await using var transaction = await _billingRepository.BeginTransactionAsync(ct);
+                    try
                     {
-                        case BillingItemType.Sale:
-                            await _stockRepository.GetStockForUpdateAsync(distributor.Id, item.ProductId, StockType.Normal, ct);
-                            await _stockRepository.DeductStockAsync(
-                                distributor.Id, item.ProductId, item.Quantity,
-                                StockType.Normal,
-                                StockTransactionType.Sale,
-                                "Billing", billing.Id, salesRepId, ct: ct);
-                            break;
+                        await _billingRepository.AddAsync(billing, ct);
+                        await _billingRepository.SaveChangesAsync(ct);  // billingId assigned here
 
-                        case BillingItemType.FreeIssue when item.FreeIssueSource == FreeIssueSource.Distributor:
-                            // Distributor-funded FOC: distributor gives away their own saleable stock as a promotion.
-                            // Deduct from Normal pool — same physical inventory the Sale lines compete for.
-                            await _stockRepository.GetStockForUpdateAsync(distributor.Id, item.ProductId, StockType.Normal, ct);
-                            await _stockRepository.DeductStockAsync(
-                                distributor.Id, item.ProductId, item.Quantity,
-                                StockType.Normal,
-                                StockTransactionType.FreeIssue,
-                                "Billing", billing.Id, salesRepId,
-                                notes: "Distributor-funded FOC", ct: ct);
-                            break;
+                        // One SELECT … ORDER BY "Id" FOR UPDATE for every stock row the bill moves (Id order,
+                        // so concurrent bills on overlapping products can't deadlock). Deduct/Credit below
+                        // then work on these tracked rows without reloading them.
+                        await _stockRepository.LockStocksForUpdateAsync(StockKeysFor(distributor.Id, billing.Items), ct);
 
-                        case BillingItemType.FreeIssue:
-                            // Company-funded FOC (default): drawn from the FOC pool the manufacturer ships to the distributor.
-                            await _stockRepository.GetStockForUpdateAsync(distributor.Id, item.ProductId, StockType.FreeIssue, ct);
-                            await _stockRepository.DeductStockAsync(
-                                distributor.Id, item.ProductId, item.Quantity,
-                                StockType.FreeIssue,
-                                StockTransactionType.FreeIssue,
-                                "Billing", billing.Id, salesRepId, ct: ct);
-                            break;
+                        foreach (var item in billing.Items)
+                        {
+                            switch (item.BillingItemType)
+                            {
+                                case BillingItemType.Sale:
+                                    await _stockRepository.DeductStockAsync(
+                                        distributor.Id, item.ProductId, item.Quantity,
+                                        StockType.Normal,
+                                        StockTransactionType.Sale,
+                                        "Billing", billing.Id, salesRepId, ct: ct);
+                                    break;
 
-                        case BillingItemType.Return when item.ReturnType == Enums.ReturnType.MarketResell:
-                            await _stockRepository.GetStockForUpdateAsync(distributor.Id, item.ProductId, StockType.Normal, ct);
-                            await _stockRepository.CreditStockAsync(
-                                distributor.Id, item.ProductId, item.Quantity,
-                                StockType.Normal,
-                                StockTransactionType.Return,
-                                "Billing", billing.Id, salesRepId, ct: ct);
-                            break;
+                                case BillingItemType.FreeIssue when item.FreeIssueSource == FreeIssueSource.Distributor:
+                                    // Distributor-funded FOC: distributor gives away their own saleable stock as a promotion.
+                                    // Deduct from Normal pool — same physical inventory the Sale lines compete for.
+                                    await _stockRepository.DeductStockAsync(
+                                        distributor.Id, item.ProductId, item.Quantity,
+                                        StockType.Normal,
+                                        StockTransactionType.FreeIssue,
+                                        "Billing", billing.Id, salesRepId,
+                                        notes: "Distributor-funded FOC", ct: ct);
+                                    break;
 
-                        // Return + Damage / Expire: billing record only — no stock movement
+                                case BillingItemType.FreeIssue:
+                                    // Company-funded FOC (default): drawn from the FOC pool the manufacturer ships to the distributor.
+                                    await _stockRepository.DeductStockAsync(
+                                        distributor.Id, item.ProductId, item.Quantity,
+                                        StockType.FreeIssue,
+                                        StockTransactionType.FreeIssue,
+                                        "Billing", billing.Id, salesRepId, ct: ct);
+                                    break;
+
+                                case BillingItemType.Return when item.ReturnType == Enums.ReturnType.MarketResell:
+                                    await _stockRepository.CreditStockAsync(
+                                        distributor.Id, item.ProductId, item.Quantity,
+                                        StockType.Normal,
+                                        StockTransactionType.Return,
+                                        "Billing", billing.Id, salesRepId, ct: ct);
+                                    break;
+
+                                // Return + Damage / Expire: billing record only — no stock movement
+                            }
+                        }
+
+                        await _billingRepository.SaveChangesAsync(ct);
+                        await transaction.CommitAsync(ct);
                     }
-                }
-
-                await _billingRepository.SaveChangesAsync(ct);
-                await transaction.CommitAsync(ct);
+                    catch
+                    {
+                        await transaction.RollbackAsync(ct);
+                        throw;
+                    }
+                });
             }
-            catch
+            catch (DbUpdateException) when (!string.IsNullOrWhiteSpace(clientBillId))
             {
-                await transaction.RollbackAsync(ct);
-                throw;
+                // A concurrent request with the same client bill id won the insert race; the unique
+                // index rejected ours. Return the winner's bill so this retry is an idempotent success.
+                var winnerId = await _billingRepository.FindIdByClientBillIdAsync(clientBillId, ct);
+                if (winnerId is null) throw;
+                var winner = await _billingRepository.GetByIdAsync(winnerId.Value, ct)
+                    ?? throw new DatabaseUnavailableException();
+                return ProjectToDto(winner);
             }
-        });
         }
-        catch (DbUpdateException) when (!string.IsNullOrWhiteSpace(clientBillId))
+        finally
         {
-            // A concurrent request with the same client bill id won the insert race; the unique
-            // index rejected ours. Return the winner's bill so this retry is an idempotent success.
-            var winnerId = await _billingRepository.FindIdByClientBillIdAsync(clientBillId, ct);
-            if (winnerId is null) throw;
-            var winner = await _billingRepository.GetByIdAsync(winnerId.Value, ct)
-                ?? throw new DatabaseUnavailableException();
-            return ProjectToDto(winner);
+            await advisoryLock.DisposeAsync();
         }
 
-        // Stamp outlet's last bill date and bust the route cache
+        // Stamp outlet's last bill date. The per-route outlet cache (mobile outlet sync) carries
+        // LastBillDate — the app shows a "NEW" badge for never-billed outlets and persists the value
+        // to its local DB on sync, so a stale null would resurrect that badge after a re-sync. Evict
+        // only THIS outlet's route entry, and only when the stamped value actually changed (the first
+        // bill of the day for the outlet) — not every route in the company on every bill.
         var lastBillDate = billing.BillingDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-        await _db.Outlets
-            .Where(o => o.Id == billing.OutletId)
-            .ExecuteUpdateAsync(s => s.SetProperty(o => o.LastBillDate, lastBillDate), ct);
-        await _cache.RemoveByPrefixAsync("outlets:route:", ct);
+        if (outlet.LastBillDate != lastBillDate)
+        {
+            await _db.Outlets
+                .Where(o => o.Id == billing.OutletId)
+                .ExecuteUpdateAsync(s => s.SetProperty(o => o.LastBillDate, lastBillDate), ct);
+            await _cache.RemoveAsync(Outlets.Services.OutletService.RouteOutletsCacheKey(outlet.RouteId), ct);
+            await _cache.RemoveAsync(Outlets.OutletCacheKeys.ActiveAll, ct);   // GET /outlets/active carries LastBillDate too
+        }
 
         // A new bill lands as Pending, so it does not move the approved-only sales summary — but it
         // does move the pending totals on the rep's own screens, which are cached the same way.
-        await InvalidateSalesCachesAsync(ct);
+        await InvalidateSalesCachesAsync(billing, affectsApprovedTotals: false, ct);
 
         // ⑬ Re-fetch read-only for DTO projection
         var created = await _billingRepository.GetByIdAsync(billing.Id, ct)
@@ -572,6 +594,28 @@ public class BillingService(
     // ── Stock reversal ────────────────────────────────────────────────────
 
     /// <summary>
+    /// The stock pool a bill line moves at creation (and therefore on reversal), or null when the
+    /// line moves no stock. Must stay in step with the switch in CreateAsync ⑫ and
+    /// <see cref="ReverseStockForBillingAsync"/>:
+    /// Sale and Distributor-funded FOC → Normal; Company-funded FOC → FreeIssue;
+    /// MarketResell return → Normal; Damage / Expire / DistributorReturn → none.
+    /// </summary>
+    private static StockType? StockPoolOf(BillingItem item) => item.BillingItemType switch
+    {
+        BillingItemType.Sale => StockType.Normal,
+        BillingItemType.FreeIssue when item.FreeIssueSource == FreeIssueSource.Distributor => StockType.Normal,
+        BillingItemType.FreeIssue => StockType.FreeIssue,
+        BillingItemType.Return when item.ReturnType == Enums.ReturnType.MarketResell => StockType.Normal,
+        _ => null
+    };
+
+    private static IEnumerable<StockKey> StockKeysFor(int distributorId, IEnumerable<BillingItem> items)
+        => items.Select(i => (i.ProductId, Pool: StockPoolOf(i)))
+                .Where(x => x.Pool.HasValue)
+                .Select(x => new StockKey(distributorId, x.ProductId, x.Pool!.Value))
+                .Distinct();
+
+    /// <summary>
     /// Mirrors the stock movements made at bill creation — must be called inside an open transaction.
     /// Sale + Distributor FOC: credits Normal stock back.
     /// Company FOC: credits FreeIssue stock back.
@@ -580,12 +624,15 @@ public class BillingService(
     /// </summary>
     private async Task ReverseStockForBillingAsync(Billing billing, int actorId, string notes, CancellationToken ct)
     {
+        // Lock every row the reversal touches in one ordered FOR UPDATE; the credits/deducts below
+        // then work on the tracked rows without reloading them.
+        await _stockRepository.LockStocksForUpdateAsync(StockKeysFor(billing.DistributorId, billing.Items), ct);
+
         foreach (var item in billing.Items)
         {
             switch (item.BillingItemType)
             {
                 case BillingItemType.Sale:
-                    await _stockRepository.GetStockForUpdateAsync(billing.DistributorId, item.ProductId, StockType.Normal, ct);
                     await _stockRepository.CreditStockAsync(
                         billing.DistributorId, item.ProductId, item.Quantity,
                         StockType.Normal, StockTransactionType.BillingReversal,
@@ -593,7 +640,6 @@ public class BillingService(
                     break;
 
                 case BillingItemType.FreeIssue when item.FreeIssueSource == FreeIssueSource.Distributor:
-                    await _stockRepository.GetStockForUpdateAsync(billing.DistributorId, item.ProductId, StockType.Normal, ct);
                     await _stockRepository.CreditStockAsync(
                         billing.DistributorId, item.ProductId, item.Quantity,
                         StockType.Normal, StockTransactionType.BillingReversal,
@@ -601,7 +647,6 @@ public class BillingService(
                     break;
 
                 case BillingItemType.FreeIssue:
-                    await _stockRepository.GetStockForUpdateAsync(billing.DistributorId, item.ProductId, StockType.FreeIssue, ct);
                     await _stockRepository.CreditStockAsync(
                         billing.DistributorId, item.ProductId, item.Quantity,
                         StockType.FreeIssue, StockTransactionType.BillingReversal,
@@ -609,7 +654,6 @@ public class BillingService(
                     break;
 
                 case BillingItemType.Return when item.ReturnType == Enums.ReturnType.MarketResell:
-                    await _stockRepository.GetStockForUpdateAsync(billing.DistributorId, item.ProductId, StockType.Normal, ct);
                     await _stockRepository.DeductStockAsync(
                         billing.DistributorId, item.ProductId, item.Quantity,
                         StockType.Normal, StockTransactionType.BillingReversal,
@@ -795,6 +839,10 @@ public class BillingService(
             {
                 await _billingRepository.SaveChangesAsync(ct);
 
+                // One ordered FOR UPDATE over every pool row the credits touch.
+                await _stockRepository.LockStocksForUpdateAsync(
+                    StockKeysFor(billing.DistributorId, reductions.Select(r => r.Line)), ct);
+
                 foreach (var (line, oldQuantity, newQuantity) in reductions)
                 {
                     var returnedQty = oldQuantity - newQuantity;
@@ -807,7 +855,6 @@ public class BillingService(
                         ? StockType.FreeIssue
                         : StockType.Normal;
 
-                    await _stockRepository.GetStockForUpdateAsync(billing.DistributorId, line.ProductId, pool, ct);
                     await _stockRepository.CreditStockAsync(
                         billing.DistributorId, line.ProductId, returnedQty,
                         pool, StockTransactionType.BillingReversal,
@@ -827,7 +874,7 @@ public class BillingService(
 
         // A pending bill does not move the approved-only sales summary, but it does move the pending
         // totals on the rep's screens, which are cached the same way.
-        await InvalidateSalesCachesAsync(ct);
+        await InvalidateSalesCachesAsync(billing, affectsApprovedTotals: false, ct);
 
         var result = await _billingRepository.GetByIdAsync(billingId, ct)
             ?? throw new DatabaseUnavailableException();
@@ -909,7 +956,9 @@ public class BillingService(
         b.GpsAccuracyMeters,
         b.ProximityOverridden,
         b.CreatedAt,
-        b.Items.OrderBy(i => i.LineNumber).Select(i => new BillingItemDto(
+        // Explicit Id tiebreaks: GetByIdAsync uses AsSplitQuery, which (unlike the old single JOIN query,
+        // ordered by keys) doesn't guarantee child-row order — these reproduce the previous output order.
+        b.Items.OrderBy(i => i.LineNumber).ThenBy(i => i.Id).Select(i => new BillingItemDto(
             i.Id,
             i.ProductId,
             i.Product?.Code ?? string.Empty,
@@ -929,7 +978,7 @@ public class BillingService(
             i.OriginalQuantity)).ToList(),
         b.LastAdjustedAt,
         b.AdjustmentCount,
-        b.Adjustments.OrderByDescending(a => a.AdjustedAt).Select(a => new BillingAdjustmentDto(
+        b.Adjustments.OrderByDescending(a => a.AdjustedAt).ThenBy(a => a.Id).Select(a => new BillingAdjustmentDto(
             a.Id,
             a.AdjustedByUserId,
             a.AdjustedBy?.Name ?? string.Empty,
@@ -937,7 +986,7 @@ public class BillingService(
             a.Note,
             a.OldTotalAmount,
             a.NewTotalAmount,
-            a.Lines.Select(l => new BillingAdjustmentLineDto(
+            a.Lines.OrderBy(l => l.Id).Select(l => new BillingAdjustmentLineDto(
                 l.BillingItemId,
                 l.ProductId,
                 productsById.TryGetValue(l.ProductId, out var p) ? p.Code : string.Empty,
@@ -986,9 +1035,8 @@ public class BillingService(
     }
 
     /// <summary>
-    /// Drops every cached sales aggregate. Must be called after ANY change to a bill's state —
-    /// create, cancel, approve, reject — because all of these caches are keyed on a date/rep
-    /// window rather than on the bills themselves, so there is no narrower key to evict.
+    /// Evicts the cached sales aggregates a change to <paramref name="billing"/> can move. Must be
+    /// called after ANY change to a bill's state or amounts — create, adjust, cancel, approve, reject.
     /// <para>
     /// Without this, a distributor approves a bill and then sees a report that predates their own
     /// action for up to the cache TTL, which is indistinguishable from the feature being broken.
@@ -996,19 +1044,38 @@ public class BillingService(
     /// is only acceptable when nothing in the product lets a user cause the change and then
     /// immediately look at the result.
     /// </para>
+    /// <para>
+    /// Scope: the rep's own screens are keyed by rep + bill month/day (both filter on
+    /// <see cref="Billing.BillingDate"/>), so exactly those three keys are evicted instead of every
+    /// rep's. The sales summary aggregates across reps with arbitrary filters, so it has no narrower
+    /// key — but it counts Approved, non-cancelled bills only, so its namespace is bumped only when
+    /// <paramref name="affectsApprovedTotals"/> (approve, or cancel of an already-approved bill).
+    /// </para>
     /// </summary>
-    private async Task InvalidateSalesCachesAsync(CancellationToken ct)
+    private async Task InvalidateSalesCachesAsync(Billing billing, bool affectsApprovedTotals, CancellationToken ct)
     {
-        await _cache.RemoveByPrefixAsync("sales-summary:", ct);      // Features/Reports
-        await _cache.RemoveByPrefixAsync("rep-sales:", ct);
-        await _cache.RemoveByPrefixAsync("rep-sales-daily:", ct);
-        await _cache.RemoveByPrefixAsync("rep-sales-itemwise:", ct);
+        if (affectsApprovedTotals)
+            await _cache.RemoveByPrefixAsync("sales-summary:", ct);      // Features/Reports
+
+        var date = billing.BillingDate;
+        await _cache.RemoveAsync(RepMonthlySalesCacheKey(billing.SalesRepId, date.Year, date.Month), ct);
+        await _cache.RemoveAsync(RepDailySalesCacheKey(billing.SalesRepId, date), ct);
+        await _cache.RemoveAsync(RepMonthlySalesItemwiseCacheKey(billing.SalesRepId, date.Year, date.Month), ct);
     }
+
+    private static string RepMonthlySalesCacheKey(int salesRepId, int year, int month)
+        => $"rep-sales:{salesRepId}:{year}:{month}";
+
+    private static string RepDailySalesCacheKey(int salesRepId, DateOnly date)
+        => $"rep-sales-daily:{salesRepId}:{date:yyyy-MM-dd}";
+
+    private static string RepMonthlySalesItemwiseCacheKey(int salesRepId, int year, int month)
+        => $"rep-sales-itemwise:{salesRepId}:{year}:{month}";
 
     public async Task<RepMonthlySalesDto> GetRepMonthlySalesAsync(
         int salesRepId, int year, int month, CancellationToken ct = default)
     {
-        var cacheKey = $"rep-sales:{salesRepId}:{year}:{month}";
+        var cacheKey = RepMonthlySalesCacheKey(salesRepId, year, month);
         var cached = await _cache.GetAsync<RepMonthlySalesDto>(cacheKey, ct);
         if (cached is not null) return cached;
 
@@ -1022,7 +1089,7 @@ public class BillingService(
     public async Task<RepDailySalesDto> GetRepDailySalesAsync(
         int salesRepId, DateOnly date, CancellationToken ct = default)
     {
-        var cacheKey = $"rep-sales-daily:{salesRepId}:{date:yyyy-MM-dd}";
+        var cacheKey = RepDailySalesCacheKey(salesRepId, date);
         var cached = await _cache.GetAsync<RepDailySalesDto>(cacheKey, ct);
         if (cached is not null) return cached;
 
@@ -1073,7 +1140,7 @@ public class BillingService(
             }
         });
 
-        await InvalidateSalesCachesAsync(ct);
+        await InvalidateSalesCachesAsync(billing, affectsApprovedTotals: billing.DistributorStatus == DistributorBillingStatus.Approved, ct);
 
         var updated = await _billingRepository.GetByIdAsync(billingId, ct)
             ?? throw new DatabaseUnavailableException();
@@ -1108,7 +1175,7 @@ public class BillingService(
         billing.UpdatedBy         = userId;
 
         await _billingRepository.SaveChangesAsync(ct);
-        await InvalidateSalesCachesAsync(ct);
+        await InvalidateSalesCachesAsync(billing, affectsApprovedTotals: true, ct);
 
         var result = await _billingRepository.GetByIdAsync(billingId, ct)
             ?? throw new DatabaseUnavailableException();
@@ -1173,7 +1240,7 @@ public class BillingService(
             }
         });
 
-        await InvalidateSalesCachesAsync(ct);
+        await InvalidateSalesCachesAsync(billing, affectsApprovedTotals: false, ct);
 
         var result = await _billingRepository.GetByIdAsync(billingId, ct)
             ?? throw new DatabaseUnavailableException();
@@ -1265,7 +1332,7 @@ public class BillingService(
     public async Task<RepMonthlySalesItemwiseDto> GetRepMonthlySalesItemwiseAsync(
         int salesRepId, int year, int month, CancellationToken ct = default)
     {
-        var cacheKey = $"rep-sales-itemwise:{salesRepId}:{year}:{month}";
+        var cacheKey = RepMonthlySalesItemwiseCacheKey(salesRepId, year, month);
         var cached = await _cache.GetAsync<RepMonthlySalesItemwiseDto>(cacheKey, ct);
         if (cached is not null) return cached;
 

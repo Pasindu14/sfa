@@ -4,6 +4,8 @@ using sfa_api.Features.GRNs.Repositories;
 using sfa_api.Features.SalesInvoices.Entities;
 using sfa_api.Features.Stock.Entities;
 using sfa_api.Features.Stock.Enums;
+using sfa_api.Features.Stock.Repositories;
+using sfa_api.Infrastructure.Persistence;
 
 namespace sfa_api.IntegrationTests.Infrastructure;
 
@@ -12,7 +14,7 @@ namespace sfa_api.IntegrationTests.Infrastructure;
 /// (which calls PostgreSQL nextval()) with an in-process atomic counter.
 /// All other calls delegate to the real GrnRepository.
 /// </summary>
-public sealed class TestGrnRepository(IGrnRepository inner) : IGrnRepository
+public sealed class TestGrnRepository(IGrnRepository inner, AppDbContext db) : IGrnRepository
 {
     private static long _counter = 0;
 
@@ -38,8 +40,10 @@ public sealed class TestGrnRepository(IGrnRepository inner) : IGrnRepository
     public Task AddGrnAsync(GRN grn, CancellationToken ct = default)
         => inner.AddGrnAsync(grn, ct);
 
-    public Task<DistributorStock?> GetStockForUpdateAsync(int distributorId, int productId, StockType stockType, CancellationToken ct = default)
-        => inner.GetStockForUpdateAsync(distributorId, productId, stockType, ct);
+    // Batched lock: SQLite has no FOR UPDATE / unnest, so load the rows (tracked) with plain LINQ instead.
+    public Task<Dictionary<StockKey, DistributorStock>> LockStocksForUpdateAsync(
+        IEnumerable<StockKey> keys, CancellationToken ct = default)
+        => TestStockLocking.LoadAsync(db, keys, ct);
 
     public Task AddStockAsync(DistributorStock stock, CancellationToken ct = default)
         => inner.AddStockAsync(stock, ct);

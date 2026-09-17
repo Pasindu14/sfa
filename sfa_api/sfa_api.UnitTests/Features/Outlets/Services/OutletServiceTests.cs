@@ -412,15 +412,57 @@ public class OutletServiceTests
     [Fact]
     public async Task GetAllActiveAsync_ReturnsOnlyActiveOutlets()
     {
-        var active = new[] { CreateFakeOutlet(1, isActive: true), CreateFakeOutlet(2, isActive: true) };
+        var active = new List<sfa_api.Features.Outlets.DTOs.OutletDto> { FakeActiveDto(1), FakeActiveDto(2) };
         _repoMock.Setup(r => r.GetAllActiveAsync(It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(active.AsEnumerable());
+                 .ReturnsAsync(active);
 
         var result = await _sut.GetAllActiveAsync();
 
         result.Should().HaveCount(2);
         result.Should().OnlyContain(o => o.IsActive);
     }
+
+    [Fact]
+    public async Task GetAllActiveAsync_CacheMiss_LoadsFromRepoAndCaches()
+    {
+        var active = new List<sfa_api.Features.Outlets.DTOs.OutletDto> { FakeActiveDto(1) };
+        _repoMock.Setup(r => r.GetAllActiveAsync(It.IsAny<CancellationToken>())).ReturnsAsync(active);
+
+        await _sut.GetAllActiveAsync();
+
+        _cacheMock.Verify(c => c.SetAsync(sfa_api.Features.Outlets.OutletCacheKeys.ActiveAll, active,
+            It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAllActiveAsync_CacheHit_DoesNotQueryRepo()
+    {
+        var cached = new List<sfa_api.Features.Outlets.DTOs.OutletDto> { FakeActiveDto(9) };
+        _cacheMock.Setup(c => c.GetAsync<List<sfa_api.Features.Outlets.DTOs.OutletDto>>(
+                sfa_api.Features.Outlets.OutletCacheKeys.ActiveAll, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cached);
+
+        var result = await _sut.GetAllActiveAsync();
+
+        result.Should().BeSameAs(cached);
+        _repoMock.Verify(r => r.GetAllActiveAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeactivateAsync_InvalidatesActiveOutletCache()
+    {
+        _repoMock.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(CreateFakeOutlet(1));
+
+        await _sut.DeactivateAsync(1, callerId: 1);
+
+        _cacheMock.Verify(c => c.RemoveByPrefixAsync(sfa_api.Features.Outlets.OutletCacheKeys.ActivePrefix,
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    private static sfa_api.Features.Outlets.DTOs.OutletDto FakeActiveDto(int id) => new(
+        id, $"Outlet {id}", "Addr", "0770000000", null, null, $"90000000{id}V", null, 0m, 6.9, 79.8,
+        null, null, null, "Retail", "A", null, null, 50, "Route", 40, "Division", 30, "Territory",
+        20, "Area", 10, "Region", true, 1u, DateTime.UtcNow, DateTime.UtcNow, null);
 
     // ─────────────────────────────────────────────────
     // CreateAsync

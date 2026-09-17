@@ -137,6 +137,10 @@ public class ProductCategoryService(
     {
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
         await _cache.RemoveAsync(AllActiveCacheKey, ct);
+        // Mobile catalog caches: the category list itself, and the product list's CategoryName.
+        // Keeps their bodies (and therefore their ETags) from lagging a category change by up to 1h.
+        await _cache.RemoveAsync("mobile:product-categories", ct);
+        await _cache.RemoveAsync("mobile:products", ct);
     }
 
     private static ProductCategoryDto MapToDto(ProductCategory category) => new(

@@ -12,7 +12,8 @@ namespace sfa_api.Features.LocationPings.Services;
 public class LocationPingService(
     ILocationPingRepository repository,
     IUserRepository userRepository,
-    ICacheService cache) : ILocationPingService
+    ICacheService cache,
+    IConfiguration configuration) : ILocationPingService
 {
     /// Current state, not history — rewritten every few minutes and meaningless once stale,
     /// so it lives in the cache rather than earning a table and a migration. Two days is
@@ -41,18 +42,17 @@ public class LocationPingService(
 
     public async Task<IReadOnlyList<RepLocationPingDto>> GetLatestPerRepAsync(CancellationToken ct = default)
     {
-        var pings = await repository.GetLatestPerRepAsync(ct);
+        // Default (0) keeps the original behaviour: every rep's last-ever ping. A positive
+        // LocationPings:LiveMapWindowHours hides reps not seen within that many hours.
+        var windowHours = configuration.GetValue<int?>("LocationPings:LiveMapWindowHours") ?? DefaultLiveMapWindowHours;
+        DateTimeOffset? sinceUtc = windowHours > 0
+            ? DateTimeOffset.UtcNow.AddHours(-windowHours)
+            : null;
 
-        return pings.Select(p => new RepLocationPingDto(
-            RepId:      p.RepId,
-            RepName:    p.Rep?.Name ?? string.Empty,
-            Latitude:   p.Latitude,
-            Longitude:  p.Longitude,
-            Accuracy:   p.Accuracy,
-            RecordedAt: p.RecordedAt,
-            ReceivedAt: p.ReceivedAt
-        )).ToList();
+        return await repository.GetLatestPerRepAsync(sinceUtc, ct);
     }
+
+    private const int DefaultLiveMapWindowHours = 0;
 
     public async Task<RepRouteDto> GetRepRouteAsync(int repId, DateOnly date, CancellationToken ct = default)
     {

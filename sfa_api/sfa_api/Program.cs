@@ -107,6 +107,8 @@ try
         builder.Services.AddDistributedMemoryCache();
     }
     builder.Services.AddScoped<ICacheService, DistributedCacheService>();
+    // Process-local cache — token-revocation markers (see PostgresTokenRevocationService).
+    builder.Services.AddMemoryCache();
 
     // ── Idempotency ───────────────────────────────────────────────────────
     builder.Services.AddScoped<IIdempotencyService, PostgresIdempotencyService>();
@@ -118,6 +120,9 @@ try
     // ── Refresh Token Cleanup ─────────────────────────────────────────────
     builder.Services.AddHostedService<sfa_api.Features.Auth.Services.RefreshTokenCleanupService>();
 
+    // ── Location Ping Retention (OFF unless LocationPings:RetentionDays > 0) ──
+    builder.Services.AddHostedService<sfa_api.Features.LocationPings.Services.LocationPingRetentionService>();
+
     // ── Nightly Stock Reconciliation ──────────────────────────────────────
     builder.Services.AddHostedService<sfa_api.Features.Stock.Services.StockReconciliationBackgroundService>();
 
@@ -125,6 +130,8 @@ try
     builder.Services.AddHostedService<sfa_api.Features.GeoConsistency.Services.GeoConsistencyBackgroundService>();
 
     // ── JWT Revocation ────────────────────────────────────────────────────
+    // Postgres stays the source of truth; the per-request check reads the cache (Redis when
+    // REDIS_CONNECTION is set, otherwise a 30s-memoised Postgres lookup per instance).
     builder.Services.AddScoped<ITokenRevocationService, PostgresTokenRevocationService>();
 
     // ── Distributed Locking (Redis / Upstash Redlock, fallback to Postgres advisory locks) ──
@@ -222,6 +229,9 @@ try
         });
     }
     builder.Services.AddScoped<INotificationService, FirebaseNotificationService>();
+    // FCM sends leave the request path: services enqueue, the dispatcher batches to Firebase.
+    builder.Services.AddSingleton<IPushNotificationQueue, PushNotificationQueue>();
+    builder.Services.AddHostedService<PushNotificationDispatcher>();
 
     // ── Features ──────────────────────────────────────────────────────────
     builder.Services.AddAuthFeature();
@@ -293,7 +303,8 @@ try
     app.UseResponseCompression();                    // 0. Compress responses (before logging)
     app.UseMiddleware<GlobalExceptionMiddleware>();  // 1. Catch all exceptions (must be first to wrap all errors)
     app.UseMiddleware<CorrelationIdMiddleware>();    // 2. Correlation ID
-    app.UseSerilogRequestLogging();                 // 3. Log every request (sees final status)
+    app.UseSerilogRequestLogging(o =>               // 3. Log every request (sees final status);
+        o.GetLevel = SerilogConfig.GetRequestLogLevel); //    /health probes are dropped (Verbose)
     app.UseHttpsRedirection();                      // 4. HTTPS only
     app.UseCors("SFAPolicy");                       // 5. CORS
     // 6. Trust X-Forwarded-For ONLY from explicitly configured proxies/load balancers.
@@ -327,8 +338,11 @@ try
     }
     app.UseForwardedHeaders(forwardedOptions);
     app.UseRequestTimeouts();                        // 7. Request timeouts (before rate limiter)
-    app.UseRateLimiter();                           // 8. Rate limiting
-    app.UseAuthentication();                        // 9. Validate JWT
+    app.UseAuthentication();                        // 8. Validate JWT (populates User; never rejects on its own)
+    app.UseRateLimiter();                           // 9. Rate limiting — AFTER authentication so the global and
+                                                    //    "user" policies partition by user id (IP for anonymous);
+                                                    //    BEFORE authorization so 401/403 traffic is still limited.
+                                                    //    The "auth" (login/refresh) policy stays per-IP.
     app.UseAuthorization();                         // 10. Permissions
     app.UseMiddleware<IdempotencyMiddleware>();      // 11. Idempotency (after auth — needs User claims)
 

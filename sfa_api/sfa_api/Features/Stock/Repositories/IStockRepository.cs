@@ -54,6 +54,17 @@ public interface IStockRepository
         CancellationToken ct = default);
 
     /// <summary>
+    /// Locks every existing <see cref="DistributorStock"/> row for <paramref name="keys"/> in one
+    /// <c>SELECT … ORDER BY "Id" FOR UPDATE</c> (primary-key order, so concurrent callers can't
+    /// deadlock) and returns them EF-tracked. Missing rows are absent from the result.
+    /// <see cref="DeductStockAsync"/> / <see cref="CreditStockAsync"/> then operate on these tracked
+    /// entities without reloading. Must be called inside an explicit transaction.
+    /// </summary>
+    Task<Dictionary<StockKey, DistributorStock>> LockStocksForUpdateAsync(
+        IEnumerable<StockKey> keys,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Credits <paramref name="quantity"/> units back to a distributor's stock balance and appends
     /// an immutable <see cref="StockTransaction"/> ledger entry (Direction=In).
     /// Must be called inside an explicit transaction that already holds a row-level lock

@@ -14,6 +14,11 @@ public class GrnRepository(AppDbContext db) : IGrnRepository
 {
     private readonly AppDbContext _db = db;
 
+    private const string LikeEscapeChar = "\\";
+
+    private static string EscapeLikePattern(string input)
+        => input.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
+
     // ── SalesInvoice ──────────────────────────────────────────────────────
 
     public Task<SalesInvoice?> GetSalesInvoiceWithItemsAsync(int salesInvoiceId, CancellationToken ct = default)
@@ -57,9 +62,21 @@ public class GrnRepository(AppDbContext db) : IGrnRepository
         }
 
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(x =>
-                x.GrnNumber.Contains(search) ||
-                (x.SalesInvoice != null && x.SalesInvoice.VchBillNo.Contains(search)));
+        {
+            // Case-insensitive substring match, same provider switch as SalesInvoiceRepository:
+            // ILIKE on Postgres rides the pg_trgm GIN indexes (IX_GRNs_GrnNumber_Trgm,
+            // IX_SalesInvoices_VchBillNo_Trgm); SQLite (tests) has no ILIKE but its LIKE is
+            // already ASCII case-insensitive. LIKE metacharacters in the user's input are escaped
+            // so "%" / "_" still match literally, as they did under the previous Contains().
+            var pattern = $"%{EscapeLikePattern(search)}%";
+            query = _db.Database.ProviderName?.Contains("Npgsql") == true
+                ? query.Where(x =>
+                    EF.Functions.ILike(x.GrnNumber, pattern, LikeEscapeChar) ||
+                    (x.SalesInvoice != null && EF.Functions.ILike(x.SalesInvoice.VchBillNo, pattern, LikeEscapeChar)))
+                : query.Where(x =>
+                    EF.Functions.Like(x.GrnNumber, pattern, LikeEscapeChar) ||
+                    (x.SalesInvoice != null && EF.Functions.Like(x.SalesInvoice.VchBillNo, pattern, LikeEscapeChar)));
+        }
 
         var (_, size, skip) = PaginationHelper.Normalize(page, pageSize);
         var total = await query.CountAsync(ct);
@@ -118,26 +135,12 @@ public class GrnRepository(AppDbContext db) : IGrnRepository
     // ── Stock ─────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Issues a raw SELECT ... FOR UPDATE to pessimistically lock the row.
-    /// The EF-tracked entity is returned so updates flow through the change tracker.
-    /// Must be called within a transaction.
+    /// One raw SELECT … ORDER BY "Id" FOR UPDATE over all requested rows; the EF-tracked entities
+    /// are returned so updates flow through the change tracker. Must be called within a transaction.
     /// </summary>
-    public async Task<DistributorStock?> GetStockForUpdateAsync(
-        int distributorId, int productId, StockType stockType, CancellationToken ct = default)
-    {
-        // Raw SQL to get the row ID with a FOR UPDATE lock
-        var ids = await _db.Database
-            .SqlQueryRaw<int>(
-                "SELECT \"Id\" FROM \"DistributorStocks\" WHERE \"DistributorId\" = {0} AND \"ProductId\" = {1} AND \"StockType\" = {2} FOR UPDATE",
-                distributorId, productId, stockType.ToString())
-            .ToListAsync(ct);
-
-        if (ids.Count == 0) return null;
-
-        // Fetch through EF so the entity is tracked (change tracking handles the UPDATE)
-        return await _db.DistributorStocks
-            .FirstOrDefaultAsync(x => x.Id == ids[0], ct);
-    }
+    public Task<Dictionary<sfa_api.Features.Stock.Repositories.StockKey, DistributorStock>> LockStocksForUpdateAsync(
+        IEnumerable<sfa_api.Features.Stock.Repositories.StockKey> keys, CancellationToken ct = default)
+        => sfa_api.Features.Stock.Repositories.StockLocking.LockForUpdateAsync(_db, keys, ct);
 
     public Task AddStockAsync(DistributorStock stock, CancellationToken ct = default)
     {

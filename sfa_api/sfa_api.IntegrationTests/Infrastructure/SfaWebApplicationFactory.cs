@@ -144,7 +144,7 @@ public class SfaWebApplicationFactory : WebApplicationFactory<Program>
             services.AddScoped<IGrnRepository>(sp =>
             {
                 var db = sp.GetRequiredService<AppDbContext>();
-                return new TestGrnRepository(new GrnRepository(db));
+                return new TestGrnRepository(new GrnRepository(db), db);
             });
 
             // Billing creation calls nextval('billing_number_seq') (PostgreSQL-only) — wrap
@@ -162,7 +162,7 @@ public class SfaWebApplicationFactory : WebApplicationFactory<Program>
             services.AddScoped<IStockRepository>(sp =>
             {
                 var db = sp.GetRequiredService<AppDbContext>();
-                return new TestStockRepository(new StockRepository(db));
+                return new TestStockRepository(new StockRepository(db), db);
             });
 
             // Replace PostgresAdvisoryLockService with a no-op implementation.

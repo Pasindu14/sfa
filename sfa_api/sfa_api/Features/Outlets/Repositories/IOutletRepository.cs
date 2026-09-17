@@ -8,7 +8,8 @@ public interface IOutletRepository
 {
     Task<Outlet?> GetByIdAsync(int id, CancellationToken ct = default);
     Task<(IEnumerable<Outlet> Outlets, int TotalCount)> GetAllAsync(int skip, int take, bool? isActive = null, string? search = null, int? territoryId = null, int? routeId = null, CancellationToken ct = default);
-    Task<IEnumerable<Outlet>> GetAllActiveAsync(CancellationToken ct = default);
+    /// <summary>Active outlets (with active route + route ancestors) projected straight to DTOs, ordered by Name.</summary>
+    Task<List<OutletDto>> GetAllActiveAsync(CancellationToken ct = default);
     Task<IEnumerable<OutletMapPointDto>> GetMapPointsAsync(CancellationToken ct = default);
     Task<IEnumerable<Outlet>> GetByRouteIdAsync(int routeId, CancellationToken ct = default);
     Task<RouteEntity?> GetRouteWithAncestorsAsync(int routeId, CancellationToken ct = default);

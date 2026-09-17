@@ -310,6 +310,53 @@ public class GrnsApiTests
     }
 
     // ─────────────────────────────────────────────────
+    // GET /api/v1/grns?search= — case-insensitive, wildcard-safe substring search
+    // ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetAll_Search_IsCaseInsensitive_OnGrnNumberAndVchBillNo_AndEscapesWildcards()
+    {
+        var distributor = await SeedDistributorAsync("GRN Search Distributor");
+        var (_, erpCode) = await SeedProductAsync();
+        SetToken(AuthHelper.AdminToken);
+        var distBody = await (await _client.GetAsync($"/api/v1/distributors/{distributor}"))
+            .Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
+        var alias = distBody.GetProperty("data").GetProperty("alias").GetInt32();
+        var invoiceId = await SeedSalesInvoiceAsync(alias, erpCode);
+
+        SetToken(AuthHelper.AdminToken);
+        var invoiceBody = await (await _client.GetAsync($"/api/v1/sales-invoices/{invoiceId}"))
+            .Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
+        var vchBillNo = invoiceBody.GetProperty("data").GetProperty("vchBillNo").GetString()!;
+
+        var created = await _client.PostAsJsonAsync(BaseUrl, new { salesInvoiceId = invoiceId });
+        created.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createdData = (await created.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts)).GetProperty("data");
+        var grnId = createdData.GetProperty("id").GetInt32();
+        var grnNumber = createdData.GetProperty("grnNumber").GetString()!;
+
+        async Task<List<int>> SearchIdsAsync(string term)
+        {
+            var response = await _client.GetAsync(
+                $"{BaseUrl}?pageSize=100&search={Uri.EscapeDataString(term)}");
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var body = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOpts);
+            return body.GetProperty("data").EnumerateArray()
+                .Select(e => e.GetProperty("id").GetInt32()).ToList();
+        }
+
+        // Exact-case match still works (pre-existing behaviour).
+        (await SearchIdsAsync(grnNumber)).Should().Contain(grnId);
+        // Case-insensitive on GrnNumber ("GRN-2026-00001" → "grn-2026-00001").
+        (await SearchIdsAsync(grnNumber.ToLowerInvariant())).Should().Contain(grnId);
+        // Case-insensitive substring on the linked invoice's VchBillNo.
+        (await SearchIdsAsync(vchBillNo[4..].ToLowerInvariant())).Should().Contain(grnId);
+        // LIKE metacharacters are literal: "_" must not act as a single-char wildcard for "-".
+        (await SearchIdsAsync(grnNumber.Replace('-', '_'))).Should().NotContain(grnId);
+        (await SearchIdsAsync("%")).Should().NotContain(grnId);
+    }
+
+    // ─────────────────────────────────────────────────
     // PATCH /api/v1/grns/{id}/confirm — Authentication & Authorization
     // ─────────────────────────────────────────────────
 

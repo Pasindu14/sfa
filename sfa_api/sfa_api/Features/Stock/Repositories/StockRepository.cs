@@ -116,10 +116,10 @@ public class StockRepository(AppDbContext db) : IStockRepository
         string? notes = null,
         CancellationToken ct = default)
     {
-        // Acquire a tracked, row-locked copy of the stock balance.
-        // This must be called inside a transaction that holds SELECT … FOR UPDATE.
-        var stock = await _db.DistributorStocks
-            .FirstOrDefaultAsync(x => x.DistributorId == distributorId && x.ProductId == productId && x.StockType == stockType, ct)
+        // Use the tracked, row-locked copy of the stock balance loaded by LockStocksForUpdateAsync /
+        // GetStockForUpdateAsync (no reload). This must be called inside a transaction that holds
+        // SELECT … FOR UPDATE on the row.
+        var stock = await FindTrackedOrLoadAsync(distributorId, productId, stockType, ct)
             ?? throw new NotFoundException("DistributorStock", $"distributor={distributorId}/product={productId}/stockType={stockType}");
 
         var quantityBefore = stock.QuantityOnHand;
@@ -161,16 +161,36 @@ public class StockRepository(AppDbContext db) : IStockRepository
     public async Task<DistributorStock?> GetStockForUpdateAsync(
         int distributorId, int productId, StockType stockType, CancellationToken ct = default)
     {
-        var ids = await _db.Database
-            .SqlQueryRaw<int>(
-                "SELECT \"Id\" FROM \"DistributorStocks\" WHERE \"DistributorId\" = {0} AND \"ProductId\" = {1} AND \"StockType\" = {2} FOR UPDATE",
-                distributorId, productId, stockType.ToString())
-            .ToListAsync(ct);
+        var key    = new StockKey(distributorId, productId, stockType);
+        var locked = await LockStocksForUpdateAsync([key], ct);
+        return locked.GetValueOrDefault(key);
+    }
 
-        if (ids.Count == 0) return null;
+    /// <inheritdoc/>
+    public Task<Dictionary<StockKey, DistributorStock>> LockStocksForUpdateAsync(
+        IEnumerable<StockKey> keys, CancellationToken ct = default)
+        => StockLocking.LockForUpdateAsync(_db, keys, ct);
+
+    /// <summary>
+    /// Returns the row already tracked by this context (typically loaded — and locked — by
+    /// <see cref="LockStocksForUpdateAsync"/>, or added by an earlier credit in the same unit of work),
+    /// and only queries when nothing is tracked. Re-querying a tracked row would return the same
+    /// instance anyway (EF identity resolution), so skipping the round-trip changes nothing — except
+    /// that a row added-but-not-yet-saved is now found instead of being added a second time.
+    /// </summary>
+    private async Task<DistributorStock?> FindTrackedOrLoadAsync(
+        int distributorId, int productId, StockType stockType, CancellationToken ct)
+    {
+        var tracked = _db.ChangeTracker.Entries<DistributorStock>()
+            .FirstOrDefault(e => e.State != EntityState.Deleted
+                              && e.State != EntityState.Detached
+                              && e.Entity.DistributorId == distributorId
+                              && e.Entity.ProductId     == productId
+                              && e.Entity.StockType     == stockType);
+        if (tracked is not null) return tracked.Entity;
 
         return await _db.DistributorStocks
-            .FirstOrDefaultAsync(x => x.Id == ids[0], ct);
+            .FirstOrDefaultAsync(x => x.DistributorId == distributorId && x.ProductId == productId && x.StockType == stockType, ct);
     }
 
     /// <inheritdoc/>
@@ -186,8 +206,7 @@ public class StockRepository(AppDbContext db) : IStockRepository
         string? notes = null,
         CancellationToken ct = default)
     {
-        var stock = await _db.DistributorStocks
-            .FirstOrDefaultAsync(x => x.DistributorId == distributorId && x.ProductId == productId && x.StockType == stockType, ct);
+        var stock = await FindTrackedOrLoadAsync(distributorId, productId, stockType, ct);
 
         if (stock is null)
         {

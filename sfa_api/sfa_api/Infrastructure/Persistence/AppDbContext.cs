@@ -700,6 +700,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(x => x.Id);
             e.Property(x => x.GrnNumber).IsRequired().HasMaxLength(30);
             e.HasIndex(x => x.GrnNumber).IsUnique();
+            // ILIKE '%term%' search is served by the raw-SQL pg_trgm GIN index
+            // IX_GRNs_GrnNumber_Trgm (migration 20260917052336_AddGrnNumberTrigramIndex),
+            // kept out of the model like the other *_Trgm indexes.
             // Optimistic concurrency (finding #7) — maps to PostgreSQL's xmin so a status
             // transition can't be double-applied if the distributed lock expires mid-commit.
             e.Property(x => x.RowVersion).IsRowVersion().HasColumnName("xmin").HasColumnType("xid");
@@ -805,6 +808,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             // Composite covering index for transaction history queries (DistributorId + ProductId, sorted by date desc)
             e.HasIndex(x => new { x.DistributorId, x.ProductId, x.TransactedAt })
              .IsDescending(false, false, true);
+            // Bin card movements: WHERE DistributorId = @d AND TransactedAt in [from, to)
+            // GROUP BY ProductId/TransactionType/StockType/Direction, SUM(Quantity).
+            // INCLUDE makes it index-only on PostgreSQL (the annotation is ignored by SQLite).
+            e.HasIndex(x => new { x.DistributorId, x.TransactedAt })
+             .HasDatabaseName("IX_StockTransactions_DistributorId_TransactedAt")
+             .IncludeProperties(x => new { x.ProductId, x.TransactionType, x.StockType, x.Direction, x.Quantity });
+            // Latest ledger row per (distributor, product, pool): MAX(Id) GROUP BY — used by the
+            // bin card opening balance and the stock reconciliation snapshot. TransactedAt is
+            // included so the bin card's "before the window" filter stays index-only.
+            e.HasIndex(x => new { x.DistributorId, x.ProductId, x.StockType, x.Id })
+             .IsDescending(false, false, false, true)
+             .HasDatabaseName("IX_StockTransactions_Dist_Product_StockType_IdDesc")
+             .IncludeProperties(x => new { x.TransactedAt });
             // Non-unique — supports fleet-scoped ledger reporting.
             e.HasIndex(x => x.FleetId);
             e.HasOne(x => x.Distributor)
@@ -1419,8 +1435,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).UseIdentityColumn();
-            // Primary query pattern: latest ping per rep
-            e.HasIndex(x => new { x.RepId, x.RecordedAt });
+            // Primary query pattern: latest ping per rep — DISTINCT ON ("RepId") ... ORDER BY
+            // "RepId", "RecordedAt" DESC walks this index in order. The per-rep day-range route
+            // query (ascending RecordedAt) is served by a backward scan of the same index.
+            e.HasIndex(x => new { x.RepId, x.RecordedAt })
+             .IsDescending(false, true);
             e.HasOne(x => x.Rep)
              .WithMany()
              .HasForeignKey(x => x.RepId)

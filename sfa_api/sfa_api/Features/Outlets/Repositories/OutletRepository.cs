@@ -62,20 +62,72 @@ public class OutletRepository(AppDbContext context) : IOutletRepository
         return (items, totalCount);
     }
 
-    public async Task<IEnumerable<Outlet>> GetAllActiveAsync(CancellationToken ct = default)
-        => await _context.Outlets
-            .Where(o => o.IsActive)
-            .Include(o => o.Route)
-                .ThenInclude(r => r!.Division)
-            .Include(o => o.Route)
-                .ThenInclude(r => r!.Territory)
-            .Include(o => o.Route)
-                .ThenInclude(r => r!.Area)
-            .Include(o => o.Route)
-                .ThenInclude(r => r!.Region)
+    public async Task<List<OutletDto>> GetAllActiveAsync(CancellationToken ct = default)
+    {
+        // Column projection instead of materialising Outlet + Route + 4 ancestor entities.
+        // Explicit INNER JOINs reproduce the old Include semantics exactly: Outlet.RouteId and the
+        // Route's ancestor FKs are required, so each Include was an INNER JOIN against the global
+        // query filter (IsActive && !IsDeleted) — an outlet whose route or any route ancestor is
+        // inactive/deleted was, and still is, left out.
+        var rows = await (
+                from o in _context.Outlets.Where(o => o.IsActive)
+                join r in _context.Routes      on o.RouteId     equals r.Id
+                join d in _context.Divisions   on r.DivisionId  equals d.Id
+                join t in _context.Territories on r.TerritoryId equals t.Id
+                join a in _context.Areas       on r.AreaId      equals a.Id
+                join g in _context.Regions     on r.RegionId    equals g.Id
+                orderby o.Name, o.Id   // Id tiebreak only fixes the (previously undefined) order among equal names
+                select new
+                {
+                    o.Id, o.Name, o.Address, o.Tel, o.Email, o.ContactPerson, o.NicNo, o.VatNo,
+                    o.CreditLimit, o.Latitude, o.Longitude, o.OwnerDOB, o.Remarks, o.Image,
+                    o.OutletType, o.OutletCategory, o.ProvinceCode, o.DistrictCode,
+                    o.RouteId, RouteName = r.Name,
+                    o.DivisionId, DivisionName = d.Name,
+                    o.TerritoryId, TerritoryName = t.Name,
+                    o.AreaId, AreaName = a.Name,
+                    o.RegionId, RegionName = g.Name,
+                    o.IsActive, o.RowVersion, o.CreatedAt, o.UpdatedAt, o.LastBillDate,
+                })
             .AsNoTracking()
-            .OrderBy(o => o.Name)
             .ToListAsync(ct);
+
+        // Enum → string in memory, matching OutletService.MapToDto (Enum.ToString()).
+        return rows.Select(o => new OutletDto(
+            Id: o.Id,
+            Name: o.Name,
+            Address: o.Address,
+            Tel: o.Tel,
+            Email: o.Email,
+            ContactPerson: o.ContactPerson,
+            NicNo: o.NicNo,
+            VatNo: o.VatNo,
+            CreditLimit: o.CreditLimit,
+            Latitude: o.Latitude,
+            Longitude: o.Longitude,
+            OwnerDOB: o.OwnerDOB,
+            Remarks: o.Remarks,
+            Image: o.Image,
+            OutletType: o.OutletType.ToString(),
+            OutletCategory: o.OutletCategory.ToString(),
+            ProvinceCode: o.ProvinceCode,
+            DistrictCode: o.DistrictCode,
+            RouteId: o.RouteId,
+            RouteName: o.RouteName ?? string.Empty,
+            DivisionId: o.DivisionId,
+            DivisionName: o.DivisionName ?? string.Empty,
+            TerritoryId: o.TerritoryId,
+            TerritoryName: o.TerritoryName ?? string.Empty,
+            AreaId: o.AreaId,
+            AreaName: o.AreaName ?? string.Empty,
+            RegionId: o.RegionId,
+            RegionName: o.RegionName ?? string.Empty,
+            IsActive: o.IsActive,
+            RowVersion: o.RowVersion,
+            CreatedAt: o.CreatedAt,
+            UpdatedAt: o.UpdatedAt,
+            LastBillDate: o.LastBillDate)).ToList();
+    }
 
     public async Task<RouteEntity?> GetRouteWithAncestorsAsync(int routeId, CancellationToken ct = default)
         => await _context.Routes

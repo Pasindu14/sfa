@@ -1,19 +1,24 @@
 using System.Text.Json;
-using FirebaseAdmin.Messaging;
 using sfa_api.Features.Notifications.Repositories;
 using sfa_api.Features.Users.Repositories;
-using FcmNotification = FirebaseAdmin.Messaging.Notification;
 using NotificationEntity = sfa_api.Features.Notifications.Entities.Notification;
 
 namespace sfa_api.Infrastructure.Notifications;
 
+/// <summary>
+/// Persists the in-app inbox row(s) in-request, then hands the FCM pushes to
+/// <see cref="IPushNotificationQueue"/>; <see cref="PushNotificationDispatcher"/> sends them in the
+/// background. The request never waits on Firebase, and no failure here is ever thrown to the caller.
+/// </summary>
 public class FirebaseNotificationService(
     IUserRepository userRepository,
     INotificationRepository notificationRepository,
+    IPushNotificationQueue pushQueue,
     ILogger<FirebaseNotificationService> logger) : INotificationService
 {
     private readonly IUserRepository _userRepository = userRepository;
     private readonly INotificationRepository _notificationRepository = notificationRepository;
+    private readonly IPushNotificationQueue _pushQueue = pushQueue;
     private readonly ILogger<FirebaseNotificationService> _logger = logger;
 
     public async Task SendToUserAsync(int userId, string title, string body, Dictionary<string, string>? data = null, CancellationToken ct = default)
@@ -31,7 +36,7 @@ public class FirebaseNotificationService(
 
             var token = await _userRepository.GetFcmTokenByUserIdAsync(userId, ct);
             if (!string.IsNullOrWhiteSpace(token))
-                await SendToTokenAsync(token, userId, title, body, data);
+                EnqueuePush(userId, token, title, body, data);
         }
         catch (Exception ex)
         {
@@ -50,7 +55,7 @@ public class FirebaseNotificationService(
                 users.Select(u => new NotificationEntity { UserId = u.UserId, Title = title, Body = body, Data = dataJson }), ct);
 
             foreach (var (userId, token) in users)
-                await SendToTokenAsync(token, userId, title, body, data);
+                EnqueuePush(userId, token, title, body, data);
         }
         catch (Exception ex)
         {
@@ -69,7 +74,7 @@ public class FirebaseNotificationService(
                 users.Select(u => new NotificationEntity { UserId = u.UserId, Title = title, Body = body, Data = dataJson }), ct);
 
             foreach (var (userId, token) in users)
-                await SendToTokenAsync(token, userId, title, body, data);
+                EnqueuePush(userId, token, title, body, data);
         }
         catch (Exception ex)
         {
@@ -77,32 +82,13 @@ public class FirebaseNotificationService(
         }
     }
 
-    private async Task SendToTokenAsync(string token, int userId, string title, string body, Dictionary<string, string>? data)
+    private void EnqueuePush(int userId, string token, string title, string body, Dictionary<string, string>? data)
     {
-        try
-        {
-            var message = new Message
-            {
-                Token = token,
-                Notification = new FcmNotification { Title = title, Body = body },
-                Data = data ?? [],
-                Android = new AndroidConfig { Priority = Priority.High },
-                Apns = new ApnsConfig
-                {
-                    Aps = new Aps { Sound = "default" }
-                }
-            };
-            await FirebaseMessaging.DefaultInstance.SendAsync(message);
-        }
-        catch (FirebaseMessagingException ex) when (ex.MessagingErrorCode == MessagingErrorCode.Unregistered)
-        {
-            // Token is stale (app uninstalled / token rotated) — clean it up silently
-            _logger.LogInformation("Stale FCM token cleared for user {UserId}", userId);
-            await _userRepository.ClearFcmTokenAsync(userId, CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "FCM send failed for user {UserId}", userId);
-        }
+        if (string.IsNullOrWhiteSpace(token)) return;
+
+        // Copy the payload: callers reuse one dictionary across several recipients.
+        var payload = data is { Count: > 0 } ? new Dictionary<string, string>(data) : null;
+        if (!_pushQueue.TryEnqueue(new PushMessage(userId, token, title, body, payload)))
+            _logger.LogWarning("Push notification queue full; dropped push for user {UserId}", userId);
     }
 }

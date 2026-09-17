@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using sfa_api.Features.LocationPings.DTOs;
 using sfa_api.Features.LocationPings.Entities;
 using sfa_api.Infrastructure.Persistence;
 
@@ -12,21 +13,61 @@ public class LocationPingRepository(AppDbContext db) : ILocationPingRepository
         await db.SaveChangesAsync(ct);
     }
 
-    /// Returns the most-recent ping for every rep that has sent at least one ping.
-    /// Uses PostgreSQL DISTINCT ON so only one row per rep is returned,
-    /// ordered by RecordedAt descending within each rep group.
-    public async Task<IReadOnlyList<RepLocationPing>> GetLatestPerRepAsync(CancellationToken ct = default)
+    /// Returns the most-recent ping for every rep, optionally bounded to pings recorded at or
+    /// after <paramref name="sinceUtc"/>. Uses PostgreSQL DISTINCT ON so only one row per rep is
+    /// returned, ordered by RecordedAt descending within each rep group — served by the
+    /// (RepId, RecordedAt DESC) index.
+    ///
+    /// The rep name is projected via an inner join rather than Include(p => p.Rep): only one
+    /// column is needed, and the inner join keeps the previous semantics exactly (RepId is a
+    /// required FK, so Include was already an INNER JOIN honouring User's !IsDeleted filter —
+    /// pings of soft-deleted users stay hidden).
+    public async Task<IReadOnlyList<RepLocationPingDto>> GetLatestPerRepAsync(
+        DateTimeOffset? sinceUtc, CancellationToken ct = default)
     {
-        return await db.RepLocationPings
-            .FromSqlRaw("""
+        IQueryable<RepLocationPing> latest;
+        if (sinceUtc is { } since)
+        {
+            // timestamptz parameters must be UTC for Npgsql.
+            var sinceParam = since.ToUniversalTime();
+            latest = db.RepLocationPings.FromSqlInterpolated($"""
                 SELECT DISTINCT ON ("RepId")
                     "Id", "RepId", "Latitude", "Longitude", "Accuracy",
                     "RecordedAt", "ReceivedAt"
                 FROM "RepLocationPings"
+                WHERE "RecordedAt" >= {sinceParam}
                 ORDER BY "RepId", "RecordedAt" DESC
-                """)
-            .Include(p => p.Rep)
+                """);
+        }
+        else
+        {
+            // Unbounded "last-ever ping per rep": one (RepId, RecordedAt DESC) index probe per
+            // user via LATERAL, so cost scales with user count rather than ping history.
+            latest = db.RepLocationPings.FromSqlRaw("""
+                SELECT lp."Id", lp."RepId", lp."Latitude", lp."Longitude", lp."Accuracy",
+                       lp."RecordedAt", lp."ReceivedAt"
+                FROM "Users" u
+                CROSS JOIN LATERAL (
+                    SELECT rp."Id", rp."RepId", rp."Latitude", rp."Longitude", rp."Accuracy",
+                           rp."RecordedAt", rp."ReceivedAt"
+                    FROM "RepLocationPings" rp
+                    WHERE rp."RepId" = u."Id"
+                    ORDER BY rp."RecordedAt" DESC
+                    LIMIT 1
+                ) lp
+                """);
+        }
+
+        return await latest
             .AsNoTracking()
+            .Join(db.Users, p => p.RepId, u => u.Id, (p, u) => new RepLocationPingDto(
+                p.RepId,
+                u.Name,
+                p.Latitude,
+                p.Longitude,
+                p.Accuracy,
+                p.RecordedAt,
+                p.ReceivedAt))
             .ToListAsync(ct);
     }
 

@@ -8,6 +8,7 @@ using sfa_api.Features.GRNs.Requests;
 using sfa_api.Features.SalesInvoices.Enums;
 using sfa_api.Features.Stock.Entities;
 using sfa_api.Features.Stock.Enums;
+using sfa_api.Features.Stock.Repositories;
 using Microsoft.EntityFrameworkCore;
 using sfa_api.Infrastructure.Locking;
 using sfa_api.Infrastructure.Persistence;
@@ -183,23 +184,31 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
                 grn.UpdatedByUserId = callerId;
                 grn.UpdatedAt       = DateTime.UtcNow;
 
-                // 6. Process each item — pessimistic locking on DistributorStock rows
+                // 6. Lock every DistributorStock row this receipt touches in ONE
+                //    SELECT … ORDER BY "Id" FOR UPDATE (Id order, so it can't deadlock against a
+                //    concurrent bill/GRN on overlapping products), then work on the tracked rows.
+                static StockType StockTypeOf(GRNItem i) => i.IsFreeIssue ? StockType.FreeIssue : StockType.Normal;
+
+                var lockedStocks = await _repository.LockStocksForUpdateAsync(
+                    grn.Items.Select(i => new StockKey(grn.DistributorId, i.ProductId, StockTypeOf(i))), ct);
+
                 foreach (var item in grn.Items)
                 {
-                    var stockType = item.IsFreeIssue ? StockType.FreeIssue : StockType.Normal;
+                    var stockType = StockTypeOf(item);
+                    var key       = new StockKey(grn.DistributorId, item.ProductId, stockType);
 
                     // Case → piece conversion. item.Quantity is the raw case count received on the
                     // invoice; DistributorStock is maintained in pieces. PiecesPerPack > 0 is
                     // guaranteed by the guard in step 3b above.
                     var piecesQuantity = item.Quantity * item.Product.PiecesPerPack;
 
-                    // SELECT ... FOR UPDATE locks the row, preventing concurrent reads of stale QuantityOnHand
-                    var stock = await _repository.GetStockForUpdateAsync(grn.DistributorId, item.ProductId, stockType, ct);
-
                     decimal quantityBefore;
-                    if (stock is null)
+                    if (!lockedStocks.TryGetValue(key, out var stock))
                     {
-                        // First stock entry for this distributor+product+stockType — create and re-lock
+                        // First stock entry for this distributor+product+stockType. The new row is
+                        // inserted by this transaction (the unique index on
+                        // DistributorId+ProductId+StockType rejects a concurrent duplicate at save),
+                        // and remembered so a later line on the same key credits the same row.
                         quantityBefore = 0m;
                         stock = new DistributorStock
                         {
@@ -211,11 +220,7 @@ public class GrnService(IGrnRepository repository, IDistributedLockService lockS
                             LastUpdatedAt  = DateTime.UtcNow,
                         };
                         await _repository.AddStockAsync(stock, ct);
-                        // Flush so the FOR UPDATE on subsequent iterations (same product+type) finds the row
-                        await _repository.SaveChangesAsync(ct);
-
-                        // Re-lock the newly created row so we hold it through the transaction
-                        stock = await _repository.GetStockForUpdateAsync(grn.DistributorId, item.ProductId, stockType, ct) ?? stock;
+                        lockedStocks[key] = stock;
                     }
                     else
                     {

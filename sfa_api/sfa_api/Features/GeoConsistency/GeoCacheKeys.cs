@@ -15,5 +15,6 @@ public static class GeoCacheKeys
         "divisions:list:",
         "distributors:list:",
         "outlets:route:",
+        "outlets:active:",
     ];
 }

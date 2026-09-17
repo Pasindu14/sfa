@@ -16,6 +16,8 @@ public static class BillingsServiceExtensions
         services.Configure<BillingGeoOptions>(configuration.GetSection("BillingGeo"));
         services.AddScoped<IBillingRepository, BillingRepository>();
         services.AddScoped<IBillingService, BillingService>();
+        services.AddScoped<IDistributorBillingDashboardRepository, DistributorBillingDashboardRepository>();
+        services.AddScoped<IDistributorBillingDashboardService, DistributorBillingDashboardService>();
         services.AddValidatorsFromAssemblyContaining<CreateBillingValidator>(includeInternalTypes: false);
         return services;
     }

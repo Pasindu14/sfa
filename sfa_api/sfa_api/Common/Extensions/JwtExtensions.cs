@@ -42,7 +42,8 @@ public static class JwtExtensions
                     // revoked (e.g. on logout) is rejected even though it is still
                     // cryptographically valid and unexpired. jti/expiry are also stashed
                     // into HttpContext.Items so the logout endpoint can revoke precisely
-                    // without depending on inbound claim mapping.
+                    // without depending on inbound claim mapping. The check is cache-backed
+                    // (see PostgresTokenRevocationService) so it doesn't hit Postgres per request.
                     OnTokenValidated = async ctx =>
                     {
                         var jti = (ctx.SecurityToken as JsonWebToken)?.Id

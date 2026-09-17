@@ -36,6 +36,9 @@ public class OutletService(
     private static readonly TimeSpan RouteCacheTtl = TimeSpan.FromMinutes(30);
     private const string RouteCachePrefix = "outlets:route:";
 
+    /// <summary>Cache key for one route's outlet list (mobile outlet sync). Shared with BillingService.</summary>
+    public static string RouteOutletsCacheKey(int routeId) => $"{RouteCachePrefix}v2:{routeId}";
+
     // Resolves the territory a non-management caller is allowed to see (audit finding #14).
     //   (Restricted=true,  id): caller may only see outlets in territory `id`
     //                           (id may be null = "matches nothing", e.g. a rep with no territory).
@@ -118,8 +121,14 @@ public class OutletService(
 
     public async Task<IEnumerable<OutletDto>> GetAllActiveAsync(CancellationToken ct = default)
     {
+        // Company-wide list, read far more often than it changes. Invalidated on every outlet,
+        // route and geo write and on LastBillDate stamps — see OutletCacheKeys.
+        var cached = await _cache.GetAsync<List<OutletDto>>(OutletCacheKeys.ActiveAll, ct);
+        if (cached is not null) return cached;
+
         var outlets = await _repo.GetAllActiveAsync(ct);
-        return outlets.Select(MapToDto);
+        await _cache.SetAsync(OutletCacheKeys.ActiveAll, outlets, OutletCacheKeys.ActiveTtl, ct);
+        return outlets;
     }
 
     public async Task<MobileOutletSyncDto> GetByRouteIdAsync(int routeId, int callerId, CancellationToken ct = default)
@@ -128,7 +137,7 @@ public class OutletService(
         // per-rep (one rep may hold an exemption while their colleague on the same
         // route does not), so caching the assembled response would hand one rep the
         // other's policy for up to 30 minutes.
-        var cacheKey = $"{RouteCachePrefix}v2:{routeId}";
+        var cacheKey = RouteOutletsCacheKey(routeId);
         var outletDtos = await _cache.GetAsync<List<OutletDto>>(cacheKey, ct);
         if (outletDtos is null)
         {
@@ -202,6 +211,7 @@ public class OutletService(
 
         _logger.LogInformation("Outlet {OutletId} created", outlet.Id);
         await _cache.RemoveByPrefixAsync(RouteCachePrefix, ct);
+        await _cache.RemoveByPrefixAsync(OutletCacheKeys.ActivePrefix, ct);
 
         var created = await _repo.GetByIdAsync(outlet.Id, ct)
             ?? throw new NotFoundException("Outlet", outlet.Id);
@@ -261,6 +271,7 @@ public class OutletService(
 
         _logger.LogInformation("Outlet {OutletId} updated", id);
         await _cache.RemoveByPrefixAsync(RouteCachePrefix, ct);
+        await _cache.RemoveByPrefixAsync(OutletCacheKeys.ActivePrefix, ct);
 
         var updated = await _repo.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("Outlet", id);
@@ -277,6 +288,7 @@ public class OutletService(
 
         _logger.LogInformation("Outlet {OutletId} deleted", id);
         await _cache.RemoveByPrefixAsync(RouteCachePrefix, ct);
+        await _cache.RemoveByPrefixAsync(OutletCacheKeys.ActivePrefix, ct);
     }
 
     public async Task ActivateAsync(int id, int? callerId, CancellationToken ct = default)
@@ -293,6 +305,7 @@ public class OutletService(
 
         _logger.LogInformation("Outlet {OutletId} activated", id);
         await _cache.RemoveByPrefixAsync(RouteCachePrefix, ct);
+        await _cache.RemoveByPrefixAsync(OutletCacheKeys.ActivePrefix, ct);
     }
 
     public async Task DeactivateAsync(int id, int? callerId, CancellationToken ct = default)
@@ -309,6 +322,7 @@ public class OutletService(
 
         _logger.LogInformation("Outlet {OutletId} deactivated", id);
         await _cache.RemoveByPrefixAsync(RouteCachePrefix, ct);
+        await _cache.RemoveByPrefixAsync(OutletCacheKeys.ActivePrefix, ct);
     }
 
     private static OutletDto MapToDto(Outlet o) => new(

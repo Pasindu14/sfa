@@ -22,6 +22,40 @@ public static class RateLimitExtensions
     private static string ClientIpKey(HttpContext ctx)
         => ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
+    // Partition key for general (non-auth) limits: the authenticated user id when the JWT was
+    // validated, else the client IP. Many reps sit behind one carrier-grade NAT / office egress
+    // IP, so a pure per-IP bucket made unrelated users throttle each other. Requires
+    // UseRateLimiter to run AFTER UseAuthentication (see Program.cs) so HttpContext.User is
+    // populated; an invalid/expired/revoked token leaves the principal unauthenticated, so
+    // forged tokens fall back to the IP bucket and cannot mint fresh partitions. The "user:"/"ip:"
+    // prefixes keep a numeric user id from ever colliding with an IP string.
+    public static string UserOrIpKey(HttpContext ctx)
+    {
+        if (ctx.User?.Identity?.IsAuthenticated == true)
+        {
+            var userId = ctx.User.FindFirstValue(ClaimTypes.NameIdentifier)
+                         ?? ctx.User.FindFirstValue("sub");
+            if (!string.IsNullOrEmpty(userId))
+                return "user:" + userId;
+        }
+
+        return "ip:" + ClientIpKey(ctx);
+    }
+
+    /// <summary>Global per-user (or per-IP for anonymous) sliding-window limiter.</summary>
+    public static PartitionedRateLimiter<HttpContext> CreateGlobalLimiter(
+        int permitLimit, int windowSeconds)
+        => PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
+            RateLimitPartition.GetSlidingWindowLimiter(UserOrIpKey(ctx),
+                _ => new SlidingWindowRateLimiterOptions
+                {
+                    PermitLimit = permitLimit,
+                    Window = TimeSpan.FromSeconds(windowSeconds),
+                    SegmentsPerWindow = 6,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0
+                }));
+
     public static IServiceCollection AddSFARateLimiting(
         this IServiceCollection services, IConfiguration config)
     {
@@ -51,24 +85,14 @@ public static class RateLimitExtensions
                     token);
             };
 
-            options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
-            {
-                var ip = ClientIpKey(ctx);
-                return RateLimitPartition.GetSlidingWindowLimiter(ip,
-                    _ => new SlidingWindowRateLimiterOptions
-                    {
-                        PermitLimit = globalPermitLimit,
-                        Window = TimeSpan.FromSeconds(globalWindowSeconds),
-                        SegmentsPerWindow = 6,
-                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                        QueueLimit = 0
-                    });
-            });
+            options.GlobalLimiter = CreateGlobalLimiter(globalPermitLimit, globalWindowSeconds);
 
             var authPermitLimit = config.GetValue<int>("RateLimit:AuthPermitLimit");
             var authWindowSeconds = config.GetValue<int>("RateLimit:AuthWindowSeconds");
 
-            // "auth" — per-IP sliding window (brute-force protection on login/refresh)
+            // "auth" — per-IP sliding window (brute-force protection on login/refresh).
+            // Deliberately stays per-IP even when a (valid) bearer token is attached: credential
+            // stuffing must not be able to spread attempts across partitions.
             options.AddPolicy("auth", ctx =>
             {
                 var ip = ClientIpKey(ctx);
@@ -98,10 +122,7 @@ public static class RateLimitExtensions
 
             options.AddPolicy("user", ctx =>
             {
-                var userId = ctx.User?.FindFirstValue(ClaimTypes.NameIdentifier)
-                             ?? ctx.Connection.RemoteIpAddress?.ToString()
-                             ?? "anon";
-                return RateLimitPartition.GetFixedWindowLimiter(userId,
+                return RateLimitPartition.GetFixedWindowLimiter(UserOrIpKey(ctx),
                     _ => new FixedWindowRateLimiterOptions
                     {
                         PermitLimit = userPermitLimit,

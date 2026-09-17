@@ -1,6 +1,7 @@
 using sfa_api.Features.Stock.Entities;
 using sfa_api.Features.Stock.Enums;
 using sfa_api.Features.Stock.Repositories;
+using sfa_api.Infrastructure.Persistence;
 
 namespace sfa_api.IntegrationTests.Infrastructure;
 
@@ -13,11 +14,16 @@ namespace sfa_api.IntegrationTests.Infrastructure;
 /// concurrency to guard, so dropping the lock is behaviourally equivalent.
 /// All other calls delegate to the real StockRepository.
 /// </summary>
-public sealed class TestStockRepository(IStockRepository inner) : IStockRepository
+public sealed class TestStockRepository(IStockRepository inner, AppDbContext db) : IStockRepository
 {
     public Task<DistributorStock?> GetStockForUpdateAsync(
         int distributorId, int productId, StockType stockType, CancellationToken ct = default)
         => Task.FromResult<DistributorStock?>(null);
+
+    // Batched lock: SQLite has no FOR UPDATE, so load the rows (tracked) with plain LINQ instead.
+    public Task<Dictionary<StockKey, DistributorStock>> LockStocksForUpdateAsync(
+        IEnumerable<StockKey> keys, CancellationToken ct = default)
+        => TestStockLocking.LoadAsync(db, keys, ct);
 
     public Task<(List<DistributorStock> Items, int TotalCount)> GetStockByDistributorAsync(
         int distributorId, int skip, int take, CancellationToken ct = default)

@@ -155,12 +155,14 @@ public class RouteService(
                 "Route {RouteId} moved from Division {OldDivisionId} to {NewDivisionId}; cascaded {Count} outlets",
                 id, oldDivisionId, division.Id, cascaded);
             await _cache.RemoveByPrefixAsync("outlets:route:", ct);
+            await _cache.RemoveByPrefixAsync(sfa_api.Features.Outlets.OutletCacheKeys.ActivePrefix, ct);
         }
         else
         {
             await _repo.UpdateAsync(route, ct);
             await _repo.SaveChangesAsync(ct);
             _logger.LogInformation("Route {RouteId} updated", id);
+            await _cache.RemoveByPrefixAsync(sfa_api.Features.Outlets.OutletCacheKeys.ActivePrefix, ct);
         }
 
         var updated = await _repo.GetByIdAsync(id, ct)
@@ -181,6 +183,7 @@ public class RouteService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Route {RouteId} activated", id);
+        await _cache.RemoveByPrefixAsync(sfa_api.Features.Outlets.OutletCacheKeys.ActivePrefix, ct);
     }
 
     public async Task DeactivateAsync(int id, int? callerId, CancellationToken ct = default)
@@ -204,6 +207,7 @@ public class RouteService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Route {RouteId} deactivated", id);
+        await _cache.RemoveByPrefixAsync(sfa_api.Features.Outlets.OutletCacheKeys.ActivePrefix, ct);
     }
 
     public async Task DeleteAsync(int id, int? callerId, CancellationToken ct = default)
@@ -229,6 +233,7 @@ public class RouteService(
         await _repo.SaveChangesAsync(ct);
 
         _logger.LogInformation("Route {RouteId} deleted by {CallerId}", id, callerId);
+        await _cache.RemoveByPrefixAsync(sfa_api.Features.Outlets.OutletCacheKeys.ActivePrefix, ct);
     }
 
     private static RouteDto MapToDto(RouteEntity r) => new(

@@ -519,6 +519,44 @@ public class OutletsApiTests
         outlets.Should().NotContain(o => o.GetProperty("id").GetInt32() == inactiveId);
     }
 
+    [Fact]
+    public async Task GetActiveOutlets_RowMatchesGetById_AndReflectsUpdatesDespiteCache()
+    {
+        var regionId = await CreateRegionAsync("Region For Active Parity Test");
+        var areaId = await CreateAreaAsync("Area For Active Parity Test", regionId);
+        var territoryId = await CreateTerritoryAsync("Territory For Active Parity Test", areaId);
+        var divisionId = await CreateDivisionAsync("Division For Active Parity Test", territoryId);
+        var routeId = await CreateRouteAsync("Route For Active Parity Test", divisionId);
+        var id = await CreateOutletAsync("Active Parity Outlet UniqueOT4", routeId, "904002001V");
+
+        // Projection must produce exactly the same DTO as GET /{id} (entity + Include mapping).
+        var byId = (await (await _client.GetAsync($"/api/v1/outlets/{id}"))
+            .Content.ReadFromJsonAsync<JsonElement>(_jsonOpts)).GetProperty("data");
+        var list = (await (await _client.GetAsync("/api/v1/outlets/active"))
+            .Content.ReadFromJsonAsync<JsonElement>(_jsonOpts)).GetProperty("data").EnumerateArray().ToList();
+        var row = list.Single(o => o.GetProperty("id").GetInt32() == id);
+        foreach (var prop in byId.EnumerateObject())
+            row.GetProperty(prop.Name).GetRawText().Should().Be(prop.Value.GetRawText(), $"field '{prop.Name}' must match");
+        row.EnumerateObject().Count().Should().Be(byId.EnumerateObject().Count());
+        list.Select(o => o.GetProperty("name").GetString()).Should().BeInAscendingOrder(StringComparer.Ordinal);
+
+        // The list is now cached — an outlet update must invalidate it.
+        var rowVersion = await GetOutletRowVersionAsync(id);
+        var update = await _client.PutAsJsonAsync($"/api/v1/outlets/{id}", new
+        {
+            name = "Active Parity Outlet Renamed UniqueOT4", address = "1 Street", tel = "0771234567",
+            nicNo = "904002001V", creditLimit = 0, latitude = 6.9, longitude = 79.8,
+            outletType = "Medium", outletCategory = "Wholesale", provinceCode = 1, districtCode = 11, routeId,
+            rowVersion
+        });
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var after = (await (await _client.GetAsync("/api/v1/outlets/active"))
+            .Content.ReadFromJsonAsync<JsonElement>(_jsonOpts)).GetProperty("data").EnumerateArray().ToList();
+        after.Single(o => o.GetProperty("id").GetInt32() == id)
+            .GetProperty("name").GetString().Should().Be("Active Parity Outlet Renamed UniqueOT4");
+    }
+
     // ─────────────────────────────────────────────────
     // POST /api/v1/outlets — Create
     // ─────────────────────────────────────────────────

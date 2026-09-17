@@ -26,11 +26,13 @@ public interface IGrnRepository
 
     // ── Stock (pessimistic locked read) ────────────────────────────────────
     /// <summary>
-    /// Returns the DistributorStock row locked with SELECT FOR UPDATE.
-    /// Must be called inside an explicit transaction.
-    /// Returns null if no row exists yet (caller should create one).
+    /// Locks every existing DistributorStock row for <paramref name="keys"/> with one
+    /// SELECT … ORDER BY "Id" FOR UPDATE and returns them EF-tracked, keyed by (distributor, product,
+    /// stock type). Must be called inside an explicit transaction. Keys with no row yet are absent
+    /// from the result (caller should create one).
     /// </summary>
-    Task<DistributorStock?> GetStockForUpdateAsync(int distributorId, int productId, StockType stockType, CancellationToken ct = default);
+    Task<Dictionary<sfa_api.Features.Stock.Repositories.StockKey, DistributorStock>> LockStocksForUpdateAsync(
+        IEnumerable<sfa_api.Features.Stock.Repositories.StockKey> keys, CancellationToken ct = default);
     Task AddStockAsync(DistributorStock stock, CancellationToken ct = default);
     Task AddStockTransactionAsync(sfa_api.Features.Stock.Entities.StockTransaction tx, CancellationToken ct = default);
 

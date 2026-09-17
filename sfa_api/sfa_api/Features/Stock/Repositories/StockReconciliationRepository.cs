@@ -47,12 +47,12 @@ public class StockReconciliationRepository(AppDbContext db) : IStockReconciliati
 
         // Greatest Id per group == most recent movement (Id is monotonic with posting order).
         // MAX(Id) + a select of QuantityAfter — no decimal aggregate, so this runs under SQLite too.
-        var latestIds = await q
+        // Composed (not materialised) so the database runs it as one uncorrelated
+        // IN (SELECT MAX("Id") ... GROUP BY ...) — a full-ledger run no longer ships every
+        // group's id back as a giant parameter list. Translates on Npgsql and SQLite alike.
+        var latestIds = q
             .GroupBy(t => new { t.DistributorId, t.ProductId, t.StockType })
-            .Select(g => g.Max(x => x.Id))
-            .ToListAsync(ct);
-
-        if (latestIds.Count == 0) return [];
+            .Select(g => g.Max(x => x.Id));
 
         var rows = await _db.StockTransactions
             .AsNoTracking()

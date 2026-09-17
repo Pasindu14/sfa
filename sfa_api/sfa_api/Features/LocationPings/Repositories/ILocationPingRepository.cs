@@ -1,3 +1,4 @@
+using sfa_api.Features.LocationPings.DTOs;
 using sfa_api.Features.LocationPings.Entities;
 
 namespace sfa_api.Features.LocationPings.Repositories;
@@ -5,7 +6,14 @@ namespace sfa_api.Features.LocationPings.Repositories;
 public interface ILocationPingRepository
 {
     Task BulkInsertAsync(IEnumerable<RepLocationPing> pings, CancellationToken ct = default);
-    Task<IReadOnlyList<RepLocationPing>> GetLatestPerRepAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Latest ping per (non-deleted) rep, projected to the live-map DTO. When
+    /// <paramref name="sinceUtc"/> is set only pings recorded at or after it are considered,
+    /// so reps silent since then are omitted; null = every rep's last-ever ping.
+    /// </summary>
+    Task<IReadOnlyList<RepLocationPingDto>> GetLatestPerRepAsync(
+        DateTimeOffset? sinceUtc, CancellationToken ct = default);
 
     /// <summary>
     /// Every ping for one rep within a half-open instant range, oldest first — the rep's

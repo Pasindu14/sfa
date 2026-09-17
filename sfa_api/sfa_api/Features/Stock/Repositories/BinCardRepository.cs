@@ -41,14 +41,13 @@ public class BinCardRepository(AppDbContext db) : IBinCardRepository
     {
         // Step 1: the latest ledger row id per (product, pool) strictly before the window.
         // Id is monotonic with posting order, so MAX(Id) == the most recent movement.
-        var latestIds = await _db.StockTransactions
-            .AsNoTracking()
+        // Kept as an IQueryable so it composes into step 2 as an uncorrelated
+        // IN (SELECT MAX("Id") ... GROUP BY ...) subquery — one round-trip, and no unbounded
+        // id list shipped back to the database as parameters. Same rows as the two-step form.
+        var latestIds = _db.StockTransactions
             .Where(t => t.DistributorId == distributorId && t.TransactedAt < fromUtc)
             .GroupBy(t => new { t.ProductId, t.StockType })
-            .Select(g => g.Max(x => x.Id))
-            .ToListAsync(ct);
-
-        if (latestIds.Count == 0) return [];
+            .Select(g => g.Max(x => x.Id));
 
         // Step 2: take each pool's closing balance (QuantityAfter) and combine per product.
         var raw = await _db.StockTransactions

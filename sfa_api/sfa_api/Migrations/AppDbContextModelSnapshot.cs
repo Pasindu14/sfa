@@ -1132,7 +1132,8 @@ namespace sfa_api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("RepId", "RecordedAt");
+                    b.HasIndex("RepId", "RecordedAt")
+                        .IsDescending(false, true);
 
                     b.ToTable("RepLocationPings");
                 });
@@ -2503,10 +2504,21 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("TransactedBy");
 
+                    b.HasIndex("DistributorId", "TransactedAt")
+                        .HasDatabaseName("IX_StockTransactions_DistributorId_TransactedAt");
+
+                    NpgsqlIndexBuilderExtensions.IncludeProperties(b.HasIndex("DistributorId", "TransactedAt"), new[] { "ProductId", "TransactionType", "StockType", "Direction", "Quantity" });
+
                     b.HasIndex("ReferenceType", "ReferenceId");
 
                     b.HasIndex("DistributorId", "ProductId", "TransactedAt")
                         .IsDescending(false, false, true);
+
+                    b.HasIndex("DistributorId", "ProductId", "StockType", "Id")
+                        .IsDescending(false, false, false, true)
+                        .HasDatabaseName("IX_StockTransactions_Dist_Product_StockType_IdDesc");
+
+                    NpgsqlIndexBuilderExtensions.IncludeProperties(b.HasIndex("DistributorId", "ProductId", "StockType", "Id"), new[] { "TransactedAt" });
 
                     b.ToTable("StockTransactions");
                 });
