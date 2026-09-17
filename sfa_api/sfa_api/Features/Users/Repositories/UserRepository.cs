@@ -41,6 +41,9 @@ public class UserRepository(AppDbContext context) : IUserRepository
     public async Task<bool> ExistsByPhoneAsync(string phone, int excludeUserId, CancellationToken ct = default)
         => await _context.Users.AnyAsync(u => u.Phone == phone && u.Id != excludeUserId, ct);
 
+    public async Task<bool> ExistsByImeiAsync(string imei, int? excludeUserId = null, CancellationToken ct = default)
+        => await _context.Users.AnyAsync(u => u.Imei == imei && (excludeUserId == null || u.Id != excludeUserId), ct);
+
     public async Task<(IEnumerable<User> Users, int TotalCount)> GetAllUsersAsync(int skip, int take, string? search = null, string? role = null, bool? isActive = null, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, 200);

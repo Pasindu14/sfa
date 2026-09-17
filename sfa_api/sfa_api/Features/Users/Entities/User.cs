@@ -15,6 +15,7 @@ public class User
     public int? DistributorId { get; set; }
     public Distributor? Distributor { get; set; }
     public string? DeviceId { get; set; }
+    public string? Imei { get; set; }
     public string? FcmToken { get; set; }
     public bool IsActive { get; set; } = true;
 

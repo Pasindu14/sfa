@@ -29,6 +29,11 @@ const baseUserObject = z.object({
   phone: phoneRules,
   role: roleEnum,
   deviceId: z.string().optional(),
+  imei: z
+    .string()
+    .regex(/^\d{15}$/, 'IMEI must be exactly 15 digits')
+    .optional()
+    .or(z.literal('')),
   distributorId: z.number().optional(),
 })
 
@@ -95,6 +100,7 @@ export type UserDto = {
   distributorId?: number
   distributorName?: string
   deviceId?: string
+  imei?: string | null
   isActive: boolean
   rowVersion: number
   createdAt: string

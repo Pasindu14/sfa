@@ -38,6 +38,10 @@ public class UpdateUserValidator : AbstractValidator<UpdateUserRequest>
         // a value on update would make a just-reset Sales Rep uneditable until an admin invented
         // a device ID by hand.
 
+        RuleFor(x => x.Imei)
+            .Matches("^[0-9]{15}$").When(x => !string.IsNullOrWhiteSpace(x.Imei))
+            .WithMessage("IMEI must be exactly 15 digits.");
+
         RuleFor(x => x.DistributorId)
             .NotNull().When(x => x.Role.Equals("Distributor", StringComparison.OrdinalIgnoreCase))
             .WithMessage("Distributor is required for Distributor role.");

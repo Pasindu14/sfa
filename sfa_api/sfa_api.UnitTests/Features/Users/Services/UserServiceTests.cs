@@ -268,6 +268,49 @@ public class UserServiceTests
     }
 
     [Fact]
+    public async Task CreateUserAsync_DuplicateImei_ThrowsDuplicateResourceException()
+    {
+        var request = CreateValidRequest();
+        request.Imei = "356938035643809";
+        SetupNoDuplicates();
+        _repoMock.Setup(r => r.ExistsByImeiAsync("356938035643809", null, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(true);
+
+        var act = () => _sut.CreateUserAsync(request, callerId: 1);
+
+        var ex = await act.Should().ThrowAsync<DuplicateResourceException>();
+        ex.Which.ErrorCode.Should().Be("IMEI_DUPLICATE");
+    }
+
+    [Fact]
+    public async Task CreateUserAsync_BlankImei_StoresNullAndSkipsDuplicateCheck()
+    {
+        var request = CreateValidRequest();
+        request.Imei = "   ";
+        SetupNoDuplicates();
+
+        var result = await _sut.CreateUserAsync(request, callerId: 1);
+
+        result.Imei.Should().BeNull();
+        _repoMock.Verify(r => r.ExistsByImeiAsync(It.IsAny<string>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateUserAsync_ImeiOwnedByAnotherUser_ThrowsDuplicateResourceException()
+    {
+        _repoMock.Setup(r => r.GetUserByIdAsync(1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(CreateFakeUser());
+        SetupNoDuplicatesForUpdate(1);
+        _repoMock.Setup(r => r.ExistsByImeiAsync("356938035643809", 1, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(true);
+
+        var request = new UpdateUserRequest { Name = "X", Username = "x", Email = "x@x.com", Phone = "1234567890", Role = "Admin", Imei = "356938035643809", RowVersion = 1 };
+        var act = () => _sut.UpdateUserAsync(1, request, callerId: 1);
+
+        await act.Should().ThrowAsync<DuplicateResourceException>();
+    }
+
+    [Fact]
     public async Task CreateUserAsync_InvalidRole_ThrowsValidationException()
     {
         var request = CreateValidRequest();

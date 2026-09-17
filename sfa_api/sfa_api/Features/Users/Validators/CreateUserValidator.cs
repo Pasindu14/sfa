@@ -45,6 +45,10 @@ public class CreateUserValidator : AbstractValidator<CreateUserRequest>
             .NotEmpty().When(x => x.Role.Equals("SalesRep", StringComparison.OrdinalIgnoreCase))
             .WithMessage("Device ID is required for Sales Reps.");
 
+        RuleFor(x => x.Imei)
+            .Matches("^[0-9]{15}$").When(x => !string.IsNullOrWhiteSpace(x.Imei))
+            .WithMessage("IMEI must be exactly 15 digits.");
+
         RuleFor(x => x.DistributorId)
             .NotNull().When(x => x.Role.Equals("Distributor", StringComparison.OrdinalIgnoreCase))
             .WithMessage("Distributor is required for Distributor role.");

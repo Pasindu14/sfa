@@ -121,6 +121,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.Phone).IsUnique().HasFilter("\"IsDeleted\" = false");
             e.HasIndex(x => x.IsDeleted);
             e.HasIndex(x => x.UpdatedAt);
+            e.Property(x => x.Imei).HasMaxLength(20);
+            e.HasIndex(x => x.Imei).IsUnique().HasFilter("\"IsDeleted\" = false AND \"Imei\" IS NOT NULL");
             // Filter out soft-DELETED users globally so they cannot be read, listed,
             // authenticated, or refreshed (the navigation from RefreshToken inherits this).
             // IsActive is deliberately NOT filtered: deactivated users must remain visible

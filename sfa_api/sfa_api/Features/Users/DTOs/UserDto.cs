@@ -10,6 +10,7 @@ public record UserDto(
     int? DistributorId,
     string? DistributorName,
     string? DeviceId,
+    string? Imei,
     bool IsActive,
     uint RowVersion,
     DateTime CreatedAt,

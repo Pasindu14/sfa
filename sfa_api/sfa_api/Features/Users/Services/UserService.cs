@@ -49,6 +49,10 @@ public class UserService(
         if (await _repo.ExistsByPhoneAsync(request.Phone, ct))
             throw new DuplicateResourceException("Phone");
 
+        var imei = NormalizeImei(request.Imei);
+        if (imei is not null && await _repo.ExistsByImeiAsync(imei, ct: ct))
+            throw new DuplicateResourceException("IMEI");
+
         if (!Enum.TryParse<UserRole>(request.Role, out var role))
             throw new ValidationException(new Dictionary<string, string[]>
                 { { "Role", new[] { "Invalid role." } } });
@@ -71,6 +75,7 @@ public class UserService(
             Role = role,
             DistributorId = distributorId,
             DeviceId = request.DeviceId,
+            Imei = imei,
             IsActive = true,
             CreatedBy = callerId,
             UpdatedBy = callerId,
@@ -99,6 +104,10 @@ public class UserService(
         if (await _repo.ExistsByPhoneAsync(request.Phone, userId, ct))
             throw new DuplicateResourceException("Phone");
 
+        var imei = NormalizeImei(request.Imei);
+        if (imei is not null && await _repo.ExistsByImeiAsync(imei, userId, ct))
+            throw new DuplicateResourceException("IMEI");
+
         if (!Enum.TryParse<UserRole>(request.Role, out var role))
             throw new ValidationException(new Dictionary<string, string[]>
                 { { "Role", new[] { "Invalid role." } } });
@@ -124,6 +133,7 @@ public class UserService(
         user.Phone = request.Phone;
         user.Role = role;
         user.DeviceId = request.DeviceId;
+        user.Imei = imei;
         user.UpdatedBy = callerId;
         user.UpdatedAt = DateTime.UtcNow;
 
@@ -240,6 +250,10 @@ public class UserService(
     public Task ClearFcmTokenAsync(int userId, CancellationToken ct = default)
         => _repo.ClearFcmTokenAsync(userId, ct);
 
+    // IMEI is optional — an empty/blank value from the form clears it rather than storing "".
+    private static string? NormalizeImei(string? imei)
+        => string.IsNullOrWhiteSpace(imei) ? null : imei.Trim();
+
     private static UserDto MapToDto(User user) => new(
         Id: user.Id,
         Name: user.Name,
@@ -250,6 +264,7 @@ public class UserService(
         DistributorId: user.DistributorId,
         DistributorName: user.Distributor?.Name,
         DeviceId: user.DeviceId,
+        Imei: user.Imei,
         IsActive: user.IsActive,
         RowVersion: user.RowVersion,
         CreatedAt: user.CreatedAt,

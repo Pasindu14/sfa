@@ -34,7 +34,7 @@ type UserFormValues = UpdateUserInput & { password?: string }
 
 interface UserFormProps {
   mode: 'create' | 'edit'
-  defaultValues?: Partial<UserFormValues>
+  defaultValues?: Partial<Omit<UserFormValues, 'imei'>> & { imei?: string | null }
   onSubmit: (data: CreateUserInput | UpdateUserInput) => void
   isLoading: boolean
   fieldErrors?: Record<string, string> | null
@@ -61,6 +61,8 @@ export function UserForm({
       deviceId: '',
       rowVersion: 0,
       ...defaultValues,
+      // The edit dialog passes the API DTO, where a missing IMEI is null — keep the input controlled.
+      imei: defaultValues?.imei ?? '',
     },
   })
 
@@ -207,6 +209,26 @@ export function UserForm({
               <FormLabel>Device ID (optional)</FormLabel>
               <FormControl>
                 <Input placeholder="Device ID" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="imei"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>IMEI (optional)</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="15-digit IMEI"
+                  inputMode="numeric"
+                  maxLength={15}
+                  {...field}
+                  value={field.value ?? ''}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

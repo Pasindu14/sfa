@@ -14,6 +14,7 @@ public interface IUserRepository
     Task<bool> ExistsByEmailAsync(string email, int excludeUserId, CancellationToken ct = default);
     Task<bool> ExistsByUsernameAsync(string username, int excludeUserId, CancellationToken ct = default);
     Task<bool> ExistsByPhoneAsync(string phone, int excludeUserId, CancellationToken ct = default);
+    Task<bool> ExistsByImeiAsync(string imei, int? excludeUserId = null, CancellationToken ct = default);
     Task<(IEnumerable<User> Users, int TotalCount)> GetAllUsersAsync(int skip, int take, string? search = null, string? role = null, bool? isActive = null, CancellationToken ct = default);
     Task<Dictionary<int, string?>> GetNamesByIdsAsync(IEnumerable<int> ids, CancellationToken ct = default);
     Task CreateUserAsync(User user, CancellationToken ct = default);
