@@ -6,7 +6,7 @@ Legend: **[API]** `sfa_api/sfa_api/` · **[WEB]** `sfa_web/` · **[MOB]** `sfa_m
 
 ## Status (2026-09-17, branch `feature/perf-billing-sync-cache-auth`)
 
-26 done, 18 open. Tests green at commit: API 1147 unit + 638 integration (8 skipped) · mobile 126 · web tsc/lint (no new)/build.
+39 done, 5 open (T1.2, T1.6, T1.7, T2.5, T2.10). Tests green at commit: API 1147 unit + 638 integration (8 skipped) · mobile 126 · web tsc/lint (no new)/build.
 
 **Implementation notes (differ from original plan):**
 - T1.3 uses `SendEachAsync` batches of 500 via bounded `Channel` (10k); queued pushes lost on shutdown (inbox rows already persisted).
@@ -23,8 +23,16 @@ Legend: **[API]** `sfa_api/sfa_api/` · **[WEB]** `sfa_web/` · **[MOB]** `sfa_m
 - T3.11 `cache()` only dedupes during RSC render; server actions still call `auth()` per call.
 - T3.12 only `radix-ui`, `@radix-ui/react-icons` added (others already optimised by Next); no bundle analyzer.
 - T3.21 upload every ≤10 min (not 15–30: web marks reps stale after 15 min); skip reports stay a separate call (API has no field). Also fixes backlog >500 pings never uploading.
+- T3.4 portal price list cached 10 min per category (`pricing-category:*`), cleared on pricing upsert and any product create/update/activate/deactivate/delete.
+- T3.5 supervisor summary cached 60s per supervisor+date; cleared on bill/not-billing/route-assignment writes. Reporting-line/user admin changes may be ≤60s stale.
+- T3.6 `GetUserAccessInfoAsync` (no-tracking projection) used by 28 read-only permission checks; `UserService` keeps the tracked lookup.
+- T3.13 removed bcrypt, bcryptjs, @node-rs/bcrypt, @types/bcrypt, react-icons. Kept `pg`/`mssql` (used by `scripts/migrate-*.ts`) and lucide/radix icons.
+- T3.16 `map-points` takes optional `minLat/minLng/maxLat/maxLng` (all or none; else 400 `VALIDATION_FAILED`). Web fetches padded viewport; "X missing coordinates" note only shows on full-list loads. Migration `20260917071941_AddOutletLatLngIndex`.
+- T3.25 old in-`build()` overlay calls were no-ops (root `AnnotatedRegion` wins); visuals unchanged. Stock catalog probably intended light status-bar icons — undecided.
 
-**Pending before merge:** apply migrations `20260917044500_AddStockTransactionLedgerIndexes`, `20260917044625_RepLocationPingRepIdRecordedAtDesc`, `20260917052336_AddGrnNumberTrigramIndex` on staging; verify stock locking under concurrent bills/GRNs, Redis multi-instance cache/revocation, push delivery; mobile DB v19→v21 upgrade, offline fonts, live-map freshness; web click-tests (Excel export/import, maps, dashboard chart, 4xx no-retry).
+**Tier 3 remainder (branch `feature/perf-tier3-remaining`) — before merging to main:** apply `20260917071941_AddOutletLatLngIndex` FIRST (API refuses to start with pending migrations). Click-test products CRUD + PO pickers, outlet map pan/zoom; device-test supervisor lists, product search, token refresh.
+
+**Pending before merge (Tier 1–3 first batch, merged):** migrations `20260917044500_AddStockTransactionLedgerIndexes`, `20260917044625_RepLocationPingRepIdRecordedAtDesc`, `20260917052336_AddGrnNumberTrigramIndex` — APPLIED 2026-09-17; still verify stock locking under concurrent bills/GRNs, Redis multi-instance cache/revocation, push delivery; mobile DB v19→v21 upgrade, offline fonts, live-map freshness; web click-tests (Excel export/import, maps, dashboard chart, 4xx no-retry).
 
 ---
 
@@ -137,10 +145,10 @@ Legend: **[API]** `sfa_api/sfa_api/` · **[WEB]** `sfa_web/` · **[MOB]** `sfa_m
 - [x] **T3.1** Serilog reads levels from config (prod `Default: Error` currently ignored); drop Seq sink when URL empty; async sink; exclude health checks — `Infrastructure/Logging/SerilogConfig.cs:11-22`, `Program.cs:302`
 - [x] **T3.2** Rate limiter partition by user id before IP (carrier NAT) — `Common/Extensions/*RateLimit*.cs:54-57`
 - [x] **T3.3** GRN search `ILike` + trigram index `IX_GRNs_GrnNumber_Trgm` — `Features/GRNs/Repositories/GrnRepository.cs:59-62`
-- [ ] **T3.4** Cache distributor price list per category; invalidate in `BulkUpsertAsync` — `Features/ProductCategoryPricings/Repositories/ProductCategoryPricingRepository.cs:16-75`
-- [ ] **T3.5** 60s cache for supervisor dashboard — `Features/Supervisor/Services/SupervisorService.cs:13-23`
-- [ ] **T3.6** Lightweight no-tracking user lookup for permission checks — `Features/Users/Repositories/UserRepository.cs:12-15`
-- [ ] **T3.7** `AsNoTracking` on `GetLatestRunAsync` — `GeoConsistencyRepository.cs:~183`
+- [x] **T3.4** Cache distributor price list per category; invalidate in `BulkUpsertAsync` — `Features/ProductCategoryPricings/Repositories/ProductCategoryPricingRepository.cs:16-75`
+- [x] **T3.5** 60s cache for supervisor dashboard — `Features/Supervisor/Services/SupervisorService.cs:13-23`
+- [x] **T3.6** Lightweight no-tracking user lookup for permission checks — `Features/Users/Repositories/UserRepository.cs:12-15`
+- [x] **T3.7** `AsNoTracking` on `GetLatestRunAsync` — `GeoConsistencyRepository.cs:~183`
 
 ### Web
 - [x] **T3.8** Dynamic-import ExcelJS/xlsx inside click handlers; standardize on one lib — `components/data-table/utils/export-utils.ts:2`, `features/bin-card/lib/bin-card-export.ts:1`, `features/sales-summary/lib/sales-summary-export.ts:1`, `features/sales-invoice/lib/parse-excel.ts:27`, `features/sales-target/lib/parse-targets-excel.ts:1`
@@ -148,10 +156,10 @@ Legend: **[API]** `sfa_api/sfa_api/` · **[WEB]** `sfa_web/` · **[MOB]** `sfa_m
 - [x] **T3.10** Don't retry 4xx — `providers/query-provider.tsx:15` (preserve status on thrown errors)
 - [x] **T3.11** `cache(() => auth())` shared by `lib/api/client.ts:113` and `lib/actions/wrapper.ts:48`
 - [x] **T3.12** `optimizePackageImports` + `@next/bundle-analyzer` — `next.config.ts`
-- [ ] **T3.13** Remove duplicate deps (3× bcrypt, `pg`, `mssql`, 3 icon libs) — `package.json`
-- [ ] **T3.14** Narrow invalidations to `lists()` + `setQueryData` for detail — `features/product/hooks/product.hooks.ts:130-220` (and similar)
-- [ ] **T3.15** Zustand selector — `features/user-geo-assignment/hooks/user-geo-assignment.hooks.ts:171`
-- [ ] **T3.16** Outlet map: bbox fetch or server clustering — `features/outlet/components/pages/outlet-map-page.tsx:49`
+- [x] **T3.13** Remove duplicate deps (3× bcrypt, `pg`, `mssql`, 3 icon libs) — `package.json`
+- [x] **T3.14** Narrow invalidations to `lists()` + `setQueryData` for detail — `features/product/hooks/product.hooks.ts:130-220` (and similar)
+- [x] **T3.15** Zustand selector — `features/user-geo-assignment/hooks/user-geo-assignment.hooks.ts:171`
+- [x] **T3.16** Outlet map: bbox fetch or server clustering — `features/outlet/components/pages/outlet-map-page.tsx:49`
 
 ### Mobile
 - [x] **T3.17** Bundle Barlow fonts; `GoogleFonts.config.allowRuntimeFetching = false`
@@ -159,11 +167,11 @@ Legend: **[API]** `sfa_api/sfa_api/` · **[WEB]** `sfa_web/` · **[MOB]** `sfa_m
 - [x] **T3.19** Debounce product picker search (250–300ms), keep previous results, throttle category sync — `features/bills/presentation/widgets/product_search_delegate.dart:102-129`
 - [x] **T3.20** Defer notification channel / background service / Workmanager init past first frame — `main.dart:61-105`
 - [x] **T3.21** Location: upload every 15–30 min, chunk `LIMIT 200`, fold skip reports into batch — `core/background/location_tracking_service.dart:63-65`, `:96-107`, `:179-197`
-- [ ] **T3.22** Batch bill inserts/upserts with `txn.batch()` + single status `SELECT IN (...)` — `features/bills/data/datasources/bills_local_datasource.dart:63-65`, `:120-150`
-- [ ] **T3.23** Supervisor billing/not-billing pages → `SliverList.builder` — `supervisor_billing_page.dart:253,1183`, `supervisor_not_billing_page.dart:237,1161`
-- [ ] **T3.24** Memoize search filtering — `stock_catalog_page.dart:74-81`, `products_page.dart:241-248`
-- [ ] **T3.25** `AnnotatedRegion` instead of `SystemChrome` in `build()` — `stock_catalog_page.dart:85`, `sales_rep_home_page.dart:~89`
-- [ ] **T3.26** Reuse one refresh `Dio` — `core/network/token_interceptor.dart:161-180`
+- [x] **T3.22** Batch bill inserts/upserts with `txn.batch()` + single status `SELECT IN (...)` — `features/bills/data/datasources/bills_local_datasource.dart:63-65`, `:120-150`
+- [x] **T3.23** Supervisor billing/not-billing pages → `SliverList.builder` — `supervisor_billing_page.dart:253,1183`, `supervisor_not_billing_page.dart:237,1161`
+- [x] **T3.24** Memoize search filtering — `stock_catalog_page.dart:74-81`, `products_page.dart:241-248`
+- [x] **T3.25** `AnnotatedRegion` instead of `SystemChrome` in `build()` — `stock_catalog_page.dart:85`, `sales_rep_home_page.dart:~89`
+- [x] **T3.26** Reuse one refresh `Dio` — `core/network/token_interceptor.dart:161-180`
 
 ---
 
