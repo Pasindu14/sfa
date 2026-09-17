@@ -156,7 +156,7 @@ export function useUserGeoAssignmentDataTable(
   _caseConfig?: unknown,
   _customFilters?: unknown,
 ) {
-  const { committed } = useUserGeoAssignmentFilterStore()
+  const committed = useUserGeoAssignmentFilterStore((s) => s.committed)
 
   const query = useQuery({
     queryKey: userGeoAssignmentKeys.list({ page, pageSize, search, committed }),

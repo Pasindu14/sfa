@@ -15,6 +15,7 @@ import {
   deactivateOutletAction,
   getMyOutletsAction,
 } from '../actions/outlet.actions'
+import type { OutletMapBounds } from '../actions/outlet.actions'
 import {
   useCreateDialog,
   useEditDialog,
@@ -80,14 +81,23 @@ export function useActiveOutlets() {
   })
 }
 
-export function useOutletsForMap() {
+/**
+ * Map points for the outlet map.
+ * - `bounds` undefined → viewport not known yet; query stays idle.
+ * - `bounds` null      → full list (whole-world / antimeridian views).
+ * - `bounds` object    → only points inside the box.
+ * Keys stay under outletKeys.all so outlet mutations still refresh the map.
+ */
+export function useOutletsForMap(bounds?: OutletMapBounds | null) {
   return useQuery({
-    queryKey: [...outletKeys.all, 'map'] as const,
+    queryKey: [...outletKeys.all, 'map', bounds ?? 'all'] as const,
     queryFn: async () => {
-      const result = await getOutletMapPointsAction()
+      const result = await getOutletMapPointsAction(bounds ?? null)
       if (!result.success) throw new ActionError(result)
       return result.data
     },
+    enabled: bounds !== undefined,
+    placeholderData: keepPreviousData,
   })
 }
 

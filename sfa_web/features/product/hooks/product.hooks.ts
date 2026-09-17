@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { queryOptions, useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
+import { queryOptions, useQuery, useMutation, useQueryClient, keepPreviousData, type QueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   getProductsAction,
@@ -33,6 +33,21 @@ export const productKeys = {
   list: (filters: object) => [...productKeys.lists(), filters] as const,
   details: () => [...productKeys.all, 'detail'] as const,
   detail: (id: number) => [...productKeys.details(), id] as const,
+  activeAll: () => [...productKeys.all, 'active-all'] as const,
+}
+
+// Every query under productKeys.all is a list, a detail, or the active-all lookup
+// (PO product pickers). Mutations refresh lists + active-all and only the affected
+// detail, instead of every cached product detail. Pricing/stock/PO queries live under
+// their own keys and were never covered by productKeys.all.
+function invalidateProductCollections(queryClient: QueryClient) {
+  queryClient.invalidateQueries({ queryKey: productKeys.lists() })
+  queryClient.invalidateQueries({ queryKey: productKeys.activeAll() })
+}
+
+function invalidateProduct(queryClient: QueryClient, id: number) {
+  invalidateProductCollections(queryClient)
+  queryClient.invalidateQueries({ queryKey: productKeys.detail(id) })
 }
 
 // --- Query options factory ---
@@ -104,7 +119,7 @@ export function useProductDataTable(
 
 export function useAllActiveProducts() {
   return useQuery({
-    queryKey: [...productKeys.all, 'active-all'] as const,
+    queryKey: productKeys.activeAll(),
     queryFn: async () => {
       const result = await getAllActiveProductsAction()
       if (!result.success) throw new ActionError(result)
@@ -128,7 +143,7 @@ export function useCreateProduct() {
       return result.data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: productKeys.all })
+      invalidateProductCollections(queryClient)
       setFieldErrors(null)
       close()
       toast.success('Product created successfully')
@@ -153,8 +168,8 @@ export function useUpdateProduct() {
       if (!result.success) throw result
       return result.data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: productKeys.all })
+    onSuccess: (_data, { id }) => {
+      invalidateProduct(queryClient, id)
       setFieldErrors(null)
       close()
       toast.success('Product updated successfully')
@@ -177,8 +192,8 @@ export function useDeactivateProduct() {
       const result = await deactivateProductAction(id)
       if (!result.success) throw result
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: productKeys.all })
+    onSuccess: (_data, id) => {
+      invalidateProduct(queryClient, id)
       close()
       toast.success('Product deactivated successfully')
     },
@@ -197,8 +212,8 @@ export function useDeleteProduct() {
       const result = await deleteProductAction(id)
       if (!result.success) throw result
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: productKeys.all })
+    onSuccess: (_data, id) => {
+      invalidateProduct(queryClient, id)
       close()
       toast.success('Product deleted successfully')
     },
@@ -217,8 +232,8 @@ export function useActivateProduct() {
       const result = await activateProductAction(id)
       if (!result.success) throw result
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: productKeys.all })
+    onSuccess: (_data, id) => {
+      invalidateProduct(queryClient, id)
       close()
       toast.success('Product activated successfully')
     },

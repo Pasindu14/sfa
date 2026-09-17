@@ -52,10 +52,28 @@ export const getActiveOutletsAction = createAction(
   }
 )
 
+// Optional bounding box: all four params → only points inside the (inclusive) bounds;
+// omitted → the full list. Never send a partial box — the API rejects it with 400.
+export type OutletMapBounds = {
+  minLat: number
+  minLng: number
+  maxLat: number
+  maxLng: number
+}
+
 export const getOutletMapPointsAction = createAction(
   { name: 'getOutletMapPointsAction', requireAuth: true, requiredRole: 'Admin' },
-  async () => {
-    const res = await client.get('/api/v1/outlets/map-points')
+  async (bounds?: OutletMapBounds | null) => {
+    const res = await client.get('/api/v1/outlets/map-points', {
+      params: bounds
+        ? {
+            minLat: bounds.minLat,
+            minLng: bounds.minLng,
+            maxLat: bounds.maxLat,
+            maxLng: bounds.maxLng,
+          }
+        : undefined,
+    })
     return res.data.data as OutletMapPointDto[]
   }
 )
