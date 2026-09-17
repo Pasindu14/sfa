@@ -58,7 +58,7 @@ public class LocationPingService(
     {
         // Resolve the rep first so an unknown id 404s rather than returning an empty
         // route, which would read as "he didn't move today".
-        var rep = await userRepository.GetUserByIdAsync(repId, ct)
+        var rep = await userRepository.GetUserAccessInfoAsync(repId, ct)
             ?? throw new NotFoundException("User", repId);
 
         // A business day is 00:00–24:00 in Colombo, not in UTC — see SriLankaTime.DayRange.

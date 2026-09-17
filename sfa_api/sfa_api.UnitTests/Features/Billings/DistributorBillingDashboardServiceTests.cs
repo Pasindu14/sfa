@@ -5,6 +5,7 @@ using sfa_api.Features.Billings.DTOs;
 using sfa_api.Features.Billings.Enums;
 using sfa_api.Features.Billings.Repositories;
 using sfa_api.Features.Billings.Services;
+using sfa_api.Features.Users.DTOs;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Features.Users.Repositories;
 
@@ -72,8 +73,8 @@ public class DistributorBillingDashboardServiceTests
     {
         var repo = new Mock<IDistributorBillingDashboardRepository>();
         var users = new Mock<IUserRepository>();
-        users.Setup(u => u.GetUserByIdAsync(42, It.IsAny<CancellationToken>()))
-             .ReturnsAsync(new User { Id = 42, Role = UserRole.Distributor, DistributorId = 7 });
+        users.Setup(u => u.GetUserAccessInfoAsync(42, It.IsAny<CancellationToken>()))
+             .ReturnsAsync(new UserAccessInfo(42, "Test User", UserRole.Distributor, 7, true));
         repo.Setup(r => r.GetGroupedAsync(7, It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<DistributorBillingDashboardGroupRow>());
 
@@ -90,8 +91,8 @@ public class DistributorBillingDashboardServiceTests
     public async Task GetSummaryAsync_UserWithoutDistributor_ThrowsBusinessRule()
     {
         var users = new Mock<IUserRepository>();
-        users.Setup(u => u.GetUserByIdAsync(1, It.IsAny<CancellationToken>()))
-             .ReturnsAsync(new User { Id = 1, Role = UserRole.Distributor, DistributorId = null });
+        users.Setup(u => u.GetUserAccessInfoAsync(1, It.IsAny<CancellationToken>()))
+             .ReturnsAsync(new UserAccessInfo(1, "Test User", UserRole.Distributor, null, true));
 
         var act = () => new DistributorBillingDashboardService(Mock.Of<IDistributorBillingDashboardRepository>(), users.Object)
             .GetSummaryAsync(1, null, null);
@@ -105,8 +106,8 @@ public class DistributorBillingDashboardServiceTests
     public async Task GetSummaryAsync_InvalidRange_ThrowsValidation(string from, string to)
     {
         var users = new Mock<IUserRepository>();
-        users.Setup(u => u.GetUserByIdAsync(1, It.IsAny<CancellationToken>()))
-             .ReturnsAsync(new User { Id = 1, Role = UserRole.Distributor, DistributorId = 3 });
+        users.Setup(u => u.GetUserAccessInfoAsync(1, It.IsAny<CancellationToken>()))
+             .ReturnsAsync(new UserAccessInfo(1, "Test User", UserRole.Distributor, 3, true));
 
         var act = () => new DistributorBillingDashboardService(Mock.Of<IDistributorBillingDashboardRepository>(), users.Object)
             .GetSummaryAsync(1, DateOnly.Parse(from), DateOnly.Parse(to));

@@ -29,7 +29,7 @@ public class DistributorBillingDashboardService(
         int callerUserId, DateOnly? dateFrom, DateOnly? dateTo, CancellationToken ct = default)
     {
         // Distributor is resolved from the JWT user, never taken from the client.
-        var user = await userRepo.GetUserByIdAsync(callerUserId, ct);
+        var user = await userRepo.GetUserAccessInfoAsync(callerUserId, ct);
         if (user?.DistributorId is not int distributorId)
             throw new BusinessRuleException("NO_DISTRIBUTOR_LINKED",
                 "Your account is not linked to a distributor.");

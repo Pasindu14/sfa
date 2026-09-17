@@ -152,12 +152,23 @@ public class OutletRepository(AppDbContext context) : IOutletRepository
             .OrderBy(o => o.Name)
             .ToListAsync(ct);
 
-    public async Task<IEnumerable<OutletMapPointDto>> GetMapPointsAsync(CancellationToken ct = default)
-        => await _context.Outlets
-            .Where(o => o.IsActive)
+    public async Task<IEnumerable<OutletMapPointDto>> GetMapPointsAsync(Requests.OutletMapBounds? bounds = null, CancellationToken ct = default)
+    {
+        var query = _context.Outlets.Where(o => o.IsActive);
+
+        if (bounds is not null)
+        {
+            // Hoisted to locals so they are sent as plain double parameters.
+            double minLat = bounds.MinLat, maxLat = bounds.MaxLat, minLng = bounds.MinLng, maxLng = bounds.MaxLng;
+            query = query.Where(o => o.Latitude >= minLat && o.Latitude <= maxLat
+                                  && o.Longitude >= minLng && o.Longitude <= maxLng);
+        }
+
+        return await query
             .Select(o => new OutletMapPointDto(o.Id, o.Name, o.Latitude, o.Longitude))
             .AsNoTracking()
             .ToListAsync(ct);
+    }
 
     public async Task CreateAsync(Outlet outlet, CancellationToken ct = default)
         => await _context.Outlets.AddAsync(outlet, ct);

@@ -12,6 +12,7 @@ using sfa_api.Features.PurchaseOrders.Requests;
 using sfa_api.Features.PurchaseOrders.Services;
 using sfa_api.Features.ProductCategoryPricings.Repositories;
 using sfa_api.Features.UserGeoAssignments.Repositories;
+using sfa_api.Features.Users.DTOs;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Features.Users.Repositories;
 using sfa_api.Infrastructure.Locking;
@@ -105,20 +106,10 @@ public class PurchaseOrderServiceTests
         History = new List<PurchaseOrderHistory>()
     };
 
-    private static User CreateFakeUser(
+    private static UserAccessInfo CreateFakeAccess(
         int id = 1,
         UserRole role = UserRole.Distributor,
-        int? distributorId = 10) => new()
-    {
-        Id = id,
-        Role = role,
-        DistributorId = distributorId,
-        IsActive = true,
-        CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        Email = "test@sfa.com",
-        Name = "Test User"
-    };
+        int? distributorId = 10) => new(id, "Test User", role, distributorId, true);
 
     private static CreatePurchaseOrderRequest CreateValidRequest(int? distributorId = null) => new()
     {
@@ -197,8 +188,8 @@ public class PurchaseOrderServiceTests
     public async Task CreateAsync_DistributorWithNoDistributorIdAssigned_ThrowsAuthorizationException()
     {
         const int callerId = 200;
-        _userRepoMock.Setup(r => r.GetUserByIdAsync(callerId, It.IsAny<CancellationToken>()))
-                     .ReturnsAsync(CreateFakeUser(id: callerId, role: UserRole.Distributor, distributorId: null));
+        _userRepoMock.Setup(r => r.GetUserAccessInfoAsync(callerId, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(CreateFakeAccess(id: callerId, role: UserRole.Distributor, distributorId: null));
 
         Func<Task> act = () => _sut.CreateAsync(CreateValidRequest(), callerId, callerRole: UserRole.Distributor);
 
@@ -210,8 +201,8 @@ public class PurchaseOrderServiceTests
     {
         const int callerId = 200;
         const int distributorId = 10;
-        _userRepoMock.Setup(r => r.GetUserByIdAsync(callerId, It.IsAny<CancellationToken>()))
-                     .ReturnsAsync(CreateFakeUser(id: callerId, role: UserRole.Distributor, distributorId));
+        _userRepoMock.Setup(r => r.GetUserAccessInfoAsync(callerId, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(CreateFakeAccess(id: callerId, role: UserRole.Distributor, distributorId));
         SetupOrderForCreate(callerId, distributorId);
 
         var result = await _sut.CreateAsync(CreateValidRequest(), callerId, callerRole: UserRole.Distributor);
@@ -228,8 +219,8 @@ public class PurchaseOrderServiceTests
     /// <summary>Arranges a Distributor caller and captures the items handed to the repo.</summary>
     private List<PurchaseOrderItem> ArrangeDistributorCreate(int callerId, int distributorId, string category = "A")
     {
-        _userRepoMock.Setup(r => r.GetUserByIdAsync(callerId, It.IsAny<CancellationToken>()))
-                     .ReturnsAsync(CreateFakeUser(id: callerId, role: UserRole.Distributor, distributorId));
+        _userRepoMock.Setup(r => r.GetUserAccessInfoAsync(callerId, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(CreateFakeAccess(id: callerId, role: UserRole.Distributor, distributorId));
         _distributorRepoMock.Setup(r => r.GetByIdAsync(distributorId, It.IsAny<CancellationToken>()))
                             .ReturnsAsync(new Distributor { Id = distributorId, Category = category });
         SetupOrderForCreate(callerId, distributorId);
@@ -348,8 +339,8 @@ public class PurchaseOrderServiceTests
         const int distributorId = 10;
         var order = CreateFakeOrder(id: 1, PurchaseOrderStatus.Draft, distributorId);
         SetupOrderForTransition(order);
-        _userRepoMock.Setup(r => r.GetUserByIdAsync(callerId, It.IsAny<CancellationToken>()))
-                     .ReturnsAsync(CreateFakeUser(id: callerId, role: UserRole.Distributor, distributorId));
+        _userRepoMock.Setup(r => r.GetUserAccessInfoAsync(callerId, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(CreateFakeAccess(id: callerId, role: UserRole.Distributor, distributorId));
         _distributorRepoMock.Setup(r => r.GetByIdAsync(distributorId, It.IsAny<CancellationToken>()))
                             .ReturnsAsync(new Distributor { Id = distributorId, Category = "B" });
         _pricingRepoMock.Setup(r => r.GetPriceMapForCategoryAsync(
@@ -380,8 +371,8 @@ public class PurchaseOrderServiceTests
         const int distributorId = 10;
         var order = CreateFakeOrder(id: 1, PurchaseOrderStatus.Draft, distributorId);
         SetupOrderForTransition(order);
-        _userRepoMock.Setup(r => r.GetUserByIdAsync(callerId, It.IsAny<CancellationToken>()))
-                     .ReturnsAsync(CreateFakeUser(id: callerId, role: UserRole.Distributor, distributorId));
+        _userRepoMock.Setup(r => r.GetUserAccessInfoAsync(callerId, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(CreateFakeAccess(id: callerId, role: UserRole.Distributor, distributorId));
         _repoMock.Setup(r => r.RemoveItemsAsync(order.Id, It.IsAny<CancellationToken>()))
                  .Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.AddItemsAsync(It.IsAny<IEnumerable<PurchaseOrderItem>>(), It.IsAny<CancellationToken>()))
@@ -464,8 +455,8 @@ public class PurchaseOrderServiceTests
         const int callerId = 200;
         const int distributorId = 10;
         var order = CreateFakeOrder(id: 1, PurchaseOrderStatus.Draft, distributorId);
-        _userRepoMock.Setup(r => r.GetUserByIdAsync(callerId, It.IsAny<CancellationToken>()))
-                     .ReturnsAsync(CreateFakeUser(id: callerId, role: UserRole.Distributor, distributorId));
+        _userRepoMock.Setup(r => r.GetUserAccessInfoAsync(callerId, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(CreateFakeAccess(id: callerId, role: UserRole.Distributor, distributorId));
         SetupOrderForTransition(order);
         // After update, return the updated version
         var submittedOrder = CreateFakeOrder(id: 1, PurchaseOrderStatus.PendingRepApproval, distributorId);
@@ -497,8 +488,8 @@ public class PurchaseOrderServiceTests
         var order = CreateFakeOrder(id: 1, PurchaseOrderStatus.Draft, orderDistributorId);
         _repoMock.Setup(r => r.GetByIdWithItemsAsync(order.Id, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(order);
-        _userRepoMock.Setup(r => r.GetUserByIdAsync(callerId, It.IsAny<CancellationToken>()))
-                     .ReturnsAsync(CreateFakeUser(id: callerId, role: UserRole.Distributor, distributorId: callerDistributorId));
+        _userRepoMock.Setup(r => r.GetUserAccessInfoAsync(callerId, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(CreateFakeAccess(id: callerId, role: UserRole.Distributor, distributorId: callerDistributorId));
 
         Func<Task> act = () => _sut.SubmitAsync(order.Id, callerId, UserRole.Distributor);
 
@@ -699,8 +690,8 @@ public class PurchaseOrderServiceTests
         const int distributorId = 10;
         var order = CreateFakeOrder(id: 1, PurchaseOrderStatus.PendingDistributorAcknowledgement, distributorId);
         var cancelledOrder = CreateFakeOrder(id: 1, PurchaseOrderStatus.Cancelled, distributorId);
-        _userRepoMock.Setup(r => r.GetUserByIdAsync(callerId, It.IsAny<CancellationToken>()))
-                     .ReturnsAsync(CreateFakeUser(id: callerId, role: UserRole.Distributor, distributorId));
+        _userRepoMock.Setup(r => r.GetUserAccessInfoAsync(callerId, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(CreateFakeAccess(id: callerId, role: UserRole.Distributor, distributorId));
         _repoMock.Setup(r => r.GetByIdWithItemsAsync(order.Id, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(order)
                  .Callback(() =>
@@ -771,8 +762,8 @@ public class PurchaseOrderServiceTests
         var order = CreateFakeOrder(id: 1, PurchaseOrderStatus.PendingDistributorAcknowledgement, orderDistributorId);
         _repoMock.Setup(r => r.GetByIdWithItemsAsync(order.Id, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(order);
-        _userRepoMock.Setup(r => r.GetUserByIdAsync(callerId, It.IsAny<CancellationToken>()))
-                     .ReturnsAsync(CreateFakeUser(id: callerId, role: UserRole.Distributor, distributorId: callerDistributorId));
+        _userRepoMock.Setup(r => r.GetUserAccessInfoAsync(callerId, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(CreateFakeAccess(id: callerId, role: UserRole.Distributor, distributorId: callerDistributorId));
 
         Func<Task> act = () => _sut.AcknowledgeAsync(order.Id, callerId, UserRole.Distributor);
 
@@ -790,8 +781,8 @@ public class PurchaseOrderServiceTests
         const int distributorId = 10;
         var order = CreateFakeOrder(id: 1, PurchaseOrderStatus.PendingDistributorFinalization, distributorId);
         var finalizedOrder = CreateFakeOrder(id: 1, PurchaseOrderStatus.Finalized, distributorId);
-        _userRepoMock.Setup(r => r.GetUserByIdAsync(callerId, It.IsAny<CancellationToken>()))
-                     .ReturnsAsync(CreateFakeUser(id: callerId, role: UserRole.Distributor, distributorId));
+        _userRepoMock.Setup(r => r.GetUserAccessInfoAsync(callerId, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(CreateFakeAccess(id: callerId, role: UserRole.Distributor, distributorId));
         _repoMock.Setup(r => r.GetByIdWithItemsAsync(order.Id, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(order)
                  .Callback(() =>
@@ -841,8 +832,8 @@ public class PurchaseOrderServiceTests
         const int distributorId = 10;
         var order = CreateFakeOrder(id: 1, PurchaseOrderStatus.Draft, distributorId);
         var cancelledOrder = CreateFakeOrder(id: 1, PurchaseOrderStatus.Cancelled, distributorId);
-        _userRepoMock.Setup(r => r.GetUserByIdAsync(callerId, It.IsAny<CancellationToken>()))
-                     .ReturnsAsync(CreateFakeUser(id: callerId, role: UserRole.Distributor, distributorId));
+        _userRepoMock.Setup(r => r.GetUserAccessInfoAsync(callerId, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(CreateFakeAccess(id: callerId, role: UserRole.Distributor, distributorId));
         _repoMock.Setup(r => r.GetByIdWithItemsAsync(order.Id, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(order)
                  .Callback(() =>
@@ -921,8 +912,8 @@ public class PurchaseOrderServiceTests
         var order = CreateFakeOrder(id: 1, distributorId: distributorId);
         _repoMock.Setup(r => r.GetByIdWithItemsAsync(order.Id, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(order);
-        _userRepoMock.Setup(r => r.GetUserByIdAsync(callerId, It.IsAny<CancellationToken>()))
-                     .ReturnsAsync(CreateFakeUser(id: callerId, role: UserRole.Distributor, distributorId));
+        _userRepoMock.Setup(r => r.GetUserAccessInfoAsync(callerId, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(CreateFakeAccess(id: callerId, role: UserRole.Distributor, distributorId));
 
         var result = await _sut.GetByIdAsync(order.Id, callerId, UserRole.Distributor);
 
@@ -939,8 +930,8 @@ public class PurchaseOrderServiceTests
         var order = CreateFakeOrder(id: 1, distributorId: orderDistributorId);
         _repoMock.Setup(r => r.GetByIdWithItemsAsync(order.Id, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(order);
-        _userRepoMock.Setup(r => r.GetUserByIdAsync(callerId, It.IsAny<CancellationToken>()))
-                     .ReturnsAsync(CreateFakeUser(id: callerId, role: UserRole.Distributor, distributorId: callerDistributorId));
+        _userRepoMock.Setup(r => r.GetUserAccessInfoAsync(callerId, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(CreateFakeAccess(id: callerId, role: UserRole.Distributor, distributorId: callerDistributorId));
 
         Func<Task> act = () => _sut.GetByIdAsync(order.Id, callerId, UserRole.Distributor);
 

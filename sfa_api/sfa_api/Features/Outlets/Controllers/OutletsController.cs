@@ -98,13 +98,21 @@ public class OutletsController(
     /// <summary>
     /// GET /api/v1/outlets/map-points
     /// Returns slim {id, name, latitude, longitude} for all active outlets with valid coordinates.
+    /// Optional viewport filter: pass ALL of minLat, minLng, maxLat, maxLng to get only the points
+    /// inside that box (inclusive). None → every point. A partial or invalid box → 400 VALIDATION_FAILED.
     /// </summary>
     [HttpGet("map-points")]
     [Authorize]
-    public async Task<IActionResult> GetMapPoints(CancellationToken ct = default)
+    public async Task<IActionResult> GetMapPoints(
+        [FromQuery] double? minLat = null,
+        [FromQuery] double? minLng = null,
+        [FromQuery] double? maxLat = null,
+        [FromQuery] double? maxLng = null,
+        CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
-        var result = await _service.GetMapPointsAsync(ct);
+        var bounds = OutletMapBounds.FromQuery(minLat, minLng, maxLat, maxLng);
+        var result = await _service.GetMapPointsAsync(bounds, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 

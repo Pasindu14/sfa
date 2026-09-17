@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Moq;
+using sfa_api.Infrastructure.Caching;
 using sfa_api.Features.NotBillings.Entities;
 using sfa_api.Features.NotBillings.Enums;
 using sfa_api.Features.NotBillings.Repositories;
@@ -25,7 +26,7 @@ public class NotBillingServiceTests
     private readonly NotBillingService _sut;
 
     public NotBillingServiceTests()
-        => _sut = new NotBillingService(_repoMock.Object, _geoMock.Object, _reportingMock.Object);
+        => _sut = new NotBillingService(_repoMock.Object, _geoMock.Object, _reportingMock.Object, new Mock<ICacheService>().Object);
 
     private static CreateNotBillingRequest ValidRequest() => new()
     {

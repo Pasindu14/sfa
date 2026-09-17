@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using sfa_api.Features.UserGeoAssignments.Entities;
+using sfa_api.Features.Users.DTOs;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Infrastructure.Persistence;
 
@@ -13,6 +14,13 @@ public class UserRepository(AppDbContext context) : IUserRepository
         => await _context.Users
             .Include(u => u.Distributor)
             .FirstOrDefaultAsync(u => u.Id == userId, ct);
+
+    public async Task<UserAccessInfo?> GetUserAccessInfoAsync(int userId, CancellationToken ct = default)
+        => await _context.Users
+            .AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => new UserAccessInfo(u.Id, u.Name, u.Role, u.DistributorId, u.IsActive))
+            .FirstOrDefaultAsync(ct);
 
     public async Task<User?> GetUserByEmailAsync(string email, CancellationToken ct = default)
         => await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == email, ct);

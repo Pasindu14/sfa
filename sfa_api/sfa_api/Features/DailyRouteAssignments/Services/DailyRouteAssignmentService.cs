@@ -5,6 +5,7 @@ using sfa_api.Features.DailyRouteAssignments.Enums;
 using sfa_api.Features.DailyRouteAssignments.Repositories;
 using sfa_api.Features.DailyRouteAssignments.Requests;
 using sfa_api.Features.UserReportingLines.Repositories;
+using sfa_api.Infrastructure.Caching;
 using sfa_api.Infrastructure.Locking;
 
 namespace sfa_api.Features.DailyRouteAssignments.Services;
@@ -13,14 +14,30 @@ public class DailyRouteAssignmentService(
     IDailyRouteAssignmentRepository repo,
     IUserReportingLineRepository reportingRepo,
     IDistributedLockService lockService,
+    ICacheService cache,
     ILogger<DailyRouteAssignmentService> logger) : IDailyRouteAssignmentService
 {
     private readonly IDailyRouteAssignmentRepository _repo = repo;
     private readonly IUserReportingLineRepository _reportingRepo = reportingRepo;
     private readonly IDistributedLockService _lockService = lockService;
+    private readonly ICacheService _cache = cache;
     private readonly ILogger<DailyRouteAssignmentService> _logger = logger;
 
     private const int MaxReasonLength = 500;
+
+    /// <summary>
+    /// The supervisor dashboard counts "reps with an active assignment on date X" — evict the
+    /// rep's current supervisor's cached summaries (and the acting supervisor's, when a supervisor
+    /// made the change) so the change shows immediately rather than after the 60s TTL.
+    /// </summary>
+    private async Task InvalidateSupervisorSummaryAsync(int repUserId, int? actingSupervisorId, CancellationToken ct)
+    {
+        var line = await _reportingRepo.GetActiveByUserIdAsync(repUserId, ct);
+        if (line is not null)
+            await _cache.RemoveByPrefixAsync(Supervisor.SupervisorSummaryCacheKeys.ForSupervisor(line.ReportsToUserId), ct);
+        if (actingSupervisorId is int s && s != line?.ReportsToUserId)
+            await _cache.RemoveByPrefixAsync(Supervisor.SupervisorSummaryCacheKeys.ForSupervisor(s), ct);
+    }
 
     /// <summary>
     /// Guards the optional deletion/rejection reason against the 500-char column cap,
@@ -169,6 +186,11 @@ public class DailyRouteAssignmentService(
             "DailyRouteAssignment created: userId={UserId}, routeId={RouteId}, date={Date}",
             request.UserId, request.RouteId, request.AssignedDate);
 
+        await InvalidateSupervisorSummaryAsync(
+            request.UserId,
+            string.Equals(callerRole, "Supervisor", StringComparison.OrdinalIgnoreCase) ? callerId : null,
+            ct);
+
         var created = await _repo.GetByIdAsync(entity.Id, ct)
             ?? throw new NotFoundException("DailyRouteAssignment", entity.Id);
         return MapToDto(created);
@@ -239,6 +261,8 @@ public class DailyRouteAssignmentService(
         _logger.LogInformation(
             "DailyRouteAssignment {Id} deleted directly by {Role} {CallerId}", id, callerRole, callerId);
 
+        await InvalidateSupervisorSummaryAsync(assignment.UserId, actingSupervisorId: null, ct);
+
         return null;
     }
 
@@ -266,6 +290,8 @@ public class DailyRouteAssignmentService(
 
         _logger.LogInformation(
             "DailyRouteAssignment {Id} deletion approved by {CallerId}", id, callerId);
+
+        await InvalidateSupervisorSummaryAsync(assignment.UserId, actingSupervisorId: null, ct);
     }
 
     public async Task RejectDeletionAsync(int id, int? callerId, string? reason, CancellationToken ct = default)

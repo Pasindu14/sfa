@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using sfa_api.Features.SalesInvoices.Services;
 using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.UserGeoAssignments.Repositories;
+using sfa_api.Features.Users.DTOs;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Features.Users.Repositories;
 using sfa_api.Infrastructure.Persistence;
@@ -406,8 +407,8 @@ public class SalesInvoiceServiceTests
     {
         _repoMock.Setup(r => r.GetDetailAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(new SalesInvoice { Id = 1, DistributorId = 10 });
-        _userRepoMock.Setup(r => r.GetUserByIdAsync(CallerId, It.IsAny<CancellationToken>()))
-                     .ReturnsAsync(new User { Id = CallerId, DistributorId = 20 });
+        _userRepoMock.Setup(r => r.GetUserAccessInfoAsync(CallerId, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(new UserAccessInfo(CallerId, "Test User", UserRole.Distributor, 20, true));
 
         var act = async () => await _sut.GetDetailAsync(1, CallerId, UserRole.Distributor);
 
@@ -420,8 +421,8 @@ public class SalesInvoiceServiceTests
     {
         _repoMock.Setup(r => r.GetDetailAsync(1, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(new SalesInvoice { Id = 1, DistributorId = 10 });
-        _userRepoMock.Setup(r => r.GetUserByIdAsync(CallerId, It.IsAny<CancellationToken>()))
-                     .ReturnsAsync(new User { Id = CallerId, DistributorId = 10 });
+        _userRepoMock.Setup(r => r.GetUserAccessInfoAsync(CallerId, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(new UserAccessInfo(CallerId, "Test User", UserRole.Distributor, 10, true));
 
         var result = await _sut.GetDetailAsync(1, CallerId, UserRole.Distributor);
 

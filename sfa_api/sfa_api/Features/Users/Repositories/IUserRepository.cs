@@ -1,3 +1,4 @@
+using sfa_api.Features.Users.DTOs;
 using sfa_api.Features.Users.Entities;
 
 namespace sfa_api.Features.Users.Repositories;
@@ -5,6 +6,13 @@ namespace sfa_api.Features.Users.Repositories;
 public interface IUserRepository
 {
     Task<User?> GetUserByIdAsync(int userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// No-tracking projection of the fields permission checks read (Id, Name, Role, DistributorId,
+    /// IsActive). Same row visibility as <see cref="GetUserByIdAsync"/>: soft-deleted users are
+    /// excluded, deactivated users are returned. Returns null when not found.
+    /// </summary>
+    Task<UserAccessInfo?> GetUserAccessInfoAsync(int userId, CancellationToken ct = default);
     Task<User?> GetUserByEmailAsync(string email, CancellationToken ct = default);
     Task<User?> GetUserByUsernameAsync(string username, CancellationToken ct = default);
     Task<User?> GetUserByPhoneAsync(string phone, CancellationToken ct = default);

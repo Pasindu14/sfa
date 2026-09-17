@@ -278,7 +278,7 @@ public class SalesInvoiceService(
         switch (callerRole)
         {
             case UserRole.Distributor:
-                var caller = await _userRepo.GetUserByIdAsync(callerId, ct)
+                var caller = await _userRepo.GetUserAccessInfoAsync(callerId, ct)
                     ?? throw new NotFoundException("User", callerId);
                 return (true, caller.DistributorId);
             case UserRole.SalesRep:

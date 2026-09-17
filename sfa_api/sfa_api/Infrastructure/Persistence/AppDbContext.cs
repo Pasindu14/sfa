@@ -462,6 +462,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.AreaId);
             e.HasIndex(x => x.RegionId);
             e.HasIndex(x => x.UpdatedAt).HasFilter("\"IsActive\" = true");
+            // Map viewport query: GET /outlets/map-points?minLat&minLng&maxLat&maxLng (live rows only)
+            e.HasIndex(x => new { x.Latitude, x.Longitude })
+             .HasFilter("\"IsActive\" = true AND \"IsDeleted\" = false")
+             .HasDatabaseName("IX_Outlets_Latitude_Longitude_Active");
             e.HasOne(x => x.Route).WithMany().HasForeignKey(x => x.RouteId).IsRequired();
             e.HasOne(x => x.Division)
              .WithMany()

@@ -183,6 +183,7 @@ public class GeoConsistencyRepository(AppDbContext context) : IGeoConsistencyRep
 
     public Task<GeoConsistencyRun?> GetLatestRunAsync(CancellationToken ct = default)
         => _context.Set<GeoConsistencyRun>()
+            .AsNoTracking()
             .Include(r => r.Flags)
             .OrderByDescending(r => r.RunAt).ThenByDescending(r => r.Id)
             .FirstOrDefaultAsync(ct);

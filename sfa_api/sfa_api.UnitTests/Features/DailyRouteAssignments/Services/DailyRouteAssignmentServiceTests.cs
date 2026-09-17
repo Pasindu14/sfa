@@ -1,10 +1,12 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
+using sfa_api.Infrastructure.Caching;
 using sfa_api.Common.Errors;
 using sfa_api.Features.DailyRouteAssignments.Entities;
 using sfa_api.Features.DailyRouteAssignments.Repositories;
 using sfa_api.Features.DailyRouteAssignments.Services;
+using sfa_api.Features.UserReportingLines.Entities;
 using sfa_api.Features.UserReportingLines.Repositories;
 using sfa_api.Infrastructure.Locking;
 
@@ -20,12 +22,13 @@ public class DailyRouteAssignmentServiceTests
     private readonly Mock<IDailyRouteAssignmentRepository> _repoMock = new();
     private readonly Mock<IUserReportingLineRepository> _reportingMock = new();
     private readonly Mock<IDistributedLockService> _lockMock = new();
+    private readonly Mock<ICacheService> _cacheMock = new();
     private readonly DailyRouteAssignmentService _sut;
 
     public DailyRouteAssignmentServiceTests()
     {
         _sut = new DailyRouteAssignmentService(
-            _repoMock.Object, _reportingMock.Object, _lockMock.Object,
+            _repoMock.Object, _reportingMock.Object, _lockMock.Object, _cacheMock.Object,
             NullLogger<DailyRouteAssignmentService>.Instance);
     }
 
@@ -58,5 +61,32 @@ public class DailyRouteAssignmentServiceTests
         assignment.IsDeleted.Should().BeTrue();
         _repoMock.Verify(r => r.UpdateAsync(assignment, It.IsAny<CancellationToken>()), Times.Once);
         _repoMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_AsAdmin_EvictsTheRepsSupervisorDashboard()
+    {
+        var assignment = new DailyRouteAssignment { Id = 9, UserId = 99 };
+        _repoMock.Setup(r => r.GetByIdAsync(9, It.IsAny<CancellationToken>())).ReturnsAsync(assignment);
+        _reportingMock.Setup(r => r.GetActiveByUserIdAsync(99, It.IsAny<CancellationToken>()))
+                      .ReturnsAsync(new UserReportingLine { UserId = 99, ReportsToUserId = 40 });
+
+        await _sut.DeleteAsync(9, callerId: 1, callerRole: "Admin", reason: null);
+
+        _cacheMock.Verify(c => c.RemoveByPrefixAsync("supervisor-summary:40", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_AsSupervisor_OnlyFlagsPending_AndDoesNotEvict()
+    {
+        var assignment = new DailyRouteAssignment { Id = 10, UserId = 99 };
+        _repoMock.Setup(r => r.GetByIdAsync(10, It.IsAny<CancellationToken>())).ReturnsAsync(assignment);
+        _repoMock.Setup(r => r.GetRepsByReportsToAsync(40, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(new List<sfa_api.Features.Users.Entities.User> { new() { Id = 99 } });
+
+        await _sut.DeleteAsync(10, callerId: 40, callerRole: "Supervisor", reason: null);
+
+        assignment.IsActive.Should().BeTrue("a supervisor's delete is only a pending request");
+        _cacheMock.Verify(c => c.RemoveByPrefixAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

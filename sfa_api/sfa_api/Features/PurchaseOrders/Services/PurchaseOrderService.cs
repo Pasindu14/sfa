@@ -78,7 +78,7 @@ public class PurchaseOrderService(
         // Distributors may only view their own orders
         if (callerRole == UserRole.Distributor)
         {
-            var caller = await _userRepo.GetUserByIdAsync(callerId, ct)
+            var caller = await _userRepo.GetUserAccessInfoAsync(callerId, ct)
                 ?? throw new NotFoundException("User", callerId);
             if (order.DistributorId != caller.DistributorId)
                 throw new AuthorizationException("this purchase order");
@@ -124,7 +124,7 @@ public class PurchaseOrderService(
 
         if (callerRole == UserRole.Distributor)
         {
-            var caller = await _userRepo.GetUserByIdAsync(callerId, ct)
+            var caller = await _userRepo.GetUserAccessInfoAsync(callerId, ct)
                 ?? throw new NotFoundException("User", callerId);
             if (caller.DistributorId.HasValue)
                 distributorIds = [caller.DistributorId.Value];
@@ -170,7 +170,7 @@ public class PurchaseOrderService(
         else
         {
             // Distributor role — resolve from their user record
-            var caller = await _userRepo.GetUserByIdAsync(callerId, ct)
+            var caller = await _userRepo.GetUserAccessInfoAsync(callerId, ct)
                 ?? throw new NotFoundException("User", callerId);
             if (!caller.DistributorId.HasValue)
                 throw new AuthorizationException("purchase orders (no distributor assigned)");
@@ -281,7 +281,7 @@ public class PurchaseOrderService(
         // Distributors may only update their own orders
         if (callerRole == UserRole.Distributor)
         {
-            var caller = await _userRepo.GetUserByIdAsync(callerId, ct)
+            var caller = await _userRepo.GetUserAccessInfoAsync(callerId, ct)
                 ?? throw new NotFoundException("User", callerId);
             if (order.DistributorId != caller.DistributorId)
                 throw new AuthorizationException("this purchase order");
@@ -369,7 +369,7 @@ public class PurchaseOrderService(
 
         if (callerRole == UserRole.Distributor)
         {
-            var caller = await _userRepo.GetUserByIdAsync(callerId, ct)
+            var caller = await _userRepo.GetUserAccessInfoAsync(callerId, ct)
                 ?? throw new NotFoundException("User", callerId);
             if (order.DistributorId != caller.DistributorId)
                 throw new AuthorizationException("this purchase order");
@@ -620,7 +620,7 @@ public class PurchaseOrderService(
 
         if (callerRole == UserRole.Distributor)
         {
-            var caller = await _userRepo.GetUserByIdAsync(callerId, ct)
+            var caller = await _userRepo.GetUserAccessInfoAsync(callerId, ct)
                 ?? throw new NotFoundException("User", callerId);
             if (order.DistributorId != caller.DistributorId)
                 throw new AuthorizationException("this purchase order");
@@ -680,7 +680,7 @@ public class PurchaseOrderService(
 
         if (callerRole == UserRole.Distributor)
         {
-            var caller = await _userRepo.GetUserByIdAsync(callerId, ct)
+            var caller = await _userRepo.GetUserAccessInfoAsync(callerId, ct)
                 ?? throw new NotFoundException("User", callerId);
             if (order.DistributorId != caller.DistributorId)
                 throw new AuthorizationException("this purchase order");
@@ -745,7 +745,7 @@ public class PurchaseOrderService(
         // 4. Ownership: a Distributor may only act on their own orders.
         if (callerRole == UserRole.Distributor)
         {
-            var caller = await _userRepo.GetUserByIdAsync(callerId, ct)
+            var caller = await _userRepo.GetUserAccessInfoAsync(callerId, ct)
                 ?? throw new NotFoundException("User", callerId);
             if (order.DistributorId != caller.DistributorId)
                 throw new AuthorizationException("this purchase order");
@@ -797,7 +797,7 @@ public class PurchaseOrderService(
         int? distributorFilter = null;
         if (callerRole == UserRole.Distributor)
         {
-            var caller = await _userRepo.GetUserByIdAsync(callerId, ct)
+            var caller = await _userRepo.GetUserAccessInfoAsync(callerId, ct)
                 ?? throw new NotFoundException("User", callerId);
             distributorFilter = caller.DistributorId;
         }

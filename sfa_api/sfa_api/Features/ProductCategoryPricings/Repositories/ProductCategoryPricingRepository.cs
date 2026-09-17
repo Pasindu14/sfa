@@ -52,27 +52,31 @@ public class ProductCategoryPricingRepository(AppDbContext context) : IProductCa
 
     public async Task<IEnumerable<ProductPriceForDistributorDto>> GetForCategoryAsync(string category, CancellationToken ct = default)
     {
-        var products = await _context.Products
-            .AsNoTracking()
-            .Where(p => p.IsActive && !p.IsDeleted)
-            .OrderBy(p => p.Code)
+        // One round trip: active products LEFT JOIN this category's price row, projecting only the
+        // four columns the DTO needs. (ProductId, Category) is unique, so the join yields at most
+        // one row per product; a product without a price row gets 0, as before.
+        var rows = await (
+                from p in _context.Products.AsNoTracking()
+                where p.IsActive && !p.IsDeleted
+                join pr in _context.ProductCategoryPrices.AsNoTracking().Where(x => x.Category == category)
+                    on p.Id equals pr.ProductId into prices
+                from pr in prices.DefaultIfEmpty()
+                orderby p.Code
+                select new
+                {
+                    p.Id,
+                    p.Code,
+                    p.ItemDescription,
+                    Price = pr == null ? (decimal?)null : pr.Price
+                })
             .ToListAsync(ct);
 
-        var productIds = products.Select(p => p.Id).ToList();
-
-        var pricingRows = await _context.ProductCategoryPrices
-            .AsNoTracking()
-            .Where(x => productIds.Contains(x.ProductId) && x.Category == category)
-            .ToListAsync(ct);
-
-        var priceByProduct = pricingRows.ToDictionary(x => x.ProductId, x => x.Price);
-
-        return products.Select(p => new ProductPriceForDistributorDto(
-            ProductId: p.Id,
-            ProductCode: p.Code,
-            ItemDescription: p.ItemDescription,
-            UnitPrice: priceByProduct.GetValueOrDefault(p.Id, 0m)
-        ));
+        return rows.Select(r => new ProductPriceForDistributorDto(
+            ProductId: r.Id,
+            ProductCode: r.Code,
+            ItemDescription: r.ItemDescription,
+            UnitPrice: r.Price ?? 0m
+        )).ToList();
     }
 
     public async Task<Dictionary<int, decimal>> GetPriceMapForCategoryAsync(

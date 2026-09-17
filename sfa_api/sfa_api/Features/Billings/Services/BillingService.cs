@@ -685,7 +685,7 @@ public class BillingService(
         var billing = await _billingRepository.GetTrackedByIdWithItemsAsync(billingId, ct)
             ?? throw new NotFoundException("Billing", billingId);
 
-        var user = await _userRepository.GetUserByIdAsync(userId, ct);
+        var user = await _userRepository.GetUserAccessInfoAsync(userId, ct);
         if (user?.DistributorId == null || user.DistributorId != billing.DistributorId)
             throw new AuthorizationException("Billing");
 
@@ -1061,6 +1061,10 @@ public class BillingService(
         await _cache.RemoveAsync(RepMonthlySalesCacheKey(billing.SalesRepId, date.Year, date.Month), ct);
         await _cache.RemoveAsync(RepDailySalesCacheKey(billing.SalesRepId, date), ct);
         await _cache.RemoveAsync(RepMonthlySalesItemwiseCacheKey(billing.SalesRepId, date.Year, date.Month), ct);
+
+        // Supervisor dashboard counts/sums this supervisor's bills per day — evict only their entries.
+        if (billing.SupervisorUserId is int supervisorId)
+            await _cache.RemoveByPrefixAsync(Supervisor.SupervisorSummaryCacheKeys.ForSupervisor(supervisorId), ct);
     }
 
     private static string RepMonthlySalesCacheKey(int salesRepId, int year, int month)
@@ -1155,7 +1159,7 @@ public class BillingService(
         var billing = await _billingRepository.GetTrackedByIdAsync(billingId, ct)
             ?? throw new NotFoundException("Billing", billingId);
 
-        var user = await _userRepository.GetUserByIdAsync(userId, ct);
+        var user = await _userRepository.GetUserAccessInfoAsync(userId, ct);
         if (user?.DistributorId == null || user.DistributorId != billing.DistributorId)
             throw new AuthorizationException("Billing");
 
@@ -1202,7 +1206,7 @@ public class BillingService(
         var billing = await _billingRepository.GetTrackedByIdWithItemsAsync(billingId, ct)
             ?? throw new NotFoundException("Billing", billingId);
 
-        var user = await _userRepository.GetUserByIdAsync(userId, ct);
+        var user = await _userRepository.GetUserAccessInfoAsync(userId, ct);
         if (user?.DistributorId == null || user.DistributorId != billing.DistributorId)
             throw new AuthorizationException("Billing");
 
@@ -1289,7 +1293,7 @@ public class BillingService(
         var billing = await _billingRepository.GetTrackedByIdAsync(billingId, ct)
             ?? throw new NotFoundException("Billing", billingId);
 
-        var user = await _userRepository.GetUserByIdAsync(userId, ct);
+        var user = await _userRepository.GetUserAccessInfoAsync(userId, ct);
         if (user?.DistributorId == null || user.DistributorId != billing.DistributorId)
             throw new AuthorizationException("Billing");
 
@@ -1314,7 +1318,7 @@ public class BillingService(
         var billing = await _billingRepository.GetTrackedByIdAsync(billingId, ct)
             ?? throw new NotFoundException("Billing", billingId);
 
-        var user = await _userRepository.GetUserByIdAsync(userId, ct);
+        var user = await _userRepository.GetUserAccessInfoAsync(userId, ct);
         if (user?.DistributorId == null || user.DistributorId != billing.DistributorId)
             throw new AuthorizationException("Billing");
 

@@ -8,17 +8,20 @@ using sfa_api.Features.NotBillings.Repositories;
 using sfa_api.Features.NotBillings.Requests;
 using sfa_api.Features.UserGeoAssignments.Repositories;
 using sfa_api.Features.UserReportingLines.Repositories;
+using sfa_api.Infrastructure.Caching;
 
 namespace sfa_api.Features.NotBillings.Services;
 
 public class NotBillingService(
     INotBillingRepository notBillingRepository,
     IUserGeoAssignmentRepository geoAssignmentRepository,
-    IUserReportingLineRepository reportingLineRepository) : INotBillingService
+    IUserReportingLineRepository reportingLineRepository,
+    ICacheService cache) : INotBillingService
 {
     private readonly INotBillingRepository _notBillingRepository = notBillingRepository;
     private readonly IUserGeoAssignmentRepository _geoAssignmentRepository = geoAssignmentRepository;
     private readonly IUserReportingLineRepository _reportingLineRepository = reportingLineRepository;
+    private readonly ICacheService _cache = cache;
 
     public async Task<NotBillingDto> CreateAsync(CreateNotBillingRequest request, int salesRepId, string? clientRecordId = null, CancellationToken ct = default)
     {
@@ -115,6 +118,10 @@ public class NotBillingService(
                 ?? throw new DatabaseUnavailableException();
             return ProjectToDto(winner);
         }
+
+        // Supervisor dashboard counts this supervisor's not-billings per day.
+        if (supervisorId is int supervisorUserId)
+            await _cache.RemoveByPrefixAsync(Supervisor.SupervisorSummaryCacheKeys.ForSupervisor(supervisorUserId), ct);
 
         // ⑦ Re-fetch read-only for DTO projection
         var created = await _notBillingRepository.GetByIdAsync(notBilling.Id, ct)

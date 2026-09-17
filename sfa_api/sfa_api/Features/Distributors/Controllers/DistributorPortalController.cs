@@ -30,7 +30,7 @@ public class DistributorPortalController(
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId);
-        var user = await _userRepo.GetUserByIdAsync(userId, ct);
+        var user = await _userRepo.GetUserAccessInfoAsync(userId, ct);
         if (user?.DistributorId == null)
             throw new BusinessRuleException("NO_DISTRIBUTOR_LINKED",
                 "Your account is not linked to a distributor.");
@@ -54,7 +54,7 @@ public class DistributorPortalController(
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId);
 
-        var user = await _userRepo.GetUserByIdAsync(userId, ct);
+        var user = await _userRepo.GetUserAccessInfoAsync(userId, ct);
         if (user?.DistributorId == null)
             throw new BusinessRuleException("NO_DISTRIBUTOR_LINKED",
                 "Your account is not linked to a distributor.");

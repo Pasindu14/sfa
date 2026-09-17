@@ -52,7 +52,7 @@ public class OutletService(
                 var geo = await _geoRepo.GetActiveByUserIdAsync(callerId, ct);
                 return (true, geo?.TerritoryId);
             case UserRole.Distributor:
-                var user = await _userRepo.GetUserByIdAsync(callerId, ct);
+                var user = await _userRepo.GetUserAccessInfoAsync(callerId, ct);
                 int? territoryId = null;
                 if (user?.DistributorId is int distId)
                     territoryId = (await _distributorRepo.GetByIdAsync(distId, ct))?.TerritoryId;
@@ -156,8 +156,8 @@ public class OutletService(
             ExemptionReason: policy.Reason?.ToString());
     }
 
-    public async Task<IEnumerable<OutletMapPointDto>> GetMapPointsAsync(CancellationToken ct = default)
-        => await _repo.GetMapPointsAsync(ct);
+    public async Task<IEnumerable<OutletMapPointDto>> GetMapPointsAsync(OutletMapBounds? bounds = null, CancellationToken ct = default)
+        => await _repo.GetMapPointsAsync(bounds, ct);
 
     public async Task<OutletDto> CreateAsync(CreateOutletRequest request, int? callerId, CancellationToken ct = default)
     {
