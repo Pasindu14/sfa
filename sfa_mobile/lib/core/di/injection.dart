@@ -198,7 +198,12 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton(() => LogoutUseCase(
         getIt<AuthRepository>(),
         // Resolved at logout time, not registration time.
-        onLoggedOut: () => getIt<EtagStore>().clearAll(),
+        onLoggedOut: () async {
+          await getIt<EtagStore>().clearAll();
+          // Stock belongs to the rep's distributor — never let the next login on this phone
+          // see the previous rep's snapshot before its own sync lands.
+          await getIt<DistributorStockLocalDatasource>().replaceAll(const []);
+        },
       ));
   getIt.registerLazySingleton(
       () => GetCurrentAuthUseCase(getIt<AuthRepository>()));

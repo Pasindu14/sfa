@@ -41,6 +41,8 @@ import 'package:uswatte/features/products/domain/usecases/sync_products_usecase.
 import 'package:uswatte/features/rep_assignment/domain/usecases/get_rep_assignment_usecase.dart';
 import 'package:uswatte/features/rep_assignment/presentation/bloc/rep_assignment_bloc.dart';
 import 'package:uswatte/features/stock/presentation/pages/stock_catalog_page.dart';
+import 'package:uswatte/features/pricing/presentation/pages/price_lists_page.dart';
+import 'package:uswatte/features/pricing/data/models/pricing_structure_model.dart';
 import 'package:uswatte/features/sync/presentation/pages/sync_page.dart';
 import 'package:uswatte/features/sales_rep/presentation/pages/unsupported_role_page.dart';
 import 'package:uswatte/features/splash/presentation/pages/splash_page.dart';
@@ -353,6 +355,12 @@ class AppRouter {
                       syncService: getIt<BillSyncService>(),
                     )..add(const LoadBillsRequested()),
                   ),
+                  // Gates the New Order FAB when the rep has no distributor.
+                  BlocProvider(
+                    create: (_) => RepAssignmentBloc(
+                      getRepAssignment: getIt<GetRepAssignmentUseCase>(),
+                    )..add(const LoadRepAssignmentRequested()),
+                  ),
                   BlocProvider(
                     create: (_) => AssignmentsBloc(
                       getAssignments: getIt<GetAssignmentsUseCase>(),
@@ -537,6 +545,23 @@ class AppRouter {
               path: 'stock',
               name: 'stockCatalog',
               builder: (_, __) => const StockCatalogPage(),
+            ),
+            GoRoute(
+              path: 'price-lists',
+              name: 'priceLists',
+              builder: (_, __) => const PriceListsPage(),
+              routes: [
+                GoRoute(
+                  path: ':id',
+                  name: 'priceListDetail',
+                  builder: (_, state) => PriceListDetailPage(
+                    structureId: int.parse(state.pathParameters['id']!),
+                    initial: state.extra is PricingStructureModel
+                        ? state.extra as PricingStructureModel
+                        : null,
+                  ),
+                ),
+              ],
             ),
             GoRoute(
               path: 'todays-route-map',

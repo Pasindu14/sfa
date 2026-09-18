@@ -1,5 +1,7 @@
+import 'package:uswatte/core/errors/app_exception.dart';
 import 'package:uswatte/features/stock/data/datasources/distributor_stock_local_datasource.dart';
 import 'package:uswatte/features/stock/data/datasources/distributor_stock_remote_datasource.dart';
+import 'package:uswatte/features/stock/data/models/distributor_stock_model.dart';
 
 /// Downloads the distributor stock snapshot and replaces the local table.
 ///
@@ -51,7 +53,15 @@ class SyncDistributorStockUseCase {
   }
 
   Future<void> _run() async {
-    final stocks = await _remote.fetchAll();
+    final List<DistributorStockModel> stocks;
+    try {
+      stocks = await _remote.fetchAll();
+    } on BusinessRuleException catch (e) {
+      // The rep has no distributor (anymore). The server's answer is authoritative, so drop the
+      // old snapshot — otherwise the picker keeps showing another distributor's stock forever.
+      if (e.code == 'NO_DISTRIBUTOR_ASSIGNED') await _local.replaceAll(const []);
+      rethrow;
+    }
     await _local.replaceAll(stocks);
     final now = _now();
     await _local.saveLastSyncedAt(now);

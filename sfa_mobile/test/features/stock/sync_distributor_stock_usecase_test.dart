@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:uswatte/core/errors/app_exception.dart';
 import 'package:uswatte/features/stock/data/datasources/distributor_stock_local_datasource.dart';
 import 'package:uswatte/features/stock/data/datasources/distributor_stock_remote_datasource.dart';
 import 'package:uswatte/features/stock/data/models/distributor_stock_model.dart';
@@ -84,5 +85,26 @@ void main() {
     await Future.wait([a, b]);
 
     expect(calls, 2);
+  });
+
+  test('no distributor assigned clears the stale local snapshot', () async {
+    // A rep moved off a distributor used to keep seeing its stock forever: the 422 aborted the
+    // sync before the table was replaced.
+    when(() => remote.fetchAll()).thenThrow(const BusinessRuleException(
+        code: 'NO_DISTRIBUTOR_ASSIGNED', message: 'No distributor'));
+
+    await expectLater(useCase(), throwsA(isA<BusinessRuleException>()));
+
+    verify(() => local.replaceAll(const [])).called(1);
+    verifyNever(() => local.saveLastSyncedAt(any()));
+  });
+
+  test('other failures keep the local snapshot', () async {
+    when(() => remote.fetchAll()).thenThrow(
+        const NetworkException(message: 'No internet connection.'));
+
+    await expectLater(useCase(), throwsA(isA<NetworkException>()));
+
+    verifyNever(() => local.replaceAll(any()));
   });
 }

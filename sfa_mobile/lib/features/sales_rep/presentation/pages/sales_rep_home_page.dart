@@ -230,8 +230,32 @@ class _NewOrderButtonState extends State<_NewOrderButton>
     super.dispose();
   }
 
+  void _explainDisabled(BuildContext context) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            'No distributor is assigned to you, so orders can\'t be placed. '
+            'Contact your supervisor.',
+            style: GoogleFonts.barlow(color: Colors.white, fontWeight: FontWeight.w500),
+          ),
+          backgroundColor: AppColors.darkSurface,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(16.w),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+        ),
+      );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Disabled only when the server has confirmed there is no distributor — see
+    // RepAssignmentState.hasNoDistributor for why "unknown" stays enabled.
+    final disabled = context.select<RepAssignmentBloc, bool>(
+      (bloc) => bloc.state.hasNoDistributor,
+    );
+
     return Padding(
       padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 0),
       child: AnimatedBuilder(
@@ -240,13 +264,19 @@ class _NewOrderButtonState extends State<_NewOrderButton>
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16.r),
             boxShadow: [
-              BoxShadow(
-                color: AppColors.primary
-                    .withValues(alpha: 0.28 + _glow.value * 0.18),
-                blurRadius: 18 + _glow.value * 14,
-                offset: const Offset(0, 6),
-                spreadRadius: _glow.value * 1.5,
-              ),
+              disabled
+                  ? BoxShadow(
+                      color: AppColors.foreground.withValues(alpha: 0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    )
+                  : BoxShadow(
+                      color: AppColors.primary
+                          .withValues(alpha: 0.28 + _glow.value * 0.18),
+                      blurRadius: 18 + _glow.value * 14,
+                      offset: const Offset(0, 6),
+                      spreadRadius: _glow.value * 1.5,
+                    ),
             ],
           ),
           child: child,
@@ -254,7 +284,9 @@ class _NewOrderButtonState extends State<_NewOrderButton>
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () => context.push('/sales-rep/bills/create'),
+            onTap: disabled
+                ? () => _explainDisabled(context)
+                : () => context.push('/sales-rep/bills/create'),
             borderRadius: BorderRadius.circular(16.r),
             splashColor: Colors.white.withValues(alpha: 0.14),
             highlightColor: Colors.white.withValues(alpha: 0.07),
@@ -264,11 +296,13 @@ class _NewOrderButtonState extends State<_NewOrderButton>
                 gradient: LinearGradient(
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
-                  colors: [
-                    AppColors.primaryDark,
-                    AppColors.primary,
-                    AppColors.primaryLight,
-                  ],
+                  colors: disabled
+                      ? const [Color(0xFF9CA3AF), Color(0xFFADB2BA), Color(0xFFBFC3C9)]
+                      : const [
+                          AppColors.primaryDark,
+                          AppColors.primary,
+                          AppColors.primaryLight,
+                        ],
                   stops: const [0.0, 0.5, 1.0],
                 ),
                 borderRadius: BorderRadius.circular(16.r),
@@ -289,7 +323,7 @@ class _NewOrderButtonState extends State<_NewOrderButton>
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('+ PLACE',
+                                Text(disabled ? 'NO DISTRIBUTOR ASSIGNED' : '+ PLACE',
                                     style: GoogleFonts.barlowCondensed(
                                       fontSize: 9.sp,
                                       fontWeight: FontWeight.w700,
@@ -319,8 +353,12 @@ class _NewOrderButtonState extends State<_NewOrderButton>
                                 width: 1.5,
                               ),
                             ),
-                            child: Icon(Icons.add_shopping_cart_rounded,
-                                color: Colors.white, size: 20.r),
+                            child: Icon(
+                                disabled
+                                    ? Icons.block_rounded
+                                    : Icons.add_shopping_cart_rounded,
+                                color: Colors.white,
+                                size: 20.r),
                           ),
                         ],
                       ),

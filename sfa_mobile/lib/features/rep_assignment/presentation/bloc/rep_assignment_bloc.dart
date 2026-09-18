@@ -25,6 +25,8 @@ class RepAssignmentBloc
     try {
       final assignment = await _getRepAssignment();
       emit(RepAssignmentLoaded(assignment));
+    } on NotFoundException catch (e) {
+      emit(RepAssignmentError(e.message, notAssigned: true));
     } on AppException catch (e) {
       emit(RepAssignmentError(e.message));
     } catch (_) {

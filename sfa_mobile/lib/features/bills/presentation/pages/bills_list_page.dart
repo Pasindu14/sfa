@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:uswatte/features/rep_assignment/presentation/bloc/rep_assignment_bloc.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/bills/domain/entities/bill.dart';
@@ -49,9 +50,14 @@ class BillsListPage extends StatelessWidget {
         backgroundColor: AppColors.background,
         floatingActionButton: BlocBuilder<OutletsBloc, OutletsState>(
           builder: (context, outletsState) {
-            final hasAssignment = outletsState is OutletsLoaded
-                ? outletsState.hasActiveAssignment
-                : true;
+            // No distributor → nothing can be billed (the server refuses the bill anyway).
+            final noDistributor = context.select<RepAssignmentBloc, bool>(
+              (bloc) => bloc.state.hasNoDistributor,
+            );
+            final hasAssignment = !noDistributor &&
+                (outletsState is OutletsLoaded
+                    ? outletsState.hasActiveAssignment
+                    : true);
             return FloatingActionButton.extended(
               backgroundColor: hasAssignment
                   ? AppColors.primary

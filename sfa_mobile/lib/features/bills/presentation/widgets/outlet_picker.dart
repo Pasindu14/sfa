@@ -387,20 +387,59 @@ class _OutletSheetState extends State<_OutletSheet> {
                       final o = n.outlet;
                       final isSelected = widget.selected?.id == o.id;
                       final distLabel = _formatDistance(n.meters);
+                      // (0, 0) = location never captured: the geofence can't
+                      // check it, so it always shows — flag it for the rep.
+                      final noLocation =
+                          o.latitude == 0.0 && o.longitude == 0.0;
 
                       return ListTile(
                         contentPadding: EdgeInsets.symmetric(
                             horizontal: 4.w, vertical: 4.h),
-                        leading: Container(
-                          width: 36.r,
-                          height: 36.r,
-                          decoration: BoxDecoration(
-                            color:
-                                AppColors.primary.withValues(alpha: 0.10),
-                            borderRadius: BorderRadius.circular(8.r),
+                        leading: SizedBox(
+                          width: 40.r,
+                          height: 40.r,
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Positioned(
+                                left: 0,
+                                bottom: 0,
+                                child: Container(
+                                  width: 36.r,
+                                  height: 36.r,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary
+                                        .withValues(alpha: 0.10),
+                                    borderRadius: BorderRadius.circular(8.r),
+                                  ),
+                                  child: Icon(Icons.storefront_rounded,
+                                      size: 16.r, color: AppColors.primary),
+                                ),
+                              ),
+                              if (noLocation)
+                                Positioned(
+                                  right: 0,
+                                  top: 0,
+                                  child: Tooltip(
+                                    message: 'No location saved for this outlet',
+                                    triggerMode: TooltipTriggerMode.tap,
+                                    child: Container(
+                                      key: ValueKey('no-location-${o.id}'),
+                                      width: 16.r,
+                                      height: 16.r,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.warning,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                            color: Colors.white, width: 1.5),
+                                      ),
+                                      child: Icon(Icons.priority_high_rounded,
+                                          size: 10.r, color: Colors.white),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
-                          child: Icon(Icons.storefront_rounded,
-                              size: 16.r, color: AppColors.primary),
                         ),
                         title: Row(
                           children: [

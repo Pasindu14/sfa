@@ -329,6 +329,8 @@ class _SyncPageState extends State<SyncPage> {
                   hasError: _pricingErrorMessage != null,
                   errorMessage: _pricingErrorMessage,
                   onSync: _syncPricing,
+                  onView: () => context.push('/sales-rep/price-lists'),
+                  viewLabel: 'View prices',
                 ),
                 if (outletsState is! OutletsLoaded ||
                     outletsState.hasActiveAssignment)
