@@ -110,6 +110,23 @@ function rowErrors(row: PricingStructureItemRow, drafts: DraftState) {
   return errors
 }
 
+function isNum(v: number | null): v is number {
+  return v !== null && !Number.isNaN(v)
+}
+
+/**
+ * The case price the phone bills when a structure leaves it blank: pack × packs per case.
+ * Null when it can't be derived (no pack price, or the product has no case size).
+ */
+function derivedCasePrice(pack: number | null, piecesPerPack: number) {
+  return isNum(pack) && piecesPerPack > 0 ? Math.round(pack * piecesPerPack * 100) / 100 : null
+}
+
+/** Outlet margin (MRP − pack price) ÷ MRP, as a percentage. Null unless both are valid. */
+function marginPct(pack: number | null, mrp: number | null) {
+  return isNum(pack) && isNum(mrp) && mrp > 0 ? ((mrp - pack) / mrp) * 100 : null
+}
+
 type ViewMode = 'all' | 'edited' | 'unpriced'
 
 interface PricingStructurePricesPageProps {
@@ -264,9 +281,9 @@ export function PricingStructurePricesPage({ structureId }: PricingStructurePric
 
       {/* ── Toolbar ──────────────────────────────────────────────────────── */}
       {!isLoading && rows.length > 0 && (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative w-full sm:w-72">
+            <div className="relative w-full sm:w-80">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="search"
@@ -280,7 +297,7 @@ export function PricingStructurePricesPage({ structureId }: PricingStructurePric
               />
             </div>
 
-            <div className="flex items-center gap-1 rounded-lg border bg-muted/40 p-1">
+            <div className="flex w-fit items-center gap-1 rounded-lg border bg-muted/40 p-1">
               <ViewTab
                 label="All"
                 count={rows.length}
@@ -294,6 +311,7 @@ export function PricingStructurePricesPage({ structureId }: PricingStructurePric
                 label="Edited"
                 count={dirtyRows.length}
                 active={mode === 'edited'}
+                tone={dirtyRows.length > 0 ? 'primary' : undefined}
                 onClick={() => {
                   setMode('edited')
                   resetPaging()
@@ -303,6 +321,7 @@ export function PricingStructurePricesPage({ structureId }: PricingStructurePric
                 label="Unpriced"
                 count={unpricedCount}
                 active={mode === 'unpriced'}
+                tone={unpricedCount > 0 ? 'warning' : undefined}
                 onClick={() => {
                   setMode('unpriced')
                   resetPaging()
@@ -311,26 +330,39 @@ export function PricingStructurePricesPage({ structureId }: PricingStructurePric
             </div>
           </div>
 
-          <p className="text-xs text-muted-foreground">
-            {filteredRows.length} shown · prices in LKR · blank = not priced
-          </p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            <span>
+              <span className="font-medium tabular-nums text-foreground">
+                {rows.length - unpricedCount}
+              </span>{' '}
+              of {rows.length} priced
+            </span>
+            <span className="hidden h-3 w-px bg-border sm:block" />
+            <span>Prices in LKR · blank = not priced</span>
+            <span className="hidden h-3 w-px bg-border sm:block" />
+            <span>Blank case price = pack × packs per case</span>
+          </div>
         </div>
       )}
 
       {/* ── Loading ──────────────────────────────────────────────────────── */}
       {isLoading && (
         <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-          <div className="border-b bg-muted/40 px-4 py-3">
-            <Skeleton className="h-4 w-40" />
+          <div className="border-b bg-muted/40 px-5 py-3">
+            <Skeleton className="h-3 w-48" />
           </div>
           <div className="divide-y">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4 px-4 py-4">
-                <Skeleton className="h-5 w-20 shrink-0" />
-                <Skeleton className="h-4 flex-1" />
+              <div key={i} className="flex items-center gap-4 px-5 py-3.5">
+                <Skeleton className="h-5 w-14 shrink-0" />
+                <div className="flex flex-1 flex-col gap-1.5">
+                  <Skeleton className="h-4 w-2/5" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
                 {FIELDS.map((f) => (
-                  <Skeleton key={f.key} className="h-9 w-[110px] shrink-0" />
+                  <Skeleton key={f.key} className="h-8 w-32 shrink-0" />
                 ))}
+                <Skeleton className="h-4 w-12 shrink-0" />
               </div>
             ))}
           </div>
@@ -363,91 +395,99 @@ export function PricingStructurePricesPage({ structureId }: PricingStructurePric
               }
             />
           ) : (
-            /* Horizontal scroll only — the page owns vertical scrolling, same as the
-               category pricing worksheet, which rules out a sticky header. */
+            /* Horizontal scroll only — the page owns vertical scrolling. Columns are sized in
+               percentages so the price inputs sit beside the product on wide screens instead of
+               being pushed to the far edge. */
             <div className="overflow-x-auto">
-              <table
-                className="w-full border-separate border-spacing-0 text-sm"
-                style={{ minWidth: 720 }}
-              >
+              <table className="w-full table-fixed border-collapse text-sm" style={{ minWidth: 880 }}>
                 <colgroup>
-                  <col style={{ width: 44 }} />
-                  <col style={{ width: 120 }} />
-                  <col />
+                  <col style={{ width: '38%' }} />
                   {FIELDS.map((f) => (
-                    <col key={f.key} style={{ width: 140 }} />
+                    <col key={f.key} style={{ width: f.key === 'dealerCasePrice' ? '18%' : '15%' }} />
                   ))}
+                  <col style={{ width: '9%' }} />
+                  <col style={{ width: 52 }} />
                 </colgroup>
 
                 <thead>
-                  <tr>
-                    <th className="border-b bg-card px-2 py-2.5" />
-                    <th className="border-b bg-card px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-                      Code
-                    </th>
-                    <th className="border-b bg-card px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-                      Description
+                  <tr className="border-b bg-muted/40">
+                    <th className="px-5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Product
                     </th>
                     {FIELDS.map((f) => (
                       <th
                         key={f.key}
-                        className="border-b bg-card px-3 py-2.5 text-center text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground"
+                        className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
                       >
                         {f.label}
                       </th>
                     ))}
+                    <th
+                      className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
+                      title="Outlet margin: (MRP − pack price) ÷ MRP"
+                    >
+                      Margin
+                    </th>
+                    <th className="px-2 py-2.5">
+                      <span className="sr-only">Actions</span>
+                    </th>
                   </tr>
                 </thead>
 
-                <tbody ref={gridRef}>
+                <tbody ref={gridRef} className="divide-y">
                   {pagedRows.map((row, rowIndex) => {
                     const rowDirty = isRowDirty(row, drafts)
                     const errors = errorsByProduct.get(row.productId)
-                    const tint = errors
-                      ? 'bg-destructive/[0.04]'
-                      : rowDirty
-                        ? 'bg-primary/[0.04]'
-                        : undefined
+                    const pack = valueOf(row, 'dealerPackPrice', drafts)
+                    const kase = valueOf(row, 'dealerCasePrice', drafts)
+                    const mrp = valueOf(row, 'mrp', drafts)
+                    const derivedCase = derivedCasePrice(pack, row.piecesPerPack)
+                    const caseMismatch =
+                      derivedCase !== null && isNum(kase) && Math.abs(kase - derivedCase) >= 0.01
+                    const margin = marginPct(pack, mrp)
+                    const unpriced = pack === null
+
                     return (
                       <tr
                         key={row.productId}
-                        className="transition-colors last:[&>td]:border-b-0 hover:bg-muted/30"
+                        className={cn(
+                          'group transition-colors hover:bg-muted/30',
+                          errors ? 'bg-destructive/[0.03]' : rowDirty && 'bg-primary/[0.03]',
+                        )}
                       >
-                        {/* Gutter: dirty marker doubling as the row's revert control */}
-                        <td className={cn('border-b px-2 py-2 align-top', tint)}>
-                          <div className="flex h-9 items-center justify-center">
-                            {rowDirty && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                aria-label={`Revert ${row.productCode} to saved prices`}
-                                title="Revert this row"
-                                className="size-7 text-primary hover:bg-primary/10 hover:text-primary"
-                                onClick={() => revertRow(row.productId)}
-                              >
-                                <RotateCcw className="size-3.5" />
-                              </Button>
+                        {/* Product — accent bar marks edited / invalid rows */}
+                        <td className="relative px-5 py-3 align-middle">
+                          <span
+                            aria-hidden
+                            className={cn(
+                              'absolute inset-y-0 left-0 w-[3px]',
+                              errors ? 'bg-destructive' : rowDirty ? 'bg-primary' : 'bg-transparent',
                             )}
-                          </div>
-                        </td>
-
-                        <td className={cn('border-b px-4 py-2 align-top', tint)}>
-                          <span className="inline-flex h-9 items-center font-mono text-xs tracking-tight text-muted-foreground">
-                            {row.productCode}
-                          </span>
-                        </td>
-
-                        <td className={cn('border-b px-4 py-2 align-top', tint)}>
-                          <div className="flex min-h-9 flex-col justify-center">
-                            <span className="line-clamp-2 text-sm font-medium leading-snug">
-                              {row.itemDescription}
+                          />
+                          <div className="flex min-w-0 items-center gap-3">
+                            <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] font-medium text-muted-foreground">
+                              {row.productCode}
                             </span>
-                            {!row.isProductActive && (
-                              <span className="text-[10px] font-medium text-amber-600">
-                                Inactive product
-                              </span>
-                            )}
+                            <div className="min-w-0">
+                              <p className="truncate font-medium leading-snug" title={row.itemDescription}>
+                                {row.itemDescription}
+                              </p>
+                              <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+                                {row.piecesPerPack > 0 && (
+                                  <span className="tabular-nums">{row.piecesPerPack} pkts / case</span>
+                                )}
+                                {!row.isProductActive && (
+                                  <span className="rounded bg-amber-500/10 px-1.5 py-px font-medium text-amber-700 dark:text-amber-400">
+                                    Inactive product
+                                  </span>
+                                )}
+                                {unpriced && row.isProductActive && (
+                                  <span className="rounded bg-muted px-1.5 py-px font-medium">
+                                    Not priced
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </td>
 
@@ -456,50 +496,106 @@ export function PricingStructurePricesPage({ structureId }: PricingStructurePric
                           const dirty = isCellDirty(row, f.key, drafts)
                           const error = errors?.[f.key]
                           const saved = row[f.key]
+                          const isCase = f.key === 'dealerCasePrice'
+                          // Hint under the input, in priority order: error › "was" › case check.
+                          const hint = error
+                            ? { text: error, className: 'text-destructive' }
+                            : dirty
+                              ? {
+                                  text: `was ${saved === null ? 'unpriced' : money.format(saved)}`,
+                                  className: 'text-muted-foreground',
+                                }
+                              : isCase && caseMismatch
+                                ? {
+                                    text: `≠ pack × ${row.piecesPerPack} (${money.format(derivedCase!)})`,
+                                    className: 'text-amber-700 dark:text-amber-400',
+                                  }
+                                : null
                           return (
-                            <td key={f.key} className={cn('border-b px-2 py-2 align-top', tint)}>
-                              <Input
-                                type="number"
-                                min={MIN_PRICE}
-                                max={MAX_PRICE}
-                                step="0.01"
-                                inputMode="decimal"
-                                placeholder="—"
-                                data-row={rowIndex}
-                                data-field={f.key}
-                                aria-label={`${f.label} for ${row.productCode}`}
-                                aria-invalid={error ? true : undefined}
-                                className={cn(
-                                  'h-9 w-full text-center font-mono text-sm tabular-nums',
-                                  dirty && 'border-primary font-semibold ring-2 ring-primary/20',
-                                  error && 'border-destructive ring-destructive/20',
+                            <td key={f.key} className="px-3 py-3 align-middle">
+                              <div className="relative ml-auto max-w-[168px]">
+                                <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground/70">
+                                  Rs
+                                </span>
+                                <Input
+                                  type="number"
+                                  min={MIN_PRICE}
+                                  max={MAX_PRICE}
+                                  step="0.01"
+                                  inputMode="decimal"
+                                  // An empty case price is billed as pack × packs per case on the
+                                  // phone — show that value so the admin sees what a blank means.
+                                  placeholder={
+                                    isCase && derivedCase !== null ? money.format(derivedCase) : '—'
+                                  }
+                                  data-row={rowIndex}
+                                  data-field={f.key}
+                                  aria-label={`${f.label} for ${row.productCode}`}
+                                  aria-invalid={error ? true : undefined}
+                                  className={cn(
+                                    'h-8 w-full pl-8 pr-2.5 text-right font-mono text-[13px] tabular-nums shadow-none placeholder:text-muted-foreground/50',
+                                    '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
+                                    dirty && 'border-primary bg-primary/5 font-semibold',
+                                    isCase && caseMismatch && !dirty && !error && 'border-amber-400/70',
+                                    error && 'border-destructive bg-destructive/5',
+                                  )}
+                                  value={draft ?? (saved === null ? '' : saved.toFixed(2))}
+                                  onChange={(e) => setCell(row.productId, f.key, e.target.value)}
+                                  onFocus={(e) => e.currentTarget.select()}
+                                  onKeyDown={(e) => handleCellKeyDown(e, rowIndex, f.key)}
+                                  // Stop a page scroll over a focused field from silently
+                                  // stepping the price.
+                                  onWheel={(e) => e.currentTarget.blur()}
+                                />
+                                {/* Absolutely placed in the row's padding, so a hint appearing
+                                    never shifts the grid under the cursor. */}
+                                {hint && (
+                                  <p
+                                    className={cn(
+                                      'absolute right-0 top-full mt-0.5 truncate text-right text-[10px] leading-3 tabular-nums',
+                                      hint.className,
+                                    )}
+                                    title={hint.text}
+                                  >
+                                    {hint.text}
+                                  </p>
                                 )}
-                                value={draft ?? (saved === null ? '' : String(saved))}
-                                onChange={(e) => setCell(row.productId, f.key, e.target.value)}
-                                onFocus={(e) => e.currentTarget.select()}
-                                onKeyDown={(e) => handleCellKeyDown(e, rowIndex, f.key)}
-                                // Stop a page scroll over a focused field from silently
-                                // stepping the price.
-                                onWheel={(e) => e.currentTarget.blur()}
-                              />
-                              {/* Height is always reserved so revealing a hint never shifts
-                                  the grid under the cursor. An error wins over "was". */}
-                              <p
-                                className={cn(
-                                  'mt-1 h-3.5 text-center text-[10px] leading-[14px] tabular-nums',
-                                  error
-                                    ? 'text-destructive'
-                                    : dirty
-                                      ? 'font-mono text-muted-foreground'
-                                      : 'invisible',
-                                )}
-                              >
-                                {error ??
-                                  `was ${saved === null ? 'unpriced' : money.format(saved)}`}
-                              </p>
+                              </div>
                             </td>
                           )
                         })}
+
+                        <td className="px-3 py-3 text-right align-middle">
+                          {margin === null ? (
+                            <span className="text-muted-foreground/50">—</span>
+                          ) : (
+                            <span
+                              className={cn(
+                                'font-mono text-[13px] tabular-nums',
+                                margin < 0 ? 'font-semibold text-destructive' : 'text-muted-foreground',
+                              )}
+                              title="(MRP − pack price) ÷ MRP"
+                            >
+                              {margin.toFixed(1)}%
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="px-2 py-3 align-middle">
+                          {rowDirty && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Revert ${row.productCode} to saved prices`}
+                              title="Revert this row"
+                              className="size-7 text-muted-foreground hover:text-foreground"
+                              onClick={() => revertRow(row.productId)}
+                            >
+                              <RotateCcw className="size-3.5" />
+                            </Button>
+                          )}
+                        </td>
                       </tr>
                     )
                   })}
@@ -663,11 +759,14 @@ function ViewTab({
   label,
   count,
   active,
+  tone,
   onClick,
 }: {
   label: string
   count: number
   active: boolean
+  /** Draws attention to a non-zero count (unsaved edits, unpriced products). */
+  tone?: 'primary' | 'warning'
   onClick: () => void
 }) {
   return (
@@ -686,7 +785,13 @@ function ViewTab({
       <span
         className={cn(
           'rounded px-1 text-[10px] tabular-nums',
-          active ? 'bg-muted text-muted-foreground' : 'text-muted-foreground/70',
+          tone === 'primary'
+            ? 'bg-primary/10 font-semibold text-primary'
+            : tone === 'warning'
+              ? 'bg-amber-500/10 font-semibold text-amber-700 dark:text-amber-400'
+              : active
+                ? 'bg-muted text-muted-foreground'
+                : 'text-muted-foreground/70',
         )}
       >
         {count}
