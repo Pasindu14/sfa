@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:uswatte/core/errors/app_exception.dart';
 import 'package:uswatte/core/connectivity/connectivity_service.dart';
 import 'package:uswatte/core/di/injection.dart';
 import 'package:uswatte/core/sync/bill_sync_service.dart';
@@ -84,7 +85,7 @@ class _SyncPageState extends State<SyncPage> {
       await _loadPricingMeta();
     } catch (e) {
       if (mounted) {
-        setState(() => _pricingErrorMessage = e.toString());
+        setState(() => _pricingErrorMessage = _errorText(e));
       }
     } finally {
       if (mounted) setState(() => _pricingSyncing = false);
@@ -137,6 +138,9 @@ class _SyncPageState extends State<SyncPage> {
     return online;
   }
 
+  /// A card-sized error line: the exception's own message, never `AppException(CODE): …`.
+  String _errorText(Object e) => e is AppException ? e.message : e.toString();
+
   /// Pushes anything still queued, then pulls the rep's own bills back down. This is what
   /// repopulates the bill list on a reinstalled app or a replacement phone.
   Future<void> _syncBills() async {
@@ -155,7 +159,7 @@ class _SyncPageState extends State<SyncPage> {
       // which downloadMyBills emits on. Reading it from this context throws ProviderNotFound.
     } catch (e) {
       if (mounted) {
-        setState(() => _billsErrorMessage = e.toString());
+        setState(() => _billsErrorMessage = _errorText(e));
       }
     } finally {
       if (mounted) setState(() => _billsSyncing = false);
@@ -179,7 +183,7 @@ class _SyncPageState extends State<SyncPage> {
       await _loadStockMeta();
     } catch (e) {
       if (mounted) {
-        setState(() => _stockErrorMessage = e.toString());
+        setState(() => _stockErrorMessage = _errorText(e));
       }
     } finally {
       if (mounted) setState(() => _stockSyncing = false);

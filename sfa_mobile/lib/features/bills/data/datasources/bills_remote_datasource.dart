@@ -110,6 +110,24 @@ class BillsRemoteDatasource {
     } on DioException catch (e) {
       final passthrough = e.error;
       if (passthrough is AppException) throw passthrough;
+
+      // The server answered — surface what it said instead of calling it a network error.
+      final response = e.response;
+      if (response != null) {
+        final statusCode = response.statusCode ?? 0;
+        final data = response.data;
+        if (data is Map<String, dynamic> && data['error'] is Map<String, dynamic>) {
+          throw ApiError.fromJson(data['error'] as Map<String, dynamic>)
+              .toException(statusCode);
+        }
+        // No API envelope: typically a proxy 502/503 while the server restarts or deploys.
+        throw ServerException(
+          code: 'HTTP_$statusCode',
+          message: statusCode >= 500
+              ? 'Server unavailable ($statusCode). Try again in a minute.'
+              : 'Unexpected server response ($statusCode).',
+        );
+      }
       throw NetworkException(message: _networkMessage(e));
     }
   }
