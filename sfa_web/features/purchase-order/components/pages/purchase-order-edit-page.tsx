@@ -27,6 +27,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { useAllActiveProducts } from '@/features/product/hooks/product.hooks'
+import { useDefaultStructurePrices } from '@/features/pricing-structure/hooks/pricing-structure.hooks'
 import {
   usePurchaseOrder,
   useUpdatePurchaseOrder,
@@ -47,6 +48,7 @@ interface PurchaseOrderEditPageProps {
 export function PurchaseOrderEditPage({ orderId }: PurchaseOrderEditPageProps) {
   const { data: order, isLoading: isLoadingOrder } = usePurchaseOrder(orderId)
   const { data: products, isLoading: isLoadingProducts } = useAllActiveProducts()
+  const { pricesByProduct, isLoading: isLoadingPrices } = useDefaultStructurePrices()
   const { mutate: updateOrder, isPending, fieldErrors } = useUpdatePurchaseOrder(orderId)
 
   const form = useForm<UpdatePurchaseOrderInput>({
@@ -77,20 +79,20 @@ export function PurchaseOrderEditPage({ orderId }: PurchaseOrderEditPageProps) {
     }
   }, [order, form])
 
-  const isLoading = isLoadingOrder || isLoadingProducts
+  const isLoading = isLoadingOrder || isLoadingProducts || isLoadingPrices
 
-  // Prices live on the product itself (PricingStructures removed) — prefer case, then pack.
-  const getProduct = useCallback(
-    (productId: number) => products?.find((p) => p.id === productId) ?? null,
-    [products]
+  // Lines are priced from the default pricing structure — prefer case, then pack.
+  const getPrice = useCallback(
+    (productId: number) => pricesByProduct.get(productId) ?? null,
+    [pricesByProduct]
   )
 
   const getUnitPrice = useCallback(
     (productId: number): number => {
-      const product = getProduct(productId)
-      return product?.dealerCasePrice || product?.dealerPackPrice || 0
+      const price = getPrice(productId)
+      return price?.dealerCasePrice ?? price?.dealerPackPrice ?? 0
     },
-    [getProduct]
+    [getPrice]
   )
 
   const handleProductChange = useCallback((index: number, productId: number) => {
@@ -271,18 +273,17 @@ export function PurchaseOrderEditPage({ orderId }: PurchaseOrderEditPageProps) {
                             )}
                           />
 
-                          {/* Unit Price — read-only, from the product's own price */}
+                          {/* Unit Price — read-only, from the default pricing structure */}
                           {(() => {
                             const pid = watchedItems[index]?.productId
-                            const product = getProduct(pid)
-                            const hasCasePrice = (product?.dealerCasePrice ?? 0) > 0
-                            const hasPackPrice = (product?.dealerPackPrice ?? 0) > 0
-                            const price = hasCasePrice
-                              ? product!.dealerCasePrice
-                              : hasPackPrice
-                                ? product!.dealerPackPrice
-                                : null
-                            const priceLabel = hasCasePrice ? 'Case price' : hasPackPrice ? 'Pack price' : null
+                            const listed = getPrice(pid)
+                            const price = listed?.dealerCasePrice ?? listed?.dealerPackPrice ?? null
+                            const priceLabel =
+                              listed?.dealerCasePrice != null
+                                ? 'Case price'
+                                : listed != null
+                                  ? 'Pack price'
+                                  : null
 
                             return (
                               <div className="flex flex-col items-end gap-0.5">
@@ -368,7 +369,7 @@ export function PurchaseOrderEditPage({ orderId }: PurchaseOrderEditPageProps) {
                   </div>
                   <Separator />
                   <p className="text-xs text-muted-foreground">
-                    Prices are auto-filled from the product&apos;s price and cannot be edited.
+                    Prices are auto-filled from the default pricing structure and cannot be edited.
                   </p>
                 </CardContent>
               </Card>

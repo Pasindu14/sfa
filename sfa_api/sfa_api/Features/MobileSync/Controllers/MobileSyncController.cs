@@ -52,4 +52,25 @@ public class MobileSyncController(IMobileSyncService mobileSyncService) : Contro
 
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
+
+    /// <summary>
+    /// GET /api/v1/mobile/pricing-structures
+    /// Every ACTIVE pricing structure with its priced products (inactive structures never reach the
+    /// phone). The default is flagged <c>isDefault</c> and listed first.
+    /// Cached server-side for 1 hour; evicted on any structure, item or product mutation.
+    /// Conditional GET: same ETag / If-None-Match / 304 contract as /products.
+    /// </summary>
+    [HttpGet("pricing-structures")]
+    public async Task<IActionResult> GetPricingStructures(CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var result = await _mobileSyncService.GetPricingStructuresAsync(ct);
+
+        var etag = MobileSyncETag.Compute(result.PricingStructures);
+        Response.Headers.ETag = etag;
+        if (MobileSyncETag.IfNoneMatchMatches(Request, etag))
+            return StatusCode(StatusCodes.Status304NotModified);
+
+        return Ok(ResponseHelper.Ok(result, correlationId));
+    }
 }

@@ -56,6 +56,10 @@ public class CreateBillingValidator : AbstractValidator<CreateBillingRequest>
 
         // Optional — older app builds omit it. Bounded only to catch nonsense: a
         // negative radius, or a "fix" so coarse it says nothing about where the rep is.
+        RuleFor(x => x.PricingStructureId)
+            .GreaterThan(0).WithMessage("PricingStructureId must be a positive integer.")
+            .When(x => x.PricingStructureId.HasValue);
+
         RuleFor(x => x.GpsAccuracyMeters)
             .Must(v => v is > 0 and <= 100_000)
                 .WithMessage("GpsAccuracyMeters must be between 0 and 100000.")
@@ -96,6 +100,18 @@ public class CreateBillingValidator : AbstractValidator<CreateBillingRequest>
 
             item.RuleFor(i => i.DiscountRate)
                 .InclusiveBetween(0, 100).WithMessage("DiscountRate must be between 0 and 100.");
+
+            item.RuleFor(i => i.PricingStructureId)
+                .GreaterThan(0).WithMessage("PricingStructureId must be a positive integer.")
+                .When(i => i.PricingStructureId.HasValue);
+
+            item.RuleFor(i => i.PriceBasis)
+                .IsInEnum().WithMessage("PriceBasis must be Pack, Case or Manual.")
+                .When(i => i.PriceBasis.HasValue);
+
+            item.RuleFor(i => i.ListUnitPrice)
+                .InclusiveBetween(0, 1_000_000).WithMessage("ListUnitPrice must be between 0 and 1,000,000.")
+                .When(i => i.ListUnitPrice.HasValue);
 
             // Free-issue items must carry the real selling price (it's stored for FOC valuation)
             item.RuleFor(i => i.UnitPrice)

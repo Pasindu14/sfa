@@ -27,6 +27,12 @@ import {
   DistributorReturnBadge,
   AdjustedQuantity,
 } from '@/components/billing/billing-adjustment-history'
+import {
+  CaseListPrice,
+  PriceListLabel,
+  PricingStructureChip,
+  usesMultipleStructures,
+} from '@/components/billing/billing-pricing'
 
 function ItemTypeBadge({
   type,
@@ -131,6 +137,7 @@ export function RepBillDetailDialog() {
   // Gated on `isOpen` rather than `selectedId` so closing the dialog does not immediately fire
   // a fetch for a stale id, and so re-opening the same bill serves from cache.
   const { data: bill, isLoading } = useRepBillDetail(isOpen ? selectedId : null)
+  const mixedStructures = bill ? usesMultipleStructures(bill.items) : false
 
   return (
     <Dialog
@@ -159,6 +166,7 @@ export function RepBillDetailDialog() {
                 <DistributorStatusBadge status={bill.distributorStatus} />
                 <PaymentTypeBadge type={bill.paymentType} />
                 <span className="text-xs text-muted-foreground">{bill.outletName}</span>
+                <PriceListLabel name={bill.pricingStructureName} />
               </div>
             </DialogDescription>
           )}
@@ -272,6 +280,9 @@ export function RepBillDetailDialog() {
                                 {item.freeIssueSource && (
                                   <span>Free by: {item.freeIssueSource}</span>
                                 )}
+                                {mixedStructures && (
+                                  <PricingStructureChip name={item.pricingStructureName} />
+                                )}
                               </div>
                             </td>
                             <td className="whitespace-nowrap border-r px-3 py-2.5 font-mono text-xs text-muted-foreground">
@@ -285,6 +296,7 @@ export function RepBillDetailDialog() {
                             </td>
                             <td className="border-r px-3 py-2.5 text-right tabular-nums">
                               {formatCurrency(item.unitPrice)}
+                              <CaseListPrice line={item} />
                             </td>
                             <td className="px-3 py-2.5 text-right font-semibold tabular-nums">
                               {formatCurrency(item.totalPrice)}

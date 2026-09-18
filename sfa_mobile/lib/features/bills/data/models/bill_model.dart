@@ -27,6 +27,10 @@ class BillModel {
   final String? serverBillNumber;
   final String? outletName;
   final String? outletCategory;
+  final int? pricingStructureId;
+
+  /// Joined from `price_structures` on read; never written.
+  final String? pricingStructureName;
   final List<BillItemModel> items;
 
   const BillModel({
@@ -51,6 +55,8 @@ class BillModel {
     this.serverBillNumber,
     this.outletName,
     this.outletCategory,
+    this.pricingStructureId,
+    this.pricingStructureName,
     this.items = const [],
   });
 
@@ -78,6 +84,8 @@ class BillModel {
         serverBillNumber: map['server_bill_number'] as String?,
         outletName: map['outlet_name'] as String?,
         outletCategory: map['outlet_category'] as String?,
+        pricingStructureId: map['pricing_structure_id'] as int?,
+        pricingStructureName: map['pricing_structure_name'] as String?,
         items: items,
       );
 
@@ -108,6 +116,7 @@ class BillModel {
         'server_bill_number': serverBillNumber,
         'outlet_name': outletName,
         'outlet_category': outletCategory,
+        'pricing_structure_id': pricingStructureId,
       };
 
   /// Payload sent to POST /api/v1/billings. Matches CreateBillingRequest on the server.
@@ -120,6 +129,7 @@ class BillModel {
         if (latitude != null) 'latitude': latitude,
         if (longitude != null) 'longitude': longitude,
         if (gpsAccuracyMeters != null) 'gpsAccuracyMeters': gpsAccuracyMeters,
+        if (pricingStructureId != null) 'pricingStructureId': pricingStructureId,
         'items': items.map((i) => i.toCreateRequestJson()).toList(),
       };
 
@@ -144,6 +154,8 @@ class BillModel {
         serverBillNumber: serverBillNumber,
         outletName: outletName,
         outletCategory: outletCategory,
+        pricingStructureId: pricingStructureId,
+        pricingStructureName: pricingStructureName,
         items: items.map((i) => i.toEntity()).toList(),
       );
 
@@ -177,6 +189,8 @@ class BillModel {
         serverBillNumber: serverBillNumber ?? this.serverBillNumber,
         outletName: outletName,
         outletCategory: outletCategory,
+        pricingStructureId: pricingStructureId,
+        pricingStructureName: pricingStructureName,
         items: items,
       );
 

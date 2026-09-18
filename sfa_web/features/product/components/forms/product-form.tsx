@@ -59,9 +59,6 @@ export function ProductForm({
       remarks: "",
       fleetId: undefined,
       categoryId: undefined,
-      dealerPackPrice: undefined,
-      dealerCasePrice: undefined,
-      mrp: undefined,
       rowVersion: 0,
       ...defaultValues,
     },
@@ -80,9 +77,6 @@ export function ProductForm({
         remarks: "",
         fleetId: undefined,
         categoryId: undefined,
-        dealerPackPrice: undefined,
-        dealerCasePrice: undefined,
-        mrp: undefined,
         rowVersion: 0,
         ...defaultValues,
       });
@@ -211,89 +205,6 @@ export function ProductForm({
             </FormItem>
           )}
         />
-
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">Pricing</p>
-          <div className="grid grid-cols-3 gap-4">
-            <FormField
-              control={form.control}
-              name="dealerPackPrice"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Dealer Pack Price</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0.00"
-                      {...field}
-                      value={field.value ?? ''}
-                      onChange={(e) =>
-                        field.onChange(
-                          e.target.value === '' ? undefined : parseFloat(e.target.value),
-                        )
-                      }
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="dealerCasePrice"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Dealer Case Price</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0.00"
-                      {...field}
-                      value={field.value ?? ''}
-                      onChange={(e) =>
-                        field.onChange(
-                          e.target.value === '' ? undefined : parseFloat(e.target.value),
-                        )
-                      }
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="mrp"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>MRP</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0.00"
-                      {...field}
-                      value={field.value ?? ''}
-                      onChange={(e) =>
-                        field.onChange(
-                          e.target.value === '' ? undefined : parseFloat(e.target.value),
-                        )
-                      }
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        </div>
 
         <div className="grid grid-cols-2 gap-4">
           <FormField

@@ -92,7 +92,11 @@ void main() {
 
   test('wired into version 21, the upgrade ladder and the repair pass', () {
     final source = _helperSource();
-    expect(source, contains('static const _dbVersion = 21;'));
+    // At least 21: later versions keep the v21 step on the ladder.
+    final version = int.parse(
+      RegExp(r'static const _dbVersion = (\d+);').firstMatch(source)!.group(1)!,
+    );
+    expect(version, greaterThanOrEqualTo(21));
     expect(
       source,
       contains('if (oldVersion < 21) await _createPerformanceIndexesV21(db);'),

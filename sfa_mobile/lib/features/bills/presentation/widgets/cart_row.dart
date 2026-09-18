@@ -26,6 +26,10 @@ class CartRow extends StatelessWidget {
   final ExpireDateChanged onExpireDateChanged;
   final PriceChanged onPriceChanged;
 
+  /// Name of the price list this row was priced from. Only passed when the
+  /// cart mixes structures, so a single-structure cart stays uncluttered.
+  final String? structureLabel;
+
   const CartRow({
     super.key,
     this.caseLine,
@@ -39,6 +43,7 @@ class CartRow extends StatelessWidget {
     required this.onFreeIssueSourceChanged,
     required this.onExpireDateChanged,
     required this.onPriceChanged,
+    this.structureLabel,
   }) : assert(caseLine != null || packetLine != null);
 
   CartLine get _primary => caseLine ?? packetLine!;
@@ -82,7 +87,9 @@ class CartRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dismissible(
-      key: ValueKey('cart-group-${_primary.product.id}-${_primary.billingItemType}'),
+      // The primary line number is unique per row; product + type is not once
+      // one product can sit on two rows (two structures, two return types).
+      key: ValueKey('cart-group-${_primary.lineNumber}'),
       direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,
@@ -183,6 +190,11 @@ class CartRow extends StatelessWidget {
                             ),
                           ],
                         ),
+
+                        if (structureLabel != null) ...[
+                          SizedBox(height: 4.h),
+                          _StructureChip(label: structureLabel!),
+                        ],
 
                         SizedBox(height: 7.h),
 
@@ -750,6 +762,45 @@ class _Stepper extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Small "price list" tag shown on a row when the cart mixes structures.
+class _StructureChip extends StatelessWidget {
+  const _StructureChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+      decoration: BoxDecoration(
+        color: AppColors.amber.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(4.r),
+        border: Border.all(color: AppColors.amber.withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.price_change_rounded, size: 10.r, color: AppColors.warning),
+          SizedBox(width: 3.w),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.barlowCondensed(
+                fontSize: 10.sp,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
+                color: AppColors.warning,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

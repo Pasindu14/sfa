@@ -35,6 +35,7 @@ public class MobileSyncConditionalGetTests(SfaWebApplicationFactory factory)
     [Theory]
     [InlineData("/api/v1/mobile/products")]
     [InlineData("/api/v1/mobile/product-categories")]
+    [InlineData("/api/v1/mobile/pricing-structures")]
     public async Task Get_WithoutIfNoneMatch_Returns200WithEnvelopeAndETag(string url)
     {
         var response = await GetAsync(url, AuthHelper.SalesRepToken);
@@ -49,6 +50,7 @@ public class MobileSyncConditionalGetTests(SfaWebApplicationFactory factory)
     [Theory]
     [InlineData("/api/v1/mobile/products")]
     [InlineData("/api/v1/mobile/product-categories")]
+    [InlineData("/api/v1/mobile/pricing-structures")]
     public async Task Get_WithMatchingIfNoneMatch_Returns304WithEmptyBody(string url)
     {
         var etag = ETagOf(await GetAsync(url, AuthHelper.SalesRepToken));

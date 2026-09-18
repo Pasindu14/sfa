@@ -5,6 +5,7 @@ using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using sfa_api.Features.Distributors.Entities;
+using sfa_api.Features.PricingStructures.Entities;
 using sfa_api.Features.Products.Entities;
 using sfa_api.Features.Stock.Entities;
 using sfa_api.Features.Stock.Enums;
@@ -62,13 +63,29 @@ public class BinCardApiTests
             {
                 Code = $"BC-{suffix}",
                 ItemDescription = "Bin Card Cracker 125g",
-                DealerPackPrice = 94.60m,
                 PiecesPerPack = 48,
                 IsActive = true,
             };
             db.Products.Add(product);
             await db.SaveChangesAsync();
             productId = product.Id;
+
+            // Bin card values stock at the DEFAULT pricing structure's pack price. The collection shares
+            // one database, so reuse whichever default another test left behind, or create one.
+            var defaultStructure = db.PricingStructures.FirstOrDefault(s => s.IsDefault && !s.IsDeleted);
+            if (defaultStructure is null)
+            {
+                defaultStructure = new PricingStructure { Name = $"BinCardDefault-{suffix}", IsDefault = true, IsActive = true };
+                db.PricingStructures.Add(defaultStructure);
+                await db.SaveChangesAsync();
+            }
+            db.PricingStructureItems.Add(new PricingStructureItem
+            {
+                PricingStructureId = defaultStructure.Id,
+                ProductId = productId,
+                DealerPackPrice = 94.60m,
+            });
+            await db.SaveChangesAsync();
 
             // Helper to append a ledger row (TransactedBy = 1 → seeded admin user).
             StockTransaction Tx(StockTransactionType type, StockTransactionDirection dir,

@@ -120,10 +120,8 @@ public class SalesTargetService(
         var cached = await cache.GetAsync<RepMonthlyTargetDto>(cacheKey, ct);
         if (cached is not null) return cached;
 
-        var targets = await targetRepo.GetByRepAndMonthAsync(salesRepId, year, month, ct);
-
-        // Value each target by the product's own dealer case price (PricingStructures removed).
-        decimal total = targets.Sum(t => t.TargetQuantity * (t.Product?.DealerCasePrice ?? 0m));
+        // Valued at the default pricing structure's dealer case price.
+        var total = await targetRepo.GetRepMonthlyTargetValueAsync(salesRepId, year, month, ct);
 
         var result = new RepMonthlyTargetDto(year, month, total);
         await cache.SetAsync(cacheKey, result, TargetCacheTtl, ct);

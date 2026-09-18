@@ -302,6 +302,10 @@ class _InfoCard extends StatelessWidget {
               SizedBox(height: 6.h),
               _infoRow(Icons.local_shipping_rounded, 'Distributor',
                   bill.distributorName),
+              if (_priceListLabel(bill) case final priceList?) ...[
+                SizedBox(height: 6.h),
+                _infoRow(Icons.price_change_rounded, 'Price list', priceList),
+              ],
               SizedBox(height: 6.h),
               _infoRow(Icons.calendar_today_rounded, 'Billing Date',
                   _formatDate(bill.billingDate)),
@@ -411,6 +415,8 @@ class _ItemsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final mixedStructures =
+        items.map((i) => i.pricingStructureId).toSet().length > 1;
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -428,7 +434,7 @@ class _ItemsCard extends StatelessWidget {
         children: [
           for (var i = 0; i < items.length; i++) ...[
             if (i > 0) Divider(height: 1, color: AppColors.surfaceVariant),
-            _ItemRow(item: items[i]),
+            _ItemRow(item: items[i], showStructure: mixedStructures),
           ],
         ],
       ),
@@ -438,7 +444,10 @@ class _ItemsCard extends StatelessWidget {
 
 class _ItemRow extends StatelessWidget {
   final OutletBillItem item;
-  const _ItemRow({required this.item});
+
+  /// Tag the line with its price list — only when the bill mixes them.
+  final bool showStructure;
+  const _ItemRow({required this.item, this.showStructure = false});
 
   @override
   Widget build(BuildContext context) {
@@ -534,6 +543,15 @@ class _ItemRow extends StatelessWidget {
               ],
             ],
           ),
+          if (showStructure && item.pricingStructureId != null) ...[
+            SizedBox(height: 5.h),
+            _badge(
+              item.pricingStructureName ??
+                  'Price list #${item.pricingStructureId}',
+              AppColors.warning,
+              Icons.price_change_rounded,
+            ),
+          ],
         ],
       ),
     );
@@ -744,4 +762,22 @@ class _ErrorView extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The price list(s) the bill's lines were priced from, as the server named
+/// them. Lines are the source of truth (a bill can mix structures); the header
+/// only covers a bill whose lines carry none. Null for a legacy bill.
+String? _priceListLabel(OutletBillDetail bill) {
+  String? label(int? id, String? name) =>
+      id == null ? null : (name ?? 'Price list #$id');
+  final labels = <String>{
+    for (final item in bill.items)
+      if (label(item.pricingStructureId, item.pricingStructureName)
+          case final l?)
+        l,
+  };
+  if (labels.isEmpty) {
+    return label(bill.pricingStructureId, bill.pricingStructureName);
+  }
+  return labels.join(', ');
 }

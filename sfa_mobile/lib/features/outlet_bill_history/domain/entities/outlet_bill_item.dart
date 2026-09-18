@@ -23,6 +23,15 @@ class OutletBillItem {
   final DateTime? expireDate;
   final int lineNumber;
 
+  /// Which pricing structure priced this line, and on what basis
+  /// ('Pack' | 'Case' | 'Manual'). Null on legacy lines.
+  final int? pricingStructureId;
+  final String? pricingStructureName;
+  final String? priceBasis;
+
+  /// The structure's list price for [priceBasis] at billing time.
+  final double? listUnitPrice;
+
   const OutletBillItem({
     required this.id,
     required this.productId,
@@ -40,6 +49,10 @@ class OutletBillItem {
     this.originalQuantity,
     this.expireDate,
     required this.lineNumber,
+    this.pricingStructureId,
+    this.pricingStructureName,
+    this.priceBasis,
+    this.listUnitPrice,
   });
 
   /// True when the distributor reduced this line during review.

@@ -50,6 +50,7 @@ sfa_web/
 | ProductCategoryPricings | PurchaseOrders | SalesInvoices | GRNs | Routes |
 | RouteCancellations | Stock | Fleets | UserGeoAssignments | UserReportingLines |
 | SalesTargets | RepBills | BinCard | StockTaking | SalesSummary |
+| PricingStructures | ProximityExemptions | | | |
 
 ---
 

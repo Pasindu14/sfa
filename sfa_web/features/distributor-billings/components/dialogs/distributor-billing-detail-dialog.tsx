@@ -21,6 +21,12 @@ import {
   DistributorReturnBadge,
   AdjustedQuantity,
 } from '@/components/billing/billing-adjustment-history'
+import {
+  CaseListPrice,
+  PriceListLabel,
+  PricingStructureChip,
+  usesMultipleStructures,
+} from '@/components/billing/billing-pricing'
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('en-LK', {
@@ -112,6 +118,7 @@ interface Props {
 
 export function DistributorBillingDetailDialog({ id, onClose }: Props) {
   const { data: billing, isLoading } = useMyBillingDetail(id)
+  const mixedStructures = billing ? usesMultipleStructures(billing.items) : false
 
   return (
     <Dialog open={id !== null} onOpenChange={(v) => { if (!v) onClose() }}>
@@ -135,6 +142,7 @@ export function DistributorBillingDetailDialog({ id, onClose }: Props) {
                 <DistributorStatusBadge status={billing.distributorStatus} />
                 <PaymentTypeBadge type={billing.paymentType} />
                 <span className="text-xs text-muted-foreground">{billing.outletName}</span>
+                <PriceListLabel name={billing.pricingStructureName} />
               </div>
             </DialogDescription>
           )}
@@ -234,11 +242,12 @@ export function DistributorBillingDetailDialog({ id, onClose }: Props) {
                               <p className="truncate font-medium" title={item.productDescription}>
                                 {item.productDescription}
                               </p>
-                              {item.discountRate > 0 && (
-                                <span className="text-[10px] text-muted-foreground">
-                                  {item.discountRate}% disc
-                                </span>
-                              )}
+                              <div className="flex flex-wrap items-center gap-x-2 text-[10px] text-muted-foreground">
+                                {item.discountRate > 0 && <span>{item.discountRate}% disc</span>}
+                                {mixedStructures && (
+                                  <PricingStructureChip name={item.pricingStructureName} />
+                                )}
+                              </div>
                             </td>
                             <td className="border-r px-3 py-2.5 font-mono text-xs text-muted-foreground whitespace-nowrap">
                               {item.productCode}
@@ -251,6 +260,7 @@ export function DistributorBillingDetailDialog({ id, onClose }: Props) {
                             </td>
                             <td className="border-r px-3 py-2.5 text-right tabular-nums">
                               {formatCurrency(item.unitPrice)}
+                              <CaseListPrice line={item} />
                             </td>
                             <td className="px-3 py-2.5 text-right tabular-nums font-semibold">
                               {formatCurrency(item.totalPrice)}

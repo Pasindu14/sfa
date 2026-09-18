@@ -44,6 +44,7 @@ import { useSession } from "next-auth/react";
 import { PurchaseOrderStatusBadge } from '../purchase-order-status-badge'
 import { PurchaseOrderDialogs } from '../dialogs/purchase-order-dialogs'
 import { useAllActiveProducts } from "@/features/product/hooks/product.hooks";
+import { useDefaultStructurePrices } from '@/features/pricing-structure/hooks/pricing-structure.hooks'
 import {
   usePurchaseOrder,
   useSubmitPurchaseOrder,
@@ -528,6 +529,7 @@ interface AdminItemsEditorProps {
 
 function AdminItemsEditor({ order, onClose }: AdminItemsEditorProps) {
   const { data: products } = useAllActiveProducts()
+  const { data: defaultPrices, pricesByProduct } = useDefaultStructurePrices()
   const { mutate: updateOrder, isPending } = useUpdatePurchaseOrder(order.id)
 
   const form = useForm<UpdatePurchaseOrderInput>({
@@ -546,32 +548,30 @@ function AdminItemsEditor({ order, onClose }: AdminItemsEditorProps) {
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'items' })
   const watchedItems = useWatch({ control: form.control, name: 'items' })
 
-  // When products load, back-fill unit prices for all existing items from the
-  // product's own price (PricingStructures removed). We intentionally only re-run
-  // when products change — form and order.items are stable references.
+  // When the default structure's prices load, back-fill unit prices for all existing
+  // items from it; a product the structure doesn't price keeps its saved price. We
+  // intentionally only re-run when the prices change — form and order.items are stable.
   useEffect(() => {
-    if (!products) return
+    if (defaultPrices === undefined) return
     order.items.forEach((item, index) => {
-      const product = products.find((p) => p.id === item.productId)
-      const price = product
-        ? product.dealerCasePrice || product.dealerPackPrice || item.unitPrice
-        : item.unitPrice
+      const listed = pricesByProduct.get(item.productId)
+      const price = listed ? listed.dealerCasePrice ?? listed.dealerPackPrice : item.unitPrice
       form.setValue(`items.${index}.unitPrice`, price)
     })
-  }, [products, form, order.items])
+  }, [defaultPrices, pricesByProduct, form, order.items])
 
-  const getProduct = useCallback(
+  const getPrice = useCallback(
     (productId: number | undefined) =>
-      productId ? products?.find((p) => p.id === productId) ?? null : null,
-    [products]
+      productId ? pricesByProduct.get(productId) ?? null : null,
+    [pricesByProduct]
   )
 
   const getUnitPrice = useCallback(
     (productId: number | undefined): number => {
-      const product = getProduct(productId)
-      return product?.dealerCasePrice || product?.dealerPackPrice || 0
+      const price = getPrice(productId)
+      return price?.dealerCasePrice ?? price?.dealerPackPrice ?? 0
     },
-    [getProduct]
+    [getPrice]
   )
 
   const handleProductChange = useCallback((index: number, productId: number) => {
@@ -608,15 +608,10 @@ function AdminItemsEditor({ order, onClose }: AdminItemsEditorProps) {
           {fields.map((field, index) => {
             const watchedItem = watchedItems[index]
             const pid = watchedItem?.productId
-            const product = getProduct(pid)
-            const hasCasePrice = (product?.dealerCasePrice ?? 0) > 0
-            const hasPackPrice = (product?.dealerPackPrice ?? 0) > 0
-            const price = hasCasePrice
-              ? product!.dealerCasePrice
-              : hasPackPrice
-                ? product!.dealerPackPrice
-                : null
-            const priceLabel = hasCasePrice ? 'Case' : hasPackPrice ? 'Pack' : null
+            const listed = getPrice(pid)
+            const price = listed?.dealerCasePrice ?? listed?.dealerPackPrice ?? null
+            const priceLabel =
+              listed?.dealerCasePrice != null ? 'Case' : listed != null ? 'Pack' : null
             const lineTotal =
               (watchedItem?.unitPrice ?? 0) *
               (watchedItem?.quantity ?? 0) *
@@ -663,7 +658,7 @@ function AdminItemsEditor({ order, onClose }: AdminItemsEditorProps) {
                   )}
                 />
 
-                {/* Unit Price — read-only, auto-filled from the product's own price */}
+                {/* Unit Price — read-only, auto-filled from the default pricing structure */}
                 <div className="flex flex-col items-end gap-0.5">
                   {pid && price == null ? (
                     <span className="text-xs text-amber-600 font-medium">No pricing</span>

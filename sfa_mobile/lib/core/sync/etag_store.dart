@@ -9,8 +9,13 @@ import 'package:uswatte/core/db/database_helper.dart';
 class EtagStore {
   static const String products = 'products_etag';
   static const String productCategories = 'product_categories_etag';
+  static const String pricingStructures = 'pricing_structures_etag';
 
-  static const List<String> allKeys = [products, productCategories];
+  static const List<String> allKeys = [
+    products,
+    productCategories,
+    pricingStructures,
+  ];
 
   final DatabaseHelper _dbHelper;
 

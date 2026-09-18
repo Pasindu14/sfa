@@ -8,6 +8,11 @@ class SearchProductsForBillUseCase {
   Future<List<ProductWithPrice>> call(
     String query, {
     int limit = 200,
+    int? pricingStructureId,
   }) =>
-      _repo.searchProducts(query, limit: limit);
+      _repo.searchProducts(
+        query,
+        limit: limit,
+        pricingStructureId: pricingStructureId,
+      );
 }

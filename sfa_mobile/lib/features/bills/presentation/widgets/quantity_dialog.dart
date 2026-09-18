@@ -15,6 +15,15 @@ class QuantityDialogResult {
   final DateTime? expireDate;
   final String priceType;
 
+  /// The structure the product was priced from (see
+  /// [ProductWithPrice.pricingStructureId]).
+  final int? pricingStructureId;
+
+  /// The structure's price for [priceType]: the pack price for Packet, the
+  /// full case price for Case. Set on every line, returns included; the bloc
+  /// drops it for returns, whose rep-typed price is the Manual basis.
+  final double? listUnitPrice;
+
   const QuantityDialogResult({
     required this.quantity,
     required this.unitPrice,
@@ -24,6 +33,8 @@ class QuantityDialogResult {
     this.freeIssueSource,
     this.expireDate,
     this.priceType = 'Packet',
+    this.pricingStructureId,
+    this.listUnitPrice,
   });
 }
 
@@ -161,7 +172,16 @@ class _QuantitySheetState extends State<_QuantitySheet> {
   }
 
   double get _packPrice => widget.product.dealerPackPrice ?? 0.0;
-  double get _casePrice => widget.product.dealerCasePrice ?? (_packPrice * _packsPerCase);
+
+  /// A structure may price a product per pack only. Its case price is then
+  /// pack price × packs per case — never 0, which used to bill whole cases
+  /// for nothing when the old product column defaulted the case price to 0.
+  double get _casePrice {
+    final casePrice = widget.product.dealerCasePrice;
+    return (casePrice != null && casePrice > 0)
+        ? casePrice
+        : _packPrice * _packsPerCase;
+  }
   int get _packsPerCase => widget.product.packsPerCase;
 
   /// Identifies the entry the text fields currently hold. Return lines are
@@ -416,6 +436,8 @@ class _QuantitySheetState extends State<_QuantitySheet> {
           freeIssueSource: source,
           expireDate: e.expireDate,
           priceType: 'Case',
+          pricingStructureId: widget.product.pricingStructureId,
+          listUnitPrice: _casePrice,
         ),
       if (packets > 0)
         QuantityDialogResult(
@@ -427,6 +449,8 @@ class _QuantitySheetState extends State<_QuantitySheet> {
           freeIssueSource: source,
           expireDate: e.expireDate,
           priceType: 'Packet',
+          pricingStructureId: widget.product.pricingStructureId,
+          listUnitPrice: _packPrice,
         ),
     ];
   }

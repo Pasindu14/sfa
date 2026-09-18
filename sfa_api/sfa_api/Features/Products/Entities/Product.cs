@@ -14,9 +14,8 @@ public class Product
     public string? Remarks { get; set; }
     public int? FleetId { get; set; }
     public int? CategoryId { get; set; }
-    public decimal DealerPackPrice { get; set; } = 0;
-    public decimal DealerCasePrice { get; set; } = 0;
-    public decimal Mrp { get; set; } = 0;
+    // Prices live in PricingStructureItem. The legacy DealerPackPrice / DealerCasePrice / Mrp DB
+    // columns are left in place (unmapped, DEFAULT 0) until the release-2 cleanup migration.
     public bool IsActive { get; set; } = true;
     public bool IsDeleted { get; set; } = false;
 

@@ -3,6 +3,7 @@ import 'package:uswatte/core/errors/app_exception.dart';
 import 'package:uswatte/core/network/api_response.dart';
 import 'package:uswatte/features/bills/data/models/bill_item_model.dart';
 import 'package:uswatte/features/bills/data/models/bill_model.dart';
+import 'package:uswatte/features/bills/domain/entities/bill_item.dart';
 import 'package:uswatte/features/bills/domain/entities/sync_status.dart';
 
 /// Result of a successful POST /api/v1/billings — only the fields we need
@@ -133,6 +134,11 @@ class BillsRemoteDatasource {
         freeIssueSource: item['freeIssueSource'] as String?,
         expireDate: expire != null ? DateTime.parse(expire) : null,
         lineNumber: item['lineNumber'] as int,
+        // The server records a basis, not a case/packet split; recover the
+        // split so the detail page keeps case and packet lines apart.
+        priceType: priceTypeForBasis(item['priceBasis'] as String?),
+        pricingStructureId: item['pricingStructureId'] as int?,
+        listUnitPrice: (item['listUnitPrice'] as num?)?.toDouble(),
       );
     }).toList();
 
@@ -153,6 +159,7 @@ class BillsRemoteDatasource {
       serverBillId: serverBillId,
       serverBillNumber: json['billingNumber'] as String?,
       outletName: json['outletName'] as String?,
+      pricingStructureId: json['pricingStructureId'] as int?,
       items: items,
     );
   }

@@ -17,6 +17,7 @@ using sfa_api.Features.Divisions;
 using sfa_api.Features.Outlets;
 using sfa_api.Features.ProductCategories;
 using sfa_api.Features.ProductCategoryPricings;
+using sfa_api.Features.PricingStructures;
 using sfa_api.Features.Products;
 using sfa_api.Features.PurchaseOrders;
 using sfa_api.Features.Billings;
@@ -252,6 +253,7 @@ try
     builder.Services.AddProductsFeature();
     builder.Services.AddProductCategoriesFeature();
     builder.Services.AddProductCategoryPricingsFeature();
+    builder.Services.AddPricingStructuresFeature();
     builder.Services.AddPurchaseOrdersFeature();
     builder.Services.AddSalesInvoicesFeature();
     builder.Services.AddSalesTargetsFeature();

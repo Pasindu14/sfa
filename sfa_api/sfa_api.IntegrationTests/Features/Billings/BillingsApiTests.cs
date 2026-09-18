@@ -11,6 +11,7 @@ using sfa_api.Features.Billings.Services;
 using sfa_api.Features.Distributors.Entities;
 using sfa_api.Features.Divisions.Entities;
 using sfa_api.Features.Outlets.Entities;
+using sfa_api.Features.PricingStructures.Entities;
 using sfa_api.Features.Products.Entities;
 using sfa_api.Features.Regions.Entities;
 using sfa_api.Features.Stock.Entities;
@@ -794,5 +795,167 @@ public class BillingsApiTests
         status.Should().Be(HttpStatusCode.BadRequest, raw);
         raw.Should().Contain("Notes must not exceed 1000 characters",
             "the 1000-char cap is enforced on the column, so without a validator rule an over-long remark would surface as a 500");
+    }
+
+    // ─────────────────────────────────────────────────
+    // CreateAsync — pricing structures (per-line snapshot)
+    // ─────────────────────────────────────────────────
+
+    private async Task<int> CreateStructureAsync(string prefix, bool isActive = true)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var s = new PricingStructure { Name = $"{prefix}-{Guid.NewGuid().ToString("N")[..8]}", IsActive = isActive };
+        db.PricingStructures.Add(s);
+        await db.SaveChangesAsync();
+        return s.Id;
+    }
+
+    /// The collection shares one database: reuse whichever default another test left, or create one.
+    private async Task<int> EnsureDefaultStructureAsync()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var existing = db.PricingStructures.FirstOrDefault(s => s.IsDefault && !s.IsDeleted);
+        if (existing is not null) return existing.Id;
+        var s = new PricingStructure { Name = $"BillDefault-{Guid.NewGuid():N}"[..30], IsActive = true, IsDefault = true };
+        db.PricingStructures.Add(s);
+        await db.SaveChangesAsync();
+        return s.Id;
+    }
+
+    [Fact]
+    public async Task CreateBilling_MixedStructures_PersistsPerLineStructureBasisAndListPrice()
+    {
+        // A rep may switch structure mid-bill: each line keeps the structure and the prices it was
+        // actually billed at, and the header records the structure selected at submit.
+        await EnsureSeededAsync();
+        SetToken(_repToken);
+        var standard = await CreateStructureAsync("Std");
+        var promo    = await CreateStructureAsync("Promo");
+
+        var payload = new
+        {
+            outletId = _outletId,
+            billDiscountRate = 0m,
+            billingDate = Today(),
+            latitude = 6.9271,
+            longitude = 79.8612,
+            pricingStructureId = promo,
+            items = new object[]
+            {
+                new { productId = _productAId, quantity = 2m,  unitPrice = 50m,  discountRate = 0m, billingItemType = 0,
+                      pricingStructureId = standard, priceBasis = "Pack", listUnitPrice = 50m },
+                new { productId = _productBId, quantity = 12m, unitPrice = 45m,  discountRate = 0m, billingItemType = 0,
+                      pricingStructureId = promo,    priceBasis = "Case", listUnitPrice = 540m },
+                new { productId = _productDId, quantity = 1m,  unitPrice = 10m,  discountRate = 0m, billingItemType = 1,
+                      returnType = 0, priceBasis = "Manual" },   // no line structure → inherits the header's
+            }
+        };
+
+        var (status, data, raw) = await PostBillingAsync(payload);
+
+        status.Should().Be(HttpStatusCode.Created, raw);
+        data.GetProperty("pricingStructureId").GetInt32().Should().Be(promo);
+        data.GetProperty("pricingStructureName").GetString().Should().StartWith("Promo-");
+
+        var lines = data.GetProperty("items").EnumerateArray().OrderBy(i => i.GetProperty("lineNumber").GetInt32()).ToList();
+        lines[0].GetProperty("pricingStructureId").GetInt32().Should().Be(standard);
+        lines[0].GetProperty("priceBasis").GetString().Should().Be("Pack");
+        lines[0].GetProperty("pricingStructureName").GetString().Should().StartWith("Std-");
+        lines[1].GetProperty("pricingStructureId").GetInt32().Should().Be(promo);
+        lines[1].GetProperty("priceBasis").GetString().Should().Be("Case");
+        lines[1].GetProperty("listUnitPrice").GetDecimal().Should().Be(540m);
+        lines[1].GetProperty("unitPrice").GetDecimal().Should().Be(45m, "the server keeps the per-pack price the phone sent");
+        lines[2].GetProperty("pricingStructureId").GetInt32().Should().Be(promo);
+        lines[2].GetProperty("priceBasis").GetString().Should().Be("Manual");
+        lines[2].GetProperty("listUnitPrice").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task CreateBilling_LegacyPayloadWithoutStructure_StampsDefaultStructure()
+    {
+        // Older app builds send no structure; they priced from the legacy product fields, which the
+        // server now fills from the default structure — so the default is the accurate record.
+        await EnsureSeededAsync();
+        SetToken(_repToken);
+        var defaultId = await EnsureDefaultStructureAsync();
+
+        var payload = new
+        {
+            outletId = _outletId,
+            billDiscountRate = 0m,
+            billingDate = Today(),
+            latitude = 6.9271,
+            longitude = 79.8612,
+            items = new object[]
+            {
+                new { productId = _productAId, quantity = 1m, unitPrice = 10m, discountRate = 0m, billingItemType = 0 }
+            }
+        };
+
+        var (status, data, raw) = await PostBillingAsync(payload);
+
+        status.Should().Be(HttpStatusCode.Created, raw);
+        data.GetProperty("pricingStructureId").GetInt32().Should().Be(defaultId);
+        var line = data.GetProperty("items")[0];
+        line.GetProperty("pricingStructureId").GetInt32().Should().Be(defaultId);
+        line.GetProperty("priceBasis").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task CreateBilling_InactiveStructure_IsStillAccepted()
+    {
+        // An offline bill can reach the server after its structure was deactivated; it is still a
+        // true record of what was charged and must not be bounced.
+        await EnsureSeededAsync();
+        SetToken(_repToken);
+        var retired = await CreateStructureAsync("Retired", isActive: false);
+
+        var payload = new
+        {
+            outletId = _outletId,
+            billDiscountRate = 0m,
+            billingDate = Today(),
+            latitude = 6.9271,
+            longitude = 79.8612,
+            pricingStructureId = retired,
+            items = new object[]
+            {
+                new { productId = _productAId, quantity = 1m, unitPrice = 10m, discountRate = 0m, billingItemType = 0,
+                      priceBasis = "Pack", listUnitPrice = 10m }
+            }
+        };
+
+        var (status, data, raw) = await PostBillingAsync(payload);
+
+        status.Should().Be(HttpStatusCode.Created, raw);
+        data.GetProperty("items")[0].GetProperty("pricingStructureId").GetInt32().Should().Be(retired);
+    }
+
+    [Fact]
+    public async Task CreateBilling_UnknownStructure_Returns404()
+    {
+        await EnsureSeededAsync();
+        SetToken(_repToken);
+
+        var payload = new
+        {
+            outletId = _outletId,
+            billDiscountRate = 0m,
+            billingDate = Today(),
+            latitude = 6.9271,
+            longitude = 79.8612,
+            items = new object[]
+            {
+                new { productId = _productAId, quantity = 1m, unitPrice = 10m, discountRate = 0m, billingItemType = 0,
+                      pricingStructureId = 987654 }
+            }
+        };
+
+        var (status, _, raw) = await PostBillingAsync(payload);
+
+        status.Should().Be(HttpStatusCode.NotFound, raw);
+        raw.Should().Contain("PRICINGSTRUCTURE_NOT_FOUND");
     }
 }

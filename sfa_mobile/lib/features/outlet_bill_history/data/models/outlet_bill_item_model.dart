@@ -17,6 +17,10 @@ class OutletBillItemModel {
   final double? originalQuantity;
   final String? expireDate;
   final int lineNumber;
+  final int? pricingStructureId;
+  final String? pricingStructureName;
+  final String? priceBasis;
+  final double? listUnitPrice;
 
   const OutletBillItemModel({
     required this.id,
@@ -35,6 +39,10 @@ class OutletBillItemModel {
     this.originalQuantity,
     this.expireDate,
     required this.lineNumber,
+    this.pricingStructureId,
+    this.pricingStructureName,
+    this.priceBasis,
+    this.listUnitPrice,
   });
 
   factory OutletBillItemModel.fromJson(Map<String, dynamic> json) =>
@@ -57,6 +65,10 @@ class OutletBillItemModel {
         originalQuantity: (json['originalQuantity'] as num?)?.toDouble(),
         expireDate: json['expireDate'] as String?,
         lineNumber: json['lineNumber'] as int,
+        pricingStructureId: json['pricingStructureId'] as int?,
+        pricingStructureName: json['pricingStructureName'] as String?,
+        priceBasis: json['priceBasis'] as String?,
+        listUnitPrice: (json['listUnitPrice'] as num?)?.toDouble(),
       );
 
   OutletBillItem toEntity() => OutletBillItem(
@@ -76,5 +88,9 @@ class OutletBillItemModel {
         originalQuantity: originalQuantity,
         expireDate: expireDate != null ? DateTime.parse(expireDate!) : null,
         lineNumber: lineNumber,
+        pricingStructureId: pricingStructureId,
+        pricingStructureName: pricingStructureName,
+        priceBasis: priceBasis,
+        listUnitPrice: listUnitPrice,
       );
 }

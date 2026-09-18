@@ -35,13 +35,7 @@ class _CartListState extends State<CartList> {
     }
   }
 
-  static int _groupCount(List<CartLine> cart) {
-    final seen = <String>{};
-    for (final l in cart) {
-      seen.add('${l.product.id}:${l.billingItemType}');
-    }
-    return seen.length;
-  }
+  static int _groupCount(List<CartLine> cart) => groupCartLines(cart).length;
 
   @override
   Widget build(BuildContext context) {
@@ -203,18 +197,8 @@ class _CartListState extends State<CartList> {
   // ── Expanded: full cart panel ──────────────────────────────────────────────
 
   Widget _buildExpanded(BuildContext context, CreateBillState state) {
-    final rawCart = state.cart;
-    final groupOrder = <String>[];
-    final groups = <String, Map<String, CartLine>>{};
-    for (final line in rawCart) {
-      final key = '${line.product.id}:${line.billingItemType}';
-      if (!groups.containsKey(key)) {
-        groupOrder.add(key);
-        groups[key] = {};
-      }
-      groups[key]![line.priceType] = line;
-    }
-    final groupList = groupOrder.map((k) => groups[k]!).toList();
+    final groupList = groupCartLines(state.cart);
+    final mixed = state.cartMixesStructures;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 12.h),
@@ -331,6 +315,10 @@ class _CartListState extends State<CartList> {
                 return CartRow(
                   caseLine: caseLine,
                   packetLine: packetLine,
+                  structureLabel: mixed
+                      ? state.pricingStructureNameFor(
+                          (caseLine ?? packetLine)!.pricingStructureId)
+                      : null,
                   onCaseQtyChanged: caseLine != null
                       ? (q) => ctx.read<CreateBillBloc>().add(CartItemQtyChanged(caseLine.lineNumber, q))
                       : null,
@@ -554,4 +542,28 @@ class _CtaButton extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Pairs each product's Case and Packet lines into one cart row.
+///
+/// Lines only pair when they share product, line type, return type and
+/// pricing structure — a line from another structure (or a second line for a
+/// slot already taken) starts its own row instead of overwriting one, which
+/// would hide it from the rep while it still counted in the total.
+@visibleForTesting
+List<Map<String, CartLine>> groupCartLines(List<CartLine> cart) {
+  final groups = <Map<String, CartLine>>[];
+  final openGroup = <String, Map<String, CartLine>>{};
+  for (final line in cart) {
+    final key = '${line.product.id}:${line.billingItemType}:'
+        '${line.returnType}:${line.pricingStructureId}';
+    var group = openGroup[key];
+    if (group == null || group.containsKey(line.priceType)) {
+      group = <String, CartLine>{};
+      groups.add(group);
+      openGroup[key] = group;
+    }
+    group[line.priceType] = line;
+  }
+  return groups;
 }

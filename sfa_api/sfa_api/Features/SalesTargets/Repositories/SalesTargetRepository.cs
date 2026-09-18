@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using sfa_api.Features.Products.Entities;
+using sfa_api.Features.PricingStructures;
 using sfa_api.Features.SalesTargets.Entities;
 using sfa_api.Infrastructure.Persistence;
 
@@ -103,11 +103,33 @@ public class SalesTargetRepository(AppDbContext context) : ISalesTargetRepositor
             .Select(t => new SalesTarget
             {
                 ProductId      = t.ProductId,
-                TargetQuantity = t.TargetQuantity,
-                // Price now lives on the product itself (PricingStructures removed).
-                Product = t.Product == null ? null : new Product { DealerCasePrice = t.Product.DealerCasePrice }
+                TargetQuantity = t.TargetQuantity
             })
             .ToListAsync(ct);
+
+    public async Task<decimal> GetRepMonthlyTargetValueAsync(
+        int salesRepId, int year, int month, CancellationToken ct = default)
+    {
+        // Valued at the default pricing structure's case price (the old Product.DealerCasePrice basis).
+        var rows = await _context.SalesTargets
+            .AsNoTracking()
+            .Where(t => t.SalesRepId == salesRepId
+                     && t.Year       == year
+                     && t.Month      == month
+                     && t.IsActive
+                     && !t.IsDeleted)
+            .Select(t => new
+            {
+                t.TargetQuantity,
+                CasePrice = _context.DefaultPricingItems()
+                    .Where(i => i.ProductId == t.ProductId)
+                    .Select(i => i.DealerCasePrice)
+                    .FirstOrDefault()
+            })
+            .ToListAsync(ct);
+
+        return rows.Sum(r => r.TargetQuantity * (r.CasePrice ?? 0m));
+    }
 
     public Task SaveChangesAsync(CancellationToken ct = default)
         => _context.SaveChangesAsync(ct);

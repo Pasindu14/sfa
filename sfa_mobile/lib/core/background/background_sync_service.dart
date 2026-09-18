@@ -4,6 +4,7 @@ import 'package:uswatte/core/sync/bill_sync_service.dart';
 import 'package:uswatte/core/sync/not_billing_sync_service.dart';
 import 'package:uswatte/features/outlets/domain/usecases/clear_daily_outlets_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/sync_outlets_usecase.dart';
+import 'package:uswatte/features/pricing/domain/usecases/sync_pricing_structures_usecase.dart';
 import 'package:uswatte/features/products/domain/usecases/sync_product_categories_usecase.dart';
 import 'package:uswatte/features/products/domain/usecases/sync_products_usecase.dart';
 import 'package:uswatte/features/route_assignment/domain/usecases/get_assignments_usecase.dart';
@@ -42,6 +43,7 @@ class AppSyncProgress {
 class BackgroundSyncService {
   final SyncProductsUseCase _syncProducts;
   final SyncProductCategoriesUseCase _syncCategories;
+  final SyncPricingStructuresUseCase _syncPricing;
   final SyncOutletsUseCase _syncOutlets;
   final ClearDailyOutletsUseCase _clearDailyOutlets;
   final SyncDistributorStockUseCase _syncStock;
@@ -53,6 +55,7 @@ class BackgroundSyncService {
   BackgroundSyncService({
     required SyncProductsUseCase syncProducts,
     required SyncProductCategoriesUseCase syncCategories,
+    required SyncPricingStructuresUseCase syncPricing,
     required SyncOutletsUseCase syncOutlets,
     required ClearDailyOutletsUseCase clearDailyOutlets,
     required SyncDistributorStockUseCase syncStock,
@@ -62,6 +65,7 @@ class BackgroundSyncService {
     @visibleForTesting Future<void> Function()? flushLocationPings,
   })  : _syncProducts = syncProducts,
         _syncCategories = syncCategories,
+        _syncPricing = syncPricing,
         _syncOutlets = syncOutlets,
         _clearDailyOutlets = clearDailyOutlets,
         _syncStock = syncStock,
@@ -80,9 +84,10 @@ class BackgroundSyncService {
   /// undesirable for a periodic background task.
   ///
   /// Order:
-  ///   1. Master-data downloads, in parallel — products, categories, and the
-  ///      assignment → outlets chain. They write disjoint tables (products,
-  ///      product_categories, daily_outlets + their own metadata keys), and
+  ///   1. Master-data downloads, in parallel — products, categories, pricing
+  ///      structures, and the assignment → outlets chain. They write disjoint
+  ///      tables (products, product_categories, price_structures +
+  ///      price_structure_items, daily_outlets + their own metadata keys), and
   ///      sqflite serializes the transactions, so running them together only
   ///      removes network wait. Outlets still wait for the assignment.
   ///   2. Outbox uploads (bills, then not-billings).
@@ -96,6 +101,7 @@ class BackgroundSyncService {
     await Future.wait([
       _guard(() => _syncProducts()),
       _guard(() => _syncCategories()),
+      _guard(() => _syncPricing()),
       _guard(_syncTodaysOutlets),
     ]);
 

@@ -13,6 +13,7 @@ import 'package:uswatte/features/bills/presentation/bloc/create_bill_event.dart'
 import 'package:uswatte/features/bills/presentation/bloc/create_bill_state.dart';
 import 'package:uswatte/features/bills/presentation/widgets/cart_list.dart';
 import 'package:uswatte/features/bills/presentation/widgets/outlet_picker.dart';
+import 'package:uswatte/features/bills/presentation/widgets/pricing_structure_picker.dart';
 import 'package:uswatte/features/bills/presentation/widgets/product_search_delegate.dart';
 import 'package:uswatte/core/connectivity/connectivity_service.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_bloc.dart';
@@ -117,11 +118,53 @@ class CreateBillPage extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              // ── Step 1: Outlet ───────────────────────
+                              // ── Step 1: Price list ───────────────────
                               _SectionLabel(
-                                label: 'SELECT OUTLET',
-                                icon: Icons.storefront_rounded,
+                                label: 'PRICE LIST',
+                                icon: Icons.price_change_rounded,
                                 step: '1',
+                              ),
+                              SizedBox(height: 10.h),
+                              BlocBuilder<CreateBillBloc, CreateBillState>(
+                                buildWhen: (p, c) =>
+                                    p.selectedPricingStructure !=
+                                        c.selectedPricingStructure ||
+                                    p.pricingStructures !=
+                                        c.pricingStructures ||
+                                    p.pricingStructuresLoaded !=
+                                        c.pricingStructuresLoaded,
+                                builder: (ctx, state) {
+                                  if (!state.pricingStructuresLoaded) {
+                                    return SizedBox(
+                                      height: 70.h,
+                                      child: const Center(
+                                          child: CircularProgressIndicator()),
+                                    );
+                                  }
+                                  return PricingStructurePicker(
+                                    selected: state.selectedPricingStructure,
+                                    structures: state.pricingStructures,
+                                    onSelected: (s) => ctx
+                                        .read<CreateBillBloc>()
+                                        .add(PricingStructureSelected(s)),
+                                  );
+                                },
+                              ),
+
+                              SizedBox(height: 20.h),
+
+                              // ── Step 2: Outlet ───────────────────────
+                              BlocBuilder<CreateBillBloc, CreateBillState>(
+                                buildWhen: (p, c) =>
+                                    (p.selectedPricingStructure == null) !=
+                                    (c.selectedPricingStructure == null),
+                                builder: (ctx, state) => _SectionLabel(
+                                  label: 'SELECT OUTLET',
+                                  icon: Icons.storefront_rounded,
+                                  step: '2',
+                                  dimmed:
+                                      state.selectedPricingStructure == null,
+                                ),
                               ),
                               SizedBox(height: 10.h),
                               BlocBuilder<CreateBillBloc, CreateBillState>(
@@ -129,7 +172,9 @@ class CreateBillPage extends StatelessWidget {
                                     p.outlet != c.outlet ||
                                     p.latitude != c.latitude ||
                                     p.longitude != c.longitude ||
-                                    p.policy != c.policy,
+                                    p.policy != c.policy ||
+                                    (p.selectedPricingStructure == null) !=
+                                        (c.selectedPricingStructure == null),
                                 builder: (ctx, state) =>
                                     BlocBuilder<OutletsBloc, OutletsState>(
                                   builder: (oCtx, oState) {
@@ -140,7 +185,15 @@ class CreateBillPage extends StatelessWidget {
                                         oState is OutletsLoaded
                                             ? oState.hasActiveAssignment
                                             : true;
-                                    return Column(
+                                    // No price list synced: nothing can be
+                                    // priced, so the later steps stay locked.
+                                    final locked =
+                                        state.selectedPricingStructure == null;
+                                    return IgnorePointer(
+                                      ignoring: locked,
+                                      child: Opacity(
+                                        opacity: locked ? 0.45 : 1,
+                                        child: Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.stretch,
                                       children: [
@@ -167,6 +220,8 @@ class CreateBillPage extends StatelessWidget {
                                           ),
                                         ],
                                       ],
+                                        ),
+                                      ),
                                     );
                                   },
                                 ),
@@ -174,13 +229,18 @@ class CreateBillPage extends StatelessWidget {
 
                               SizedBox(height: 20.h),
 
-                              // ── Step 2: Products ─────────────────────
+                              // ── Step 3: Products ─────────────────────
                               BlocBuilder<CreateBillBloc, CreateBillState>(
                                 buildWhen: (p, c) =>
                                     p.outlet != c.outlet ||
+                                    p.selectedPricingStructure !=
+                                        c.selectedPricingStructure ||
                                     p.cart.length != c.cart.length,
                                 builder: (ctx, state) {
-                                  final ready = state.outlet != null;
+                                  final structure =
+                                      state.selectedPricingStructure;
+                                  final ready =
+                                      state.outlet != null && structure != null;
                                   return Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.stretch,
@@ -188,7 +248,7 @@ class CreateBillPage extends StatelessWidget {
                                       _SectionLabel(
                                         label: 'ADD PRODUCTS',
                                         icon: Icons.inventory_2_rounded,
-                                        step: '2',
+                                        step: '3',
                                         dimmed: !ready,
                                       ),
                                       SizedBox(height: 10.h),
@@ -199,28 +259,30 @@ class CreateBillPage extends StatelessWidget {
                                           ctx,
                                           searchUseCase:
                                               getIt<SearchProductsForBillUseCase>(),
-                                          onProductAdded: (product, qty,
-                                                  unitPrice,
-                                                  discountRate,
-                                                  billingItemType,
-                                                  returnType,
-                                                  freeIssueSource,
-                                                  expireDate,
-                                                  priceType) =>
+                                          pricingStructureId: structure?.id,
+                                          pricingStructureName:
+                                              structure?.name,
+                                          onProductAdded: (product, line) =>
                                               ctx.read<CreateBillBloc>().add(
                                                     ProductAdded(
                                                       product,
-                                                      qty,
-                                                      unitPrice: unitPrice,
+                                                      line.quantity,
+                                                      unitPrice: line.unitPrice,
                                                       discountRate:
-                                                          discountRate,
+                                                          line.discountRate,
                                                       billingItemType:
-                                                          billingItemType,
-                                                      returnType: returnType,
+                                                          line.billingItemType,
+                                                      returnType:
+                                                          line.returnType,
                                                       freeIssueSource:
-                                                          freeIssueSource,
-                                                      expireDate: expireDate,
-                                                      priceType: priceType,
+                                                          line.freeIssueSource,
+                                                      expireDate:
+                                                          line.expireDate,
+                                                      priceType: line.priceType,
+                                                      pricingStructureId: line
+                                                          .pricingStructureId,
+                                                      listUnitPrice:
+                                                          line.listUnitPrice,
                                                     ),
                                                   ),
                                         ),
@@ -489,7 +551,7 @@ class _OrderAppBar extends StatelessWidget {
                     ),
                     SizedBox(height: 2.r),
                     Text(
-                      'Outlet → Products',
+                      'Price list → Outlet → Products',
                       style: GoogleFonts.barlow(
                         fontSize: 11.sp,
                         color: Colors.white.withValues(alpha: 0.70),
@@ -687,7 +749,7 @@ class _AddProductsButton extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    enabled ? 'SEARCH PRODUCTS' : 'COMPLETE STEP 1 FIRST',
+                    enabled ? 'SEARCH PRODUCTS' : 'COMPLETE STEPS 1 & 2 FIRST',
                     style: GoogleFonts.barlowCondensed(
                       fontSize: 9.sp,
                       fontWeight: FontWeight.w700,

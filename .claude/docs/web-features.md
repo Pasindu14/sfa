@@ -15,7 +15,7 @@
 | product | (protected)/products | Product CRUD |
 | product-category | (protected)/product-categories | Product category management |
 | product-category-pricing | (protected)/product-category-pricings | Category pricing rules |
-| pricing-structure | (protected)/pricing-structures | Pricing structure management |
+| pricing-structure | (protected)/pricing-structures, /pricing-structures/[id] | Price lists: CRUD, duplicate, set default, activate; bulk price grid |
 | purchase-order | (protected)/purchase-orders | Purchase order management |
 | sales-invoice | (protected)/sales-invoices | Sales invoice management |
 | grn | (protected)/grns | Goods Received Notes |

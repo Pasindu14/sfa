@@ -33,6 +33,7 @@ import 'package:uswatte/features/item_wise_achievement/presentation/pages/item_w
 import 'package:uswatte/features/products/presentation/bloc/products_bloc.dart';
 import 'package:uswatte/features/products/presentation/bloc/products_event.dart';
 import 'package:uswatte/features/products/presentation/pages/products_page.dart';
+import 'package:uswatte/features/pricing/domain/usecases/get_pricing_structures_usecase.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uswatte/core/di/injection.dart';
 import 'package:uswatte/features/products/domain/usecases/get_products_usecase.dart';
@@ -383,6 +384,8 @@ class AppRouter {
                       BlocProvider(
                         create: (_) => CreateBillBloc(
                           createBillUseCase: getIt<CreateBillUseCase>(),
+                          getPricingStructuresUseCase:
+                              getIt<GetPricingStructuresUseCase>(),
                         ),
                       ),
                       BlocProvider(

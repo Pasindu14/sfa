@@ -88,9 +88,6 @@ function EditProductDialog() {
             remarks: product.remarks ?? '',
             fleetId: product.fleetId ?? undefined,
             categoryId: product.categoryId ?? undefined,
-            dealerPackPrice: product.dealerPackPrice ?? 0,
-            dealerCasePrice: product.dealerCasePrice ?? 0,
-            mrp: product.mrp ?? 0,
             rowVersion: product.rowVersion,
           }
         : undefined,

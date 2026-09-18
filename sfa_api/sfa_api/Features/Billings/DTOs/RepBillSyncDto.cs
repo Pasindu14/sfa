@@ -26,7 +26,8 @@ public record RepBillSyncDto(
     RepBillingStatus RepStatus,
     DistributorBillingStatus DistributorStatus,
     DateTime CreatedAt,
-    List<RepBillSyncItemDto> Items
+    List<RepBillSyncItemDto> Items,
+    int? PricingStructureId
 );
 
 public record RepBillSyncItemDto(
@@ -38,5 +39,8 @@ public record RepBillSyncItemDto(
     ReturnType? ReturnType,
     FreeIssueSource? FreeIssueSource,
     DateOnly? ExpireDate,
-    int LineNumber
+    int LineNumber,
+    int? PricingStructureId,
+    PriceBasis? PriceBasis,
+    decimal? ListUnitPrice
 );

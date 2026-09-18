@@ -27,5 +27,11 @@ public interface ISalesTargetRepository
 
     Task<List<SalesTarget>> GetByRepAndMonthAsync(int salesRepId, int year, int month, CancellationToken ct = default);
 
+    /// <summary>
+    /// Σ TargetQuantity × the default pricing structure's dealer case price for the rep's month.
+    /// Products the default structure doesn't price contribute 0.
+    /// </summary>
+    Task<decimal> GetRepMonthlyTargetValueAsync(int salesRepId, int year, int month, CancellationToken ct = default);
+
     Task SaveChangesAsync(CancellationToken ct = default);
 }

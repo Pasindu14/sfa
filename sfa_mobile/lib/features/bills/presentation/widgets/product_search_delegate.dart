@@ -12,21 +12,21 @@ import 'package:uswatte/features/bills/domain/usecases/search_products_for_bill_
 import 'package:uswatte/features/bills/presentation/widgets/quantity_dialog.dart';
 import 'package:uswatte/features/products/domain/usecases/sync_product_categories_usecase.dart';
 
-/// Opens the product search screen with products grouped by category.
+/// One cart line chosen in the picker: the product as priced by the structure
+/// it was searched in, plus what the rep entered for it.
+typedef ProductLineAdded = void Function(
+  ProductWithPrice product,
+  QuantityDialogResult line,
+);
+
+/// Opens the product search screen with products grouped by category, priced
+/// from [pricingStructureId].
 void showProductSearch(
   BuildContext context, {
   required SearchProductsForBillUseCase searchUseCase,
-  required void Function(
-    ProductWithPrice product,
-    double qty,
-    double unitPrice,
-    double discountRate,
-    String billingItemType,
-    String? returnType,
-    String? freeIssueSource,
-    DateTime? expireDate,
-    String priceType,
-  ) onProductAdded,
+  required ProductLineAdded onProductAdded,
+  int? pricingStructureId,
+  String? pricingStructureName,
 }) {
   Navigator.of(context).push(
     PageRouteBuilder<void>(
@@ -36,6 +36,8 @@ void showProductSearch(
       pageBuilder: (_, __, ___) => _ProductSearchPage(
         searchUseCase: searchUseCase,
         onProductAdded: onProductAdded,
+        pricingStructureId: pricingStructureId,
+        pricingStructureName: pricingStructureName,
       ),
       transitionsBuilder: (_, animation, __, child) =>
           FadeTransition(opacity: animation, child: child),
@@ -75,21 +77,15 @@ final class _Product extends _ListItem {
 
 class _ProductSearchPage extends StatefulWidget {
   final SearchProductsForBillUseCase searchUseCase;
-  final void Function(
-    ProductWithPrice product,
-    double qty,
-    double unitPrice,
-    double discountRate,
-    String billingItemType,
-    String? returnType,
-    String? freeIssueSource,
-    DateTime? expireDate,
-    String priceType,
-  ) onProductAdded;
+  final ProductLineAdded onProductAdded;
+  final int? pricingStructureId;
+  final String? pricingStructureName;
 
   const _ProductSearchPage({
     required this.searchUseCase,
     required this.onProductAdded,
+    this.pricingStructureId,
+    this.pricingStructureName,
   });
 
   @override
@@ -146,8 +142,10 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
     super.dispose();
   }
 
-  Future<List<ProductWithPrice>> _search(String q) =>
-      widget.searchUseCase(q);
+  Future<List<ProductWithPrice>> _search(String q) => widget.searchUseCase(
+        q,
+        pricingStructureId: widget.pricingStructureId,
+      );
 
   /// Rebuilds only when the field flips between empty and non-empty.
   void _onTextChanged() {
@@ -187,17 +185,7 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
     final results = await showQuantityDialog(context, product: product);
     if (results == null || results.isEmpty || !mounted) return;
     for (final result in results) {
-      widget.onProductAdded(
-        product,
-        result.quantity,
-        result.unitPrice,
-        result.discountRate,
-        result.billingItemType,
-        result.returnType,
-        result.freeIssueSource,
-        result.expireDate,
-        result.priceType,
-      );
+      widget.onProductAdded(product, result);
     }
     _debounce?.cancel();
     _controller.clear();
@@ -311,11 +299,15 @@ class _ProductSearchPageState extends State<_ProductSearchPage> {
                                 ),
                               ),
                               Text(
-                                'Tap a category to browse',
+                                widget.pricingStructureName != null
+                                    ? 'Price list: ${widget.pricingStructureName}'
+                                    : 'Tap a category to browse',
                                 style: GoogleFonts.barlow(
                                   fontSize: 11.sp,
                                   color: Colors.white.withValues(alpha: 0.65),
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),

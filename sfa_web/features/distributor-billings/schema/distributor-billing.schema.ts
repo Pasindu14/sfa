@@ -39,6 +39,12 @@ export const billingItemSchema = z.object({
   source: z.enum(['SalesRep', 'DistributorReturn']).default('SalesRep'),
   sourceBillingItemId: z.number().nullable().default(null),
   originalQuantity: z.number().nullable().default(null),
+  // Price list that priced this line. Null on legacy bills, and a bill may mix structures.
+  pricingStructureId: z.number().nullable().default(null),
+  pricingStructureName: z.string().nullable().default(null),
+  // 'Case' lines carry the exact case price in listUnitPrice; unitPrice stays per pack.
+  priceBasis: z.enum(['Pack', 'Case', 'Manual']).nullable().default(null),
+  listUnitPrice: z.number().nullable().default(null),
 })
 
 export const billingAdjustmentLineSchema = z.object({
@@ -76,6 +82,9 @@ export const distributorBillingDetailSchema = distributorBillingListItemSchema.e
   distributorReturnValue: z.number().default(0),
   rejectionReason: z.string().nullable().optional(),
   notes: z.string().nullable(),
+  // Price list selected when the bill was submitted — null on legacy bills.
+  pricingStructureId: z.number().nullable().default(null),
+  pricingStructureName: z.string().nullable().default(null),
   items: z.array(billingItemSchema),
   lastAdjustedAt: z.string().nullable().default(null),
   adjustmentCount: z.number().default(0),

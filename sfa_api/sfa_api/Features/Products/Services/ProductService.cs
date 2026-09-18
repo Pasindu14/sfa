@@ -75,9 +75,6 @@ public class ProductService(
             Remarks = request.Remarks,
             FleetId = request.FleetId,
             CategoryId = request.CategoryId,
-            DealerPackPrice = request.DealerPackPrice,
-            DealerCasePrice = request.DealerCasePrice,
-            Mrp = request.Mrp,
             IsActive = true,
             CreatedBy = callerId,
             UpdatedBy = callerId,
@@ -91,6 +88,7 @@ public class ProductService(
         _logger.LogInformation("Product {ProductId} created with code {Code}", product.Id, product.Code);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
         await _cache.RemoveAsync("mobile:products", ct);
+        await _cache.RemoveAsync(PricingStructures.PricingStructureCacheKeys.MobileSync, ct);   // priced items follow product IsActive
         await _cache.RemoveByPrefixAsync(ProductCategoryPricings.ProductCategoryPricingCacheKeys.Prefix, ct);   // portal price lists
         return MapToDto(product);
     }
@@ -120,9 +118,6 @@ public class ProductService(
         product.Remarks = request.Remarks;
         product.FleetId = request.FleetId;
         product.CategoryId = request.CategoryId;
-        product.DealerPackPrice = request.DealerPackPrice;
-        product.DealerCasePrice = request.DealerCasePrice;
-        product.Mrp = request.Mrp;
         product.UpdatedBy = callerId;
         product.UpdatedAt = DateTime.UtcNow;
 
@@ -132,6 +127,7 @@ public class ProductService(
         _logger.LogInformation("Product {ProductId} updated", id);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
         await _cache.RemoveAsync("mobile:products", ct);
+        await _cache.RemoveAsync(PricingStructures.PricingStructureCacheKeys.MobileSync, ct);   // priced items follow product IsActive
         await _cache.RemoveByPrefixAsync(ProductCategoryPricings.ProductCategoryPricingCacheKeys.Prefix, ct);   // portal price lists
         return MapToDto(product);
     }
@@ -145,6 +141,7 @@ public class ProductService(
         _logger.LogInformation("Product {ProductId} deactivated", id);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
         await _cache.RemoveAsync("mobile:products", ct);
+        await _cache.RemoveAsync(PricingStructures.PricingStructureCacheKeys.MobileSync, ct);   // priced items follow product IsActive
         await _cache.RemoveByPrefixAsync(ProductCategoryPricings.ProductCategoryPricingCacheKeys.Prefix, ct);   // portal price lists
     }
 
@@ -158,6 +155,7 @@ public class ProductService(
         _logger.LogInformation("Product {ProductId} deleted", id);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
         await _cache.RemoveAsync("mobile:products", ct);
+        await _cache.RemoveAsync(PricingStructures.PricingStructureCacheKeys.MobileSync, ct);   // priced items follow product IsActive
         await _cache.RemoveByPrefixAsync(ProductCategoryPricings.ProductCategoryPricingCacheKeys.Prefix, ct);   // portal price lists
     }
 
@@ -175,6 +173,7 @@ public class ProductService(
         _logger.LogInformation("Product {ProductId} activated", id);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
         await _cache.RemoveAsync("mobile:products", ct);
+        await _cache.RemoveAsync(PricingStructures.PricingStructureCacheKeys.MobileSync, ct);   // priced items follow product IsActive
         await _cache.RemoveByPrefixAsync(ProductCategoryPricings.ProductCategoryPricingCacheKeys.Prefix, ct);   // portal price lists
     }
 
@@ -191,9 +190,6 @@ public class ProductService(
         CategoryId: product.CategoryId,
         CategoryName: product.Category?.Name,
         IsActive: product.IsActive,
-        DealerPackPrice: product.DealerPackPrice,
-        DealerCasePrice: product.DealerCasePrice,
-        Mrp: product.Mrp,
         RowVersion: product.RowVersion,
         CreatedAt: product.CreatedAt,
         UpdatedAt: product.UpdatedAt

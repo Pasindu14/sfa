@@ -339,6 +339,10 @@ class _InfoCard extends StatelessWidget {
             SizedBox(height: 6.h),
             _infoRow(Icons.category_rounded, 'Category', bill.outletCategory!),
           ],
+          if (_priceListLabel(bill) case final priceList?) ...[
+            SizedBox(height: 6.h),
+            _infoRow(Icons.price_change_rounded, 'Price list', priceList),
+          ],
           SizedBox(height: 6.h),
           _infoRow(Icons.receipt_rounded, 'Type', _billTypeLabel(bill)),
           SizedBox(height: 6.h),
@@ -537,17 +541,24 @@ class _ItemsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final groupOrder = <String>[];
-    final groups = <String, Map<String, BillItem>>{};
+    // Case and Packet lines of one product pair into a row only when they
+    // share line type, return type and structure; anything that would
+    // overwrite a taken slot starts its own row rather than vanishing.
+    final groupList = <Map<String, BillItem>>[];
+    final openGroup = <String, Map<String, BillItem>>{};
     for (final item in items) {
-      final key = '${item.productId}:${item.billingItemType}';
-      if (!groups.containsKey(key)) {
-        groupOrder.add(key);
-        groups[key] = {};
+      final key = '${item.productId}:${item.billingItemType}:'
+          '${item.returnType}:${item.pricingStructureId}';
+      var group = openGroup[key];
+      if (group == null || group.containsKey(item.priceType)) {
+        group = <String, BillItem>{};
+        groupList.add(group);
+        openGroup[key] = group;
       }
-      groups[key]![item.priceType] = item;
+      group[item.priceType] = item;
     }
-    final groupList = groupOrder.map((k) => groups[k]!).toList();
+    final mixedStructures =
+        items.map((i) => i.pricingStructureId).toSet().length > 1;
 
     return Container(
       decoration: BoxDecoration(
@@ -570,6 +581,7 @@ class _ItemsCard extends StatelessWidget {
             _ItemRow(
               caseItem: groupList[i]['Case'],
               packetItem: groupList[i]['Packet'],
+              showStructure: mixedStructures,
             ),
           ],
         ],
@@ -581,7 +593,10 @@ class _ItemsCard extends StatelessWidget {
 class _ItemRow extends StatelessWidget {
   final BillItem? caseItem;
   final BillItem? packetItem;
-  const _ItemRow({this.caseItem, this.packetItem})
+
+  /// Tag the row with its price list — only when the bill mixes them.
+  final bool showStructure;
+  const _ItemRow({this.caseItem, this.packetItem, this.showStructure = false})
       : assert(caseItem != null || packetItem != null);
 
   BillItem get _primary => caseItem ?? packetItem!;
@@ -662,6 +677,10 @@ class _ItemRow extends StatelessWidget {
           if (caseItem != null) _subLine(caseItem!, 'CASE', AppColors.primary),
           if (caseItem != null && packetItem != null) SizedBox(height: 5.h),
           if (packetItem != null) _subLine(packetItem!, 'PKT', AppColors.amber),
+          if (showStructure && _primary.pricingStructureLabel != null) ...[
+            SizedBox(height: 6.h),
+            _priceTypeChip(_primary.pricingStructureLabel!, AppColors.warning),
+          ],
           // Extra badges (return type, FOC source, discount)
           if (_primary.isReturn || _primary.isFreeIssue || _primary.discountRate > 0) ...[
             SizedBox(height: 6.h),
@@ -1127,4 +1146,19 @@ String _formatDateTime(DateTime d) {
   final local = d.toLocal();
   String two(int n) => n.toString().padLeft(2, '0');
   return '${local.year}-${two(local.month)}-${two(local.day)}  ${two(local.hour)}:${two(local.minute)}';
+}
+
+/// The price list(s) the bill's lines were priced from, in line order. Lines
+/// are the source of truth (a bill can mix structures); the header structure
+/// only covers a bill whose lines carry none. Null for a legacy bill.
+String? _priceListLabel(Bill bill) {
+  final labels = <String>{
+    for (final item in bill.items)
+      if (item.pricingStructureLabel case final label?) label,
+  };
+  if (labels.isEmpty) {
+    return pricingStructureLabelFor(
+        bill.pricingStructureId, bill.pricingStructureName);
+  }
+  return labels.join(', ');
 }

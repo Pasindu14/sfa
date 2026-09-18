@@ -60,6 +60,11 @@ public record BillingDto(
     double? GpsAccuracyMeters,
     bool ProximityOverridden,
 
+    // Pricing structure selected when the bill was submitted (null on legacy bills). Lines may
+    // differ — BillingItemDto.PricingStructureId is the source of truth per line.
+    int? PricingStructureId,
+    string? PricingStructureName,
+
     DateTime CreatedAt,
     List<BillingItemDto> Items,
 

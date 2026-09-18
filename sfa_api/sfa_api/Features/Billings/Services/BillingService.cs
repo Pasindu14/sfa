@@ -6,6 +6,7 @@ using sfa_api.Features.Billings.Entities;
 using sfa_api.Features.Billings.Enums;
 using sfa_api.Features.Billings.Repositories;
 using sfa_api.Features.Billings.Requests;
+using sfa_api.Features.PricingStructures.Repositories;
 using sfa_api.Features.Products.Repositories;
 using sfa_api.Features.SalesTargets.Repositories;
 using sfa_api.Features.Stock.Enums;
@@ -34,8 +35,12 @@ public class BillingService(
     IUserRepository userRepository,
     INotificationService notificationService,
     AppDbContext db,
-    IProximityPolicyResolver policyResolver) : IBillingService
+    IProximityPolicyResolver policyResolver,
+    IPricingStructureRepository pricingStructureRepository,
+    ILogger<BillingService> logger) : IBillingService
 {
+    private readonly IPricingStructureRepository _pricingStructureRepository = pricingStructureRepository;
+    private readonly ILogger<BillingService> _logger = logger;
     private readonly IBillingRepository _billingRepository = billingRepository;
     private readonly IStockRepository _stockRepository = stockRepository;
     private readonly IUserGeoAssignmentRepository _geoAssignmentRepository = geoAssignmentRepository;
@@ -117,6 +122,32 @@ public class BillingService(
         var missingIds          = requestedProductIds.Except(productNames.Keys).ToList();
         if (missingIds.Count > 0)
             throw new NotFoundException("Product", string.Join(", ", missingIds));
+
+        // ③½ Resolve pricing structures — line → bill → default. Older app builds send no structure
+        // at all; they priced from the legacy product fields, which are served from the default
+        // structure, so stamping the default is accurate. The price itself is never re-derived: an
+        // offline bill keeps the price the customer was shown even if the structure changed since.
+        var headerStructureId = request.PricingStructureId
+            ?? await _pricingStructureRepository.GetDefaultIdAsync(ct);
+        int? LineStructureId(CreateBillingItemRequest item) => item.PricingStructureId ?? headerStructureId;
+
+        var explicitStructureIds = request.Items
+            .Select(i => i.PricingStructureId)
+            .Append(request.PricingStructureId)
+            .OfType<int>()
+            .Distinct()
+            .ToList();
+        if (explicitStructureIds.Count > 0)
+        {
+            // Existence only — inactive or deleted is fine: a bill raised offline can arrive after
+            // its structure was retired, and it is still a true record of what was charged.
+            var knownStructures = await _pricingStructureRepository.GetExistingIdsAsync(explicitStructureIds, ct);
+            var unknownStructures = explicitStructureIds.Where(id => !knownStructures.Contains(id)).ToList();
+            if (unknownStructures.Count > 0)
+                throw new NotFoundException("PricingStructure", string.Join(", ", unknownStructures));
+        }
+
+        await LogPriceMismatchesAsync(request, LineStructureId, ct);
 
         // ④ Resolve geo from UserGeoAssignment
         var geo = await _geoAssignmentRepository.GetActiveByUserIdAsync(salesRepId, ct)
@@ -219,6 +250,9 @@ public class BillingService(
                 ExpireDate       = item.ExpireDate,
                 LineNumber       = idx + 1,
                 Source           = BillingItemSource.SalesRep,
+                PricingStructureId = LineStructureId(item),
+                PriceBasis         = item.PriceBasis,
+                ListUnitPrice      = item.ListUnitPrice,
                 CreatedAt        = DateTime.UtcNow
             };
             ApplyLineMath(line);
@@ -289,6 +323,7 @@ public class BillingService(
                 GpsAccuracyMeters        = request.GpsAccuracyMeters,
                 ProximityOverridden      = proximityOverridden,
                 ProximityExemptionId     = proximityOverridden ? policy.ExemptionId : null,
+                PricingStructureId       = headerStructureId,
                 CreatedAt                = DateTime.UtcNow,
                 UpdatedAt         = DateTime.UtcNow,
                 CreatedBy         = salesRepId,
@@ -482,7 +517,11 @@ public class BillingService(
                 i.ReturnType,
                 i.FreeIssueSource,
                 i.ExpireDate,
-                i.LineNumber))]))];
+                i.LineNumber,
+                i.PricingStructureId,
+                i.PriceBasis,
+                i.ListUnitPrice))],
+            b.PricingStructureId))];
     }
 
     // ── Money math (shared by CreateAsync and AdjustItemsAsync) ───────────
@@ -788,6 +827,10 @@ public class BillingService(
                 LineNumber          = nextLineNumber++,
                 Source              = BillingItemSource.DistributorReturn,
                 SourceBillingItemId = line.Id,
+                // Same frozen pricing as the parent — the reduction is valued exactly as it was sold.
+                PricingStructureId  = line.PricingStructureId,
+                PriceBasis          = line.PriceBasis,
+                ListUnitPrice       = line.ListUnitPrice,
                 CreatedAt           = now
             };
             // DiscountRate is 0 on a FreeIssue parent, so ApplyLineMath prices a FOC return at the
@@ -893,6 +936,42 @@ public class BillingService(
         return ProjectToDto(result);
     }
 
+    // ── Pricing audit ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Warns when a Pack/Case line's price differs from its structure's CURRENT price. Never rejects:
+    /// the phone is trusted (an offline bill legitimately carries a price that has since changed), so
+    /// this only surfaces drift or tampering in the logs. Legacy lines (no PriceBasis) are skipped.
+    /// </summary>
+    private async Task LogPriceMismatchesAsync(
+        CreateBillingRequest request, Func<CreateBillingItemRequest, int?> lineStructureId, CancellationToken ct)
+    {
+        var checkable = request.Items
+            .Where(i => i.PriceBasis is PriceBasis.Pack or PriceBasis.Case && lineStructureId(i) is not null)
+            .ToList();
+        if (checkable.Count == 0) return;
+
+        var prices = await _pricingStructureRepository.GetPricesAsync(
+            checkable.Select(i => lineStructureId(i)!.Value).Distinct().ToList(),
+            checkable.Select(i => i.ProductId).Distinct().ToList(), ct);
+
+        foreach (var item in checkable)
+        {
+            var structureId = lineStructureId(item)!.Value;
+            prices.TryGetValue((structureId, item.ProductId), out var current);
+            // A structure without a case price is legitimate: the phone then derives the case price
+            // as pack × packs-per-case, so there is nothing to compare against.
+            if (item.PriceBasis == PriceBasis.Case && current is { DealerPackPrice: not null, DealerCasePrice: null })
+                continue;
+            var expected = item.PriceBasis == PriceBasis.Pack ? current?.DealerPackPrice : current?.DealerCasePrice;
+            var sent     = item.PriceBasis == PriceBasis.Pack ? item.UnitPrice : item.ListUnitPrice;
+            if (expected is null || sent is null || Math.Round(expected.Value, 2) != Math.Round(sent.Value, 2))
+                _logger.LogWarning(
+                    "Bill price differs from pricing structure {PricingStructureId} for product {ProductId} ({PriceBasis}): sent {Sent}, structure has {Expected}",
+                    structureId, item.ProductId, item.PriceBasis, sent, expected);
+        }
+    }
+
     // ── Projection ────────────────────────────────────────────────────────
 
     private static BillingDto ProjectToDto(Billing b)
@@ -955,6 +1034,8 @@ public class BillingService(
         b.DistanceFromOutletMeters,
         b.GpsAccuracyMeters,
         b.ProximityOverridden,
+        b.PricingStructureId,
+        b.PricingStructure?.Name,
         b.CreatedAt,
         // Explicit Id tiebreaks: GetByIdAsync uses AsSplitQuery, which (unlike the old single JOIN query,
         // ordered by keys) doesn't guarantee child-row order — these reproduce the previous output order.
@@ -975,7 +1056,11 @@ public class BillingService(
             i.LineNumber,
             i.Source,
             i.SourceBillingItemId,
-            i.OriginalQuantity)).ToList(),
+            i.OriginalQuantity,
+            i.PricingStructureId,
+            i.PricingStructure?.Name,
+            i.PriceBasis,
+            i.ListUnitPrice)).ToList(),
         b.LastAdjustedAt,
         b.AdjustmentCount,
         b.Adjustments.OrderByDescending(a => a.AdjustedAt).ThenBy(a => a.Id).Select(a => new BillingAdjustmentDto(

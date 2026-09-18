@@ -13,8 +13,16 @@ import 'package:uswatte/features/bills/domain/repositories/bills_repository.dart
 import 'package:uswatte/features/bills/domain/usecases/create_bill_usecase.dart';
 import 'package:uswatte/features/bills/presentation/bloc/create_bill_bloc.dart';
 import 'package:uswatte/features/bills/presentation/bloc/create_bill_event.dart';
+import 'package:uswatte/features/pricing/domain/entities/pricing_structure.dart';
+import 'package:uswatte/features/pricing/domain/usecases/get_pricing_structures_usecase.dart';
 
 class _MockRepo extends Mock implements BillsRepository {}
+
+class _FakeStructures extends Fake implements GetPricingStructuresUseCase {
+  @override
+  Future<List<PricingStructure>> call() async =>
+      const [PricingStructure(id: 1, name: 'Standard', isDefault: true)];
+}
 
 ProductWithPrice _product({double? normalStock, double? freeIssueStock}) =>
     ProductWithPrice(
@@ -23,13 +31,17 @@ ProductWithPrice _product({double? normalStock, double? freeIssueStock}) =>
       itemDescription: 'ROLLIES WAFERS 20G',
       dealerPackPrice: 40,
       dealerCasePrice: 40,
+      pricingStructureId: 1,
       packsPerCase: 1,
       normalStock: normalStock,
       freeIssueStock: freeIssueStock,
     );
 
 CreateBillBloc _bloc() =>
-    CreateBillBloc(createBillUseCase: CreateBillUseCase(_MockRepo()));
+    CreateBillBloc(
+      createBillUseCase: CreateBillUseCase(_MockRepo()),
+      getPricingStructuresUseCase: _FakeStructures(),
+    );
 
 /// Bloc handlers run asynchronously, so the event queue has to drain before the
 /// resulting state can be read.

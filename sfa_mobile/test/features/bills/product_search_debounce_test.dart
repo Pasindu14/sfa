@@ -19,11 +19,17 @@ import 'package:uswatte/features/products/domain/usecases/sync_product_categorie
 
 class _FakeSearch extends Fake implements SearchProductsForBillUseCase {
   final queries = <String>[];
+  final structureIds = <int?>[];
   final pending = <String, Completer<List<ProductWithPrice>>>{};
   List<ProductWithPrice> Function(String q) results = (_) => const [];
 
   @override
-  Future<List<ProductWithPrice>> call(String query, {int limit = 200}) {
+  Future<List<ProductWithPrice>> call(
+    String query, {
+    int limit = 200,
+    int? pricingStructureId,
+  }) {
+    structureIds.add(pricingStructureId);
     queries.add(query);
     final completer = pending[query];
     return completer != null ? completer.future : Future.value(results(query));
@@ -94,18 +100,9 @@ Future<void> _openPicker(WidgetTester tester, _FakeSearch search) async {
               onPressed: () => showProductSearch(
                 ctx,
                 searchUseCase: search,
-                onProductAdded:
-                    (
-                      _,
-                      __,
-                      ___,
-                      ____,
-                      _____,
-                      ______,
-                      _______,
-                      ________,
-                      _________,
-                    ) {},
+                pricingStructureId: 7,
+                pricingStructureName: 'Wholesale',
+                onProductAdded: (_, __) {},
               ),
               child: const Text('open'),
             ),
@@ -223,6 +220,17 @@ void main() {
     await _openPicker(tester, search);
     expect(categorySync.maxAges, [productPickerCategoryMaxAge]);
     expect(search.queries, [''], reason: 'nothing synced, nothing to re-read');
+  });
+
+  testWidgets('every query is priced from the selected structure', (
+    tester,
+  ) async {
+    await _openPicker(tester, search);
+    await tester.enterText(find.byType(TextField), 'det');
+    await tester.pump(productSearchDebounce);
+
+    expect(search.structureIds, [7, 7]);
+    expect(find.text('Price list: Wholesale'), findsOneWidget);
   });
 
   testWidgets('a sync that ran re-reads the list', (tester) async {

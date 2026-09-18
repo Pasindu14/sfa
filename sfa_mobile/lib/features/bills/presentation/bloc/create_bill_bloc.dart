@@ -10,18 +10,24 @@ import 'package:uswatte/features/bills/domain/entities/sync_status.dart';
 import 'package:uswatte/features/bills/domain/usecases/create_bill_usecase.dart';
 import 'package:uswatte/features/bills/presentation/bloc/create_bill_event.dart';
 import 'package:uswatte/features/bills/presentation/bloc/create_bill_state.dart';
+import 'package:uswatte/features/pricing/domain/usecases/get_pricing_structures_usecase.dart';
 import 'package:uuid/uuid.dart';
 
 class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
   final CreateBillUseCase _createBill;
+  final GetPricingStructuresUseCase _getPricingStructures;
   final Uuid _uuid;
 
   CreateBillBloc({
     required CreateBillUseCase createBillUseCase,
+    required GetPricingStructuresUseCase getPricingStructuresUseCase,
     Uuid? uuid,
   })  : _createBill = createBillUseCase,
+        _getPricingStructures = getPricingStructuresUseCase,
         _uuid = uuid ?? const Uuid(),
         super(const CreateBillState()) {
+    on<PricingStructuresLoaded>(_onPricingStructuresLoaded);
+    on<PricingStructureSelected>(_onPricingStructureSelected);
     on<BillLocationCaptured>(_onLocationCaptured);
     on<BillLocationStatusChanged>(_onLocationStatusChanged);
     on<LocationCheckRetried>(_onLocationCheckRetried);
@@ -39,7 +45,43 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     on<BillDiscountChanged>(_onDiscountChanged);
     on<SubmitPressed>(_onSubmit);
     on<LocationRefreshRequested>(_onLocationRefreshRequested);
+    _loadPricingStructures();
     _captureLocation();
+  }
+
+  Future<void> _loadPricingStructures() async {
+    try {
+      add(PricingStructuresLoaded(await _getPricingStructures()));
+    } catch (_) {
+      // Unreadable cache reads as "nothing synced" — the page asks for a sync.
+      add(const PricingStructuresLoaded([]));
+    }
+  }
+
+  /// Preselects the default structure, else the first. The repository lists
+  /// the default first, but that order is not relied on here.
+  void _onPricingStructuresLoaded(
+      PricingStructuresLoaded e, Emitter<CreateBillState> emit) {
+    final current = state.selectedPricingStructure;
+    final stillSynced = current != null &&
+        e.structures.any((s) => s.id == current.id);
+    final preselect = stillSynced
+        ? e.structures.firstWhere((s) => s.id == current.id)
+        : (e.structures.where((s) => s.isDefault).firstOrNull ??
+            e.structures.firstOrNull);
+    emit(state.copyWith(
+      pricingStructures: e.structures,
+      pricingStructuresLoaded: true,
+      selectedPricingStructure: preselect,
+      clearSelectedPricingStructure: preselect == null,
+    ));
+  }
+
+  /// Deliberately leaves the cart alone: each line keeps the structure and
+  /// price it was added with, so one bill can mix structures.
+  void _onPricingStructureSelected(
+      PricingStructureSelected e, Emitter<CreateBillState> emit) {
+    emit(state.copyWith(selectedPricingStructure: e.structure));
   }
 
   Future<void> _captureLocation() async {
@@ -180,9 +222,20 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     // so the looser test folded a new Sale into an existing FOC line for the same
     // product — the sale vanished and the outlet was undercharged. Reachable in
     // one tap now that the quantity sheet can stage Sale and Free Issue together.
+    //
+    // The structure (and the price itself) are part of the key too: the rep can
+    // switch price list mid-bill, and a merge across structures would silently
+    // bill the new quantity at the old structure's price.
+    final structureId = e.pricingStructureId ??
+        e.product.pricingStructureId ??
+        state.selectedPricingStructure?.id;
     if (e.billingItemType == 'Sale') {
-      final existingIdx = state.cart.indexWhere(
-          (l) => l.product.id == e.product.id && l.isSale && l.priceType == e.priceType);
+      final existingIdx = state.cart.indexWhere((l) =>
+          l.product.id == e.product.id &&
+          l.isSale &&
+          l.priceType == e.priceType &&
+          l.pricingStructureId == structureId &&
+          l.unitPrice == e.unitPrice);
       if (existingIdx >= 0) {
         final existing = state.cart[existingIdx];
         final updated = [...state.cart];
@@ -212,6 +265,8 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
         freeIssueSource: source,
         expireDate: e.expireDate,
         priceType: e.priceType,
+        pricingStructureId: structureId,
+        listUnitPrice: e.listUnitPrice,
       ),
     ]));
   }
@@ -228,18 +283,7 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     final filtered =
         state.cart.where((l) => l.lineNumber != e.lineNumber).toList();
     final renumbered = filtered.indexed
-        .map((t) => CartLine(
-              lineNumber: t.$1 + 1,
-              product: t.$2.product,
-              quantity: t.$2.quantity,
-              unitPrice: t.$2.unitPrice,
-              discountRate: t.$2.discountRate,
-              billingItemType: t.$2.billingItemType,
-              returnType: t.$2.returnType,
-              freeIssueSource: t.$2.freeIssueSource,
-              expireDate: t.$2.expireDate,
-              priceType: t.$2.priceType,
-            ))
+        .map((t) => t.$2.copyWith(lineNumber: t.$1 + 1))
         .toList();
     emit(state.copyWith(cart: renumbered));
   }
@@ -286,9 +330,13 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     final updated = state.cart.map((l) {
       if (l.lineNumber != e.lineNumber) return l;
       // Switching to Sale clears return- AND free-issue-specific fields.
+      // Leaving Return also drops the rep-typed return price for the line's
+      // structure price, so a sale is never billed at a hand-entered figure.
+      final listPrice = l.isReturn ? l.listPricePerPack : null;
       if (e.billingItemType == 'Sale') {
         return l.copyWith(
           billingItemType: 'Sale',
+          unitPrice: listPrice,
           clearReturnType: true,
           clearExpireDate: true,
           clearFreeIssueSource: true,
@@ -299,6 +347,7 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
       if (e.billingItemType == 'FreeIssue') {
         return l.copyWith(
           billingItemType: 'FreeIssue',
+          unitPrice: listPrice,
           freeIssueSource: _resolveFreeIssueSource(l.freeIssueSource, l.product),
           clearReturnType: true,
           clearExpireDate: true,
@@ -377,6 +426,9 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
               expireDate: l.expireDate,
               lineNumber: l.lineNumber,
               priceType: l.priceType,
+              pricingStructureId: l.pricingStructureId,
+              // A return's price is rep-typed (basis Manual) — no list price.
+              listUnitPrice: l.isReturn ? null : l.listUnitPrice,
             ))
         .toList();
 
@@ -396,6 +448,7 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
       longitude: state.longitude,
       createdAt: now,
       syncStatus: SyncStatus.pending,
+      pricingStructureId: state.selectedPricingStructure!.id,
       items: items,
     );
 

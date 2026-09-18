@@ -18,7 +18,7 @@
 | Categories | Top-level product classification |
 | ProductCategories | Category grouping for products |
 | ProductCategoryPricings | Price rules per product-category combination |
-| PricingStructures | Full pricing structure management (distributor-linked) |
+| PricingStructures | Named price lists (pack/case/MRP per product); one default, active/inactive, duplicate. Bill lines snapshot structure + prices. Default structure values bin card, targets, sales summary |
 | PurchaseOrders | Field rep purchase order creation and tracking |
 | SalesInvoices | Sales invoice management |
 | GRNs | Goods Received Notes — stock receipt confirmation |

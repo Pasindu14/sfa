@@ -14,6 +14,11 @@ class BillItemModel {
   final DateTime? expireDate;
   final int lineNumber;
   final String priceType;
+  final int? pricingStructureId;
+
+  /// Joined from `price_structures` on read; never written.
+  final String? pricingStructureName;
+  final double? listUnitPrice;
 
   const BillItemModel({
     this.id,
@@ -29,6 +34,9 @@ class BillItemModel {
     this.expireDate,
     required this.lineNumber,
     this.priceType = 'Packet',
+    this.pricingStructureId,
+    this.pricingStructureName,
+    this.listUnitPrice,
   });
 
   factory BillItemModel.fromMap(Map<String, dynamic> map) {
@@ -54,6 +62,9 @@ class BillItemModel {
           : null,
       lineNumber: map['line_number'] as int,
       priceType: map['price_type'] as String? ?? 'Packet',
+      pricingStructureId: map['pricing_structure_id'] as int?,
+      pricingStructureName: map['pricing_structure_name'] as String?,
+      listUnitPrice: (map['list_unit_price'] as num?)?.toDouble(),
     );
   }
 
@@ -70,8 +81,16 @@ class BillItemModel {
         'expire_date': expireDate != null ? _dateOnly(expireDate!) : null,
         'line_number': lineNumber,
         'price_type': priceType,
+        'pricing_structure_id': pricingStructureId,
+        'list_unit_price': listUnitPrice,
       };
 
+  /// One entry of CreateBillingRequest.items. The pricing snapshot fields are
+  /// optional on the server; `unitPrice` is still what the server trusts.
+  ///
+  /// A line queued before this app version has no structure: it goes up
+  /// without a basis too, so the server treats it as the legacy line it is
+  /// instead of checking its price against a structure it was never priced from.
   Map<String, dynamic> toCreateRequestJson() => {
         'productId': productId,
         'quantity': quantity,
@@ -81,6 +100,11 @@ class BillItemModel {
         'returnType': returnType,
         'freeIssueSource': freeIssueSource,
         'expireDate': expireDate != null ? _dateOnly(expireDate!) : null,
+        'pricingStructureId': pricingStructureId,
+        'priceBasis': pricingStructureId == null
+            ? null
+            : priceBasisFor(billingItemType, priceType),
+        'listUnitPrice': listUnitPrice,
       };
 
   BillItem toEntity() => BillItem(
@@ -97,6 +121,9 @@ class BillItemModel {
         expireDate: expireDate,
         lineNumber: lineNumber,
         priceType: priceType,
+        pricingStructureId: pricingStructureId,
+        pricingStructureName: pricingStructureName,
+        listUnitPrice: listUnitPrice,
       );
 
   static String _dateOnly(DateTime d) =>

@@ -25,9 +25,6 @@ export const createProductSchema = z.object({
   remarks: z.string().optional().or(z.literal('')),
   fleetId: z.number().int().positive('Must select a valid fleet').optional(),
   categoryId: z.number().int().positive('Must select a valid category').optional(),
-  dealerPackPrice: z.number().min(0, 'Dealer pack price must be 0 or greater').default(0),
-  dealerCasePrice: z.number().min(0, 'Dealer case price must be 0 or greater').default(0),
-  mrp: z.number().min(0, 'MRP must be 0 or greater').default(0),
 })
 
 // Update schema (create shape + concurrency token)
@@ -67,9 +64,6 @@ export type ProductDto = {
   categoryName: string | null
   isActive: boolean
   rowVersion: number
-  dealerPackPrice: number
-  dealerCasePrice: number
-  mrp: number
   createdAt: string
   updatedAt: string
 }

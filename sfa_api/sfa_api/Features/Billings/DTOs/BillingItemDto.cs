@@ -19,5 +19,11 @@ public record BillingItemDto(
     int LineNumber,
     BillingItemSource Source,
     int? SourceBillingItemId,
-    decimal? OriginalQuantity
+    decimal? OriginalQuantity,
+
+    // Pricing snapshot — frozen at billing time; null on legacy lines.
+    int? PricingStructureId,
+    string? PricingStructureName,
+    PriceBasis? PriceBasis,
+    decimal? ListUnitPrice
 );

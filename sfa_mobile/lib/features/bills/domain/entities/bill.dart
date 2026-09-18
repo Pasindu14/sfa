@@ -28,6 +28,14 @@ class Bill extends Equatable {
   final String? serverBillNumber;
   final String? outletName;
   final String? outletCategory;
+
+  /// The structure selected when the bill was submitted. Lines may differ —
+  /// [BillItem.pricingStructureId] is the source of truth per line. Null on
+  /// legacy bills.
+  final int? pricingStructureId;
+
+  /// Local name of [pricingStructureId] (joined for display).
+  final String? pricingStructureName;
   final List<BillItem> items;
 
   const Bill({
@@ -51,6 +59,8 @@ class Bill extends Equatable {
     this.serverBillNumber,
     this.outletName,
     this.outletCategory,
+    this.pricingStructureId,
+    this.pricingStructureName,
     this.items = const [],
   });
 
@@ -76,6 +86,8 @@ class Bill extends Equatable {
         serverBillNumber,
         outletName,
         outletCategory,
+        pricingStructureId,
+        pricingStructureName,
         items,
       ];
 }

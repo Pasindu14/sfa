@@ -3,6 +3,7 @@ import 'package:uswatte/core/constants/app_constants.dart';
 import 'package:uswatte/features/bills/data/datasources/bills_local_datasource.dart';
 import 'package:uswatte/features/outlets/domain/entities/outlet.dart';
 import 'package:uswatte/features/outlets/domain/entities/proximity_policy.dart';
+import 'package:uswatte/features/pricing/domain/entities/pricing_structure.dart';
 
 enum LocationCheckStatus {
   checking,
@@ -33,6 +34,16 @@ class CartLine extends Equatable {
   final DateTime? expireDate;   // Only when returnType == 'Expire'
   final String priceType; // 'Case' | 'Packet'
 
+  /// The pricing structure this line was priced from. Fixed when the line is
+  /// added: switching the bill's structure later only affects new lines.
+  final int? pricingStructureId;
+
+  /// The structure's price for [priceType] when the line was added — the pack
+  /// price for Packet, the full case price for Case. Kept on return lines too
+  /// (so switching one back to a sale can restore the list price), but only
+  /// sent to the server for structure-priced lines.
+  final double? listUnitPrice;
+
   const CartLine({
     required this.lineNumber,
     required this.product,
@@ -44,6 +55,8 @@ class CartLine extends Equatable {
     this.freeIssueSource,
     this.expireDate,
     this.priceType = 'Packet',
+    this.pricingStructureId,
+    this.listUnitPrice,
   });
 
   bool get isFreeIssue => billingItemType == 'FreeIssue';
@@ -62,7 +75,18 @@ class CartLine extends Equatable {
     return gross - disc;
   }
 
+  /// The per-pack price [listUnitPrice] implies — what [unitPrice] is for a
+  /// structure-priced line (quantities are always in packs). Null when unknown.
+  double? get listPricePerPack {
+    final list = listUnitPrice;
+    if (list == null) return null;
+    if (priceType != 'Case') return list;
+    final packs = product.packsPerCase;
+    return packs > 0 ? list / packs : list;
+  }
+
   CartLine copyWith({
+    int? lineNumber,
     double? quantity,
     double? unitPrice,
     double? discountRate,
@@ -76,7 +100,7 @@ class CartLine extends Equatable {
     String? priceType,
   }) =>
       CartLine(
-        lineNumber: lineNumber,
+        lineNumber: lineNumber ?? this.lineNumber,
         product: product,
         quantity: quantity ?? this.quantity,
         unitPrice: unitPrice ?? this.unitPrice,
@@ -88,6 +112,8 @@ class CartLine extends Equatable {
             : (freeIssueSource ?? this.freeIssueSource),
         expireDate: clearExpireDate ? null : (expireDate ?? this.expireDate),
         priceType: priceType ?? this.priceType,
+        pricingStructureId: pricingStructureId,
+        listUnitPrice: listUnitPrice,
       );
 
   @override
@@ -102,11 +128,24 @@ class CartLine extends Equatable {
         freeIssueSource,
         expireDate,
         priceType,
+        pricingStructureId,
+        listUnitPrice,
       ];
 }
 
 class CreateBillState extends Equatable {
   final Outlet? outlet;
+
+  /// Every locally synced (active) pricing structure, default first.
+  final List<PricingStructure> pricingStructures;
+
+  /// False until the local structures have been read once, so the page can
+  /// tell "still loading" apart from "nothing synced".
+  final bool pricingStructuresLoaded;
+
+  /// The structure new lines are priced from. Changing it never touches lines
+  /// already in the cart.
+  final PricingStructure? selectedPricingStructure;
   final List<CartLine> cart;
   final double billDiscountRate;
   final bool submitting;
@@ -125,6 +164,9 @@ class CreateBillState extends Equatable {
 
   const CreateBillState({
     this.outlet,
+    this.pricingStructures = const [],
+    this.pricingStructuresLoaded = false,
+    this.selectedPricingStructure,
     this.cart = const [],
     this.billDiscountRate = 0,
     this.submitting = false,
@@ -165,9 +207,24 @@ class CreateBillState extends Equatable {
   bool get hasReturns    => cart.any((l) => l.isReturn);
   bool get hasFreeIssues => cart.any((l) => l.isFreeIssue);
 
+  /// True when the cart holds lines priced from more than one structure — the
+  /// cue for the cart to label each line with its structure.
+  bool get cartMixesStructures =>
+      cart.map((l) => l.pricingStructureId).toSet().length > 1;
+
+  /// Display name of a structure id: its synced name, else "Price list #id".
+  String? pricingStructureNameFor(int? id) {
+    if (id == null) return null;
+    for (final s in pricingStructures) {
+      if (s.id == id) return s.name;
+    }
+    return 'Price list #$id';
+  }
+
   bool get canSubmit =>
       locationStatus == LocationCheckStatus.ready &&
       outlet != null &&
+      selectedPricingStructure != null &&
       cart.isNotEmpty &&
       cart.every((l) => !l.isReturn || l.returnType != null) &&
       cart.every((l) => !l.isFreeIssue || l.freeIssueSource != null) &&
@@ -175,6 +232,10 @@ class CreateBillState extends Equatable {
 
   CreateBillState copyWith({
     Outlet? outlet,
+    List<PricingStructure>? pricingStructures,
+    bool? pricingStructuresLoaded,
+    PricingStructure? selectedPricingStructure,
+    bool clearSelectedPricingStructure = false,
     List<CartLine>? cart,
     double? billDiscountRate,
     bool? submitting,
@@ -190,6 +251,12 @@ class CreateBillState extends Equatable {
   }) =>
       CreateBillState(
         outlet: outlet ?? this.outlet,
+        pricingStructures: pricingStructures ?? this.pricingStructures,
+        pricingStructuresLoaded:
+            pricingStructuresLoaded ?? this.pricingStructuresLoaded,
+        selectedPricingStructure: clearSelectedPricingStructure
+            ? null
+            : (selectedPricingStructure ?? this.selectedPricingStructure),
         cart: cart ?? this.cart,
         billDiscountRate: billDiscountRate ?? this.billDiscountRate,
         submitting: submitting ?? this.submitting,
@@ -207,6 +274,9 @@ class CreateBillState extends Equatable {
   @override
   List<Object?> get props => [
         outlet?.id,
+        pricingStructures,
+        pricingStructuresLoaded,
+        selectedPricingStructure,
         cart,
         billDiscountRate,
         submitting,

@@ -13,6 +13,9 @@ import 'package:uswatte/features/bills/domain/usecases/get_bills_usecase.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_bloc.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_event.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_state.dart';
+import 'package:uswatte/features/pricing/domain/repositories/pricing_repository.dart';
+import 'package:uswatte/features/pricing/domain/usecases/get_pricing_structures_usecase.dart';
+import 'package:uswatte/features/pricing/domain/usecases/sync_pricing_structures_usecase.dart';
 import 'package:uswatte/features/products/domain/usecases/sync_product_categories_usecase.dart';
 import 'package:uswatte/features/products/presentation/bloc/products_bloc.dart';
 import 'package:uswatte/features/products/presentation/bloc/products_event.dart';
@@ -39,6 +42,11 @@ class _SyncPageState extends State<SyncPage> {
   int? _billsItemCount;
   String? _billsErrorMessage;
 
+  bool _pricingSyncing = false;
+  DateTime? _pricingLastSyncedAt;
+  int? _pricingCount;
+  String? _pricingErrorMessage;
+
   /// How far back a bill download reaches. Matches the window the bills list itself shows.
   static const int _billSyncDays = 7;
 
@@ -47,6 +55,40 @@ class _SyncPageState extends State<SyncPage> {
     super.initState();
     _loadStockMeta();
     _loadBillsMeta();
+    _loadPricingMeta();
+  }
+
+  Future<void> _loadPricingMeta() async {
+    final structures = await getIt<GetPricingStructuresUseCase>()();
+    final lastSynced = await getIt<PricingRepository>().getLastSyncedAt();
+    if (mounted) {
+      setState(() {
+        _pricingCount = structures.length;
+        _pricingLastSyncedAt = lastSynced;
+      });
+    }
+  }
+
+  /// Price lists drive every bill price, so this card's own button always
+  /// downloads ([force]); Sync All lets an unchanged set come back as a 304.
+  Future<void> _syncPricing({bool force = true}) async {
+    if (_pricingSyncing) return;
+    if (!await _requireOnline()) return;
+    if (!mounted) return;
+    setState(() {
+      _pricingSyncing = true;
+      _pricingErrorMessage = null;
+    });
+    try {
+      await getIt<SyncPricingStructuresUseCase>()(force: force);
+      await _loadPricingMeta();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _pricingErrorMessage = e.toString());
+      }
+    } finally {
+      if (mounted) setState(() => _pricingSyncing = false);
+    }
   }
 
   Future<void> _loadBillsMeta() async {
@@ -199,11 +241,14 @@ class _SyncPageState extends State<SyncPage> {
     final isAnySyncing =
         _isAnySyncing(productsState, outletsState, hasActiveAssignment) ||
         _stockSyncing ||
-        _billsSyncing;
+        _billsSyncing ||
+        _pricingSyncing;
     final allSynced =
         _isAllSynced(productsState, outletsState, hasActiveAssignment) &&
         _stockLastSyncedAt != null &&
-        !_stockSyncing;
+        !_stockSyncing &&
+        _pricingLastSyncedAt != null &&
+        !_pricingSyncing;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -267,6 +312,19 @@ class _SyncPageState extends State<SyncPage> {
                     );
                   },
                   onView: () => context.push('/sales-rep/products'),
+                ),
+                _CategoryCard(
+                  icon: Icons.price_change_rounded,
+                  label: 'PRICE LISTS',
+                  subtitle: 'Active pricing structures used to price bills',
+                  accentColor: AppColors.warning,
+                  itemCount: _pricingCount,
+                  itemUnit: 'price lists',
+                  lastSyncedAt: _pricingLastSyncedAt,
+                  isSyncing: _pricingSyncing,
+                  hasError: _pricingErrorMessage != null,
+                  errorMessage: _pricingErrorMessage,
+                  onSync: _syncPricing,
                 ),
                 if (outletsState is! OutletsLoaded ||
                     outletsState.hasActiveAssignment)
@@ -332,6 +390,7 @@ class _SyncPageState extends State<SyncPage> {
                           getIt<SyncProductCategoriesUseCase>()()
                               .then<void>((_) {}, onError: (Object _) {})
                               .ignore();
+                          _syncPricing(force: false).ignore();
                           _syncOutlets(context);
                           // Bills first: the flush inside it refreshes stock
                           // when bills sync, so stock after it doesn't

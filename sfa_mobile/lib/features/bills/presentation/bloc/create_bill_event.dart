@@ -3,6 +3,7 @@ import 'package:uswatte/features/bills/data/datasources/bills_local_datasource.d
 import 'package:uswatte/features/bills/presentation/bloc/create_bill_state.dart';
 import 'package:uswatte/features/outlets/domain/entities/outlet.dart';
 import 'package:uswatte/features/outlets/domain/entities/proximity_policy.dart';
+import 'package:uswatte/features/pricing/domain/entities/pricing_structure.dart';
 
 sealed class CreateBillEvent extends Equatable {
   const CreateBillEvent();
@@ -28,6 +29,13 @@ final class ProductAdded extends CreateBillEvent {
   final String? freeIssueSource;
   final DateTime? expireDate;
   final String priceType;
+
+  /// The structure that priced this line. Defaults to the one the product was
+  /// searched in ([ProductWithPrice.pricingStructureId]).
+  final int? pricingStructureId;
+
+  /// The structure's price for [priceType] — see [CartLine.listUnitPrice].
+  final double? listUnitPrice;
   const ProductAdded(
     this.product,
     this.quantity, {
@@ -38,6 +46,8 @@ final class ProductAdded extends CreateBillEvent {
     this.freeIssueSource,
     this.expireDate,
     this.priceType = 'Packet',
+    this.pricingStructureId,
+    this.listUnitPrice,
   });
   @override
   List<Object?> get props => [
@@ -50,7 +60,26 @@ final class ProductAdded extends CreateBillEvent {
         freeIssueSource,
         expireDate,
         priceType,
+        pricingStructureId,
+        listUnitPrice,
       ];
+}
+
+/// The rep picked a different price list. Only lines added from now on are
+/// priced from it; lines already in the cart keep their structure and price.
+final class PricingStructureSelected extends CreateBillEvent {
+  final PricingStructure structure;
+  const PricingStructureSelected(this.structure);
+  @override
+  List<Object?> get props => [structure];
+}
+
+/// Internal — the bloc's own read of the locally synced structures on init.
+final class PricingStructuresLoaded extends CreateBillEvent {
+  final List<PricingStructure> structures;
+  const PricingStructuresLoaded(this.structures);
+  @override
+  List<Object?> get props => [structures];
 }
 
 final class CartItemQtyChanged extends CreateBillEvent {

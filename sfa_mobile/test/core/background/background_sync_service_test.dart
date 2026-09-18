@@ -11,6 +11,7 @@ import 'package:uswatte/core/sync/not_billing_sync_service.dart';
 import 'package:uswatte/features/outlets/domain/entities/proximity_policy.dart';
 import 'package:uswatte/features/outlets/domain/usecases/clear_daily_outlets_usecase.dart';
 import 'package:uswatte/features/outlets/domain/usecases/sync_outlets_usecase.dart';
+import 'package:uswatte/features/pricing/domain/usecases/sync_pricing_structures_usecase.dart';
 import 'package:uswatte/features/products/domain/usecases/sync_product_categories_usecase.dart';
 import 'package:uswatte/features/products/domain/usecases/sync_products_usecase.dart';
 import 'package:uswatte/features/route_assignment/domain/entities/daily_route_assignment.dart';
@@ -20,6 +21,8 @@ import 'package:uswatte/features/stock/domain/usecases/sync_distributor_stock_us
 class _MockProducts extends Mock implements SyncProductsUseCase {}
 
 class _MockCategories extends Mock implements SyncProductCategoriesUseCase {}
+
+class _MockPricing extends Mock implements SyncPricingStructuresUseCase {}
 
 class _MockOutlets extends Mock implements SyncOutletsUseCase {}
 
@@ -52,6 +55,7 @@ AssignmentsResult _result(List<DailyRouteAssignment> a) => AssignmentsResult(
 void main() {
   late _MockProducts products;
   late _MockCategories categories;
+  late _MockPricing pricing;
   late _MockOutlets outlets;
   late _MockClearOutlets clearOutlets;
   late _MockStock stock;
@@ -68,6 +72,7 @@ void main() {
   setUp(() {
     products = _MockProducts();
     categories = _MockCategories();
+    pricing = _MockPricing();
     outlets = _MockOutlets();
     clearOutlets = _MockClearOutlets();
     stock = _MockStock();
@@ -82,6 +87,10 @@ void main() {
     });
     when(() => categories(force: any(named: 'force'))).thenAnswer((_) async {
       log.add('categories');
+      return (const <Never>[], DateTime(2026));
+    });
+    when(() => pricing(force: any(named: 'force'))).thenAnswer((_) async {
+      log.add('pricing');
       return (const <Never>[], DateTime(2026));
     });
     when(() => assignments(date: any(named: 'date'))).thenAnswer((_) async {
@@ -103,6 +112,7 @@ void main() {
     service = BackgroundSyncService(
       syncProducts: products,
       syncCategories: categories,
+      syncPricing: pricing,
       syncOutlets: outlets,
       clearDailyOutlets: clearOutlets,
       syncStock: stock,
@@ -119,6 +129,7 @@ void main() {
     expect(log.toSet(), {
       'products',
       'categories',
+      'pricing',
       'assignment',
       'outlets',
       'bills',
@@ -129,7 +140,7 @@ void main() {
     expect(log.indexOf('stock'), greaterThan(log.indexOf('bills')));
     expect(log.indexOf('outlets'), greaterThan(log.indexOf('assignment')));
     // Uploads only start once every download has settled.
-    for (final download in ['products', 'categories', 'outlets']) {
+    for (final download in ['products', 'categories', 'pricing', 'outlets']) {
       expect(log.indexOf('bills'), greaterThan(log.indexOf(download)));
     }
     verify(() => stock(force: false)).called(1);
@@ -149,7 +160,7 @@ void main() {
     final run = service.runSync();
     // Let the other downloads proceed while products is still in flight.
     await pumpEventQueue();
-    expect(log, containsAll(['categories', 'assignment', 'outlets']));
+    expect(log, containsAll(['categories', 'pricing', 'assignment', 'outlets']));
     expect(log, isNot(contains('products:end')));
     expect(log, isNot(contains('bills')));
 
@@ -168,6 +179,22 @@ void main() {
 
     expect(log, containsAll(
         ['assignment', 'outlets', 'bills', 'notBillings', 'stock', 'pings']));
+  });
+
+  test('a failing pricing download does not stop the other steps', () async {
+    when(() => pricing(force: any(named: 'force')))
+        .thenThrow(Exception('pricing 500'));
+
+    expect(await service.runSync(), isTrue);
+
+    expect(log, containsAll([
+      'products',
+      'categories',
+      'outlets',
+      'bills',
+      'notBillings',
+      'stock',
+    ]));
   });
 
   test('assignment failure skips only outlets, as before', () async {

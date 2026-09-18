@@ -44,6 +44,7 @@ class BillsRepositoryImpl implements BillsRepository {
       gpsAccuracyMeters: bill.gpsAccuracyMeters,
       createdAt: bill.createdAt,
       syncStatus: SyncStatus.pending,
+      pricingStructureId: bill.pricingStructureId,
       items: bill.items
           .map((i) => BillItemModel(
                 clientBillId: i.clientBillId,
@@ -56,6 +57,11 @@ class BillsRepositoryImpl implements BillsRepository {
                 freeIssueSource: i.freeIssueSource,
                 expireDate: i.expireDate,
                 lineNumber: i.lineNumber,
+                // Dropping this stored every line as 'Packet', so a product
+                // billed by case and by packet collided on the detail page.
+                priceType: i.priceType,
+                pricingStructureId: i.pricingStructureId,
+                listUnitPrice: i.listUnitPrice,
               ))
           .toList(),
     );
@@ -95,6 +101,11 @@ class BillsRepositoryImpl implements BillsRepository {
   Future<List<ProductWithPrice>> searchProducts(
     String query, {
     int limit = 200,
+    int? pricingStructureId,
   }) =>
-      _local.searchProducts(query, limit: limit);
+      _local.searchProducts(
+        query,
+        limit: limit,
+        pricingStructureId: pricingStructureId,
+      );
 }

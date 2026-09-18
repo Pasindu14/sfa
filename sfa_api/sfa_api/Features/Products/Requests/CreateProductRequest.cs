@@ -10,7 +10,4 @@ public class CreateProductRequest
     public string? Remarks { get; set; }
     public int? FleetId { get; set; }
     public int? CategoryId { get; set; }
-    public decimal DealerPackPrice { get; set; }
-    public decimal DealerCasePrice { get; set; }
-    public decimal Mrp { get; set; }
 }

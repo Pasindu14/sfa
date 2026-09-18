@@ -39,6 +39,12 @@ import 'package:uswatte/features/products/domain/repositories/product_categories
 import 'package:uswatte/features/products/domain/usecases/get_product_categories_usecase.dart';
 import 'package:uswatte/features/products/domain/usecases/sync_product_categories_usecase.dart';
 import 'package:uswatte/features/products/presentation/bloc/product_categories_bloc.dart';
+import 'package:uswatte/features/pricing/data/datasources/pricing_local_datasource.dart';
+import 'package:uswatte/features/pricing/data/datasources/pricing_remote_datasource.dart';
+import 'package:uswatte/features/pricing/data/repositories/pricing_repository_impl.dart';
+import 'package:uswatte/features/pricing/domain/repositories/pricing_repository.dart';
+import 'package:uswatte/features/pricing/domain/usecases/get_pricing_structures_usecase.dart';
+import 'package:uswatte/features/pricing/domain/usecases/sync_pricing_structures_usecase.dart';
 import 'package:uswatte/features/outlets/data/datasources/outlets_local_datasource.dart';
 import 'package:uswatte/features/outlets/data/datasources/outlets_remote_datasource.dart';
 import 'package:uswatte/features/outlets/data/repositories/outlets_repository_impl.dart';
@@ -257,6 +263,22 @@ Future<void> configureDependencies() async {
         getProductCategoriesUseCase: getIt<GetProductCategoriesUseCase>(),
         syncProductCategoriesUseCase: getIt<SyncProductCategoriesUseCase>(),
       ));
+
+  // ── Pricing structures ───────────────────────────────────────────────────────
+  getIt.registerLazySingleton(
+      () => PricingLocalDatasource(getIt<DatabaseHelper>()));
+  getIt.registerLazySingleton(() => PricingRemoteDatasource(getIt<Dio>()));
+  getIt.registerLazySingleton<PricingRepository>(
+    () => PricingRepositoryImpl(
+      getIt<PricingRemoteDatasource>(),
+      getIt<PricingLocalDatasource>(),
+      getIt<EtagStore>(),
+    ),
+  );
+  getIt.registerLazySingleton(
+      () => GetPricingStructuresUseCase(getIt<PricingRepository>()));
+  getIt.registerLazySingleton(
+      () => SyncPricingStructuresUseCase(getIt<PricingRepository>()));
 
   // ── Outlets ──────────────────────────────────────────────────────────────────
   getIt.registerLazySingleton(
@@ -529,6 +551,7 @@ Future<void> configureDependencies() async {
     () => BackgroundSyncService(
       syncProducts: getIt<SyncProductsUseCase>(),
       syncCategories: getIt<SyncProductCategoriesUseCase>(),
+      syncPricing: getIt<SyncPricingStructuresUseCase>(),
       syncOutlets: getIt<SyncOutletsUseCase>(),
       clearDailyOutlets: getIt<ClearDailyOutletsUseCase>(),
       syncStock: getIt<SyncDistributorStockUseCase>(),

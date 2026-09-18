@@ -325,7 +325,7 @@ public class PurchaseOrderServiceTests
 
         await _sut.CreateAsync(CreateValidRequest(distributorId), callerId: 100, UserRole.Admin);
 
-        // Staff UIs price from Product.DealerCasePrice/DealerPackPrice — category pricing
+        // Staff UIs price from the default pricing structure (client-sent) — category pricing
         // must not be substituted for them.
         captured[0].UnitPrice.Should().Be(100m);
         _pricingRepoMock.Verify(r => r.GetPriceMapForCategoryAsync(

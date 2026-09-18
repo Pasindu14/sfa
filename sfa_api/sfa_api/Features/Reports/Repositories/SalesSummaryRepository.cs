@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using sfa_api.Features.Billings.Entities;
 using sfa_api.Features.Billings.Enums;
+using sfa_api.Features.PricingStructures;
 using sfa_api.Features.Reports.DTOs;
 using sfa_api.Features.Reports.Enums;
 using sfa_api.Features.Reports.Requests;
@@ -217,9 +218,13 @@ public class SalesSummaryRepository(AppDbContext context) : ISalesSummaryReposit
                     Key   = g.Key,
                     Qty   = g.Sum(x => x.TargetQuantity
                                        * (x.Product!.PiecesPerPack > 0 ? x.Product.PiecesPerPack : 1)),
+                    // Valued at the default pricing structure's pack price (unpriced → 0).
                     Value = g.Sum(x => x.TargetQuantity
                                        * (x.Product!.PiecesPerPack > 0 ? x.Product.PiecesPerPack : 1)
-                                       * x.Product!.DealerPackPrice),
+                                       * (_context.DefaultPricingItems()
+                                              .Where(i => i.ProductId == x.ProductId)
+                                              .Select(i => i.DealerPackPrice)
+                                              .FirstOrDefault() ?? 0m)),
                 })
                 .Take(maxGroups + 1)
                 .ToListAsync(ct);

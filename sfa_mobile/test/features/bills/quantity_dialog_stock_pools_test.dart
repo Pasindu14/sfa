@@ -22,13 +22,17 @@ ProductWithPrice _product({
   double? freeIssueStock,
   int packsPerCase = 1,
   double packPrice = 100,
+  double? casePrice,
+  bool casePriced = true,
 }) =>
     ProductWithPrice(
       id: 1,
       code: 'P-1042',
       itemDescription: 'COCONUT BISCUIT 200G',
       dealerPackPrice: packPrice,
-      dealerCasePrice: packPrice * packsPerCase,
+      pricingStructureId: 7,
+      dealerCasePrice:
+          casePriced ? (casePrice ?? packPrice * packsPerCase) : null,
       packsPerCase: packsPerCase,
       normalStock: normalStock,
       freeIssueStock: freeIssueStock,
@@ -321,6 +325,75 @@ void main() {
 
       expect(box.value, isNotNull);
       expect(box.value!.single.quantity, 3);
+    });
+  });
+
+  // A structure may price a product per pack only (dealerCasePrice null). The
+  // case line must then bill pack price × packs per case — the old product
+  // column defaulted the case price to 0 and billed whole cases for nothing.
+  group('quantity sheet — case price and pricing snapshot', () {
+    final Finder casesField = find.byWidgetPredicate(
+      (w) => w is TextField && w.decoration?.labelText == 'Cases',
+    );
+
+    Future<List<QuantityDialogResult>?> addOneCase(
+      WidgetTester tester,
+      ProductWithPrice product,
+    ) async {
+      final box = await _open(tester, product);
+      await tester.enterText(casesField, '1');
+      await tester.pumpAndSettle();
+      await _tapAdd(tester);
+      return box.value;
+    }
+
+    testWidgets('falls back to pack × packs per case when unpriced per case',
+        (tester) async {
+      final result = await addOneCase(
+        tester,
+        _product(normalStock: 100, packsPerCase: 12, casePriced: false),
+      );
+
+      final line = result!.single;
+      expect(line.priceType, 'Case');
+      expect(line.quantity, 12);
+      expect(line.unitPrice, 100, reason: '1200 / 12 per pack, not 0');
+      expect(line.listUnitPrice, 1200);
+    });
+
+    testWidgets('treats a zero case price as unpriced', (tester) async {
+      final result = await addOneCase(
+        tester,
+        _product(normalStock: 100, packsPerCase: 12, casePrice: 0),
+      );
+
+      expect(result!.single.unitPrice, 100);
+      expect(result.single.listUnitPrice, 1200);
+    });
+
+    testWidgets('uses the structure case price when it has one',
+        (tester) async {
+      final result = await addOneCase(
+        tester,
+        _product(normalStock: 100, packsPerCase: 12, casePrice: 1080),
+      );
+
+      final line = result!.single;
+      expect(line.unitPrice, 90);
+      expect(line.listUnitPrice, 1080, reason: 'the full case price');
+      expect(line.pricingStructureId, 7);
+    });
+
+    testWidgets('a packet line carries the pack list price and structure',
+        (tester) async {
+      final box = await _open(tester, _product(normalStock: 10));
+      await _enterPacks(tester, '2');
+      await _tapAdd(tester);
+
+      final line = box.value!.single;
+      expect(line.priceType, 'Packet');
+      expect(line.listUnitPrice, 100);
+      expect(line.pricingStructureId, 7);
     });
   });
 }

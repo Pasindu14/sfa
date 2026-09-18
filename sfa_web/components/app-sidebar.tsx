@@ -51,6 +51,7 @@ const navConfig: NavGroup[] = [
       { title: "Fleets", url: "/fleets" },
       { title: "Outlets", url: "/outlets" },
       { title: "Category Pricing", url: "/product-category-pricings" },
+      { title: "Pricing Structures", url: "/pricing-structures" },
     ],
   },
   {

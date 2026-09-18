@@ -3,6 +3,7 @@ using sfa_api.Features.Billings.Enums;
 using sfa_api.Features.Distributors.Entities;
 using sfa_api.Features.Divisions.Entities;
 using sfa_api.Features.Outlets.Entities;
+using sfa_api.Features.PricingStructures.Entities;
 using sfa_api.Features.Regions.Entities;
 using sfa_api.Features.Territories.Entities;
 using sfa_api.Features.Users.Entities;
@@ -104,6 +105,13 @@ public class Billing
     // The grant that allowed it, so the report can name the reason and the approver.
     public int? ProximityExemptionId { get; set; }
 
+    /// <summary>
+    /// The pricing structure the rep had selected when the bill was submitted. A bill may mix
+    /// structures (a rep can switch mid-bill), so <see cref="BillingItem.PricingStructureId"/> is the
+    /// source of truth per line. Null on bills created before pricing structures existed.
+    /// </summary>
+    public int? PricingStructureId { get; set; }
+
     // Audit
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
@@ -124,6 +132,7 @@ public class Billing
     public User?       Asm         { get; set; }
     public User?       Rsm         { get; set; }
     public User?       Nsm         { get; set; }
+    public PricingStructure? PricingStructure { get; set; }
     public ICollection<BillingItem> Items { get; set; } = [];
     public ICollection<BillingAdjustment> Adjustments { get; set; } = [];
 }

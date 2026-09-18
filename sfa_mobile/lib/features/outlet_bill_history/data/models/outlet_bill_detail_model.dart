@@ -21,6 +21,8 @@ class OutletBillDetailModel {
   final String? lastAdjustedAt;
   final int adjustmentCount;
   final double distributorReturnValue;
+  final int? pricingStructureId;
+  final String? pricingStructureName;
   final List<OutletBillItemModel> items;
 
   const OutletBillDetailModel({
@@ -43,6 +45,8 @@ class OutletBillDetailModel {
     this.lastAdjustedAt,
     this.adjustmentCount = 0,
     this.distributorReturnValue = 0,
+    this.pricingStructureId,
+    this.pricingStructureName,
     required this.items,
   });
 
@@ -69,6 +73,8 @@ class OutletBillDetailModel {
         adjustmentCount: (json['adjustmentCount'] as num?)?.toInt() ?? 0,
         distributorReturnValue:
             (json['distributorReturnValue'] as num?)?.toDouble() ?? 0,
+        pricingStructureId: json['pricingStructureId'] as int?,
+        pricingStructureName: json['pricingStructureName'] as String?,
         items: (json['items'] as List<dynamic>)
             .map((e) => OutletBillItemModel.fromJson(e as Map<String, dynamic>))
             .toList(),
@@ -95,6 +101,8 @@ class OutletBillDetailModel {
             lastAdjustedAt != null ? DateTime.parse(lastAdjustedAt!) : null,
         adjustmentCount: adjustmentCount,
         distributorReturnValue: distributorReturnValue,
+        pricingStructureId: pricingStructureId,
+        pricingStructureName: pricingStructureName,
         items: items.map((e) => e.toEntity()).toList(),
       );
 }

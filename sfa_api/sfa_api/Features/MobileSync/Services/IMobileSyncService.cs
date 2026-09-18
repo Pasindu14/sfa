@@ -6,4 +6,5 @@ public interface IMobileSyncService
 {
     Task<MobileProductListDto> GetProductsAsync(CancellationToken ct = default);
     Task<MobileProductCategoryListDto> GetProductCategoriesAsync(CancellationToken ct = default);
+    Task<MobilePricingStructureListDto> GetPricingStructuresAsync(CancellationToken ct = default);
 }

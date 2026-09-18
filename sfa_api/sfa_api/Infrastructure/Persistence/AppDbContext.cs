@@ -10,6 +10,7 @@ using sfa_api.Features.Regions.Entities;
 using sfa_api.Features.Territories.Entities;
 using sfa_api.Features.ProductCategories.Entities;
 using sfa_api.Features.ProductCategoryPricings.Entities;
+using sfa_api.Features.PricingStructures.Entities;
 using sfa_api.Features.Products.Entities;
 using sfa_api.Features.PurchaseOrders.Entities;
 using sfa_api.Features.Billings.Entities;
@@ -59,6 +60,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Product> Products => Set<Product>();
     public DbSet<ProductCategory> ProductCategories => Set<ProductCategory>();
     public DbSet<ProductCategoryPrice> ProductCategoryPrices => Set<ProductCategoryPrice>();
+    public DbSet<PricingStructure> PricingStructures => Set<PricingStructure>();
+    public DbSet<PricingStructureItem> PricingStructureItems => Set<PricingStructureItem>();
     public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
     public DbSet<PurchaseOrderItem> PurchaseOrderItems => Set<PurchaseOrderItem>();
     public DbSet<PurchaseOrderHistory> PurchaseOrderHistories => Set<PurchaseOrderHistory>();
@@ -512,10 +515,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => x.UpdatedAt);
             e.HasIndex(x => x.FleetId);
             e.HasIndex(x => x.CategoryId);
-            // Money columns: fixed precision, consistent with every other monetary value.
-            e.Property(x => x.DealerPackPrice).HasColumnType("decimal(18,2)");
-            e.Property(x => x.DealerCasePrice).HasColumnType("decimal(18,2)");
-            e.Property(x => x.Mrp).HasColumnType("decimal(18,2)");
             e.HasOne(x => x.Fleet).WithMany().HasForeignKey(x => x.FleetId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.Category).WithMany().HasForeignKey(x => x.CategoryId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
             // NOTE: No HasQueryFilter (IsActive or IsDeleted) — repositories use IgnoreQueryFilters() throughout and
@@ -527,6 +526,48 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .IsRowVersion()
              .HasColumnName("xmin")
              .HasColumnType("xid");
+        });
+
+        // PricingStructure
+        modelBuilder.Entity<PricingStructure>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.Property(x => x.Name).HasMaxLength(100).IsRequired();
+            e.Property(x => x.Description).HasMaxLength(500);
+            // Names are reusable once a structure is deleted.
+            e.HasIndex(x => x.Name).IsUnique().HasFilter("\"IsDeleted\" = false");
+            // At most one live default — the DB backstop for the service's swap-in-a-transaction.
+            e.HasIndex(x => x.IsDefault).IsUnique()
+             .HasFilter("\"IsDefault\" = true AND \"IsDeleted\" = false")
+             .HasDatabaseName("IX_PricingStructures_SingleDefault");
+            e.HasIndex(x => x.IsActive);
+            // No HasQueryFilter: BillingItem / Billing have optional FKs here and historical bills must
+            // still resolve a deleted structure's name. Repositories filter IsDeleted explicitly.
+            e.Property(x => x.RowVersion)
+             .IsRowVersion()
+             .HasColumnName("xmin")
+             .HasColumnType("xid");
+            e.HasMany(x => x.Items)
+             .WithOne(i => i.PricingStructure)
+             .HasForeignKey(i => i.PricingStructureId)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // PricingStructureItem
+        modelBuilder.Entity<PricingStructureItem>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.Property(x => x.DealerPackPrice).HasColumnType("decimal(18,2)");
+            e.Property(x => x.DealerCasePrice).HasColumnType("decimal(18,2)");
+            e.Property(x => x.Mrp).HasColumnType("decimal(18,2)");
+            e.HasIndex(x => new { x.PricingStructureId, x.ProductId }).IsUnique();
+            e.HasIndex(x => x.ProductId);
+            e.HasOne(x => x.Product)
+             .WithMany()
+             .HasForeignKey(x => x.ProductId)
+             .OnDelete(DeleteBehavior.Restrict);
         });
 
         // ProductCategoryPrice
@@ -1065,6 +1106,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .WithOne(a => a.Billing)
              .HasForeignKey(a => a.BillingId)
              .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.PricingStructureId);
+            e.HasOne(x => x.PricingStructure)
+             .WithMany()
+             .HasForeignKey(x => x.PricingStructureId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.Restrict);
         });
 
         // ── BillingItem ───────────────────────────────────────────────────────
@@ -1101,6 +1148,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .HasForeignKey(x => x.SourceBillingItemId)
              .IsRequired(false)
              .OnDelete(DeleteBehavior.NoAction);
+            // Pricing snapshot — structure that priced the line, and the list price it used.
+            e.Property(x => x.PriceBasis).HasConversion<string>().HasMaxLength(10);
+            e.Property(x => x.ListUnitPrice).HasColumnType("decimal(18,2)");
+            e.HasIndex(x => x.PricingStructureId);
+            e.HasOne(x => x.PricingStructure)
+             .WithMany()
+             .HasForeignKey(x => x.PricingStructureId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.Restrict);
         });
 
         // ── BillingAdjustment ─────────────────────────────────────────────────

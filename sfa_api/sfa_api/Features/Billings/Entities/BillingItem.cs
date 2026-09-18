@@ -1,4 +1,5 @@
 using sfa_api.Features.Billings.Enums;
+using sfa_api.Features.PricingStructures.Entities;
 using sfa_api.Features.Products.Entities;
 
 namespace sfa_api.Features.Billings.Entities;
@@ -34,6 +35,22 @@ public class BillingItem
     /// </summary>
     public decimal? OriginalQuantity { get; set; }
 
+    /// <summary>
+    /// The pricing structure that priced this line. Null on lines created before pricing
+    /// structures existed. Historical: later edits to the structure never touch this line —
+    /// <see cref="UnitPrice"/> and <see cref="ListUnitPrice"/> are the frozen prices.
+    /// </summary>
+    public int? PricingStructureId { get; set; }
+
+    /// <summary>Which structure price the line used (pack, case, or a rep-typed return price). Null on legacy lines.</summary>
+    public PriceBasis? PriceBasis { get; set; }
+
+    /// <summary>
+    /// The structure's price for <see cref="PriceBasis"/> at billing time — the exact case price on a
+    /// Case line (whose <see cref="UnitPrice"/> is the per-pack equivalent). Null on Manual and legacy lines.
+    /// </summary>
+    public decimal? ListUnitPrice { get; set; }
+
     // Audit
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public bool IsDeleted { get; set; } = false;
@@ -42,4 +59,5 @@ public class BillingItem
     public Billing Billing { get; set; } = null!;
     public Product Product { get; set; } = null!;
     public BillingItem? SourceBillingItem { get; set; }
+    public PricingStructure? PricingStructure { get; set; }
 }

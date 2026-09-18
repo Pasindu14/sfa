@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:uswatte/core/db/database_helper.dart';
 import 'package:uswatte/features/bills/data/models/bill_item_model.dart';
@@ -5,13 +6,22 @@ import 'package:uswatte/features/bills/data/models/bill_model.dart';
 import 'package:uswatte/features/bills/domain/entities/sync_status.dart';
 
 /// A product row shaped for the Create Bill product picker — joined with the
-/// product category so the UI can group and price results without additional
-/// queries. Prices come from the product's own columns.
+/// selected pricing structure and the product category so the UI can group and
+/// price results without additional queries.
 class ProductWithPrice {
   final int id;
   final String code;
   final String itemDescription;
+
+  /// The pricing structure these prices were read from. Null when the search
+  /// ran without one (nothing synced), in which case both prices are null too.
+  final int? pricingStructureId;
+
+  /// Null when the product has no price in [pricingStructureId] ("No price").
   final double? dealerPackPrice;
+
+  /// Null when the structure prices this product per pack only; billing then
+  /// falls back to pack price × packs per case.
   final double? dealerCasePrice;
   final int packsPerCase;
   final int? categoryId;
@@ -29,6 +39,7 @@ class ProductWithPrice {
     required this.id,
     required this.code,
     required this.itemDescription,
+    this.pricingStructureId,
     this.dealerPackPrice,
     this.dealerCasePrice,
     this.packsPerCase = 1,
@@ -212,19 +223,29 @@ class BillsLocalDatasource {
 
   Future<BillModel?> getById(String clientBillId) async {
     final db = await _dbHelper.database;
-    final billRows = await db.query(
-      'bills',
-      where: 'client_bill_id = ?',
-      whereArgs: [clientBillId],
-      limit: 1,
+    // Structure names come from the local price list cache: a structure that
+    // was deactivated since is no longer synced, so its name reads back null
+    // and the UI falls back to its id.
+    final billRows = await db.rawQuery(
+      '''
+      SELECT b.*,
+             ps.name AS pricing_structure_name
+      FROM bills b
+      LEFT JOIN price_structures ps ON ps.id = b.pricing_structure_id
+      WHERE b.client_bill_id = ?
+      LIMIT 1
+      ''',
+      [clientBillId],
     );
     if (billRows.isEmpty) return null;
     final itemRows = await db.rawQuery(
       '''
       SELECT bi.*,
-             p.item_description AS product_name
+             p.item_description AS product_name,
+             ps.name            AS pricing_structure_name
       FROM bill_items bi
       LEFT JOIN products p ON p.id = bi.product_id
+      LEFT JOIN price_structures ps ON ps.id = bi.pricing_structure_id
       WHERE bi.client_bill_id = ?
       ORDER BY bi.line_number ASC
       ''',
@@ -411,28 +432,56 @@ class BillsLocalDatasource {
 
   // ── Product search for the Create Bill picker ─────────────────────────────
 
-  /// Searches `products` by code OR description, joined with product categories.
-  /// Prices come from the product's own columns. Results are sorted by category
-  /// name (named categories first, uncategorized last) then by product code.
-  /// Capped at [limit] rows.
+  /// Searches `products` by code OR description, priced from
+  /// [pricingStructureId] and joined with product categories. A product the
+  /// structure does not price comes back with null prices ("No price"). Results
+  /// are sorted by category name (named categories first, uncategorized last)
+  /// then by product code. Capped at [limit] rows.
   Future<List<ProductWithPrice>> searchProducts(
     String query, {
     int limit = 200,
+    int? pricingStructureId,
   }) async {
     final db = await _dbHelper.database;
     final q = '%${query.trim()}%';
 
     final rows = await db.rawQuery(
-      '''
+      productSearchSql,
+      [pricingStructureId, q, q, limit],
+    );
+    return rows
+        .map((r) => ProductWithPrice(
+              id: r['id'] as int,
+              code: r['code'] as String,
+              itemDescription: r['item_description'] as String,
+              pricingStructureId: pricingStructureId,
+              dealerPackPrice: (r['dealer_pack_price'] as num?)?.toDouble(),
+              dealerCasePrice: (r['dealer_case_price'] as num?)?.toDouble(),
+              packsPerCase: (r['packs_per_case'] as int?) ?? 1,
+              categoryId: r['category_id'] as int?,
+              categoryName: r['category_name'] as String?,
+              normalStock: (r['normal_stock'] as num?)?.toDouble(),
+              freeIssueStock: (r['free_issue_stock'] as num?)?.toDouble(),
+            ))
+        .toList();
+  }
+
+  /// The picker query. The structure id is the first bound parameter — never
+  /// interpolated — so a null id simply matches no price row.
+  @visibleForTesting
+  static const productSearchSql = '''
       SELECT p.id, p.code, p.item_description,
              p.pieces_per_pack        AS packs_per_case,
-             p.dealer_pack_price      AS dealer_pack_price,
-             p.dealer_case_price      AS dealer_case_price,
+             psi.dealer_pack_price    AS dealer_pack_price,
+             psi.dealer_case_price    AS dealer_case_price,
              p.category_id,
              pc.name                  AS category_name,
              ds.quantity_on_hand      AS normal_stock,
              dsf.quantity_on_hand     AS free_issue_stock
       FROM products p
+      LEFT JOIN price_structure_items psi
+        ON psi.product_id = p.id
+       AND psi.structure_id = ?
       LEFT JOIN product_categories pc
         ON pc.id = p.category_id
       LEFT JOIN distributor_stocks ds
@@ -444,22 +493,5 @@ class BillsLocalDatasource {
       WHERE (p.code LIKE ? OR p.item_description LIKE ?)
       ORDER BY COALESCE(pc.name, 'zzzzz') ASC, p.code ASC
       LIMIT ?
-      ''',
-      [q, q, limit],
-    );
-    return rows
-        .map((r) => ProductWithPrice(
-              id: r['id'] as int,
-              code: r['code'] as String,
-              itemDescription: r['item_description'] as String,
-              dealerPackPrice: (r['dealer_pack_price'] as num?)?.toDouble(),
-              dealerCasePrice: (r['dealer_case_price'] as num?)?.toDouble(),
-              packsPerCase: (r['packs_per_case'] as int?) ?? 1,
-              categoryId: r['category_id'] as int?,
-              categoryName: r['category_name'] as String?,
-              normalStock: (r['normal_stock'] as num?)?.toDouble(),
-              freeIssueStock: (r['free_issue_stock'] as num?)?.toDouble(),
-            ))
-        .toList();
-  }
+      ''';
 }

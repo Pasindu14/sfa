@@ -26,18 +26,6 @@ public class UpdateProductValidator : AbstractValidator<UpdateProductRequest>
             .MaximumLength(500).WithMessage("Image URL must not exceed 500 characters.")
             .When(x => x.ImageUrl != null);
 
-        RuleFor(x => x.DealerPackPrice)
-            .GreaterThanOrEqualTo(0).WithMessage("Dealer pack price must be 0 or greater.")
-            .LessThanOrEqualTo(1_000_000).WithMessage("Dealer pack price must not exceed 1,000,000.");
-
-        RuleFor(x => x.DealerCasePrice)
-            .GreaterThanOrEqualTo(0).WithMessage("Dealer case price must be 0 or greater.")
-            .LessThanOrEqualTo(1_000_000).WithMessage("Dealer case price must not exceed 1,000,000.");
-
-        RuleFor(x => x.Mrp)
-            .GreaterThanOrEqualTo(0).WithMessage("MRP must be 0 or greater.")
-            .LessThanOrEqualTo(1_000_000).WithMessage("MRP must not exceed 1,000,000.");
-
         RuleFor(x => x.RowVersion)
             .NotEqual(0u).WithMessage("RowVersion is required for optimistic concurrency.");
     }

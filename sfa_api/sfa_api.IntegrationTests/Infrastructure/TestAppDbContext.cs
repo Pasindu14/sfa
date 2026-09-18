@@ -138,6 +138,8 @@ public class TestAppDbContext(DbContextOptions<AppDbContext> options) : AppDbCon
             // the column just has to be insertable.
             () => modelBuilder.Entity<UserProximityExemption>().Property(x => x.RowVersion)
                     .HasColumnType("INTEGER").HasDefaultValue(1u).ValueGeneratedOnAdd().IsConcurrencyToken(false),
+            () => modelBuilder.Entity<sfa_api.Features.PricingStructures.Entities.PricingStructure>().Property(x => x.RowVersion)
+                    .HasColumnType("INTEGER").HasDefaultValue(1u).ValueGeneratedOnAdd().IsConcurrencyToken(false),
         })
             patch();
     }

@@ -345,6 +345,9 @@ namespace sfa_api.Migrations
                         .HasColumnType("character varying(10)")
                         .HasDefaultValue("Cash");
 
+                    b.Property<int?>("PricingStructureId")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("ProximityExemptionId")
                         .HasColumnType("integer");
 
@@ -420,6 +423,8 @@ namespace sfa_api.Migrations
 
                     b.HasIndex("IsDeleted")
                         .HasFilter("\"IsDeleted\" = false");
+
+                    b.HasIndex("PricingStructureId");
 
                     b.HasIndex("RepStatus");
 
@@ -574,8 +579,18 @@ namespace sfa_api.Migrations
                     b.Property<int>("LineNumber")
                         .HasColumnType("integer");
 
+                    b.Property<decimal?>("ListUnitPrice")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<decimal?>("OriginalQuantity")
                         .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("PriceBasis")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<int?>("PricingStructureId")
+                        .HasColumnType("integer");
 
                     b.Property<int>("ProductId")
                         .HasColumnType("integer");
@@ -608,6 +623,8 @@ namespace sfa_api.Migrations
                     b.HasIndex("BillingId");
 
                     b.HasIndex("BillingItemType");
+
+                    b.HasIndex("PricingStructureId");
 
                     b.HasIndex("ProductId");
 
@@ -1437,6 +1454,111 @@ namespace sfa_api.Migrations
                     b.ToTable("Outlets");
                 });
 
+            modelBuilder.Entity("sfa_api.Features.PricingStructures.Entities.PricingStructure", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdatedBy")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("IsDefault")
+                        .IsUnique()
+                        .HasDatabaseName("IX_PricingStructures_SingleDefault")
+                        .HasFilter("\"IsDefault\" = true AND \"IsDeleted\" = false");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = false");
+
+                    b.ToTable("PricingStructures");
+                });
+
+            modelBuilder.Entity("sfa_api.Features.PricingStructures.Entities.PricingStructureItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("DealerCasePrice")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("DealerPackPrice")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("Mrp")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("PricingStructureId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdatedBy")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("PricingStructureId", "ProductId")
+                        .IsUnique();
+
+                    b.ToTable("PricingStructureItems");
+                });
+
             modelBuilder.Entity("sfa_api.Features.ProductCategories.Entities.ProductCategory", b =>
                 {
                     b.Property<int>("Id")
@@ -1539,12 +1661,6 @@ namespace sfa_api.Migrations
                     b.Property<int?>("CreatedBy")
                         .HasColumnType("integer");
 
-                    b.Property<decimal>("DealerCasePrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("DealerPackPrice")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<int?>("FleetId")
                         .HasColumnType("integer");
 
@@ -1560,9 +1676,6 @@ namespace sfa_api.Migrations
                     b.Property<string>("ItemDescription")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<decimal>("Mrp")
-                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("PiecesPerPack")
                         .HasColumnType("integer");
@@ -3112,6 +3225,11 @@ namespace sfa_api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("sfa_api.Features.PricingStructures.Entities.PricingStructure", "PricingStructure")
+                        .WithMany()
+                        .HasForeignKey("PricingStructureId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("sfa_api.Features.Regions.Entities.Region", "Region")
                         .WithMany()
                         .HasForeignKey("RegionId")
@@ -3154,6 +3272,8 @@ namespace sfa_api.Migrations
                     b.Navigation("Nsm");
 
                     b.Navigation("Outlet");
+
+                    b.Navigation("PricingStructure");
 
                     b.Navigation("Region");
 
@@ -3204,6 +3324,11 @@ namespace sfa_api.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("sfa_api.Features.PricingStructures.Entities.PricingStructure", "PricingStructure")
+                        .WithMany()
+                        .HasForeignKey("PricingStructureId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("sfa_api.Features.Products.Entities.Product", "Product")
                         .WithMany()
                         .HasForeignKey("ProductId")
@@ -3216,6 +3341,8 @@ namespace sfa_api.Migrations
                         .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("Billing");
+
+                    b.Navigation("PricingStructure");
 
                     b.Navigation("Product");
 
@@ -3498,6 +3625,25 @@ namespace sfa_api.Migrations
                     b.Navigation("Route");
 
                     b.Navigation("Territory");
+                });
+
+            modelBuilder.Entity("sfa_api.Features.PricingStructures.Entities.PricingStructureItem", b =>
+                {
+                    b.HasOne("sfa_api.Features.PricingStructures.Entities.PricingStructure", "PricingStructure")
+                        .WithMany("Items")
+                        .HasForeignKey("PricingStructureId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("sfa_api.Features.Products.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("PricingStructure");
+
+                    b.Navigation("Product");
                 });
 
             modelBuilder.Entity("sfa_api.Features.ProductCategoryPricings.Entities.ProductCategoryPrice", b =>
@@ -4019,6 +4165,11 @@ namespace sfa_api.Migrations
             modelBuilder.Entity("sfa_api.Features.GeoConsistency.Entities.GeoConsistencyRun", b =>
                 {
                     b.Navigation("Flags");
+                });
+
+            modelBuilder.Entity("sfa_api.Features.PricingStructures.Entities.PricingStructure", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("sfa_api.Features.PurchaseOrders.Entities.PurchaseOrder", b =>

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using sfa_api.Features.Billings.Enums;
+using sfa_api.Features.PricingStructures;
 using sfa_api.Features.Stock.DTOs;
 using sfa_api.Features.StockTaking.Enums;
 using sfa_api.Infrastructure.Persistence;
@@ -112,7 +113,12 @@ public class BinCardRepository(AppDbContext db) : IBinCardRepository
         => _db.Products
               .AsNoTracking()
               .Where(p => productIds.Contains(p.Id))
-              .Select(p => new BinCardProductInfo(p.Id, p.Code, p.ItemDescription, p.DealerPackPrice))
+              // Valued at the default pricing structure's pack price; unpriced products value at 0.
+              .Select(p => new BinCardProductInfo(p.Id, p.Code, p.ItemDescription,
+                  _db.DefaultPricingItems()
+                     .Where(i => i.ProductId == p.Id)
+                     .Select(i => i.DealerPackPrice)
+                     .FirstOrDefault() ?? 0m))
               .ToListAsync(ct);
 
     public Task<string?> GetDistributorNameAsync(int distributorId, CancellationToken ct = default)

@@ -52,6 +52,7 @@ Test: sfa_api.UnitTests/ | sfa_api.IntegrationTests/
 | Billings | NotBillings | Routes | DailyRouteAssignments | Stock |
 | Fleets | UserGeoAssignments | UserReportingLines | MobileSync | SalesTargets |
 | Supervisor | StockTaking | LocationPings | Notifications | Reports |
+| PricingStructures | | | | |
 
 **Geographic Hierarchy:** `Region → Area → Territory → Division`
 Each level stores all ancestor IDs (denormalized) — join-free queries.

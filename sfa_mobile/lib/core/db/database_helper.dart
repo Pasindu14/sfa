@@ -32,7 +32,7 @@ import 'package:sqflite/sqflite.dart';
 /// the race above.
 class DatabaseHelper {
   static const _dbName = 'sfa_local.db';
-  static const _dbVersion = 21;
+  static const _dbVersion = 22;
 
   DatabaseHelper._private();
   static final DatabaseHelper instance = DatabaseHelper._private();
@@ -98,6 +98,7 @@ class DatabaseHelper {
     if (oldVersion < 19) await _migrateDistributorStocksFleetV19(db);
     if (oldVersion < 20) await _migrateOutboxLastAttemptV20(db);
     if (oldVersion < 21) await _createPerformanceIndexesV21(db);
+    if (oldVersion < 22) await _migratePricingStructuresV22(db);
 
     await _ensureSchemaColumns(db);
   }
@@ -155,6 +156,10 @@ class DatabaseHelper {
     await _ensureColumn(db, 'bills', 'last_attempt_at', 'TEXT');
     await _ensureColumn(db, 'not_billings', 'last_attempt_at', 'TEXT');
 
+    await _ensureColumn(db, 'bills', 'pricing_structure_id', 'INTEGER');
+    await _ensureColumn(db, 'bill_items', 'pricing_structure_id', 'INTEGER');
+    await _ensureColumn(db, 'bill_items', 'list_unit_price', 'REAL');
+
     // Last: an index on a column must come after the column exists.
     await ensurePerformanceIndexes(db);
   }
@@ -191,7 +196,9 @@ class DatabaseHelper {
       )
     ''');
 
-    // Products catalog — full replace on every sync
+    // Products catalog — full replace on every sync. The dealer_*/mrp price
+    // columns are legacy (prices now live in price_structure_items); they stay
+    // because SQLite < 3.35 cannot DROP COLUMN, but nothing reads them.
     await db.execute('''
       CREATE TABLE IF NOT EXISTS products (
         id               INTEGER PRIMARY KEY,
@@ -220,9 +227,46 @@ class DatabaseHelper {
     await _createNotBillingsTable(db);
     await _createDistributorStocksTable(db);
     await _createLocationPingsTable(db);
+    await _createPriceStructuresTables(db);
   }
 
   // ── Migrations ─────────────────────────────────────────────────────────────
+
+  /// Pricing Structures return: named price lists synced from
+  /// GET /mobile/pricing-structures, plus a per-line record of which structure
+  /// priced each bill line and at what list price.
+  Future<void> _migratePricingStructuresV22(Database db) async {
+    await _createPriceStructuresTables(db);
+    await _ensureColumn(db, 'bills', 'pricing_structure_id', 'INTEGER');
+    await _ensureColumn(db, 'bill_items', 'pricing_structure_id', 'INTEGER');
+    await _ensureColumn(db, 'bill_items', 'list_unit_price', 'REAL');
+  }
+
+  /// Active pricing structures and their per-product prices — full replace on
+  /// every sync. Deliberately NOT named pricing_structures / pricing_items:
+  /// the v16 step drops those names, and because [_createAllTables] runs
+  /// before the ladder, reusing them would let an upgrade from < 16 drop the
+  /// freshly created tables. A product with no row in a structure has no price
+  /// there.
+  Future<void> _createPriceStructuresTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS price_structures (
+        id         INTEGER PRIMARY KEY,
+        name       TEXT    NOT NULL,
+        is_default INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS price_structure_items (
+        structure_id      INTEGER NOT NULL,
+        product_id        INTEGER NOT NULL,
+        dealer_pack_price REAL    NOT NULL,
+        dealer_case_price REAL,
+        mrp               REAL,
+        PRIMARY KEY (structure_id, product_id)
+      )
+    ''');
+  }
 
   /// Read-path indexes — see [performanceIndexStatements].
   Future<void> _createPerformanceIndexesV21(Database db) async {
@@ -326,7 +370,8 @@ class DatabaseHelper {
         last_sync_error_code TEXT,
         last_attempt_at      TEXT,
         server_bill_id       INTEGER,
-        server_bill_number   TEXT
+        server_bill_number   TEXT,
+        pricing_structure_id INTEGER
       )
     ''');
     await db.execute(
@@ -351,6 +396,8 @@ class DatabaseHelper {
         expire_date       TEXT,
         line_number       INTEGER NOT NULL,
         price_type       TEXT    NOT NULL DEFAULT 'Packet',
+        pricing_structure_id INTEGER,
+        list_unit_price   REAL,
         FOREIGN KEY(client_bill_id) REFERENCES bills(client_bill_id) ON DELETE CASCADE
       )
     ''');
