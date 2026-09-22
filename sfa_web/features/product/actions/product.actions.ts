@@ -43,7 +43,7 @@ export const getActiveProductsForSelectAction = createAction(
   { name: 'getActiveProductsForSelectAction', requireAuth: true, requiredRole: 'Admin' },
   async (search?: string) => {
     const res = await client.get('/api/v1/products', {
-      params: { page: 1, pageSize: 50, isActive: true, search: search || undefined },
+      params: { page: 1, pageSize: 200, isActive: true, search: search || undefined },
     })
     return res.data.data as ProductsListResponse
   }

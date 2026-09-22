@@ -68,7 +68,7 @@ export const getSupervisorsForSelectAction = createAction(
     const res = await client.get('/api/v1/users', {
       params: {
         page: 1,
-        pageSize: 50,
+        pageSize: 200,
         isActive: true,
         role: 'Supervisor',
         ...(search ? { search } : {}),

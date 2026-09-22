@@ -133,10 +133,12 @@ export function AsyncSelect<T>({
       }
     };
 
-    if (!mounted) {
+    // With initialOption the selected label is already known, so the value-based
+    // lookup is redundant — the list load below still populates the options.
+    if (!mounted && !initialOption) {
       initializeOptions();
     }
-  }, [mounted, fetcher, value]);
+  }, [mounted, fetcher, value, initialOption]);
 
   useEffect(() => {
     const fetchOptions = async () => {

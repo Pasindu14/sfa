@@ -53,7 +53,7 @@ interface GrantExemptionFormProps {
 /// deactivated rep cannot be handed an exemption they can never use.
 function useSalesRepFetcher() {
   return useCallback(async (query?: string): Promise<UserDto[]> => {
-    const result = await getUsersAction(1, 50, query?.trim() || undefined, 'SalesRep', true)
+    const result = await getUsersAction(1, 200, query?.trim() || undefined, 'SalesRep', true)
     if (!result.success) return []
     return result.data.users
   }, [])

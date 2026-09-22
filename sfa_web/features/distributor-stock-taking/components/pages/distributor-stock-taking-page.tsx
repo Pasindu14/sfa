@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useForm, useFieldArray, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -32,24 +32,18 @@ import {
   useOpenPeriods,
   useMySubmission,
   useUpsertAndSubmit,
+  useProductSearchFetcher,
 } from '../../hooks/distributor-stock-taking.hooks'
 import {
   upsertDraftSchema,
   type UpsertDraftInput,
   type ProductForSelect,
 } from '../../schema/distributor-stock-taking.schema'
-import { searchProductsForDistributorAction } from '../../actions/distributor-stock-taking.actions'
 
 const MONTHS_FULL = [
   '', 'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
-
-async function fetchProducts(search?: string): Promise<ProductForSelect[]> {
-  const result = await searchProductsForDistributorAction(search?.trim() ?? '')
-  if (!result.success) return []
-  return result.data
-}
 
 export function DistributorStockTakingPage() {
   const [selectedPeriodId, setSelectedPeriodId] = useState<number | null>(null)
@@ -63,6 +57,21 @@ export function DistributorStockTakingPage() {
   const isSubmitted = existingSubmission?.status === 'Submitted'
 
   const { mutate: submitCount, isPending: isSubmitting } = useUpsertAndSubmit()
+  const fetchProducts = useProductSearchFetcher()
+
+  // Saved lines already carry code/description — seed each row's label from them
+  // so rows render immediately instead of waiting on a product search per row.
+  const savedProducts = useMemo(() => {
+    const map = new Map<number, ProductForSelect>()
+    existingSubmission?.lines.forEach((l) =>
+      map.set(l.productId, {
+        id: l.productId,
+        code: l.productCode,
+        itemDescription: l.productDescription,
+      }),
+    )
+    return map
+  }, [existingSubmission])
 
   const form = useForm<UpsertDraftInput>({
     resolver: zodResolver(upsertDraftSchema),
@@ -375,8 +384,10 @@ export function DistributorStockTakingPage() {
                                                         </p>
                                                       </div>
                                                     )}
+                                                    initialOption={
+                                                      savedProducts.get(f.value) ?? null
+                                                    }
                                                     width="100%"
-                                                    preload
                                                     clearable
                                                   />
                                                 </FormControl>

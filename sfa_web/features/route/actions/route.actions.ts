@@ -76,7 +76,7 @@ export const searchActiveRoutesAction = createAction(
     const res = await client.get('/api/v1/routes', {
       // GET /api/v1/routes filters on `status` ('active' | 'inactive'), not `isActive` —
       // an `isActive` param is silently ignored and leaks inactive routes into the picker.
-      params: { page: 1, pageSize: 20, search, status: 'Active' },
+      params: { page: 1, pageSize: 200, search, status: 'Active' },
     })
     return (res.data.data as RoutesListResponse).routes
   }

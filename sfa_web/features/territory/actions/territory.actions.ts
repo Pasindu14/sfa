@@ -24,7 +24,7 @@ export const getActiveTerritoriesAction = createAction(
 
 // Fetcher compatible with AsyncSelect — accepts optional search string
 export const fetchTerritoriesForSelect = async (search?: string): Promise<TerritoryDto[]> => {
-  const res = await getTerritoriesAction(1, 50, search || undefined)
+  const res = await getTerritoriesAction(1, 200, search || undefined)
   if (!res.success) return []
   return res.data.territories.filter((t) => t.isActive)
 }

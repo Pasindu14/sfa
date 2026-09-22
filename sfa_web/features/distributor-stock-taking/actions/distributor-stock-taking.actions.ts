@@ -58,7 +58,7 @@ export const searchProductsForDistributorAction = createAction(
   { name: 'searchProductsForDistributorAction', requireAuth: true, requiredRole: 'Distributor' },
   async (search?: string) => {
     const res = await client.get('/api/v1/stock-taking/portal/products', {
-      params: { search: search || undefined, pageSize: 50 },
+      params: { search: search || undefined, pageSize: 200 },
     })
     return res.data.data as ProductForSelect[]
   }

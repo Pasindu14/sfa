@@ -55,13 +55,13 @@ export const getDailyRouteAssignmentsAction = createAction(
 )
 
 // Supervisor picker: server-side search over active Supervisors (role + isActive=true + search
-// all applied by the API, capped at 50 rows) — the picker no longer downloads every user.
+// all applied by the API, capped at 200 rows) — the picker no longer downloads every user.
 // For users the active parameter is `isActive` (routes and distributors use `status=Active`).
 export const getSupervisorsForSelectAction = createAction(
   { name: 'getSupervisorsForSelectAction', requireAuth: true, requiredRole: 'Admin' },
   async (search?: string) => {
     const res = await client.get('/api/v1/users', {
-      params: { page: 1, pageSize: 50, isActive: true, role: 'Supervisor', search: search || undefined },
+      params: { page: 1, pageSize: 200, isActive: true, role: 'Supervisor', search: search || undefined },
     })
     return (res.data.data as UsersListResponse).users
   },

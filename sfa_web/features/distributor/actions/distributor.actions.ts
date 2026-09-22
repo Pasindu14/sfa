@@ -32,12 +32,14 @@ export const getDistributorsAction = createAction(
  * repository already excludes soft-deleted rows. Never call
  * `getDistributorsAction` directly from a picker: that endpoint backs the
  * admin list and deliberately returns inactive distributors too.
+ *
+ * An empty search lists active distributors (up to the API's 200-row cap) so the
+ * dropdown shows options on open instead of staying blank until the user types.
  */
 export const fetchActiveDistributorsForSelect = async (
   search?: string,
 ): Promise<DistributorDto[]> => {
-  if (!search || search.trim().length === 0) return []
-  const result = await getDistributorsAction(1, 50, search.trim(), 'Active')
+  const result = await getDistributorsAction(1, 200, search?.trim() || undefined, 'Active')
   if (!result.success) return []
   return result.data.distributors
 }

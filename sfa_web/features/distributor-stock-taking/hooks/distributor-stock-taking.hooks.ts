@@ -1,5 +1,6 @@
 'use client'
 
+import { useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
@@ -8,6 +9,7 @@ import {
   upsertDraftAction,
   submitStockTakingAction,
   upsertAndSubmitAction,
+  searchProductsForDistributorAction,
 } from '../actions/distributor-stock-taking.actions'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { ActionFailure } from '@/lib/types/actions'
@@ -19,6 +21,33 @@ export const distributorStockTakingKeys = {
   periods: () => [...distributorStockTakingKeys.all, 'periods'] as const,
   submission: (periodId: number) =>
     [...distributorStockTakingKeys.all, 'submission', periodId] as const,
+  products: (search: string) =>
+    [...distributorStockTakingKeys.all, 'products', search] as const,
+}
+
+/**
+ * Stable product fetcher for the per-row AsyncSelects. Routing every row through
+ * queryClient.fetchQuery dedupes concurrent identical searches and caches results,
+ * so N rows cost one request instead of N serialized server-action calls.
+ */
+export function useProductSearchFetcher() {
+  const queryClient = useQueryClient()
+
+  return useCallback(
+    (search?: string) => {
+      const term = search?.trim() ?? ''
+      return queryClient.fetchQuery({
+        queryKey: distributorStockTakingKeys.products(term),
+        queryFn: async () => {
+          const result = await searchProductsForDistributorAction(term)
+          if (!result.success) return []
+          return result.data
+        },
+        staleTime: 5 * 60 * 1000,
+      })
+    },
+    [queryClient]
+  )
 }
 
 export function useOpenPeriods() {

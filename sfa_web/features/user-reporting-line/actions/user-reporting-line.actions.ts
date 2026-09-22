@@ -98,7 +98,7 @@ export const getUsersForSelectAction = createAction(
   { name: 'getUsersForSelectAction', requireAuth: true, requiredRole: 'Admin' },
   async (role: string, search?: string) => {
     const res = await client.get('/api/v1/users', {
-      params: { page: 1, pageSize: 50, isActive: true, role, search: search || undefined },
+      params: { page: 1, pageSize: 200, isActive: true, role, search: search || undefined },
     })
     return (res.data.data as UsersListResponse).users
   },
