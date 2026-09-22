@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using sfa_api.Common.Errors;
+using sfa_api.Features.Products.DTOs;
 using sfa_api.Features.Products.Entities;
 using sfa_api.Infrastructure.Persistence;
 
@@ -45,6 +46,16 @@ public class ProductRepository(AppDbContext context) : IProductRepository
 
         return (products, totalCount);
     }
+
+    public async Task<List<ProductLookupDto>> GetActiveLookupAsync(int max, CancellationToken ct = default)
+        => await _context.Products
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(p => p.IsActive && !p.IsDeleted)
+            .OrderBy(p => p.ItemDescription)
+            .Take(max)
+            .Select(p => new ProductLookupDto(p.Id, p.Code, p.ItemDescription))
+            .ToListAsync(ct);
 
     public async Task<HashSet<int>> GetActiveProductIdsInSetAsync(IEnumerable<int> ids, CancellationToken ct = default)
     {

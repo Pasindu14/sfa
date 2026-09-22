@@ -24,6 +24,10 @@ public class ProductService(
 
     private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
     private const string ListCachePrefix = "products:list:";
+    // Under ListCachePrefix so every existing product mutation already evicts it.
+    private const string LookupCacheKey = ListCachePrefix + "lookup";
+    // Safety cap only — the catalogue is expected to stay well under this.
+    private const int LookupMaxRows = 1000;
 
     public async Task<ProductDto> GetByIdAsync(int id, CancellationToken ct = default)
     {
@@ -51,6 +55,16 @@ public class ProductService(
         );
 
         await _cache.SetAsync(cacheKey, result, CacheTtl, ct);
+        return result;
+    }
+
+    public async Task<List<ProductLookupDto>> GetLookupAsync(CancellationToken ct = default)
+    {
+        var cached = await _cache.GetAsync<List<ProductLookupDto>>(LookupCacheKey, ct);
+        if (cached is not null) return cached;
+
+        var result = await _repo.GetActiveLookupAsync(LookupMaxRows, ct);
+        await _cache.SetAsync(LookupCacheKey, result, CacheTtl, ct);
         return result;
     }
 

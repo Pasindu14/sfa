@@ -4,7 +4,7 @@ using sfa_api.Common.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using sfa_api.Common.Errors;
-using sfa_api.Features.Products.Repositories;
+using sfa_api.Features.Products.Services;
 using sfa_api.Features.StockTaking.Requests;
 using sfa_api.Features.StockTaking.Services;
 using sfa_api.Features.Users.Repositories;
@@ -17,14 +17,14 @@ namespace sfa_api.Features.StockTaking.Controllers;
 public class StockTakingController(
     IStockTakingService service,
     IUserRepository userRepo,
-    IProductRepository productRepository,
+    IProductService productService,
     IValidator<CreatePeriodRequest> createPeriodValidator,
     IValidator<UpsertSubmissionRequest> upsertSubmissionValidator,
     IValidator<AdjustLineRequest> adjustLineValidator) : ControllerBase
 {
     private readonly IStockTakingService _service                   = service;
     private readonly IUserRepository     _userRepo                  = userRepo;
-    private readonly IProductRepository  _productRepository         = productRepository;
+    private readonly IProductService     _productService            = productService;
     private readonly IValidator<CreatePeriodRequest>       _createPeriodValidator      = createPeriodValidator;
     private readonly IValidator<UpsertSubmissionRequest>   _upsertSubmissionValidator  = upsertSubmissionValidator;
     private readonly IValidator<AdjustLineRequest>         _adjustLineValidator        = adjustLineValidator;
@@ -177,25 +177,17 @@ public class StockTakingController(
     }
 
     /// <summary>
-    /// GET /api/v1/stock-taking/portal/products?search=X
-    /// Returns active products for the distributor product picker (Distributor)
+    /// GET /api/v1/stock-taking/portal/products
+    /// Every active product as slim lookup rows for the distributor product picker (Distributor).
+    /// Same cached list as GET /api/v1/products/lookup; the client loads it once and filters locally.
     /// </summary>
     [HttpGet("portal/products")]
     [Authorize(Roles = "Distributor")]
-    public async Task<IActionResult> SearchPortalProducts(
-        [FromQuery] string? search = null,
-        [FromQuery] int pageSize = 50,
-        CancellationToken ct = default)
+    public async Task<IActionResult> GetPortalProducts(CancellationToken ct = default)
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
-        var (products, _) = await _productRepository.GetAllAsync(0, pageSize, search, isActive: true, ct);
-        var dtos = products.Select(p => new
-        {
-            p.Id,
-            p.Code,
-            p.ItemDescription,
-        }).ToList();
-        return Ok(ResponseHelper.Ok(dtos, correlationId));
+        var result = await _productService.GetLookupAsync(ct);
+        return Ok(ResponseHelper.Ok(result, correlationId));
     }
 
     // ── Private ───────────────────────────────────────────────────────────

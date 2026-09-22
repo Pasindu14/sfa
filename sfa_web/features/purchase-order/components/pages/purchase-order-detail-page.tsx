@@ -68,7 +68,7 @@ import {
   type UpdatePurchaseOrderInput,
   type SnapshotItem,
 } from "../../schema/purchase-order.schema";
-import type { ProductDto } from "@/features/product/schema/product.schema";
+import type { ProductLookupDto } from "@/features/product/schema/product.schema";
 import { formatCurrency } from '../../utils/format'
 import { formatColombo } from '@/lib/utils/datetime'
 
@@ -145,7 +145,7 @@ function ItemsDiffPanel({
 }: {
   notes: string | null
   itemsSnapshot: string | null
-  products: ProductDto[]
+  products: ProductLookupDto[]
 }) {
   const before = parseSnapshot(notes)
   const after = parseSnapshot(itemsSnapshot)
@@ -228,7 +228,7 @@ function HistoryTimeline({
   products,
 }: {
   history: PurchaseOrderHistoryDto[]
-  products: ProductDto[]
+  products: ProductLookupDto[]
 }) {
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
 

@@ -67,3 +67,10 @@ export type ProductDto = {
   createdAt: string
   updatedAt: string
 }
+
+// Slim row from GET /api/v1/products/lookup — every active product, for dropdowns/pickers
+export type ProductLookupDto = {
+  id: number
+  code: string
+  itemDescription: string
+}

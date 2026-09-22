@@ -18,6 +18,9 @@ public record ProductDto(
     DateTime UpdatedAt
 );
 
+/// <summary>Slim row for product pickers — only what a dropdown shows.</summary>
+public record ProductLookupDto(int Id, string Code, string ItemDescription);
+
 public record ProductListDto(
     IEnumerable<ProductDto> Products,
     int TotalCount,

@@ -30,9 +30,9 @@ import {
 import { cn } from '@/lib/utils'
 import { toColomboDateStr } from '@/lib/utils/datetime'
 import { fetchActiveDistributorsForSelect } from '@/features/distributor/actions/distributor.actions'
-import { fetchActiveProductsForSelect } from '@/features/product/actions/product.actions'
+import { useActiveProductsFetcher } from '@/features/product/hooks/product.hooks'
 import type { DistributorDto } from '@/features/distributor/schema/distributor.schema'
-import type { ProductDto } from '@/features/product/schema/product.schema'
+import type { ProductLookupDto } from '@/features/product/schema/product.schema'
 import {
   useAreasFetcher,
   useDivisionsFetcher,
@@ -59,8 +59,8 @@ import { IdSelect } from '../selects/id-select'
 // inline arrow here would defeat that and reintroduce the render loop.
 const byName = (x: { name: string }) => x.name
 const distributorPhone = (d: DistributorDto) => d.phone ?? undefined
-const productName = (p: ProductDto) => p.itemDescription
-const productCode = (p: ProductDto) => p.code
+const productName = (p: ProductLookupDto) => p.itemDescription
+const productCode = (p: ProductLookupDto) => p.code
 const userName = (u: UserOption) => u.name
 const userSubtitle = (u: UserOption) => u.username
 
@@ -74,6 +74,7 @@ const userSubtitle = (u: UserOption) => u.username
 export function SalesSummaryCriteria({ data }: { data?: SalesSummaryResponse }) {
   const f = useSalesSummaryFilters()
   const isFetching = useSalesSummaryIsFetching()
+  const fetchProducts = useActiveProductsFetcher()
 
   const canLoad = !!f.from && !!f.to && f.from <= f.to
   const applied = f.appliedFilters
@@ -212,11 +213,11 @@ export function SalesSummaryCriteria({ data }: { data?: SalesSummaryResponse }) 
             count={productCount}
           >
             <Field label="Product">
-              <IdSelect<ProductDto>
+              <IdSelect<ProductLookupDto>
                 label="Product"
                 value={f.productId}
                 onChange={(v) => f.setFilterId('productId', v)}
-                fetcher={fetchActiveProductsForSelect}
+                fetcher={fetchProducts}
                 getName={productName}
                 getSubtitle={productCode}
               />

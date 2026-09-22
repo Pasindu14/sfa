@@ -7,6 +7,7 @@ import type {
   CreateProductInput,
   UpdateProductInput,
   ProductDto,
+  ProductLookupDto,
 } from '../schema/product.schema'
 
 type ProductsListResponse = {
@@ -21,29 +22,6 @@ export const getProductsAction = createAction(
   async (page: number = 1, pageSize: number = 10, search?: string) => {
     const res = await client.get('/api/v1/products', {
       params: { page, pageSize, search: search || undefined },
-    })
-    return res.data.data as ProductsListResponse
-  }
-)
-
-/**
- * Fetcher compatible with AsyncSelect — accepts an optional search string.
- *
- * `isActive: true` is sent to the API rather than filtered client-side, so a deactivated product
- * can never occupy a slot in the 50-row page and push an active one off the end. For products the
- * parameter is `isActive` (routes and distributors use `status=Active` instead).
- */
-export const fetchActiveProductsForSelect = async (search?: string): Promise<ProductDto[]> => {
-  const res = await getActiveProductsForSelectAction(search)
-  if (!res.success) return []
-  return res.data.products
-}
-
-export const getActiveProductsForSelectAction = createAction(
-  { name: 'getActiveProductsForSelectAction', requireAuth: true, requiredRole: 'Admin' },
-  async (search?: string) => {
-    const res = await client.get('/api/v1/products', {
-      params: { page: 1, pageSize: 200, isActive: true, search: search || undefined },
     })
     return res.data.data as ProductsListResponse
   }
@@ -99,12 +77,11 @@ export const activateProductAction = createAction(
   }
 )
 
+// Every active product as slim rows — unpaged, so pickers never silently drop products.
 export const getAllActiveProductsAction = createAction(
   { name: 'getAllActiveProductsAction', requireAuth: true, requiredRole: 'Admin' },
   async () => {
-    const res = await client.get('/api/v1/products', {
-      params: { page: 1, pageSize: 1000, isActive: true },
-    })
-    return (res.data.data as ProductsListResponse).products
+    const res = await client.get('/api/v1/products/lookup')
+    return res.data.data as ProductLookupDto[]
   }
 )

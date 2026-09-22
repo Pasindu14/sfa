@@ -56,10 +56,9 @@ export const upsertAndSubmitAction = createAction(
 
 export const searchProductsForDistributorAction = createAction(
   { name: 'searchProductsForDistributorAction', requireAuth: true, requiredRole: 'Distributor' },
-  async (search?: string) => {
-    const res = await client.get('/api/v1/stock-taking/portal/products', {
-      params: { search: search || undefined, pageSize: 200 },
-    })
+  async () => {
+    // Returns every active product (slim rows) — the picker loads once and filters locally.
+    const res = await client.get('/api/v1/stock-taking/portal/products')
     return res.data.data as ProductForSelect[]
   }
 )

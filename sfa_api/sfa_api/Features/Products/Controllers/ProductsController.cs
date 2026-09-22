@@ -21,6 +21,20 @@ public class ProductsController(
     private readonly IValidator<UpdateProductRequest> _updateProductValidator = updateProductValidator;
 
     /// <summary>
+    /// GET /api/v1/products/lookup
+    /// Every active product as a slim { id, code, itemDescription } row for dropdowns.
+    /// Unpaged by design — the catalogue is bounded (hundreds), so clients load it once and filter locally.
+    /// </summary>
+    [HttpGet("lookup")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetProductLookup(CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var result = await _productService.GetLookupAsync(ct);
+        return Ok(ResponseHelper.Ok(result, correlationId));
+    }
+
+    /// <summary>
     /// GET /api/v1/products/{id}
     /// </summary>
     [HttpGet("{id:int}")]

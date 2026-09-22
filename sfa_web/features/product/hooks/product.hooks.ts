@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { queryOptions, useQuery, useMutation, useQueryClient, keepPreviousData, type QueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
@@ -22,7 +22,7 @@ import {
 } from '../store'
 import { handleErrorToast } from '@/lib/hooks/use-error-toast'
 import type { ActionFailure } from '@/lib/types/actions'
-import type { CreateProductInput, UpdateProductInput } from '../schema/product.schema'
+import type { CreateProductInput, UpdateProductInput, ProductLookupDto } from '../schema/product.schema'
 import { ActionError } from '@/lib/actions/action-error'
 
 // --- Query key factory ---
@@ -117,16 +117,37 @@ export function useProductDataTable(
 
 ;(useProductDataTable as unknown as Record<string, unknown>).isQueryHook = true
 
+// Shared by every product picker: one request, cached, refreshed by product mutations
+// (invalidateProductCollections). The catalogue is bounded, so the whole list is loaded.
+const activeProductsQuery = queryOptions({
+  queryKey: productKeys.activeAll(),
+  queryFn: async () => {
+    const result = await getAllActiveProductsAction()
+    if (!result.success) throw new ActionError(result)
+    return result.data
+  },
+  staleTime: 5 * 60 * 1000, // 5 min — product list changes infrequently
+})
+
 export function useAllActiveProducts() {
-  return useQuery({
-    queryKey: productKeys.activeAll(),
-    queryFn: async () => {
-      const result = await getAllActiveProductsAction()
-      if (!result.success) throw new ActionError(result)
-      return result.data
+  return useQuery(activeProductsQuery)
+}
+
+/** AsyncSelect-compatible fetcher over the cached product list — filters code/description locally. */
+export function useActiveProductsFetcher() {
+  const queryClient = useQueryClient()
+
+  return useCallback(
+    async (search?: string): Promise<ProductLookupDto[]> => {
+      const products = await queryClient.fetchQuery(activeProductsQuery)
+      const q = search?.trim().toLowerCase()
+      if (!q) return products
+      return products.filter(
+        (p) => p.code.toLowerCase().includes(q) || p.itemDescription.toLowerCase().includes(q),
+      )
     },
-    staleTime: 5 * 60 * 1000, // 5 min — product list changes infrequently
-  })
+    [queryClient],
+  )
 }
 
 // --- Mutation hooks ---

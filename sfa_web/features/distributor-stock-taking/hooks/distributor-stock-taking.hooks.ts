@@ -21,30 +21,33 @@ export const distributorStockTakingKeys = {
   periods: () => [...distributorStockTakingKeys.all, 'periods'] as const,
   submission: (periodId: number) =>
     [...distributorStockTakingKeys.all, 'submission', periodId] as const,
-  products: (search: string) =>
-    [...distributorStockTakingKeys.all, 'products', search] as const,
+  products: () => [...distributorStockTakingKeys.all, 'products'] as const,
 }
 
 /**
- * Stable product fetcher for the per-row AsyncSelects. Routing every row through
- * queryClient.fetchQuery dedupes concurrent identical searches and caches results,
- * so N rows cost one request instead of N serialized server-action calls.
+ * Stable product fetcher for the per-row AsyncSelects. The full active product list is
+ * loaded once through queryClient.fetchQuery (deduped + cached), then filtered locally by
+ * code/description — N rows and every keystroke cost one request total.
  */
 export function useProductSearchFetcher() {
   const queryClient = useQueryClient()
 
   return useCallback(
-    (search?: string) => {
-      const term = search?.trim() ?? ''
-      return queryClient.fetchQuery({
-        queryKey: distributorStockTakingKeys.products(term),
+    async (search?: string) => {
+      const products = await queryClient.fetchQuery({
+        queryKey: distributorStockTakingKeys.products(),
         queryFn: async () => {
-          const result = await searchProductsForDistributorAction(term)
-          if (!result.success) return []
+          const result = await searchProductsForDistributorAction()
+          if (!result.success) throw new ActionError(result)
           return result.data
         },
         staleTime: 5 * 60 * 1000,
       })
+      const q = search?.trim().toLowerCase()
+      if (!q) return products
+      return products.filter(
+        (p) => p.code.toLowerCase().includes(q) || p.itemDescription.toLowerCase().includes(q)
+      )
     },
     [queryClient]
   )
