@@ -189,7 +189,9 @@ export function AsyncSelect<T>({
   );
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    // modal: the content is portaled outside any parent Dialog, whose scroll lock would
+    // otherwise swallow mouse-wheel events and leave the options list unscrollable.
+    <Popover open={open} onOpenChange={setOpen} modal>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
