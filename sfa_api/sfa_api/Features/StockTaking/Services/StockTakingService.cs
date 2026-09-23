@@ -204,34 +204,62 @@ public class StockTakingService(
 
         EnsurePeriodOpen(period);
 
-        var existing = await _repo.GetSubmissionAsync(request.PeriodId, distributorId, ct);
+        var incoming = request.Lines.Select(BuildLine).ToList();
+
+        var duplicate = incoming
+            .GroupBy(l => (l.ProductId, l.StockType))
+            .FirstOrDefault(g => g.Count() > 1);
+        if (duplicate != null)
+            throw new BusinessRuleException("STOCK_TAKING_DUPLICATE_LINE",
+                $"Product {duplicate.Key.ProductId} ({duplicate.Key.StockType}) is listed more than once.");
+
+        // Tracked load: the lines must be tracked so EF updates existing rows in place and
+        // removes dropped ones. The previous AsNoTracking load + Lines.Clear() never deleted
+        // the saved lines, so re-saving a draft re-inserted them and hit the unique index
+        // (SubmissionId, ProductId, StockType).
+        var existing = await _db.StockTakingSubmissions
+            .Include(s => s.Lines)
+            .FirstOrDefaultAsync(s =>
+                s.StockTakingPeriodId == request.PeriodId &&
+                s.DistributorId == distributorId &&
+                !s.IsDeleted, ct);
 
         if (existing != null)
         {
-            // Replace all lines with the new cart state
-            existing.Lines.Clear();
-            foreach (var item in request.Lines)
-                existing.Lines.Add(BuildLine(item));
+            // Merge the new cart state into the saved draft by (ProductId, StockType)
+            var saved = existing.Lines.ToDictionary(l => (l.ProductId, l.StockType));
+            foreach (var line in incoming)
+            {
+                if (saved.Remove((line.ProductId, line.StockType), out var current))
+                    current.CountedQuantity = line.CountedQuantity;
+                else
+                    existing.Lines.Add(line);
+            }
+            foreach (var dropped in saved.Values)
+                existing.Lines.Remove(dropped);
 
             existing.Status    = StockTakingSubmissionStatus.Draft;
             existing.UpdatedAt = DateTime.UtcNow;
             existing.UpdatedBy = userId;
-            await _repo.UpsertSubmissionAsync(existing, ct);
-            return MapSubmission(existing);
+            await _repo.SaveChangesAsync(ct);
+        }
+        else
+        {
+            var submission = new StockTakingSubmission
+            {
+                StockTakingPeriodId = request.PeriodId,
+                DistributorId       = distributorId,
+                Status              = StockTakingSubmissionStatus.Draft,
+                CreatedBy           = userId,
+                UpdatedBy           = userId,
+                Lines               = incoming
+            };
+            await _repo.UpsertSubmissionAsync(submission, ct);
         }
 
-        var submission = new StockTakingSubmission
-        {
-            StockTakingPeriodId = request.PeriodId,
-            DistributorId       = distributorId,
-            Status              = StockTakingSubmissionStatus.Draft,
-            CreatedBy           = userId,
-            UpdatedBy           = userId,
-            Lines               = request.Lines.Select(BuildLine).ToList()
-        };
-
-        await _repo.UpsertSubmissionAsync(submission, ct);
-        return MapSubmission(submission);
+        // Reload with product/period/distributor names for the response
+        var result = await _repo.GetSubmissionAsync(request.PeriodId, distributorId, ct);
+        return MapSubmission(result!);
     }
 
     public async Task<StockTakingSubmissionDto> SubmitAsync(

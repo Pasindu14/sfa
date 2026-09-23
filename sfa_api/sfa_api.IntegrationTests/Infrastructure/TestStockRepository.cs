@@ -6,19 +6,22 @@ using sfa_api.Infrastructure.Persistence;
 namespace sfa_api.IntegrationTests.Infrastructure;
 
 /// <summary>
-/// Test-only IStockRepository wrapper that replaces GetStockForUpdateAsync
-/// (which issues a PostgreSQL "SELECT … FOR UPDATE" raw query SQLite cannot parse)
-/// with a no-op. The service ignores the return value — it only calls the method to
-/// take a pessimistic row lock — and DeductStockAsync/CreditStockAsync re-query the
-/// tracked row themselves. With SQLite's single in-memory connection there is no
-/// concurrency to guard, so dropping the lock is behaviourally equivalent.
+/// Test-only IStockRepository wrapper that replaces GetStockForUpdateAsync / LockStocksForUpdateAsync
+/// (which issue a PostgreSQL "SELECT … FOR UPDATE" raw query SQLite cannot parse) with a plain
+/// tracked LINQ load. Callers read the returned balance (stock-taking submit snapshots it, adjust
+/// computes its delta from it), so it must return the real row, not null. With SQLite's single
+/// in-memory connection there is no concurrency to guard, so dropping the lock is equivalent.
 /// All other calls delegate to the real StockRepository.
 /// </summary>
 public sealed class TestStockRepository(IStockRepository inner, AppDbContext db) : IStockRepository
 {
-    public Task<DistributorStock?> GetStockForUpdateAsync(
+    public async Task<DistributorStock?> GetStockForUpdateAsync(
         int distributorId, int productId, StockType stockType, CancellationToken ct = default)
-        => Task.FromResult<DistributorStock?>(null);
+    {
+        var key    = new StockKey(distributorId, productId, stockType);
+        var loaded = await TestStockLocking.LoadAsync(db, [key], ct);
+        return loaded.GetValueOrDefault(key);
+    }
 
     // Batched lock: SQLite has no FOR UPDATE, so load the rows (tracked) with plain LINQ instead.
     public Task<Dictionary<StockKey, DistributorStock>> LockStocksForUpdateAsync(
