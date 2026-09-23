@@ -69,6 +69,10 @@ public class GlobalExceptionMiddleware(RequestDelegate next,
                 "Review the latest version before resubmitting.",
                 null, cex.Data, correlationId, DateTime.UtcNow)),
 
+            StockChangedException scx => (409, new ApiError(
+                scx.ErrorCode, scx.Message, null,
+                scx.Fields, scx.Data, correlationId, DateTime.UtcNow)),
+
             ConflictException confEx => (409, new ApiError(
                 confEx.ErrorCode, confEx.Message, null,
                 null, confEx.Data, correlationId, DateTime.UtcNow)),

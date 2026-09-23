@@ -124,6 +124,21 @@ public class BinCardServiceTests
     }
 
     [Fact]
+    public async Task GetBinCardAsync_CorrectionRows_FoldIntoStockAdjustment_ByDirection()
+    {
+        // Admin stock adjustments (SFA-132) post Correction rows: In for an increase, Out for a decrease.
+        SetupOpening(40m);
+        SetupMovements(
+            Move(StockTransactionType.Correction, StockTransactionDirection.In,  12m),
+            Move(StockTransactionType.Correction, StockTransactionDirection.Out, 30m, StockType.FreeIssue));
+
+        var row = (await _sut.GetBinCardAsync(Query())).Rows.Single();
+
+        row.StockAdjustment.Should().Be(-18m);  // 12 − 30
+        row.EndStock.Should().Be(22m);          // 40 − 18
+    }
+
+    [Fact]
     public async Task GetBinCardAsync_TransferInAndOut_HaveOwnColumns_AndMoveEndStock()
     {
         SetupOpening(40m);

@@ -8,6 +8,7 @@ export function splitCasesPieces(qty: number, piecesPerPack: number): { cases: n
 }
 
 export function formatCasesPieces(qty: number, piecesPerPack: number): string {
+  if (qty < 0) return `-${formatCasesPieces(-qty, piecesPerPack)}`
   if (piecesPerPack <= 0) return `${qty} PCS`
   const { cases, pieces } = splitCasesPieces(qty, piecesPerPack)
   return `${cases} CS · ${pieces} PCS`
