@@ -872,6 +872,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .IncludeProperties(x => new { x.TransactedAt });
             // Non-unique — supports fleet-scoped ledger reporting.
             e.HasIndex(x => x.FleetId);
+            // Admin stock activity log: date window across all distributors, newest first, and
+            // the same filtered by user. The plain TransactedBy FK index is declared explicitly so
+            // EF keeps it now that a composite index also starts with TransactedBy.
+            e.HasIndex(x => new { x.TransactedAt, x.Id })
+             .IsDescending(true, true)
+             .HasDatabaseName("IX_StockTransactions_TransactedAt_Id_Desc");
+            e.HasIndex(x => new { x.TransactedBy, x.TransactedAt, x.Id })
+             .IsDescending(false, true, true)
+             .HasDatabaseName("IX_StockTransactions_TransactedBy_TransactedAt_Id_Desc");
+            e.HasIndex(x => x.TransactedBy);
             e.HasOne(x => x.Distributor)
              .WithMany()
              .HasForeignKey(x => x.DistributorId)

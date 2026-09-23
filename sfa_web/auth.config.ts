@@ -45,8 +45,9 @@ export default {
         return Response.redirect(new URL("/unauthorized", nextUrl));
       }
 
-      // Stock transfer / adjustment change distributor stock balances — Admin only
-      if ((path.startsWith("/stock-transfer") || path.startsWith("/stock-adjustment")) && userRole?.toLowerCase() !== "admin") {
+      // Stock transfer / adjustment change distributor stock balances, and the activity log
+      // audits them — Admin only
+      if ((path.startsWith("/stock-transfer") || path.startsWith("/stock-adjustment") || path.startsWith("/stock-activity")) && userRole?.toLowerCase() !== "admin") {
         return Response.redirect(new URL("/unauthorized", nextUrl));
       }
 
