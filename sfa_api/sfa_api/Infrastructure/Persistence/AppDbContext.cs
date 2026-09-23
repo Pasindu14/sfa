@@ -835,9 +835,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<StockTransaction>(e =>
         {
             e.HasKey(x => x.Id);
+            // 30, not 20: "StockTakingAdjustment" is 21 chars — at 20 every stock-taking
+            // adjustment failed on PostgreSQL (22001). Keep new enum names ≤ 30.
             e.Property(x => x.TransactionType)
              .HasConversion<string>()
-             .HasMaxLength(20);
+             .HasMaxLength(30);
             e.Property(x => x.Direction)
              .HasConversion<string>()
              .HasMaxLength(5);
