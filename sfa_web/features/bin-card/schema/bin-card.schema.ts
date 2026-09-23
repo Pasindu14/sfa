@@ -11,9 +11,13 @@ export const binCardRowSchema = z.object({
   marketResaleable: z.number(),
   deletedInv: z.number(),
   stockAdjustment: z.number(),
+  // Stock received from a closed distributor via stock transfer.
+  transferIn: z.number(),
   soldQty: z.number(),
   freeIssues: z.number(),
   companyFreeIssues: z.number(),
+  // Stock moved out to another distributor on closure.
+  transferOut: z.number(),
   repReturnQtyDE: z.number(),
   endStock: z.number(),
   currentStock: z.number().nullable(),
@@ -29,9 +33,13 @@ export const binCardTotalsSchema = z.object({
   marketResaleable: z.number(),
   deletedInv: z.number(),
   stockAdjustment: z.number(),
+  // Stock received from a closed distributor via stock transfer.
+  transferIn: z.number(),
   soldQty: z.number(),
   freeIssues: z.number(),
   companyFreeIssues: z.number(),
+  // Stock moved out to another distributor on closure.
+  transferOut: z.number(),
   repReturnQtyDE: z.number(),
   endStock: z.number(),
   closingStockValue: z.number(),

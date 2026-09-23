@@ -124,6 +124,26 @@ public class BinCardServiceTests
     }
 
     [Fact]
+    public async Task GetBinCardAsync_TransferInAndOut_HaveOwnColumns_AndMoveEndStock()
+    {
+        SetupOpening(40m);
+        SetupMovements(
+            Move(StockTransactionType.TransferIn,  StockTransactionDirection.In,  25m),
+            Move(StockTransactionType.TransferOut, StockTransactionDirection.Out, 10m, StockType.FreeIssue),
+            Move(StockTransactionType.TransferOut, StockTransactionDirection.Out, 5m));
+
+        var result = await _sut.GetBinCardAsync(Query());
+        var row = result.Rows.Single();
+
+        row.TransferIn.Should().Be(25m);
+        row.TransferOut.Should().Be(15m);       // both pools
+        row.StockAdjustment.Should().Be(0m);    // not folded into adjustments
+        row.EndStock.Should().Be(50m);          // 40 + 25 − 15
+        result.Totals.TransferIn.Should().Be(25m);
+        result.Totals.TransferOut.Should().Be(15m);
+    }
+
+    [Fact]
     public async Task GetBinCardAsync_EndStock_AlwaysReconcilesToOpenPlusInsMinusOuts()
     {
         SetupOpening(200m);

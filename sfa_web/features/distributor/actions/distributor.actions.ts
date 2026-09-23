@@ -44,6 +44,18 @@ export const fetchActiveDistributorsForSelect = async (
   return result.data.distributors
 }
 
+/**
+ * Search-as-you-type fetcher for closed (deactivated) distributors — the source side of a
+ * stock transfer. `status: 'Inactive'` maps to `IsActive = false` on the API.
+ */
+export const fetchInactiveDistributorsForSelect = async (
+  search?: string,
+): Promise<DistributorDto[]> => {
+  const result = await getDistributorsAction(1, 200, search?.trim() || undefined, 'Inactive')
+  if (!result.success) return []
+  return result.data.distributors
+}
+
 export const getDistributorByIdAction = createAction(
   { name: 'getDistributorByIdAction', requireAuth: true, requiredRole: 'Admin' },
   async (id: number) => {

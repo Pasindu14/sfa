@@ -72,6 +72,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<GRNItem> GRNItems => Set<GRNItem>();
     public DbSet<DistributorStock> DistributorStocks => Set<DistributorStock>();
     public DbSet<StockTransaction> StockTransactions => Set<StockTransaction>();
+    public DbSet<StockTransfer> StockTransfers => Set<StockTransfer>();
+    public DbSet<StockTransferLine> StockTransferLines => Set<StockTransferLine>();
     public DbSet<StockReconciliationRun> StockReconciliationRuns => Set<StockReconciliationRun>();
     public DbSet<StockReconciliationFlag> StockReconciliationFlags => Set<StockReconciliationFlag>();
     public DbSet<GeoConsistencyRun> GeoConsistencyRuns => Set<GeoConsistencyRun>();
@@ -884,6 +886,55 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .WithMany()
              .HasForeignKey(x => x.FleetId)
              .IsRequired(false)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── StockTransfer (closed distributor → active distributor) ───────────
+        // No HasQueryFilter: the lines' required FK would trip EF's filtered-principal warning;
+        // the repository filters IsDeleted explicitly instead.
+        modelBuilder.Entity<StockTransfer>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.Property(x => x.TransferNumber).IsRequired().HasMaxLength(30);
+            e.HasIndex(x => x.TransferNumber).IsUnique();
+            e.Property(x => x.Notes).HasMaxLength(500);
+            e.HasIndex(x => x.SourceDistributorId);
+            e.HasIndex(x => x.TargetDistributorId);
+            // History list: ORDER BY TransferredAt DESC
+            e.HasIndex(x => x.TransferredAt).IsDescending();
+            e.HasOne(x => x.SourceDistributor)
+             .WithMany()
+             .HasForeignKey(x => x.SourceDistributorId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.TargetDistributor)
+             .WithMany()
+             .HasForeignKey(x => x.TargetDistributorId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.TransferredByUser)
+             .WithMany()
+             .HasForeignKey(x => x.TransferredBy)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasMany(x => x.Lines)
+             .WithOne(l => l.StockTransfer)
+             .HasForeignKey(l => l.StockTransferId)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── StockTransferLine ─────────────────────────────────────────────────
+        modelBuilder.Entity<StockTransferLine>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.StockType)
+             .HasConversion<string>()
+             .HasMaxLength(10)
+             .HasDefaultValue(StockType.Normal);
+            e.Property(x => x.Quantity).HasColumnType("decimal(18,4)");
+            e.HasIndex(x => x.StockTransferId);
+            e.HasIndex(x => x.ProductId);
+            e.HasOne(x => x.Product)
+             .WithMany()
+             .HasForeignKey(x => x.ProductId)
              .OnDelete(DeleteBehavior.Restrict);
         });
 

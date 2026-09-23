@@ -13,5 +13,11 @@ public enum StockTransactionType
 
     /// <summary>One-off ledger correction (e.g. backfilling a unit-conversion bug) — distinct
     /// from StockTakingAdjustment, which specifically means a physical stock-count variance.</summary>
-    Correction = 8
+    Correction = 8,
+
+    /// <summary>Stock moved out of a closed distributor by an admin stock transfer (paired with TransferIn).</summary>
+    TransferOut = 9,
+
+    /// <summary>Stock moved into the receiving distributor by an admin stock transfer (paired with TransferOut).</summary>
+    TransferIn = 10
 }

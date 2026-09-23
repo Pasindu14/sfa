@@ -14,6 +14,8 @@ public static class StockServiceExtensions
         services.AddScoped<IBinCardService, BinCardService>();
         services.AddScoped<IStockReconciliationRepository, StockReconciliationRepository>();
         services.AddScoped<IStockReconciliationService, StockReconciliationService>();
+        services.AddScoped<IStockTransferRepository, StockTransferRepository>();
+        services.AddScoped<IStockTransferService, StockTransferService>();
         services.AddValidatorsFromAssemblyContaining<BinCardQueryValidator>(includeInternalTypes: false);
         return services;
     }

@@ -86,6 +86,7 @@ const navConfig: NavGroup[] = [
       { title: "Stock", url: "/stock" },
       { title: "Bin Card", url: "/bin-card" },
       { title: "Stock Taking", url: "/stock-taking" },
+      { title: "Stock Transfer", url: "/stock-transfer", roles: ["Admin"] },
     ],
   },
   {
