@@ -54,6 +54,36 @@ public class StockTransferInProgressException(int sourceDistributorId) : Conflic
         "Another stock transfer from this distributor is already in progress.", new { sourceDistributorId })
 {
 }
+public class StockAdjustmentInProgressException(int distributorId) : ConflictException("STOCK_ADJUSTMENT_IN_PROGRESS",
+        "Another stock adjustment for this distributor is already in progress.", new { distributorId })
+{
+}
+
+public record StockBalanceChange(int ProductId, string ProductName, string StockType, decimal Expected, decimal Current);
+
+/// <summary>
+/// The balance the admin saw (ExpectedQuantity) no longer matches the locked balance — the client
+/// must reload before adjusting. Fields are keyed "product:{id}" like <see cref="InsufficientStockException"/>.
+/// </summary>
+public class StockChangedException : ConflictException
+{
+    public IReadOnlyList<StockBalanceChange> Changes { get; }
+    public Dictionary<string, string[]> Fields { get; }
+
+    public StockChangedException(IReadOnlyList<StockBalanceChange> changes)
+        : base(
+            "STOCK_CHANGED",
+            "Stock has changed since it was loaded. Reload and try again.",
+            new { changes })
+    {
+        Changes = changes;
+        Fields = changes
+            .GroupBy(c => $"product:{c.ProductId}")
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(c => $"{c.ProductName} ({c.StockType}): expected {c.Expected}, now {c.Current}").ToArray());
+    }
+}
 
 // 422 — Business Rule
 public class BusinessRuleException : SFAException

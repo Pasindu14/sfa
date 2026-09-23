@@ -9,28 +9,31 @@ import {
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 import { formatColombo } from '@/lib/utils/datetime'
-import { useStockTransferDetail } from '../../hooks/stock-transfer.hooks'
 import { formatCasesPieces } from '@/features/stock/lib/quantity'
+import { useStockAdjustmentDetail } from '../../hooks/stock-adjustment.hooks'
+import { reasonLabel } from '../../schema/stock-adjustment.schema'
+import { formatSignedDifference } from '../table/adjustment-lines-table'
 
-export function StockTransferDetailDialog({
-  transferId,
+export function StockAdjustmentDetailDialog({
+  adjustmentId,
   onClose,
 }: {
-  transferId: number | null
+  adjustmentId: number | null
   onClose: () => void
 }) {
-  const { data, isLoading, isError } = useStockTransferDetail(transferId)
+  const { data, isLoading, isError } = useStockAdjustmentDetail(adjustmentId)
 
   return (
-    <Dialog open={transferId !== null} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={adjustmentId !== null} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{data ? `Stock transfer ${data.transferNumber}` : 'Stock transfer'}</DialogTitle>
+          <DialogTitle>{data ? `Stock adjustment ${data.adjustmentNumber}` : 'Stock adjustment'}</DialogTitle>
           <DialogDescription>
             {data
-              ? `${data.sourceDistributorName} → ${data.targetDistributorName} · ${formatColombo(data.transferredAt, 'd MMM yyyy, HH:mm')}`
-              : 'Loading transfer details'}
+              ? `${data.distributorName} · ${formatColombo(data.adjustedAt, 'd MMM yyyy, HH:mm')}`
+              : 'Loading adjustment details'}
           </DialogDescription>
         </DialogHeader>
 
@@ -43,23 +46,27 @@ export function StockTransferDetailDialog({
         )}
 
         {isError && (
-          <p className="text-sm text-destructive">Could not load this transfer. Please try again.</p>
+          <p className="text-sm text-destructive">Could not load this adjustment. Please try again.</p>
         )}
 
         {data && (
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
               <span>
+                <span className="text-muted-foreground">Reason </span>
+                {reasonLabel(data.reason)}
+              </span>
+              <span>
                 <span className="text-muted-foreground">By </span>
-                {data.transferredByName ?? '—'}
+                {data.adjustedByName ?? '—'}
               </span>
               <span>
-                <span className="text-muted-foreground">Lines </span>
-                {data.lineCount}
+                <span className="text-muted-foreground">Increase </span>
+                <span className="tabular-nums text-green-600">+{data.totalIncrease} pcs</span>
               </span>
               <span>
-                <span className="text-muted-foreground">Total </span>
-                <span className="tabular-nums">{data.totalQuantity} pcs</span>
+                <span className="text-muted-foreground">Decrease </span>
+                <span className="tabular-nums text-destructive">−{data.totalDecrease} pcs</span>
               </span>
             </div>
             <ScrollArea className="max-h-80 rounded-lg border">
@@ -68,7 +75,8 @@ export function StockTransferDetailDialog({
                   <tr className="border-b">
                     <th className="px-3 py-2 text-left font-medium">Product</th>
                     <th className="px-3 py-2 text-left font-medium">Type</th>
-                    <th className="px-3 py-2 text-right font-medium">Quantity</th>
+                    <th className="px-3 py-2 text-right font-medium">Before → After</th>
+                    <th className="px-3 py-2 text-right font-medium">Difference</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -81,9 +89,20 @@ export function StockTransferDetailDialog({
                       <td className="px-3 py-1.5 text-xs">
                         {line.stockType === 'FreeIssue' ? 'Free Issue' : 'Normal'}
                       </td>
-                      <td className="px-3 py-1.5 text-right tabular-nums">
-                        {formatCasesPieces(line.quantity, line.piecesPerPack)}
-                        <span className="ml-2 text-xs text-muted-foreground">({line.quantity} pcs)</span>
+                      <td className="px-3 py-1.5 text-right tabular-nums whitespace-nowrap">
+                        <span className="text-muted-foreground">
+                          {formatCasesPieces(line.quantityBefore, line.piecesPerPack)}
+                        </span>
+                        {' → '}
+                        <span className="font-medium">{formatCasesPieces(line.newQuantity, line.piecesPerPack)}</span>
+                      </td>
+                      <td
+                        className={cn(
+                          'px-3 py-1.5 text-right tabular-nums font-semibold whitespace-nowrap',
+                          line.difference > 0 ? 'text-green-600' : 'text-destructive',
+                        )}
+                      >
+                        {formatSignedDifference(line.difference, line.piecesPerPack)}
                       </td>
                     </tr>
                   ))}

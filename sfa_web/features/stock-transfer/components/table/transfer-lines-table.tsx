@@ -12,7 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import type { DistributorStockItem } from '@/features/stock/schema/stock.schema'
-import { formatCasesPieces, splitCasesPieces, stockLineKey } from '../../lib/quantity'
+import { formatCasesPieces, splitCasesPieces, stockLineKey } from '@/features/stock/lib/quantity'
 
 function StockTypeBadge({ type }: { type: string }) {
   if (type === 'FreeIssue')

@@ -23,7 +23,7 @@ import {
 import type { DistributorDto } from '@/features/distributor/schema/distributor.schema'
 import { useDistributorStock } from '@/features/stock/hooks/stock.hooks'
 import { useCreateStockTransfer } from '../../hooks/stock-transfer.hooks'
-import { stockLineKey } from '../../lib/quantity'
+import { stockLineKey } from '@/features/stock/lib/quantity'
 import { exportDistributorStockExcel } from '../../lib/stock-transfer-export'
 import { StockTransferConfirmDialog, type ConfirmLine } from '../dialogs/stock-transfer-confirm-dialog'
 import { StockTransferHistoryTable } from '../table/stock-transfer-history-table'

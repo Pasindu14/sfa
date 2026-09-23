@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import type { DistributorStockItem } from '@/features/stock/schema/stock.schema'
-import { formatCasesPieces, stockLineKey } from '../../lib/quantity'
+import { formatCasesPieces, stockLineKey } from '@/features/stock/lib/quantity'
 
 export type ConfirmLine = { item: DistributorStockItem; quantity: number }
 

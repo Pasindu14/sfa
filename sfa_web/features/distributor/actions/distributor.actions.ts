@@ -56,6 +56,19 @@ export const fetchInactiveDistributorsForSelect = async (
   return result.data.distributors
 }
 
+/**
+ * Search-as-you-type fetcher over every distributor, active and closed — for admin tools that
+ * must reach deactivated distributors too (e.g. stock adjustment). Callers should mark
+ * inactive rows in the UI.
+ */
+export const fetchAllDistributorsForSelect = async (
+  search?: string,
+): Promise<DistributorDto[]> => {
+  const result = await getDistributorsAction(1, 200, search?.trim() || undefined)
+  if (!result.success) return []
+  return result.data.distributors
+}
+
 export const getDistributorByIdAction = createAction(
   { name: 'getDistributorByIdAction', requireAuth: true, requiredRole: 'Admin' },
   async (id: number) => {

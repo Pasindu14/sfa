@@ -74,6 +74,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<StockTransaction> StockTransactions => Set<StockTransaction>();
     public DbSet<StockTransfer> StockTransfers => Set<StockTransfer>();
     public DbSet<StockTransferLine> StockTransferLines => Set<StockTransferLine>();
+    public DbSet<StockAdjustment> StockAdjustments => Set<StockAdjustment>();
+    public DbSet<StockAdjustmentLine> StockAdjustmentLines => Set<StockAdjustmentLine>();
     public DbSet<StockReconciliationRun> StockReconciliationRuns => Set<StockReconciliationRun>();
     public DbSet<StockReconciliationFlag> StockReconciliationFlags => Set<StockReconciliationFlag>();
     public DbSet<GeoConsistencyRun> GeoConsistencyRuns => Set<GeoConsistencyRun>();
@@ -931,6 +933,54 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .HasDefaultValue(StockType.Normal);
             e.Property(x => x.Quantity).HasColumnType("decimal(18,4)");
             e.HasIndex(x => x.StockTransferId);
+            e.HasIndex(x => x.ProductId);
+            e.HasOne(x => x.Product)
+             .WithMany()
+             .HasForeignKey(x => x.ProductId)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── StockAdjustment (admin balance correction) ────────────────────────
+        // No HasQueryFilter, for the same reason as StockTransfer.
+        modelBuilder.Entity<StockAdjustment>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.Property(x => x.AdjustmentNumber).IsRequired().HasMaxLength(30);
+            e.HasIndex(x => x.AdjustmentNumber).IsUnique();
+            e.Property(x => x.Reason)
+             .HasConversion<string>()
+             .HasMaxLength(20);
+            e.Property(x => x.Notes).HasMaxLength(500);
+            e.HasIndex(x => x.DistributorId);
+            // History list: ORDER BY AdjustedAt DESC
+            e.HasIndex(x => x.AdjustedAt).IsDescending();
+            e.HasOne(x => x.Distributor)
+             .WithMany()
+             .HasForeignKey(x => x.DistributorId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.AdjustedByUser)
+             .WithMany()
+             .HasForeignKey(x => x.AdjustedBy)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasMany(x => x.Lines)
+             .WithOne(l => l.StockAdjustment)
+             .HasForeignKey(l => l.StockAdjustmentId)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── StockAdjustmentLine ───────────────────────────────────────────────
+        modelBuilder.Entity<StockAdjustmentLine>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.StockType)
+             .HasConversion<string>()
+             .HasMaxLength(10)
+             .HasDefaultValue(StockType.Normal);
+            e.Property(x => x.QuantityBefore).HasColumnType("decimal(18,4)");
+            e.Property(x => x.NewQuantity).HasColumnType("decimal(18,4)");
+            e.Property(x => x.Difference).HasColumnType("decimal(18,4)");
+            e.HasIndex(x => x.StockAdjustmentId);
             e.HasIndex(x => x.ProductId);
             e.HasOne(x => x.Product)
              .WithMany()

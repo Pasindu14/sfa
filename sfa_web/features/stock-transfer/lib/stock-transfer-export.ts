@@ -1,6 +1,6 @@
 import { loadExcelJS } from '@/lib/utils/load-excel'
 import type { DistributorStockItem } from '@/features/stock/schema/stock.schema'
-import { splitCasesPieces } from './quantity'
+import { splitCasesPieces } from '@/features/stock/lib/quantity'
 
 function fileBase(distributorName: string): string {
   const safe = distributorName.replace(/[^\w\-]+/g, '_')
