@@ -14,9 +14,11 @@ public record BinCardRowDto(
     decimal  MarketResaleable,    // MarketResell returns (IN)
     decimal  DeletedInv,          // net billing reversals (IN − OUT)
     decimal  StockAdjustment,     // net stock-take adjustments (IN − OUT)
+    decimal  TransferIn,          // stock received from a closed distributor (IN)
     decimal  SoldQty,             // sales (OUT)
     decimal  FreeIssues,          // distributor-funded FOC (OUT, Normal pool)
     decimal  CompanyFreeIssues,   // company-funded FOC (OUT, FreeIssue pool)
+    decimal  TransferOut,         // stock moved to another distributor on closure (OUT)
     decimal  RepReturnQtyDE,      // Damage/Expire returns — informational, no stock effect
     decimal  EndStock,            // Open + ins − outs (== ledger closing balance)
     decimal? CurrentStock,        // latest physical count; null if never counted
@@ -31,9 +33,11 @@ public record BinCardTotalsDto(
     decimal MarketResaleable,
     decimal DeletedInv,
     decimal StockAdjustment,
+    decimal TransferIn,
     decimal SoldQty,
     decimal FreeIssues,
     decimal CompanyFreeIssues,
+    decimal TransferOut,
     decimal RepReturnQtyDE,
     decimal EndStock,
     decimal ClosingStockValue

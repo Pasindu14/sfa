@@ -12,7 +12,8 @@ namespace sfa_api.Features.Stock.Services;
 ///
 /// End Stock = Open
 ///           + Invoice (GRN) + Market Resaleable (returns) + Deleted Inv (net reversals) ± Stock Adjustment
-///           − Sold − Free Issues − Company Free Issues
+///           + Transfer In
+///           − Sold − Free Issues − Company Free Issues − Transfer Out
 ///
 /// Because every column except Rep-Return is summed from the same ledger that maintains the live
 /// balance, End Stock equals the ledger's true closing balance — the report reconciles by construction.
@@ -77,13 +78,15 @@ public class BinCardService(IBinCardRepository repo) : IBinCardService
             var deletedInv        = NetType(StockTransactionType.BillingReversal);
             var stockAdjustment   = NetType(StockTransactionType.StockTakingAdjustment)
                                    + NetType(StockTransactionType.Correction);
+            var transferIn        = SumType(StockTransactionType.TransferIn);
             var sold              = SumType(StockTransactionType.Sale);
             var freeIssues        = FreeIssue(StockType.Normal);
             var companyFreeIssues = FreeIssue(StockType.FreeIssue);
+            var transferOut       = SumType(StockTransactionType.TransferOut);
             var repReturn         = repReturnMap.GetValueOrDefault(pid, 0m);
 
-            var endStock = open + invoice + marketResaleable + deletedInv + stockAdjustment
-                         - sold - freeIssues - companyFreeIssues;
+            var endStock = open + invoice + marketResaleable + deletedInv + stockAdjustment + transferIn
+                         - sold - freeIssues - companyFreeIssues - transferOut;
             var closingValue = endStock * price;
 
             decimal? currentStock = countMap.TryGetValue(pid, out var c) ? c : null;
@@ -92,8 +95,8 @@ public class BinCardService(IBinCardRepository repo) : IBinCardService
             rows.Add(new BinCardRowDto(
                 info?.Code ?? $"#{pid}",
                 info?.Description ?? string.Empty,
-                price, open, invoice, marketResaleable, deletedInv, stockAdjustment,
-                sold, freeIssues, companyFreeIssues, repReturn, endStock,
+                price, open, invoice, marketResaleable, deletedInv, stockAdjustment, transferIn,
+                sold, freeIssues, companyFreeIssues, transferOut, repReturn, endStock,
                 currentStock, closingValue, variance));
         }
 
@@ -105,9 +108,11 @@ public class BinCardService(IBinCardRepository repo) : IBinCardService
             rows.Sum(r => r.MarketResaleable),
             rows.Sum(r => r.DeletedInv),
             rows.Sum(r => r.StockAdjustment),
+            rows.Sum(r => r.TransferIn),
             rows.Sum(r => r.SoldQty),
             rows.Sum(r => r.FreeIssues),
             rows.Sum(r => r.CompanyFreeIssues),
+            rows.Sum(r => r.TransferOut),
             rows.Sum(r => r.RepReturnQtyDE),
             rows.Sum(r => r.EndStock),
             rows.Sum(r => r.ClosingStockValue));
@@ -117,5 +122,5 @@ public class BinCardService(IBinCardRepository repo) : IBinCardService
     }
 
     private static BinCardTotalsDto EmptyTotals() =>
-        new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 }

@@ -50,6 +50,10 @@ public class ConcurrencyConflictException(object? currentData = null) : Conflict
 public class DuplicateResourceException(string entity) : ConflictException($"{entity.ToUpperInvariant()}_DUPLICATE", $"{entity} already exists.")
 {
 }
+public class StockTransferInProgressException(int sourceDistributorId) : ConflictException("STOCK_TRANSFER_IN_PROGRESS",
+        "Another stock transfer from this distributor is already in progress.", new { sourceDistributorId })
+{
+}
 
 // 422 — Business Rule
 public class BusinessRuleException : SFAException
