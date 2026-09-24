@@ -128,7 +128,29 @@ public class StockController(
             ? await _stockRepository.GetAllStockByDistributorWithZeroFillAsync(distributorId, ct)
             : await _stockRepository.GetAllStockByDistributorAsync(distributorId, ct);
 
-        return Ok(ResponseHelper.Ok(stocks.Select(ToBalanceDto).ToList(), correlationId));
+        var prices = await _stockRepository.GetDefaultDealerPricesAsync(
+            stocks.Select(s => s.ProductId).Distinct().ToList(), ct);
+
+        var dtos = stocks.Select(s =>
+        {
+            var b = ToBalanceDto(s);
+            var (pack, casePrice) = prices.TryGetValue(s.ProductId, out var p) ? p : (null, null);
+            return new DistributorStockBalanceDto(
+                b.Id, b.DistributorId, b.DistributorName, b.ProductId, b.ProductCode, b.ProductDescription,
+                b.StockType, b.QuantityOnHand, b.PiecesPerPack, b.LastUpdatedAt, b.FleetId, b.FleetName,
+                pack, casePrice, StockValue(s.QuantityOnHand, pack, casePrice, b.PiecesPerPack));
+        }).ToList();
+
+        return Ok(ResponseHelper.Ok(dtos, correlationId));
+    }
+
+    // Pieces × dealer pack price (the bin card's basis); case price ÷ pieces-per-case when only
+    // a case price is set; null when the product has no default-structure price.
+    private static decimal? StockValue(decimal quantity, decimal? packPrice, decimal? casePrice, int piecesPerPack)
+    {
+        if (packPrice is { } pack) return Math.Round(quantity * pack, 2);
+        if (casePrice is { } cs && piecesPerPack > 0) return Math.Round(quantity * cs / piecesPerPack, 2);
+        return null;
     }
 
     private static DistributorStockDto ToBalanceDto(DistributorStock s) => new(

@@ -23,6 +23,32 @@ public record DistributorStockDto(
     string?   FleetName
 );
 
+/// <summary>
+/// Admin stock balance row with its value at the current default pricing structure's dealer prices.
+/// Prices are null when the product has no item in the default structure (value is then null too).
+/// </summary>
+/// <param name="StockValue">
+/// QuantityOnHand (pieces) × dealer pack price — the same basis as the bin card's closing value.
+/// Falls back to case price ÷ PiecesPerPack when only a case price is set.
+/// </param>
+public record DistributorStockBalanceDto(
+    int       Id,
+    int       DistributorId,
+    string    DistributorName,
+    int       ProductId,
+    string    ProductCode,
+    string    ProductDescription,
+    string    StockType,
+    decimal   QuantityOnHand,
+    int       PiecesPerPack,
+    DateTime? LastUpdatedAt,
+    int?      FleetId,
+    string?   FleetName,
+    decimal?  DealerPackPrice,
+    decimal?  DealerCasePrice,
+    decimal?  StockValue
+);
+
 public record StockTransactionDto(
     int      Id,
     int      ProductId,

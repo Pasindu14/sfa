@@ -18,6 +18,13 @@ public interface IStockRepository
     /// marker callers use to tell them apart from real rows.
     /// </summary>
     Task<List<DistributorStock>> GetAllStockByDistributorWithZeroFillAsync(int distributorId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Dealer pack / case prices of the current default pricing structure for the given products,
+    /// keyed by ProductId. Products without an item in the default structure are absent.
+    /// </summary>
+    Task<Dictionary<int, (decimal? PackPrice, decimal? CasePrice)>> GetDefaultDealerPricesAsync(
+        IReadOnlyCollection<int> productIds, CancellationToken ct = default);
     Task<List<StockTransaction>> GetTransactionsByDistributorAndProductAsync(
         int distributorId, int productId, int page, int pageSize, CancellationToken ct = default);
     Task<int> GetTransactionCountAsync(int distributorId, int productId, CancellationToken ct = default);

@@ -5,6 +5,23 @@ import { Badge } from '@/components/ui/badge'
 import type { DistributorStockItem } from '../../schema/stock.schema'
 import { formatColombo } from '@/lib/utils/datetime'
 
+// Module-level: Intl.NumberFormat is expensive to construct.
+const moneyFormatter = new Intl.NumberFormat('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+export function formatMoney(amount: number): string {
+  return moneyFormatter.format(amount)
+}
+
+function MoneyCell({ amount, strong }: { amount: number | null | undefined; strong?: boolean }) {
+  if (amount === null || amount === undefined)
+    return <span className="block text-right text-muted-foreground">—</span>
+  return (
+    <span className={`block text-right tabular-nums text-sm ${strong ? 'font-semibold' : ''}`}>
+      {formatMoney(amount)}
+    </span>
+  )
+}
+
 function StockLevelBadge({ qty }: { qty: number }) {
   if (qty <= 0)
     return <Badge variant="destructive" className="text-xs">Out of Stock</Badge>
@@ -45,7 +62,31 @@ function StockBalanceCell({ qty, piecesPerPack }: { qty: number; piecesPerPack: 
   )
 }
 
-export function getStockColumns(): ColumnDef<DistributorStockItem>[] {
+/**
+ * `showValue` adds the dealer pack/case price and stock value columns (admin Stock page — the
+ * balances endpoint carries prices from the default pricing structure; the portal does not).
+ */
+export function getStockColumns({ showValue = false }: { showValue?: boolean } = {}): ColumnDef<DistributorStockItem>[] {
+  const valueColumns: ColumnDef<DistributorStockItem>[] = showValue
+    ? [
+        {
+          accessorKey: 'dealerPackPrice',
+          header: () => <span className="block text-right">Pack Price</span>,
+          cell: ({ row }) => <MoneyCell amount={row.original.dealerPackPrice} />,
+        },
+        {
+          accessorKey: 'dealerCasePrice',
+          header: () => <span className="block text-right">Case Price</span>,
+          cell: ({ row }) => <MoneyCell amount={row.original.dealerCasePrice} />,
+        },
+        {
+          accessorKey: 'stockValue',
+          header: () => <span className="block text-right">Stock Value</span>,
+          cell: ({ row }) => <MoneyCell amount={row.original.stockValue} strong />,
+        },
+      ]
+    : []
+
   return [
     {
       accessorKey: 'productCode',
@@ -85,6 +126,7 @@ export function getStockColumns(): ColumnDef<DistributorStockItem>[] {
         />
       ),
     },
+    ...valueColumns,
     {
       accessorKey: 'lastUpdatedAt',
       header: 'Last Updated',

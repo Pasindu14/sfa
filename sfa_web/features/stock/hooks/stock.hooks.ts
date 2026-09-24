@@ -95,6 +95,28 @@ export function useStockIsFetching() {
   }) > 0
 }
 
+// ── Stock value summary (admin Stock page) ────────────────────────────────
+
+/** Total value of the loaded stock (respecting the stock-type filter) at default dealer prices. */
+export function useStockValueSummary() {
+  const appliedFilters = useStockFilterStore((s) => s.appliedFilters)
+  const { data, isLoading } = useDistributorStock(appliedFilters?.distributorId ?? null, {
+    includeZeroStock: appliedFilters?.includeZeroStock ?? false,
+  })
+
+  const items = (data ?? []).filter(
+    (i) => !appliedFilters?.stockType || i.stockType === appliedFilters.stockType,
+  )
+  let totalValue = 0
+  let unpricedCount = 0
+  for (const item of items) {
+    if (item.stockValue !== null && item.stockValue !== undefined) totalValue += item.stockValue
+    else if (item.quantityOnHand !== 0) unpricedCount += 1
+  }
+
+  return { items, totalValue, unpricedCount, itemCount: items.length, isLoading, hasData: !!data, appliedFilters }
+}
+
 // ── Single distributor stock (for detail views) ───────────────────────────
 
 export function useDistributorStock(

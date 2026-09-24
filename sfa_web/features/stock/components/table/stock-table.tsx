@@ -1,7 +1,8 @@
 'use client'
 
-import { useCallback, useEffect } from 'react'
-import { Search, RotateCcw, Package, Loader2, Layers } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { Search, RotateCcw, Package, Loader2, Layers, FileSpreadsheet } from 'lucide-react'
+import { toast } from 'sonner'
 import { DataTable } from '@/components/data-table/data-table'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -14,8 +15,9 @@ import {
 } from '@/components/ui/select'
 import { AsyncSelect } from '@/components/async-select'
 import { useStockFilters } from '../../store'
-import { useStockDataTable, useStockIsFetching } from '../../hooks/stock.hooks'
-import { getStockColumns } from '../columns/stock-columns'
+import { useStockDataTable, useStockIsFetching, useStockValueSummary } from '../../hooks/stock.hooks'
+import { formatMoney, getStockColumns } from '../columns/stock-columns'
+import { exportStockListExcel } from '../../lib/stock-export'
 import { fetchActiveDistributorsForSelect } from '@/features/distributor/actions/distributor.actions'
 import type { DistributorDto } from '@/features/distributor/schema/distributor.schema'
 import type { StockTypeFilter } from '../../store/stock.filter-store'
@@ -135,6 +137,61 @@ function StockFilterForm({
   )
 }
 
+// ── Stock value summary ───────────────────────────────────────────────────
+
+function StockValueSummary() {
+  const { items, totalValue, unpricedCount, itemCount, isLoading, hasData, appliedFilters } = useStockValueSummary()
+  const [exporting, setExporting] = useState(false)
+  if (isLoading || !hasData) return null
+
+  // Exports every item for the loaded filters — the whole list, not the table's current page.
+  const handleExport = async () => {
+    if (items.length === 0) return
+    setExporting(true)
+    try {
+      const typeLabel = appliedFilters?.stockType === 'FreeIssue' ? 'Free Issue'
+        : appliedFilters?.stockType === 'Normal' ? 'Normal' : 'All types'
+      const zeroLabel = appliedFilters?.includeZeroStock ? 'incl. zero stock' : 'held items only'
+      await exportStockListExcel(items[0].distributorName, items, `${typeLabel}, ${zeroLabel}`)
+    } catch {
+      toast.error('Failed to export stock list')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg border bg-card px-4 py-3">
+      <div>
+        <span className="block text-xs text-muted-foreground">Total stock value (LKR)</span>
+        <span className="text-lg font-semibold tabular-nums">{formatMoney(totalValue)}</span>
+      </div>
+      <div>
+        <span className="block text-xs text-muted-foreground">Items</span>
+        <span className="text-lg font-semibold tabular-nums">{itemCount}</span>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Valued at the default pricing structure&apos;s dealer pack price.
+        {unpricedCount > 0 && (
+          <span className="text-amber-600">
+            {' '}{unpricedCount} item{unpricedCount === 1 ? '' : 's'} with stock have no default price and are not included.
+          </span>
+        )}
+      </p>
+      <Button
+        variant="outline"
+        size="sm"
+        className="ml-auto h-8 gap-1.5"
+        onClick={handleExport}
+        disabled={exporting || items.length === 0}
+      >
+        {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
+        {exporting ? 'Exporting...' : 'Export Excel'}
+      </Button>
+    </div>
+  )
+}
+
 // ── Table ─────────────────────────────────────────────────────────────────
 
 export function StockTable() {
@@ -156,7 +213,7 @@ export function StockTable() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const getColumns = useCallback(() => getStockColumns(), [])
+  const getColumns = useCallback(() => getStockColumns({ showValue: true }), [])
 
   return (
     <div className="flex flex-col gap-4">
@@ -172,6 +229,8 @@ export function StockTable() {
         onLoad={applyFilters}
         onReset={reset}
       />
+
+      {appliedFilters && <StockValueSummary />}
 
       {appliedFilters ? (
         <DataTable
