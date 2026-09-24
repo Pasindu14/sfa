@@ -1708,15 +1708,6 @@ class _ActionsGrid extends StatelessWidget {
                   onTap: () => context.push('/sales-rep/products'),
                 ),
               ),
-              SizedBox(width: 10.w),
-              Expanded(
-                child: _SecondaryAction(
-                  icon: Icons.bug_report_rounded,
-                  label: 'Debug',
-                  color: AppColors.foregroundMuted,
-                  onTap: () => context.push('/sales-rep/debug'),
-                ),
-              ),
             ],
           ),
         ],
