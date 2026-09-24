@@ -63,10 +63,12 @@ void callbackDispatcher() {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Every face the app uses ships in google_fonts/ (see pubspec). Never hit the
-  // network for a font: a rep's first launch is often offline, and a fetched
-  // face swaps in mid-render.
-  GoogleFonts.config.allowRuntimeFetching = false;
+  // Every face the app uses ships in google_fonts/ (see pubspec), and
+  // google_fonts always prefers a bundled asset over the network, so builds
+  // that include the folder never fetch. Fetching stays enabled because
+  // Shorebird patches cannot add assets: installs of releases built before the
+  // fonts were bundled (<= 1.0.7+9) would otherwise have no font source.
+  GoogleFonts.config.allowRuntimeFetching = true;
   _registerBundledFontLicenses();
 
   // Independent of each other, so run them together:
@@ -163,7 +165,14 @@ void _registerBundledFontLicenses() {
       (['google_fonts', 'Roboto Mono'], 'OFL-RobotoMono.txt'),
       (['google_fonts', 'Source Code Pro'], 'OFL-SourceCodePro.txt'),
     ]) {
-      final text = await rootBundle.loadString('google_fonts/$asset');
+      // Absent on releases built before the fonts were bundled (patched via
+      // Shorebird, which cannot add assets).
+      final String text;
+      try {
+        text = await rootBundle.loadString('google_fonts/$asset');
+      } catch (_) {
+        continue;
+      }
       yield LicenseEntryWithLineBreaks(packages, text);
     }
   });
