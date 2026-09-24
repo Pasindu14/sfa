@@ -4,6 +4,7 @@ import { useCallback, useEffect } from 'react'
 import { Search, RotateCcw, Package, Loader2, Layers } from 'lucide-react'
 import { DataTable } from '@/components/data-table/data-table'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -27,19 +28,23 @@ import type { StockTypeFilter } from '../../store/stock.filter-store'
 function StockFilterForm({
   distributorId,
   stockType,
+  includeZeroStock,
   hasLoaded,
   isLoading,
   onDistributorChange,
   onStockTypeChange,
+  onIncludeZeroStockChange,
   onLoad,
   onReset,
 }: {
   distributorId: number | null
   stockType: StockTypeFilter
+  includeZeroStock: boolean
   hasLoaded: boolean
   isLoading: boolean
   onDistributorChange: (id: number | null) => void
   onStockTypeChange: (type: StockTypeFilter) => void
+  onIncludeZeroStockChange: (include: boolean) => void
   onLoad: () => void
   onReset: () => void
 }) {
@@ -98,6 +103,11 @@ function StockFilterForm({
         </Select>
       </div>
 
+      <label className="flex h-8 cursor-pointer items-center gap-2 text-sm">
+        <Switch checked={includeZeroStock} onCheckedChange={onIncludeZeroStockChange} />
+        Show zero stock
+      </label>
+
       <div className="flex items-center gap-2">
         <Button
           onClick={onLoad}
@@ -131,9 +141,11 @@ export function StockTable() {
   const {
     distributorId,
     stockType,
+    includeZeroStock,
     appliedFilters,
     setDistributorId,
     setStockType,
+    setIncludeZeroStock,
     applyFilters,
     reset,
   } = useStockFilters()
@@ -151,17 +163,19 @@ export function StockTable() {
       <StockFilterForm
         distributorId={distributorId}
         stockType={stockType}
+        includeZeroStock={includeZeroStock}
         hasLoaded={!!appliedFilters}
         isLoading={isFetching}
         onDistributorChange={setDistributorId}
         onStockTypeChange={setStockType}
+        onIncludeZeroStockChange={setIncludeZeroStock}
         onLoad={applyFilters}
         onReset={reset}
       />
 
       {appliedFilters ? (
         <DataTable
-          key={`${appliedFilters.distributorId}-${appliedFilters.stockType ?? 'all'}-${appliedFilters.loadCount}`}
+          key={`${appliedFilters.distributorId}-${appliedFilters.stockType ?? 'all'}-${appliedFilters.includeZeroStock}-${appliedFilters.loadCount}`}
           config={{
             enableRowSelection: false,
             enableSearch: true,

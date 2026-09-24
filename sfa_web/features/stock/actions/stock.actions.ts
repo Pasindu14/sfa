@@ -7,11 +7,19 @@ import type {
   StockTransactionListResponse,
 } from '../schema/stock.schema'
 
+/**
+ * Every stock balance of a distributor (unpaged). `includeZeroStock` also returns each active
+ * product the distributor never held as a zero-quantity placeholder. The API gives placeholders
+ * id 0, so they get a negative per-product id here to stay unique as table row keys.
+ */
 export const getDistributorStockAction = createAction(
   { name: 'getDistributorStockAction', requireAuth: true, requiredRole: 'Admin' },
-  async (distributorId: number) => {
-    const res = await client.get(`/api/v1/stock/distributors/${distributorId}`)
-    return res.data.data as DistributorStockItem[]
+  async (distributorId: number, includeZeroStock: boolean = false) => {
+    const res = await client.get(`/api/v1/stock/distributors/${distributorId}/balances`, {
+      params: { includeZeroStock },
+    })
+    const items = res.data.data as DistributorStockItem[]
+    return items.map((item) => (item.id === 0 ? { ...item, id: -item.productId } : item))
   }
 )
 
