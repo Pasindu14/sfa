@@ -94,7 +94,7 @@ export function StockAdjustmentConfirmDialog({
           </div>
 
           <div className="max-h-80 overflow-auto rounded-lg border">
-            <table className="w-full min-w-[640px] table-fixed text-sm">
+            <table className="w-full min-w-[640px] table-fixed text-sm [&_td:not(:last-child)]:border-r [&_th:not(:last-child)]:border-r">
               <colgroup>
                 <col />
                 <col className="w-24" />
