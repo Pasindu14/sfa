@@ -38,6 +38,10 @@ public sealed class TestStockRepository(IStockRepository inner, AppDbContext db)
     public Task<List<DistributorStock>> GetAllStockByDistributorWithZeroFillAsync(int distributorId, CancellationToken ct = default)
         => inner.GetAllStockByDistributorWithZeroFillAsync(distributorId, ct);
 
+    public Task<Dictionary<int, (decimal? PackPrice, decimal? CasePrice)>> GetDefaultDealerPricesAsync(
+        IReadOnlyCollection<int> productIds, CancellationToken ct = default)
+        => inner.GetDefaultDealerPricesAsync(productIds, ct);
+
     public Task<List<StockTransaction>> GetTransactionsByDistributorAndProductAsync(
         int distributorId, int productId, int page, int pageSize, CancellationToken ct = default)
         => inner.GetTransactionsByDistributorAndProductAsync(distributorId, productId, page, pageSize, ct);

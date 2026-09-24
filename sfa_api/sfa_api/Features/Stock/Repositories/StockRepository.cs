@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using sfa_api.Common.Errors;
 using sfa_api.Common.Extensions;
+using sfa_api.Features.PricingStructures;
 using sfa_api.Features.Stock.Entities;
 using sfa_api.Features.Stock.Enums;
 using sfa_api.Infrastructure.Persistence;
@@ -41,6 +42,24 @@ public class StockRepository(AppDbContext db) : IStockRepository
               .Where(x => x.DistributorId == distributorId)
               .OrderBy(x => x.Product.Code)
               .ToListAsync(ct);
+
+    /// <inheritdoc/>
+    public async Task<Dictionary<int, (decimal? PackPrice, decimal? CasePrice)>> GetDefaultDealerPricesAsync(
+        IReadOnlyCollection<int> productIds, CancellationToken ct = default)
+    {
+        if (productIds.Count == 0) return [];
+
+        var items = await _db.DefaultPricingItems()
+            .AsNoTracking()
+            .Where(i => productIds.Contains(i.ProductId))
+            .Select(i => new { i.ProductId, i.DealerPackPrice, i.DealerCasePrice })
+            .ToListAsync(ct);
+
+        // At most one default-structure item per product; tolerate duplicates defensively.
+        return items
+            .GroupBy(i => i.ProductId)
+            .ToDictionary(g => g.Key, g => (g.First().DealerPackPrice, g.First().DealerCasePrice));
+    }
 
     /// <inheritdoc/>
     public async Task<List<DistributorStock>> GetAllStockByDistributorWithZeroFillAsync(

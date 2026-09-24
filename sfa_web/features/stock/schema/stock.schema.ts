@@ -21,6 +21,11 @@ export const distributorStockItemSchema = z.object({
   // deactivated fleet resolves to a null name while the id stays set.
   fleetId: z.number().nullable(),
   fleetName: z.string().nullable(),
+  // Admin balances only (absent on the distributor portal): current default pricing structure's
+  // dealer prices, and quantityOnHand valued at them. Null when the product has no default price.
+  dealerPackPrice: z.number().nullable().optional(),
+  dealerCasePrice: z.number().nullable().optional(),
+  stockValue: z.number().nullable().optional(),
 })
 
 // ── Stock Transactions (for product drill-down) ────────────────────────────

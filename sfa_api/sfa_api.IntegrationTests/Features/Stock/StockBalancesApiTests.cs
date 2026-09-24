@@ -4,6 +4,7 @@ using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using sfa_api.Features.Distributors.Entities;
+using sfa_api.Features.PricingStructures.Entities;
 using sfa_api.Features.Products.Entities;
 using sfa_api.Features.Stock.Entities;
 using sfa_api.Features.Stock.Enums;
@@ -91,6 +92,58 @@ public class StockBalancesApiTests(SfaWebApplicationFactory factory)
         placeholder.QuantityOnHand.Should().Be(0);
         placeholder.StockType.Should().Be("Normal");
         placeholder.LastUpdatedAt.Should().BeNull();
+    }
+
+    private record PricedBalance(int ProductId, decimal QuantityOnHand, decimal? DealerPackPrice, decimal? DealerCasePrice, decimal? StockValue);
+
+    [Fact]
+    public async Task Balances_ValueStockAtDefaultStructureDealerPrices()
+    {
+        int distributorId, packPriced, caseOnly, unpriced;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var s = Guid.NewGuid().ToString("N")[..8];
+            var distributor = new Distributor { Name = $"VAL-{s}", Email = $"val-{s}@test.com", Phone = $"+94vl{s}", IsActive = true };
+            Product P(string tag) => new() { Code = $"VAL{tag}-{s}", ItemDescription = $"Value {tag}", PiecesPerPack = 12, IsActive = true };
+            var a = P("A"); var b = P("B"); var c = P("C");
+            db.AddRange(distributor, a, b, c);
+            await db.SaveChangesAsync();
+
+            // Shared test DB: reuse whichever default structure another test left behind, or create one.
+            var def = db.PricingStructures.FirstOrDefault(x => x.IsDefault && !x.IsDeleted);
+            if (def is null)
+            {
+                def = new PricingStructure { Name = $"ValDefault-{s}", IsDefault = true, IsActive = true };
+                db.PricingStructures.Add(def);
+                await db.SaveChangesAsync();
+            }
+            db.PricingStructureItems.AddRange(
+                new PricingStructureItem { PricingStructureId = def.Id, ProductId = a.Id, DealerPackPrice = 50m, DealerCasePrice = 580m },
+                new PricingStructureItem { PricingStructureId = def.Id, ProductId = b.Id, DealerCasePrice = 600m });
+            DistributorStock Row(Product p, decimal q) => new()
+            {
+                DistributorId = distributor.Id, ProductId = p.Id, StockType = StockType.Normal, QuantityOnHand = q, LastUpdatedAt = DateTime.UtcNow,
+            };
+            db.DistributorStocks.AddRange(Row(a, 30m), Row(b, 6m), Row(c, 5m));
+            await db.SaveChangesAsync();
+            (distributorId, packPriced, caseOnly, unpriced) = (distributor.Id, a.Id, b.Id, c.Id);
+        }
+
+        var res = await Client("Admin").GetAsync($"/api/v1/stock/distributors/{distributorId}/balances");
+        res.StatusCode.Should().Be(HttpStatusCode.OK);
+        var rows = JsonSerializer.Deserialize<Envelope<List<PricedBalance>>>(await res.Content.ReadAsStringAsync(), _jsonOpts)!.Data;
+
+        var a1 = rows.Single(r => r.ProductId == packPriced);
+        a1.DealerPackPrice.Should().Be(50m);
+        a1.DealerCasePrice.Should().Be(580m);
+        a1.StockValue.Should().Be(1500m);               // 30 pcs × 50 pack price
+
+        rows.Single(r => r.ProductId == caseOnly).StockValue.Should().Be(300m);   // 6 pcs × 600 / 12
+
+        var c1 = rows.Single(r => r.ProductId == unpriced);
+        c1.DealerPackPrice.Should().BeNull();
+        c1.StockValue.Should().BeNull();
     }
 
     [Fact]
