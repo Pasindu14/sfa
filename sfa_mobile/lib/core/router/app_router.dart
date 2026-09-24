@@ -46,7 +46,6 @@ import 'package:uswatte/features/pricing/data/models/pricing_structure_model.dar
 import 'package:uswatte/features/sync/presentation/pages/sync_page.dart';
 import 'package:uswatte/features/sales_rep/presentation/pages/unsupported_role_page.dart';
 import 'package:uswatte/features/splash/presentation/pages/splash_page.dart';
-import 'package:uswatte/features/debug/presentation/pages/debug_page.dart';
 import 'package:uswatte/features/supervisor/presentation/pages/supervisor_home_page.dart';
 import 'package:uswatte/core/sync/bill_sync_service.dart';
 import 'package:uswatte/features/bills/domain/usecases/create_bill_usecase.dart';
@@ -572,11 +571,6 @@ class AppRouter {
                       ..add(const LoadTodaysRouteMapRequested()),
                 child: const TodaysRouteMapPage(),
               ),
-            ),
-            GoRoute(
-              path: 'debug',
-              name: 'salesRepDebug',
-              builder: (_, __) => const DebugPage(),
             ),
             GoRoute(
               path: 'notifications',
