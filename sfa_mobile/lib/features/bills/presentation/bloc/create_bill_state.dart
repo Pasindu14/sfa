@@ -204,6 +204,17 @@ class CreateBillState extends Equatable {
   double get billDiscountAmount => saleSubTotal * billDiscountRate / 100.0;
   double get total              => saleSubTotal - billDiscountAmount - returnTotal;
 
+  // Display-only breakdown (cart summary). saleSubTotal is already net of line
+  // discounts, so show the gross sales and the discount as its own figure:
+  // Sales (gross) − Discount (lines + bill) − Returns = total.
+  double get saleGrossTotal =>
+      cart.where((l) => l.isSale).fold<double>(0, (s, l) => s + l.quantity * l.unitPrice);
+  double get lineDiscountTotal => saleGrossTotal - saleSubTotal;
+  double get totalDiscountAmount => lineDiscountTotal + billDiscountAmount;
+  double get totalDiscountPercent =>
+      saleGrossTotal > 0 ? totalDiscountAmount / saleGrossTotal * 100.0 : 0;
+  bool get hasDiscount => totalDiscountAmount > 0.004;
+
   bool get hasReturns    => cart.any((l) => l.isReturn);
   bool get hasFreeIssues => cart.any((l) => l.isFreeIssue);
 
