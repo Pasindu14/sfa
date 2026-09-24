@@ -256,15 +256,26 @@ class _CartListState extends State<CartList> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (state.hasReturns)
-                      Text(
-                        'Rs. ${state.saleSubTotal.toStringAsFixed(2)}',
+                    // Gross sales and total discount above the net total —
+                    // plain figures, not a struck-through "old price".
+                    if (state.hasReturns || state.hasDiscount)
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'Sales Rs. ${state.saleGrossTotal.toStringAsFixed(2)}',
+                              style: TextStyle(color: AppColors.foregroundMuted),
+                            ),
+                            if (state.hasDiscount)
+                              TextSpan(
+                                text: '  ·  Disc −Rs. ${state.totalDiscountAmount.toStringAsFixed(2)}',
+                                style: TextStyle(color: AppColors.success),
+                              ),
+                          ],
+                        ),
                         style: GoogleFonts.barlowCondensed(
                           fontSize: 11.sp,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.foregroundMuted,
-                          decoration: TextDecoration.lineThrough,
-                          decorationColor: AppColors.foregroundMuted,
                         ),
                       ),
                     Text(
@@ -369,16 +380,18 @@ class _CartListState extends State<CartList> {
           SizedBox(height: 10.h),
 
           // Total breakdown
-          if (state.hasReturns || state.hasFreeIssues) ...[
+          if (state.hasReturns || state.hasFreeIssues || state.hasDiscount) ...[
+            // SALES is gross (qty × price); every discount — line and bill —
+            // is its own row, so NET TOTAL = SALES − DISCOUNT − RETURNS.
             _TotalRow(
               label: 'SALES',
-              value: 'Rs. ${state.saleSubTotal.toStringAsFixed(2)}',
+              value: 'Rs. ${state.saleGrossTotal.toStringAsFixed(2)}',
               valueColor: AppColors.foreground,
             ),
-            if (state.billDiscountRate > 0)
+            if (state.hasDiscount)
               _TotalRow(
-                label: 'DISCOUNT',
-                value: '−Rs. ${state.billDiscountAmount.toStringAsFixed(2)}',
+                label: 'DISCOUNT (${state.totalDiscountPercent.toStringAsFixed(2)}%)',
+                value: '−Rs. ${state.totalDiscountAmount.toStringAsFixed(2)}',
                 valueColor: AppColors.success,
               ),
             if (state.hasReturns)
