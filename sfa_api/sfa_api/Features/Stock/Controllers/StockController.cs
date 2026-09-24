@@ -6,6 +6,7 @@ using sfa_api.Common.Errors;
 using sfa_api.Common.Extensions;
 using sfa_api.Features.Distributors.Repositories;
 using sfa_api.Features.Stock.DTOs;
+using sfa_api.Features.Stock.Entities;
 using sfa_api.Features.Stock.Repositories;
 using sfa_api.Features.Stock.Requests;
 using sfa_api.Features.Stock.Services;
@@ -107,6 +108,45 @@ public class StockController(
     }
 
     /// <summary>
+    /// GET /api/v1/stock/distributors/{distributorId}/balances?includeZeroStock=true
+    /// Every stock balance of a distributor in one unpaged list (bounded by the product catalogue).
+    /// With <paramref name="includeZeroStock"/> every active product the distributor has never held
+    /// is added as a zero-quantity placeholder (Id = 0, lastUpdatedAt = null) — same shape as the
+    /// portal endpoint. Used by the admin Stock, Stock Adjustment and Stock Transfer pages, which
+    /// need the full list rather than one page of the paged endpoint above.
+    /// </summary>
+    [HttpGet("distributors/{distributorId:int}/balances")]
+    [Authorize(Roles = "Admin,NSM,RSM,ASM")]
+    public async Task<IActionResult> GetAllBalancesByDistributor(
+        int distributorId,
+        [FromQuery] bool includeZeroStock = false,
+        CancellationToken ct = default)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+
+        var stocks = includeZeroStock
+            ? await _stockRepository.GetAllStockByDistributorWithZeroFillAsync(distributorId, ct)
+            : await _stockRepository.GetAllStockByDistributorAsync(distributorId, ct);
+
+        return Ok(ResponseHelper.Ok(stocks.Select(ToBalanceDto).ToList(), correlationId));
+    }
+
+    private static DistributorStockDto ToBalanceDto(DistributorStock s) => new(
+        s.Id,
+        s.DistributorId,
+        s.Distributor?.Name ?? string.Empty,
+        s.ProductId,
+        s.Product?.Code ?? string.Empty,
+        s.Product?.ItemDescription ?? string.Empty,
+        s.StockType.ToString(),
+        s.QuantityOnHand,
+        s.Product?.PiecesPerPack ?? 0,
+        // Id == 0 is a zero-fill placeholder — it has no movement history to date-stamp.
+        s.Id == 0 ? null : s.LastUpdatedAt,
+        s.FleetId,
+        s.Fleet?.Name);
+
+    /// <summary>
     /// GET /api/v1/stock/portal?includeZeroStock=true
     /// Returns all stock levels for the currently logged-in Distributor user.
     /// Resolves the distributor from the JWT sub claim → User.DistributorId.
@@ -133,23 +173,7 @@ public class StockController(
             ? await _stockRepository.GetAllStockByDistributorWithZeroFillAsync(user.DistributorId.Value, ct)
             : await _stockRepository.GetAllStockByDistributorAsync(user.DistributorId.Value, ct);
 
-        var dtos = stocks.Select(s => new DistributorStockDto(
-            s.Id,
-            s.DistributorId,
-            s.Distributor?.Name ?? string.Empty,
-            s.ProductId,
-            s.Product?.Code ?? string.Empty,
-            s.Product?.ItemDescription ?? string.Empty,
-            s.StockType.ToString(),
-            s.QuantityOnHand,
-            s.Product?.PiecesPerPack ?? 0,
-            // Id == 0 is a zero-fill placeholder — it has no movement history to date-stamp.
-            s.Id == 0 ? null : s.LastUpdatedAt,
-            s.FleetId,
-            s.Fleet?.Name
-        )).ToList();
-
-        return Ok(ResponseHelper.Ok(dtos, correlationId));
+        return Ok(ResponseHelper.Ok(stocks.Select(ToBalanceDto).ToList(), correlationId));
     }
 
     /// <summary>

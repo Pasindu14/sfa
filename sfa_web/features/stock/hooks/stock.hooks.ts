@@ -9,8 +9,8 @@ import { ActionError } from '@/lib/actions/action-error'
 
 export const stockKeys = {
   all: ['stock'] as const,
-  distributor: (distributorId: number) =>
-    [...stockKeys.all, 'distributor', distributorId] as const,
+  distributor: (distributorId: number, includeZeroStock: boolean = false) =>
+    [...stockKeys.all, 'distributor', distributorId, { includeZeroStock }] as const,
   distributorList: (distributorId: number, params: object) =>
     [...stockKeys.all, 'distributor', distributorId, 'list', params] as const,
   transactions: (distributorId: number, productId: number, page: number) =>
@@ -34,10 +34,18 @@ export function useStockDataTable(
   const query = useQuery({
     queryKey: stockKeys.distributorList(
       appliedFilters?.distributorId ?? 0,
-      { page, pageSize, search, stockType: appliedFilters?.stockType, loadCount: appliedFilters?.loadCount }
+      {
+        page, pageSize, search,
+        stockType: appliedFilters?.stockType,
+        includeZeroStock: appliedFilters?.includeZeroStock,
+        loadCount: appliedFilters?.loadCount,
+      }
     ),
     queryFn: async () => {
-      const result = await getDistributorStockAction(appliedFilters!.distributorId)
+      const result = await getDistributorStockAction(
+        appliedFilters!.distributorId,
+        appliedFilters!.includeZeroStock,
+      )
       if (!result.success) throw new ActionError(result)
 
       // Client-side search + type filter + pagination (stock items per distributor are bounded)
@@ -89,11 +97,14 @@ export function useStockIsFetching() {
 
 // ── Single distributor stock (for detail views) ───────────────────────────
 
-export function useDistributorStock(distributorId: number | null) {
+export function useDistributorStock(
+  distributorId: number | null,
+  { includeZeroStock = false }: { includeZeroStock?: boolean } = {},
+) {
   return useQuery({
-    queryKey: stockKeys.distributor(distributorId!),
+    queryKey: stockKeys.distributor(distributorId!, includeZeroStock),
     queryFn: async () => {
-      const result = await getDistributorStockAction(distributorId!)
+      const result = await getDistributorStockAction(distributorId!, includeZeroStock)
       if (!result.success) throw new ActionError(result)
       return result.data
     },

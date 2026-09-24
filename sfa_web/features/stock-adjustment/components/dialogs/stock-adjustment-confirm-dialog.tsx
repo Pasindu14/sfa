@@ -10,12 +10,23 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
-import { formatCasesPieces, stockLineKey } from '@/features/stock/lib/quantity'
-import { formatSignedDifference, type AdjustmentRow } from '../table/adjustment-lines-table'
+import { formatCasesPiecesCompact, stockLineKey } from '@/features/stock/lib/quantity'
+import type { AdjustmentRow } from '../table/adjustment-lines-table'
 
 export type ChangedLine = { row: AdjustmentRow; newQuantity: number }
+
+// CS/PCS on top, total pieces underneath when the pack split alone would hide it.
+function QtyCell({ qty, piecesPerPack, muted }: { qty: number; piecesPerPack: number; muted?: boolean }) {
+  return (
+    <td className={cn('px-3 py-2 text-right tabular-nums whitespace-nowrap', muted ? 'text-muted-foreground' : 'font-medium')}>
+      {formatCasesPiecesCompact(qty, piecesPerPack)}
+      {piecesPerPack > 0 && Math.abs(qty) >= piecesPerPack && (
+        <span className="block text-[11px] font-normal text-muted-foreground">{qty} pcs</span>
+      )}
+    </td>
+  )
+}
 
 export function StockAdjustmentConfirmDialog({
   open,
@@ -46,7 +57,7 @@ export function StockAdjustmentConfirmDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !isPending && onOpenChange(o)}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>Confirm stock adjustment</DialogTitle>
           <DialogDescription>
@@ -66,21 +77,37 @@ export function StockAdjustmentConfirmDialog({
             </div>
             <div className="rounded-lg border bg-muted/40 px-3 py-2">
               <span className="block text-xs text-muted-foreground">Total increase</span>
-              <span className="text-sm font-semibold tabular-nums text-green-600">+{totalIncrease} pcs</span>
+              {totalIncrease > 0 ? (
+                <span className="text-sm font-semibold tabular-nums text-green-600">+{totalIncrease} pcs</span>
+              ) : (
+                <span className="text-sm font-semibold text-muted-foreground">—</span>
+              )}
             </div>
             <div className="rounded-lg border bg-muted/40 px-3 py-2">
               <span className="block text-xs text-muted-foreground">Total decrease</span>
-              <span className="text-sm font-semibold tabular-nums text-destructive">−{totalDecrease} pcs</span>
+              {totalDecrease > 0 ? (
+                <span className="text-sm font-semibold tabular-nums text-destructive">−{totalDecrease} pcs</span>
+              ) : (
+                <span className="text-sm font-semibold text-muted-foreground">—</span>
+              )}
             </div>
           </div>
 
-          <ScrollArea className="max-h-72 rounded-lg border">
-            <table className="w-full text-sm">
+          <div className="max-h-80 overflow-auto rounded-lg border">
+            <table className="w-full min-w-[640px] table-fixed text-sm">
+              <colgroup>
+                <col />
+                <col className="w-24" />
+                <col className="w-32" />
+                <col className="w-32" />
+                <col className="w-32" />
+              </colgroup>
               <thead className="sticky top-0 bg-background text-xs text-muted-foreground">
                 <tr className="border-b">
                   <th className="px-3 py-2 text-left font-medium">Product</th>
                   <th className="px-3 py-2 text-left font-medium">Type</th>
-                  <th className="px-3 py-2 text-right font-medium">Before → After</th>
+                  <th className="px-3 py-2 text-right font-medium">Before</th>
+                  <th className="px-3 py-2 text-right font-medium">After</th>
                   <th className="px-3 py-2 text-right font-medium">Difference</th>
                 </tr>
               </thead>
@@ -88,35 +115,38 @@ export function StockAdjustmentConfirmDialog({
                 {lines.map(({ row, newQuantity }) => {
                   const diff = newQuantity - row.currentQuantity
                   return (
-                    <tr key={stockLineKey(row.productId, row.stockType)} className="border-b last:border-0">
-                      <td className="px-3 py-1.5">
-                        <span className="font-mono text-xs">{row.productCode}</span>{' '}
-                        <span className="text-muted-foreground">{row.productDescription}</span>
+                    <tr key={stockLineKey(row.productId, row.stockType)} className="border-b align-top last:border-0">
+                      <td className="px-3 py-2">
+                        <span className="block font-mono text-xs font-medium">{row.productCode}</span>
+                        <span className="block truncate text-xs text-muted-foreground" title={row.productDescription}>
+                          {row.productDescription}
+                        </span>
                       </td>
-                      <td className="px-3 py-1.5 text-xs">
+                      <td className="px-3 py-2 text-xs">
                         {row.stockType === 'FreeIssue' ? 'Free Issue' : 'Normal'}
                       </td>
-                      <td className="px-3 py-1.5 text-right tabular-nums whitespace-nowrap">
-                        <span className="text-muted-foreground">
-                          {formatCasesPieces(row.currentQuantity, row.piecesPerPack)}
-                        </span>
-                        {' → '}
-                        <span className="font-medium">{formatCasesPieces(newQuantity, row.piecesPerPack)}</span>
-                      </td>
+                      <QtyCell qty={row.currentQuantity} piecesPerPack={row.piecesPerPack} muted />
+                      <QtyCell qty={newQuantity} piecesPerPack={row.piecesPerPack} />
                       <td
                         className={cn(
-                          'px-3 py-1.5 text-right tabular-nums font-semibold whitespace-nowrap',
+                          'px-3 py-2 text-right tabular-nums font-semibold whitespace-nowrap',
                           diff > 0 ? 'text-green-600' : 'text-destructive',
                         )}
                       >
-                        {formatSignedDifference(diff, row.piecesPerPack)}
+                        {diff > 0 ? '+' : '−'}
+                        {formatCasesPiecesCompact(Math.abs(diff), row.piecesPerPack)}
+                        {row.piecesPerPack > 0 && Math.abs(diff) >= row.piecesPerPack && (
+                          <span className="block text-[11px] font-normal text-muted-foreground">
+                            {diff > 0 ? '+' : '−'}{Math.abs(diff)} pcs
+                          </span>
+                        )}
                       </td>
                     </tr>
                   )
                 })}
               </tbody>
             </table>
-          </ScrollArea>
+          </div>
 
           {notes.trim() && (
             <div className="text-sm">

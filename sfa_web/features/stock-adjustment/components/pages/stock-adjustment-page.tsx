@@ -70,12 +70,13 @@ export function StockAdjustmentPage() {
   const productOptions = useRef<ProductLookupDto[]>([])
 
   const distributorId = distributor?.id ?? null
-  const { data: stock, isLoading: stockLoading, isError: stockError } = useDistributorStock(distributorId)
+  const { data: stock, isLoading: stockLoading, isError: stockError } = useDistributorStock(distributorId, { includeZeroStock: true })
 
   const rows: AdjustmentRow[] = useMemo(() => {
     const addedKeys = new Set(addedRows.map((r) => stockLineKey(r.productId, r.stockType)))
     const existing = (stock ?? [])
-      .filter((i) => i.quantityOnHand !== 0 && !addedKeys.has(stockLineKey(i.productId, i.stockType)))
+      // All items, zero balances included — every active product can be adjusted in place.
+      .filter((i) => !addedKeys.has(stockLineKey(i.productId, i.stockType)))
       .map<AdjustmentRow>((i) => ({
         productId: i.productId,
         productCode: i.productCode,
@@ -411,7 +412,7 @@ export function StockAdjustmentPage() {
               {rows.length === 0 ? (
                 <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed py-12 text-center">
                   <p className="text-sm font-medium text-muted-foreground">
-                    {distributor.name} has no stock on hand. Add a product to set a balance.
+                    No active products found for {distributor.name}. Add a product to set a balance.
                   </p>
                 </div>
               ) : visibleRows.length === 0 ? (
