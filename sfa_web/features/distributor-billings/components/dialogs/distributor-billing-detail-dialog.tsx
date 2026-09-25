@@ -18,7 +18,7 @@ import type { DistributorBillingDetail } from '../../schema/distributor-billing.
 import { formatColombo } from '@/lib/utils/datetime'
 import {
   BillingAdjustmentHistory,
-  DistributorReturnBadge,
+  ReturnTypeBadge,
   AdjustedQuantity,
 } from '@/components/billing/billing-adjustment-history'
 import {
@@ -59,12 +59,7 @@ function ItemTypeBadge({
 }) {
   if (type === 'FreeIssue')
     return <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] px-1.5 py-0">Free</Badge>
-  if (type === 'Return')
-    // A distributor return is a quantity struck off during review — visually distinct from a
-    // return the outlet actually sent back.
-    return returnType === 'DistributorReturn'
-      ? <DistributorReturnBadge />
-      : <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Return</Badge>
+  if (type === 'Return') return <ReturnTypeBadge returnType={returnType} />
   return <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Sale</Badge>
 }
 

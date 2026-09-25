@@ -49,6 +49,25 @@ export function DistributorReturnBadge() {
   )
 }
 
+const RETURN_TYPE_LABELS: Record<string, string> = {
+  MarketResell: 'Good Return',
+  Damage: 'Damage',
+  Expire: 'Expiry',
+}
+
+/**
+ * Badge for a return line, labelled by return type. Every outlet return is deducted from the bill
+ * total; the label tells the reader whether the stock came back resaleable or as a write-off.
+ */
+export function ReturnTypeBadge({ returnType }: { returnType: string | null | undefined }) {
+  if (returnType === 'DistributorReturn') return <DistributorReturnBadge />
+  return (
+    <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+      {RETURN_TYPE_LABELS[returnType ?? ''] ?? 'Return'}
+    </Badge>
+  )
+}
+
 /** Renders `7` with the pre-adjustment `10` struck through beside it. */
 export function AdjustedQuantity({
   quantity,

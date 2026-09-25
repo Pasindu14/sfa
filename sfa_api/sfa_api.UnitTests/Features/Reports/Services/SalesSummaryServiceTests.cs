@@ -152,7 +152,7 @@ public class SalesSummaryServiceTests
     }
 
     /// <summary>
-    /// Substituting Billing.TotalAmount = SubTotal − BillDiscount − GoodReturn (BillingService.cs:250)
+    /// Substituting Billing.TotalAmount = SubTotal − BillDiscount − GoodReturn − MarketReturn (RecomputeTotals)
     /// into the column formulas gives an identity that holds for any input, which is the strongest
     /// single check that the arithmetic reconciles with what the write path actually stored.
     /// </summary>
@@ -165,8 +165,8 @@ public class SalesSummaryServiceTests
         var row = (await _sut.GetSalesSummaryAsync(Query())).Rows.Single();
 
         var subTotal    = s.SaleGross - s.ItemWiseDiscount;                       // what SubTotalAmount stores
-        var totalAmount = subTotal - s.BillDiscount - s.GoodReturnValue;          // BillingService.cs:250
-        var expected    = totalAmount - s.MarketReturnValue - s.DbDiscount;
+        var totalAmount = subTotal - s.BillDiscount - s.GoodReturnValue - s.MarketReturnValue; // RecomputeTotals
+        var expected    = totalAmount - s.DbDiscount;
 
         row.NetSaleValue.Should().Be(expected);
     }

@@ -50,11 +50,11 @@ public class Billing
     public decimal SubTotalAmount { get; set; }      // Σ item.TotalPrice for Sale lines only
     public decimal BillDiscountRate { get; set; }    // Bill-level discount % (0–100), default 0
     public decimal BillDiscountAmount { get; set; }  // SubTotalAmount × BillDiscountRate / 100
-    public decimal TotalAmount { get; set; }         // SubTotalAmount − BillDiscountAmount
+    public decimal TotalAmount { get; set; }         // SubTotalAmount − BillDiscountAmount − ReturnValue
     public decimal FreeIssueValue { get; set; }            // Σ item.TotalPrice for ALL FreeIssue lines (informational, not in TotalAmount)
     public decimal FreeIssueValueCompany { get; set; }     // Σ item.TotalPrice for FreeIssue lines funded by the company (drawn from FOC stock pool)
     public decimal FreeIssueValueDistributor { get; set; } // Σ item.TotalPrice for FreeIssue lines funded by the distributor (drawn from Normal stock pool)
-    public decimal ReturnValue { get; set; }               // Σ item.TotalPrice for MarketResell return lines — deducted from TotalAmount
+    public decimal ReturnValue { get; set; }               // Σ item.TotalPrice for MarketResell + Damage + Expire return lines — deducted from TotalAmount
 
     /// <summary>
     /// Σ item.TotalPrice for DistributorReturn lines — quantities the distributor declined during review.

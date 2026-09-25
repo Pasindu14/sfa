@@ -486,6 +486,76 @@ public class BillingsApiTests
     }
 
     [Fact]
+    public async Task CreateBilling_DamageAndExpireReturns_AreCreditedLikeGoodReturns()
+    {
+        await EnsureSeededAsync();
+        SetToken(_repToken);
+
+        // Sale 10 × 50 = 500; returns: MarketResell 40 + Damage 30 + Expire 20 = 90 → total 410.
+        // Must equal the mobile cart's "Net Total" (sales − all outlet returns).
+        var payload = new
+        {
+            outletId = _outletId,
+            billDiscountRate = 0m,
+            billingDate = Today(),
+            latitude = 6.9271,
+            longitude = 79.8612,
+            items = new object[]
+            {
+                new { productId = _productAId, quantity = 10m, unitPrice = 50m, discountRate = 0m, billingItemType = 0 },
+                new { productId = _productBId, quantity = 2m,  unitPrice = 20m, discountRate = 0m, billingItemType = 1, returnType = 0 },
+                new { productId = _productCId, quantity = 3m,  unitPrice = 10m, discountRate = 0m, billingItemType = 1, returnType = 1 },
+                new { productId = _productDId, quantity = 1m,  unitPrice = 20m, discountRate = 0m, billingItemType = 1, returnType = 2,
+                      expireDate = Today() }
+            }
+        };
+
+        var (status, data, raw) = await PostBillingAsync(payload);
+
+        status.Should().Be(HttpStatusCode.Created, raw);
+        data.GetProperty("subTotalAmount").GetDecimal().Should().Be(500m);
+        data.GetProperty("returnValue").GetDecimal().Should().Be(90m);
+        data.GetProperty("totalAmount").GetDecimal().Should().Be(410m);
+    }
+
+    [Fact]
+    public async Task CreateBilling_TotalsRoundOnceFromUnroundedLines_MatchingTheMobileCart()
+    {
+        await EnsureSeededAsync();
+        SetToken(_repToken);
+
+        // BIL-2026-00002, the client's reference order. Line discounts 21.216 + 19.575 are summed
+        // unrounded (40.791) — rounding each line first (21.22 + 19.58) would give 3734.93.
+        var payload = new
+        {
+            outletId = _outletId,
+            billDiscountRate = 0m,
+            billingDate = Today(),
+            latitude = 6.9271,
+            longitude = 79.8612,
+            items = new object[]
+            {
+                new { productId = _productAId, quantity = 6m,  unitPrice = 110.50m, discountRate = 3.2m, billingItemType = 0 },
+                new { productId = _productBId, quantity = 5m,  unitPrice = 87.00m,  discountRate = 4.5m, billingItemType = 0 },
+                new { productId = _productAId, quantity = 8m,  unitPrice = 172.00m, discountRate = 0m,   billingItemType = 0 },  // C holds FreeIssue stock only
+                new { productId = _productDId, quantity = 20m, unitPrice = 182.70m, discountRate = 0m,   billingItemType = 0 },
+                new { productId = _productAId, quantity = 5m,  unitPrice = 125.11m, discountRate = 0m,   billingItemType = 1, returnType = 1 },
+                new { productId = _productBId, quantity = 3m,  unitPrice = 312.28m, discountRate = 0m,   billingItemType = 1, returnType = 2,
+                      expireDate = Today() },
+                new { productId = _productCId, quantity = 4m,  unitPrice = 197.47m, discountRate = 0m,   billingItemType = 1, returnType = 0 }
+            }
+        };
+
+        var (status, data, raw) = await PostBillingAsync(payload);
+
+        status.Should().Be(HttpStatusCode.Created, raw);
+        data.GetProperty("subTotalAmount").GetDecimal().Should().Be(6087.21m);
+        data.GetProperty("itemWiseTotalDiscount").GetDecimal().Should().Be(40.79m);
+        data.GetProperty("returnValue").GetDecimal().Should().Be(2352.27m);
+        data.GetProperty("totalAmount").GetDecimal().Should().Be(3734.94m);
+    }
+
+    [Fact]
     public async Task CreateBilling_NoDiscounts_YieldsZeroDiscountTotals()
     {
         await EnsureSeededAsync();

@@ -140,8 +140,8 @@ public class SalesSummaryRepository(AppDbContext context) : ISalesSummaryReposit
                 // as a return here would subtract the same reduction a second time and break the header
                 // cross-check in SalesSummaryService. They are reported via Billing.DistributorReturnValue.
                 //
-                // Damage/Expire contribute ZERO to every Billing header column
-                // (BillingService.cs:226 accumulates MarketResell only), so they are reachable only
+                // Damage/Expire are folded into Billing.ReturnValue together with MarketResell, so
+                // the header can't split them — they are reachable separately only
                 // from the item rows — same predicate shape as BinCardRepository.cs:70-76.
                 MktRetVal = g.Sum(x => x.BillingItemType == BillingItemType.Return
                                     && (x.ReturnType == ReturnType.Damage

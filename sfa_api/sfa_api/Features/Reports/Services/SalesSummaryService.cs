@@ -131,9 +131,9 @@ public class SalesSummaryService(
     /// quantity, because damage/expiry stock never re-enters saleable inventory.
     /// </para>
     /// <para>
-    /// Substituting Billing.TotalAmount = SubTotal - BillDiscount - GoodReturn
-    /// (BillingService.cs:250) collapses these to an identity worth asserting in tests:
-    /// <c>NetSaleValue == SUM(Billing.TotalAmount) - MarketReturn - SUM(Billing.FreeIssueValueDistributor)</c>.
+    /// Substituting Billing.TotalAmount = SubTotal - BillDiscount - GoodReturn - MarketReturn
+    /// (BillingService.RecomputeTotals) collapses these to an identity worth asserting in tests:
+    /// <c>NetSaleValue == SUM(Billing.TotalAmount) - SUM(Billing.FreeIssueValueDistributor)</c>.
     /// </para>
     /// </summary>
     private static SalesSummaryRowDto BuildRow(

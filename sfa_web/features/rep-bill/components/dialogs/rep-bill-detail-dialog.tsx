@@ -24,7 +24,7 @@ import {
 import type { RepBillDetail, RepBillLineItem } from '../../schema/rep-bill.schema'
 import {
   BillingAdjustmentHistory,
-  DistributorReturnBadge,
+  ReturnTypeBadge,
   AdjustedQuantity,
 } from '@/components/billing/billing-adjustment-history'
 import {
@@ -47,12 +47,7 @@ function ItemTypeBadge({
         Free
       </Badge>
     )
-  if (type === 'Return')
-    // A distributor return is a quantity struck off at review time — visually distinct from a
-    // return the outlet actually sent back.
-    return returnType === 'DistributorReturn'
-      ? <DistributorReturnBadge />
-      : <Badge variant="destructive" className="px-1.5 py-0 text-[10px]">Return</Badge>
+  if (type === 'Return') return <ReturnTypeBadge returnType={returnType} />
   return <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">Sale</Badge>
 }
 
@@ -276,7 +271,6 @@ export function RepBillDetailDialog() {
                               </p>
                               <div className="flex flex-wrap gap-x-2 text-[10px] text-muted-foreground">
                                 {item.discountRate > 0 && <span>{item.discountRate}% disc</span>}
-                                {item.returnType && <span>Return: {item.returnType}</span>}
                                 {item.freeIssueSource && (
                                   <span>Free by: {item.freeIssueSource}</span>
                                 )}

@@ -561,6 +561,13 @@ public class BillingService(
     /// <summary>
     /// Rolls the bill-level amounts up from the lines. Every line must already have had
     /// <see cref="ApplyLineMath"/> applied.
+    /// <para>
+    /// Sale and outlet-return amounts are summed from the UNROUNDED line math and rounded once per
+    /// header field, so the bill total matches the mobile cart and the client's old app to the cent
+    /// (BIL-2026-00002: 3734.94). Rounding each line first and summing drifts by a cent whenever
+    /// several lines carry a sub-cent discount. Lines still store their own rounded TotalPrice, so
+    /// Σ line.TotalPrice may differ from the header by a cent — the header is authoritative.
+    /// </para>
     /// </summary>
     private static BillTotals RecomputeTotals(IEnumerable<BillingItem> lines, decimal billDiscountRate)
     {
@@ -583,38 +590,46 @@ public class BillingService(
                     break;
 
                 case BillingItemType.Sale:
-                    subTotal              += line.TotalPrice;
-                    itemWiseTotalDiscount += line.DiscountAmount;
+                    subTotal              += ExactNet(line);
+                    itemWiseTotalDiscount += ExactDiscount(line);
                     break;
 
                 default: // Return
-                    if (line.ReturnType == ReturnType.MarketResell)
-                        returnValue += line.TotalPrice;
+                    // Every outlet return is credited to the outlet — Damage and Expire included —
+                    // matching the total the mobile cart shows the rep at the counter. Only the stock
+                    // effect differs: MarketResell goes back to Normal stock, Damage/Expire are write-offs.
+                    if (line.ReturnType is ReturnType.MarketResell or ReturnType.Damage or ReturnType.Expire)
+                        returnValue += ExactNet(line);
                     // A DistributorReturn is tracked separately and deliberately NOT added to
                     // returnValue. returnValue is subtracted from TotalAmount, but the parent
                     // Sale/FreeIssue line has already been reduced by this same quantity — counting
                     // it here too would deduct the distributor's reduction twice.
                     else if (line.ReturnType == ReturnType.DistributorReturn)
                         distributorReturnValue += line.TotalPrice;
-                    // Damage / Expire: recorded only, no value contribution.
                     break;
             }
         }
 
-        var billDiscountAmount = Math.Round(subTotal * billDiscountRate / 100m, 2);
+        var billDiscount = subTotal * billDiscountRate / 100m;
 
         return new BillTotals(
-            SubTotal:                  subTotal,
-            BillDiscountAmount:        billDiscountAmount,
-            TotalAmount:               subTotal - billDiscountAmount - returnValue,
+            SubTotal:                  Money(subTotal),
+            BillDiscountAmount:        Money(billDiscount),
+            TotalAmount:               Money(subTotal - billDiscount - returnValue),
             FreeIssueValue:            freeIssueCompany + freeIssueDistributor,
             FreeIssueValueCompany:     freeIssueCompany,
             FreeIssueValueDistributor: freeIssueDistributor,
-            ReturnValue:               returnValue,
+            ReturnValue:               Money(returnValue),
             DistributorReturnValue:    distributorReturnValue,
-            ItemWiseTotalDiscount:     itemWiseTotalDiscount,
-            TotalDiscount:             itemWiseTotalDiscount + billDiscountAmount);
+            ItemWiseTotalDiscount:     Money(itemWiseTotalDiscount),
+            TotalDiscount:             Money(itemWiseTotalDiscount + billDiscount));
     }
+
+    private static decimal ExactDiscount(BillingItem line) => line.Quantity * line.UnitPrice * line.DiscountRate / 100m;
+    private static decimal ExactNet(BillingItem line)      => line.Quantity * line.UnitPrice - ExactDiscount(line);
+
+    // Half away from zero — what the mobile cart's toStringAsFixed(2) and Postgres ROUND(numeric, 2) do.
+    private static decimal Money(decimal value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);
 
     private static void ApplyTotals(Billing billing, BillTotals t)
     {
