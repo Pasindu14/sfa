@@ -41,6 +41,7 @@ import {
   useMyBillingDetail,
 } from '../../hooks/distributor-billing.hooks'
 import type { DistributorBillingListItem, BillingLineItem } from '../../schema/distributor-billing.schema'
+import { ReturnTypeBadge } from '@/components/billing/billing-adjustment-history'
 import { formatColombo } from '@/lib/utils/datetime'
 
 function formatCurrency(amount: number) {
@@ -414,9 +415,7 @@ export function DistributorBillingReviewDialog({ billing, onClose }: Props) {
                               <div className="text-xs">{item.productCode}</div>
                             </td>
                             <td className="px-3 py-2">
-                              <Badge variant="destructive" className="text-xs">
-                                {item.returnType === 'DistributorReturn' ? 'Dist. Return' : 'Return'}
-                              </Badge>
+                              <ReturnTypeBadge returnType={item.returnType} />
                             </td>
                             <td className="px-3 py-2 text-center tabular-nums">{item.quantity}</td>
                             <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(item.unitPrice)}</td>

@@ -77,13 +77,13 @@ public class CreateBillingValidator : AbstractValidator<CreateBillingRequest>
                     .Sum(i => i.Quantity * i.UnitPrice * (1 - i.DiscountRate / 100m));
                 var returnTotal = items
                     .Where(i => i.BillingItemType == BillingItemType.Return
-                             && i.ReturnType == ReturnType.MarketResell)
+                             && i.ReturnType != ReturnType.DistributorReturn)
                     .Sum(i => i.Quantity * i.UnitPrice);
                 return returnTotal <= saleTotal;
             })
-            .WithMessage("Total market resell return value cannot exceed total sale value.")
+            .WithMessage("Total return value cannot exceed total sale value.")
             .When(x => x.Items.Any(i => i.BillingItemType == BillingItemType.Return
-                                     && i.ReturnType == ReturnType.MarketResell));
+                                     && i.ReturnType != ReturnType.DistributorReturn));
 
         RuleForEach(x => x.Items).ChildRules(item =>
         {
