@@ -215,7 +215,7 @@ class _ReadyBodyState extends State<_ReadyBody> {
             else
               for (final item in items) ...[
                 _ItemCard(item: item),
-                SizedBox(height: 10.h),
+                SizedBox(height: 8.h),
               ],
           ],
           SizedBox(height: 6.h),
@@ -485,83 +485,36 @@ class _SearchField extends StatelessWidget {
     );
   }
 }
-
 // ── Item card ─────────────────────────────────────────────────────────────────
 
+/// Compact on purpose — a rep can bill dozens of items. Name + code on one
+/// line, then a 2 × 4 grid: packs (sold / free / good rtn / mkt rtn) over
+/// values (gross / discount / returns / net). Columns line up, every figure
+/// has its own labelled cell.
 class _ItemCard extends StatelessWidget {
   final ItemwiseSalesLine item;
   const _ItemCard({required this.item});
+
+  static const _line = Color(0xFFEEEDE6);
 
   @override
   Widget build(BuildContext context) {
     final i = item;
 
-    Widget qty(String label, double v, {bool highlight = false}) => Expanded(
-      child: Column(
-        children: [
-          Text(
-            _fmtQty(v),
-            style: GoogleFonts.barlowCondensed(
-              fontSize: 17.sp,
-              fontWeight: FontWeight.w800,
-              height: 1.0,
-              color: highlight
-                  ? AppColors.primaryDark
-                  : v == 0
-                  ? AppColors.foregroundMuted
-                  : AppColors.foreground,
-            ),
-          ),
-          SizedBox(height: 3.h),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.barlowCondensed(
-              fontSize: 9.sp,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.0,
-              color: AppColors.foregroundMuted,
-            ),
-          ),
-        ],
-      ),
-    );
-
-    Widget money(String label, double v, {bool minus = false}) => Row(
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: GoogleFonts.barlowCondensed(
-              fontSize: 11.sp,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.8,
-              color: AppColors.foregroundMuted,
-            ),
-          ),
-        ),
-        Text(
-          '${minus && v != 0 ? '−' : ''}${fmtLkr(v)}',
-          style: GoogleFonts.barlowCondensed(
-            fontSize: 13.sp,
-            fontWeight: FontWeight.w600,
-            color: AppColors.foreground,
-          ),
-        ),
-      ],
-    );
+    // Amounts drop the LKR prefix — the VALUE row caption carries it.
+    String amt(double v, {bool minus = false}) =>
+        '${minus && v != 0 ? '−' : ''}${fmtLkr(v).substring(4)}';
 
     return Container(
-      padding: EdgeInsets.all(14.r),
+      padding: EdgeInsets.fromLTRB(12.w, 10.h, 12.w, 12.h),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14.r),
+        borderRadius: BorderRadius.circular(12.r),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF1A1A11).withValues(alpha: 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -569,82 +522,190 @@ class _ItemCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
+              Flexible(
+                child: Text(
+                  i.itemName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.barlow(
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.foreground,
+                  ),
+                ),
+              ),
+              SizedBox(width: 6.w),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 1.h),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(4.r),
+                ),
+                child: Text(
+                  i.itemCode,
+                  style: GoogleFonts.barlowCondensed(
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                    color: AppColors.primaryDark,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8.h),
+          Container(
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              border: Border.all(color: _line),
+              borderRadius: BorderRadius.circular(8.r),
+            ),
+            child: Column(
+              children: [
+                _GridRow(
+                  caption: 'PACKS',
+                  cells: [
+                    _Cell('SOLD', _fmtQty(i.saleQty), zero: i.saleQty == 0),
+                    _Cell(
+                      'FREE',
+                      _fmtQty(i.freeIssueQty),
+                      zero: i.freeIssueQty == 0,
+                    ),
+                    _Cell(
+                      'GOOD RTN',
+                      _fmtQty(i.goodReturnQty),
+                      zero: i.goodReturnQty == 0,
+                    ),
+                    _Cell(
+                      'MKT RTN',
+                      _fmtQty(i.marketReturnQty),
+                      zero: i.marketReturnQty == 0,
+                    ),
+                  ],
+                ),
+                const Divider(height: 1, thickness: 1, color: _line),
+                _GridRow(
+                  caption: 'LKR',
+                  cells: [
+                    _Cell('GROSS', amt(i.grossValue), zero: i.grossValue == 0),
+                    _Cell(
+                      'DISCOUNT',
+                      amt(i.discount, minus: true),
+                      zero: i.discount == 0,
+                    ),
+                    _Cell(
+                      'RETURNS',
+                      amt(i.returnValue, minus: true),
+                      zero: i.returnValue == 0,
+                    ),
+                    _Cell('NET', amt(i.netValue), highlight: true),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Cell {
+  final String label;
+  final String value;
+  final bool zero;
+  final bool highlight;
+  const _Cell(
+    this.label,
+    this.value, {
+    this.zero = false,
+    this.highlight = false,
+  });
+}
+
+/// One grid row: a narrow row caption, then equal columns split by lines.
+class _GridRow extends StatelessWidget {
+  final String caption;
+  final List<_Cell> cells;
+  const _GridRow({required this.caption, required this.cells});
+
+  @override
+  Widget build(BuildContext context) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            width: 20.w,
+            color: const Color(0xFFF8F7F2),
+            alignment: Alignment.center,
+            child: RotatedBox(
+              quarterTurns: 3,
+              child: Text(
+                caption,
+                style: GoogleFonts.barlowCondensed(
+                  fontSize: 8.sp,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.2,
+                  color: AppColors.foregroundMuted,
+                ),
+              ),
+            ),
+          ),
+          for (final c in cells) ...[
+            const VerticalDivider(
+              width: 1,
+              thickness: 1,
+              color: _ItemCard._line,
+            ),
+            Expanded(
+              child: Container(
+                color: c.highlight
+                    ? AppColors.primary.withValues(alpha: 0.08)
+                    : null,
+                padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 6.h),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      i.itemName,
-                      maxLines: 2,
+                      c.label,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.barlow(
-                        fontSize: 14.sp,
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 8.5.sp,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.foreground,
+                        letterSpacing: 0.8,
+                        color: c.highlight
+                            ? AppColors.primaryDark
+                            : AppColors.foregroundMuted,
                       ),
                     ),
                     SizedBox(height: 2.h),
-                    Text(
-                      i.itemCode,
-                      style: GoogleFonts.barlowCondensed(
-                        fontSize: 11.sp,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.8,
-                        color: AppColors.foregroundMuted,
+                    // Scale down rather than ellipsize — never cut a figure off.
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        c.value,
+                        maxLines: 1,
+                        style: GoogleFonts.barlowCondensed(
+                          fontSize: 14.sp,
+                          fontWeight: c.highlight
+                              ? FontWeight.w900
+                              : FontWeight.w700,
+                          color: c.highlight
+                              ? AppColors.primaryDark
+                              : c.zero
+                              ? AppColors.foregroundMuted
+                              : AppColors.foreground,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-              SizedBox(width: 10.w),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    fmtLkr(i.netValue),
-                    style: GoogleFonts.barlowCondensed(
-                      fontSize: 17.sp,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.primaryDark,
-                    ),
-                  ),
-                  Text(
-                    'NET',
-                    style: GoogleFonts.barlowCondensed(
-                      fontSize: 9.sp,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
-                      color: AppColors.foregroundMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          SizedBox(height: 12.h),
-          Container(
-            padding: EdgeInsets.symmetric(vertical: 9.h),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(10.r),
             ),
-            child: Row(
-              children: [
-                qty('SOLD PKS', i.saleQty, highlight: true),
-                qty('FREE', i.freeIssueQty),
-                qty('GOOD RTN', i.goodReturnQty),
-                qty('MKT RTN', i.marketReturnQty),
-              ],
-            ),
-          ),
-          SizedBox(height: 10.h),
-          money('GROSS', i.grossValue),
-          SizedBox(height: 3.h),
-          money('DISCOUNT', i.discount, minus: true),
-          SizedBox(height: 3.h),
-          money('RETURNS', i.returnValue, minus: true),
+          ],
         ],
       ),
     );
