@@ -1,4 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using sfa_api.Features.Billings.Entities;
+using sfa_api.Features.Billings.Enums;
+using sfa_api.Features.Supervisor.DTOs;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Infrastructure.Persistence;
 
@@ -72,4 +75,101 @@ public class SupervisorRepository(AppDbContext context) : ISupervisorRepository
                       && nb.IsActive
                       && !nb.IsDeleted)
             .CountAsync(ct);
+
+    // Bill's own state only — no join to Outlet/User, so a later-deactivated outlet or rep never
+    // removes historical revenue (reporting convention: financial aggregates are facts).
+    private IQueryable<Billing> RepBills(int salesRepId, DateOnly from, DateOnly to)
+        => _context.Billings
+            .AsNoTracking()
+            .Where(b => b.SalesRepId == salesRepId
+                     && b.IsActive
+                     && !b.IsDeleted
+                     && b.BillingDate >= from
+                     && b.BillingDate <= to);
+
+    // The SQLite test provider cannot translate SUM over decimal (same split as
+    // DistributorBillingDashboardRepository): PostgreSQL aggregates in SQL, others in memory.
+    private bool IsNpgsql => _context.Database.ProviderName?.Contains("Npgsql") == true;
+
+    public async Task<List<RepBillingStatusGroupRow>> GetRepBillingStatusGroupsAsync(
+        int salesRepId, DateOnly from, DateOnly to, CancellationToken ct = default)
+    {
+        var query = RepBills(salesRepId, from, to);
+
+        if (IsNpgsql)
+        {
+            // At most 2 x 3 rows back. EF can't bind a GroupBy to a record ctor — anonymous first.
+            var grouped = await query
+                .GroupBy(b => new { b.RepStatus, b.DistributorStatus })
+                .Select(g => new
+                {
+                    g.Key.RepStatus,
+                    g.Key.DistributorStatus,
+                    Count = g.Count(),
+                    TotalAmount = g.Sum(b => b.TotalAmount),
+                    TotalDiscount = g.Sum(b => b.TotalDiscount),
+                })
+                .ToListAsync(ct);
+
+            return grouped
+                .Select(r => new RepBillingStatusGroupRow(
+                    r.RepStatus, r.DistributorStatus, r.Count, r.TotalAmount, r.TotalDiscount))
+                .ToList();
+        }
+
+        var rows = await query
+            .Select(b => new { b.RepStatus, b.DistributorStatus, b.TotalAmount, b.TotalDiscount })
+            .ToListAsync(ct);
+
+        return rows
+            .GroupBy(b => new { b.RepStatus, b.DistributorStatus })
+            .Select(g => new RepBillingStatusGroupRow(
+                g.Key.RepStatus, g.Key.DistributorStatus, g.Count(),
+                g.Sum(b => b.TotalAmount), g.Sum(b => b.TotalDiscount)))
+            .ToList();
+    }
+
+    public async Task<RepBillingReturnTotals> GetRepReturnTotalsAsync(
+        int salesRepId, DateOnly from, DateOnly to, CancellationToken ct = default)
+    {
+        // Live bills only — an approved-then-cancelled bill lands at (Cancelled, Approved), so the
+        // RepStatus check is needed as well as the distributor one. !IsDeleted on the item arrives
+        // via the global query filter. Return predicate matches SalesSummaryRepository.
+        var billIds = RepBills(salesRepId, from, to)
+            .Where(b => b.RepStatus != RepBillingStatus.Cancelled
+                     && b.DistributorStatus != DistributorBillingStatus.Rejected)
+            .Select(b => b.Id);
+
+        var returns = _context.BillingItems
+            .AsNoTracking()
+            .Where(bi => billIds.Contains(bi.BillingId)
+                      && bi.BillingItemType == BillingItemType.Return
+                      && (bi.ReturnType == ReturnType.MarketResell
+                       || bi.ReturnType == ReturnType.Damage
+                       || bi.ReturnType == ReturnType.Expire));
+
+        if (IsNpgsql)
+        {
+            var sums = await returns
+                .GroupBy(_ => 1)
+                .Select(g => new
+                {
+                    Good = g.Sum(x => x.ReturnType == ReturnType.MarketResell ? x.TotalPrice : 0m),
+                    Market = g.Sum(x => x.ReturnType != ReturnType.MarketResell ? x.TotalPrice : 0m),
+                })
+                .FirstOrDefaultAsync(ct);
+
+            return sums is null
+                ? new RepBillingReturnTotals(0m, 0m)
+                : new RepBillingReturnTotals(sums.Good, sums.Market);
+        }
+
+        var lines = await returns
+            .Select(x => new { x.ReturnType, x.TotalPrice })
+            .ToListAsync(ct);
+
+        return new RepBillingReturnTotals(
+            lines.Where(x => x.ReturnType == ReturnType.MarketResell).Sum(x => x.TotalPrice),
+            lines.Where(x => x.ReturnType != ReturnType.MarketResell).Sum(x => x.TotalPrice));
+    }
 }

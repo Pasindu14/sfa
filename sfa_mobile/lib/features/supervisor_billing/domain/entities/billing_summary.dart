@@ -30,67 +30,6 @@ enum BillingStatus {
       );
 }
 
-/// Money + counts for a set of bills. A bill is a *sale* only once the
-/// distributor has approved it (and the rep hasn't cancelled it).
-class BillingTotals extends Equatable {
-  final double salesAmount;
-  final double pendingAmount;
-  final int approvedCount;
-  final int pendingCount;
-  final int rejectedCount;
-  final int cancelledCount;
-
-  const BillingTotals({
-    required this.salesAmount,
-    required this.pendingAmount,
-    required this.approvedCount,
-    required this.pendingCount,
-    required this.rejectedCount,
-    required this.cancelledCount,
-  });
-
-  /// Everything still live — approved + awaiting approval. Rejected and
-  /// cancelled bills are not business and are only reported as counts.
-  double get totalBilled => salesAmount + pendingAmount;
-
-  factory BillingTotals.from(Iterable<BillingSummary> bills) {
-    var sales = 0.0, pending = 0.0;
-    var approvedN = 0, pendingN = 0, rejectedN = 0, cancelledN = 0;
-    for (final b in bills) {
-      switch (b.status) {
-        case BillingStatus.approved:
-          sales += b.totalAmount;
-          approvedN++;
-        case BillingStatus.pending:
-          pending += b.totalAmount;
-          pendingN++;
-        case BillingStatus.rejected:
-          rejectedN++;
-        case BillingStatus.cancelled:
-          cancelledN++;
-      }
-    }
-    return BillingTotals(
-      salesAmount: sales,
-      pendingAmount: pending,
-      approvedCount: approvedN,
-      pendingCount: pendingN,
-      rejectedCount: rejectedN,
-      cancelledCount: cancelledN,
-    );
-  }
-
-  @override
-  List<Object?> get props => [
-        salesAmount,
-        pendingAmount,
-        approvedCount,
-        pendingCount,
-        rejectedCount,
-        cancelledCount,
-      ];
-}
-
 class BillingSummary extends Equatable {
   final int id;
   final String billingNumber;

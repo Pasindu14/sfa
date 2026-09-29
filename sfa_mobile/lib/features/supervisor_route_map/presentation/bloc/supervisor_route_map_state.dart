@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:uswatte/features/route_assignment/domain/entities/rep_summary.dart';
+import 'package:uswatte/features/supervisor_route_map/domain/entities/rep_last_location.dart';
 import 'package:uswatte/features/todays_route_map/domain/entities/route_map_outlet.dart';
 
 abstract class SupervisorRouteMapState extends Equatable {
@@ -61,11 +62,19 @@ class SupervisorRouteMapLoaded extends SupervisorRouteMapState {
   final List<RouteMapOutlet> outlets;
   final RepSummary rep;
 
+  /// The rep's latest ping; null when none exists or it could not be fetched.
+  final RepLastLocation? lastLocation;
+
+  /// True when the location lookup itself failed (vs. the rep having none).
+  final bool lastLocationFailed;
+
   const SupervisorRouteMapLoaded({
     required this.outlets,
     required this.rep,
+    this.lastLocation,
+    this.lastLocationFailed = false,
   });
 
   @override
-  List<Object?> get props => [outlets, rep];
+  List<Object?> get props => [outlets, rep, lastLocation, lastLocationFailed];
 }

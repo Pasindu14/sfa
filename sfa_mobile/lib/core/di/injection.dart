@@ -112,6 +112,7 @@ import 'package:uswatte/features/supervisor_summary/domain/usecases/get_supervis
 import 'package:uswatte/features/supervisor_route_map/data/datasources/supervisor_route_map_remote_datasource.dart';
 import 'package:uswatte/features/supervisor_route_map/data/repositories/supervisor_route_map_repository_impl.dart';
 import 'package:uswatte/features/supervisor_route_map/domain/repositories/supervisor_route_map_repository.dart';
+import 'package:uswatte/features/supervisor_route_map/domain/usecases/get_rep_last_location_usecase.dart';
 import 'package:uswatte/features/supervisor_route_map/domain/usecases/get_supervisor_route_map_usecase.dart';
 import 'package:uswatte/features/todays_route_map/data/repositories/todays_route_map_repository_impl.dart';
 import 'package:uswatte/features/todays_route_map/domain/repositories/todays_route_map_repository.dart';
@@ -130,6 +131,7 @@ import 'package:uswatte/features/stock/data/datasources/distributor_stock_remote
 import 'package:uswatte/features/stock/domain/usecases/sync_distributor_stock_usecase.dart';
 import 'package:uswatte/core/background/background_sync_service.dart';
 import 'package:uswatte/features/supervisor_achievement/data/datasources/supervisor_achievement_remote_datasource.dart';
+import 'package:uswatte/features/supervisor_sales_summary/data/datasources/supervisor_sales_summary_remote_datasource.dart';
 import 'package:uswatte/features/purchase_orders/data/datasources/purchase_orders_remote_datasource.dart';
 import 'package:uswatte/features/purchase_orders/data/repositories/purchase_orders_repository_impl.dart';
 import 'package:uswatte/features/purchase_orders/domain/repositories/purchase_orders_repository.dart';
@@ -491,6 +493,8 @@ Future<void> configureDependencies() async {
   );
   getIt.registerLazySingleton(
       () => GetSupervisorRouteMapUseCase(getIt<SupervisorRouteMapRepository>()));
+  getIt.registerLazySingleton(
+      () => GetRepLastLocationUseCase(getIt<SupervisorRouteMapRepository>()));
 
   // ── Distributor Stock ─────────────────────────────────────────────────────
   getIt.registerLazySingleton(
@@ -505,6 +509,10 @@ Future<void> configureDependencies() async {
   // ── Supervisor Achievement ────────────────────────────────────────────────
   getIt.registerLazySingleton(
       () => SupervisorAchievementRemoteDatasource(getIt<Dio>()));
+
+  // ── Supervisor Sales Summary ──────────────────────────────────────────────
+  getIt.registerLazySingleton(
+      () => SupervisorSalesSummaryRemoteDatasource(getIt<Dio>()));
 
   // ── Today's Route Map ─────────────────────────────────────────────────────
   getIt.registerLazySingleton<TodaysRouteMapRepository>(

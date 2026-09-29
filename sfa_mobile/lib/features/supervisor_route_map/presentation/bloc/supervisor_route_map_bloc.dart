@@ -1,5 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uswatte/features/route_assignment/domain/usecases/get_my_reps_usecase.dart';
+import 'package:uswatte/features/route_assignment/domain/entities/rep_summary.dart';
+import 'package:uswatte/features/supervisor_route_map/domain/entities/rep_last_location.dart';
+import 'package:uswatte/features/supervisor_route_map/domain/usecases/get_rep_last_location_usecase.dart';
 import 'package:uswatte/features/supervisor_route_map/domain/usecases/get_supervisor_route_map_usecase.dart';
 import 'package:uswatte/features/supervisor_route_map/presentation/bloc/supervisor_route_map_event.dart';
 import 'package:uswatte/features/supervisor_route_map/presentation/bloc/supervisor_route_map_state.dart';
@@ -8,12 +11,15 @@ class SupervisorRouteMapBloc
     extends Bloc<SupervisorRouteMapEvent, SupervisorRouteMapState> {
   final GetMyRepsUseCase _getMyReps;
   final GetSupervisorRouteMapUseCase _getRouteMap;
+  final GetRepLastLocationUseCase? _getLastLocation;
 
   SupervisorRouteMapBloc({
     required GetMyRepsUseCase getMyReps,
     required GetSupervisorRouteMapUseCase getRouteMap,
+    GetRepLastLocationUseCase? getLastLocation,
   })  : _getMyReps = getMyReps,
         _getRouteMap = getRouteMap,
+        _getLastLocation = getLastLocation,
         super(const SupervisorRouteMapInitial()) {
     on<SupervisorRouteMapRepsRequested>(_onLoadReps);
     on<SupervisorRouteMapRepSelected>(_onRepSelected);
@@ -56,13 +62,33 @@ class SupervisorRouteMapBloc
 
     emit(ready.copyWith(isLoadingMap: true, clearMapError: true));
     try {
-      final outlets = await _getRouteMap(ready.selectedRep!.userId, DateTime.now());
-      emit(SupervisorRouteMapLoaded(
-        outlets: outlets,
-        rep: ready.selectedRep!,
-      ));
+      emit(await _load(ready.selectedRep!));
     } catch (e) {
       emit(ready.copyWith(isLoadingMap: false, mapError: e.toString()));
+    }
+  }
+
+  /// Outlets and the last location load in parallel. The location is
+  /// best-effort: its failure never costs the supervisor the outlet map.
+  Future<SupervisorRouteMapLoaded> _load(RepSummary rep) async {
+    final locationFuture = _fetchLastLocation(rep.userId);
+    final outlets = await _getRouteMap(rep.userId, DateTime.now());
+    final (location, failed) = await locationFuture;
+    return SupervisorRouteMapLoaded(
+      outlets: outlets,
+      rep: rep,
+      lastLocation: location,
+      lastLocationFailed: failed,
+    );
+  }
+
+  Future<(RepLastLocation?, bool)> _fetchLastLocation(int userId) async {
+    final useCase = _getLastLocation;
+    if (useCase == null) return (null, false);
+    try {
+      return (await useCase(userId), false);
+    } catch (_) {
+      return (null, true);
     }
   }
 
@@ -73,8 +99,7 @@ class SupervisorRouteMapBloc
     if (state is! SupervisorRouteMapLoaded) return;
     final loaded = state as SupervisorRouteMapLoaded;
     try {
-      final outlets = await _getRouteMap(loaded.rep.userId, DateTime.now());
-      emit(SupervisorRouteMapLoaded(outlets: outlets, rep: loaded.rep));
+      emit(await _load(loaded.rep));
     } catch (_) {
       // keep current map on refresh failure
     }

@@ -98,6 +98,7 @@ import 'package:uswatte/features/supervisor_billing/presentation/pages/billing_d
 import 'package:uswatte/features/supervisor_billing/presentation/pages/supervisor_billing_page.dart';
 import 'package:uswatte/features/route_assignment/domain/usecases/get_my_reps_usecase.dart';
 import 'package:uswatte/features/supervisor_summary/domain/usecases/get_supervisor_summary_usecase.dart';
+import 'package:uswatte/features/supervisor_route_map/domain/usecases/get_rep_last_location_usecase.dart';
 import 'package:uswatte/features/supervisor_route_map/domain/usecases/get_supervisor_route_map_usecase.dart';
 import 'package:uswatte/features/supervisor_route_map/presentation/bloc/supervisor_route_map_bloc.dart';
 import 'package:uswatte/features/supervisor_route_map/presentation/bloc/supervisor_route_map_event.dart';
@@ -110,6 +111,9 @@ import 'package:uswatte/features/supervisor_summary/presentation/cubit/superviso
 import 'package:uswatte/features/supervisor_achievement/data/datasources/supervisor_achievement_remote_datasource.dart';
 import 'package:uswatte/features/supervisor_achievement/presentation/cubit/supervisor_achievement_cubit.dart';
 import 'package:uswatte/features/supervisor_achievement/presentation/pages/supervisor_achievement_page.dart';
+import 'package:uswatte/features/supervisor_sales_summary/data/datasources/supervisor_sales_summary_remote_datasource.dart';
+import 'package:uswatte/features/supervisor_sales_summary/presentation/cubit/supervisor_sales_summary_cubit.dart';
+import 'package:uswatte/features/supervisor_sales_summary/presentation/pages/supervisor_sales_summary_page.dart';
 import 'package:uswatte/features/purchase_orders/domain/usecases/get_pending_purchase_orders_usecase.dart';
 import 'package:uswatte/features/purchase_orders/domain/usecases/get_purchase_order_usecase.dart';
 import 'package:uswatte/features/purchase_orders/domain/usecases/rep_approve_purchase_order_usecase.dart';
@@ -709,6 +713,7 @@ class AppRouter {
                 create: (_) => SupervisorRouteMapBloc(
                   getMyReps: getIt<GetMyRepsUseCase>(),
                   getRouteMap: getIt<GetSupervisorRouteMapUseCase>(),
+                  getLastLocation: getIt<GetRepLastLocationUseCase>(),
                 )..add(const SupervisorRouteMapRepsRequested()),
                 child: const SupervisorRouteMapPage(),
               ),
@@ -722,6 +727,17 @@ class AppRouter {
                   remote: getIt<SupervisorAchievementRemoteDatasource>(),
                 )..loadReps(),
                 child: const SupervisorAchievementPage(),
+              ),
+            ),
+            GoRoute(
+              path: 'sales-summary',
+              name: 'supervisorSalesSummary',
+              builder: (_, __) => BlocProvider(
+                create: (_) => SupervisorSalesSummaryCubit(
+                  getMyReps: getIt<GetMyRepsUseCase>(),
+                  remote: getIt<SupervisorSalesSummaryRemoteDatasource>(),
+                )..loadReps(),
+                child: const SupervisorSalesSummaryPage(),
               ),
             ),
             GoRoute(

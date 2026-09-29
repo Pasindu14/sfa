@@ -15,6 +15,9 @@ public interface ILocationPingService
     /// </summary>
     Task<RepRouteDto> GetRepRouteAsync(int repId, DateOnly date, CancellationToken ct = default);
 
+    /// <summary>One rep's latest ping, or null if the rep has never sent one.</summary>
+    Task<RepLastLocationDto?> GetLatestForRepAsync(int repId, CancellationToken ct = default);
+
     /// <summary>
     /// Records why a rep's phone captured no position on its latest tick, so an absence of
     /// pings can be explained instead of guessed at. Overwrites the previous report.

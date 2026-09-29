@@ -10,6 +10,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/route_assignment/domain/entities/rep_summary.dart';
+import 'package:uswatte/features/supervisor_route_map/domain/entities/rep_last_location.dart';
 import 'package:uswatte/features/supervisor_route_map/presentation/bloc/supervisor_route_map_bloc.dart';
 import 'package:uswatte/features/supervisor_route_map/presentation/bloc/supervisor_route_map_event.dart';
 import 'package:uswatte/features/supervisor_route_map/presentation/bloc/supervisor_route_map_state.dart';
@@ -953,6 +954,14 @@ class _MapViewState extends State<_MapView> {
   }
 
   @override
+  void didUpdateWidget(covariant _MapView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // A refresh keeps this widget (same key) but brings new statuses and a
+    // new last location — rebuild the pins rather than showing stale ones.
+    if (oldWidget.state != widget.state) _buildMarkers();
+  }
+
+  @override
   void dispose() {
     _controller?.dispose();
     super.dispose();
@@ -961,8 +970,31 @@ class _MapViewState extends State<_MapView> {
   bool _hasValidCoords(double lat, double lng) =>
       !(lat == 0.0 && lng == 0.0);
 
+  RepLastLocation? get _rep {
+    final l = widget.state.lastLocation;
+    return (l != null && _hasValidCoords(l.latitude, l.longitude)) ? l : null;
+  }
+
   void _buildMarkers() {
     final markers = <Marker>{};
+    final rep = _rep;
+    if (rep != null) {
+      markers.add(
+        Marker(
+          markerId: const MarkerId('rep_last_location'),
+          position: LatLng(rep.latitude, rep.longitude),
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+              rep.isStale(DateTime.now())
+                  ? BitmapDescriptor.hueViolet
+                  : BitmapDescriptor.hueAzure),
+          zIndexInt: 10,
+          infoWindow: InfoWindow(
+            title: '${widget.state.rep.userName} · last seen',
+            snippet: _lastSeenText(rep, DateTime.now()),
+          ),
+        ),
+      );
+    }
     for (final routeOutlet in widget.state.outlets) {
       final outlet = routeOutlet.outlet;
       if (!_hasValidCoords(outlet.latitude, outlet.longitude)) continue;
@@ -989,27 +1021,30 @@ class _MapViewState extends State<_MapView> {
   }
 
   Future<void> _fitBounds(GoogleMapController controller) async {
-    final outlets = widget.state.outlets
-        .where((ro) => _hasValidCoords(ro.outlet.latitude, ro.outlet.longitude))
-        .toList();
-    if (outlets.isEmpty) return;
+    // Outlets plus the rep's last position, so the rep is never off-screen.
+    final points = [
+      for (final ro in widget.state.outlets)
+        if (_hasValidCoords(ro.outlet.latitude, ro.outlet.longitude))
+          LatLng(ro.outlet.latitude, ro.outlet.longitude),
+      if (_rep != null) LatLng(_rep!.latitude, _rep!.longitude),
+    ];
+    if (points.isEmpty) return;
 
-    if (outlets.length == 1) {
-      final o = outlets.first.outlet;
+    if (points.length == 1) {
       await controller.animateCamera(
-        CameraUpdate.newLatLngZoom(LatLng(o.latitude, o.longitude), 13),
+        CameraUpdate.newLatLngZoom(points.first, 14),
       );
       return;
     }
 
-    double minLat = outlets.first.outlet.latitude;
-    double maxLat = outlets.first.outlet.latitude;
-    double minLng = outlets.first.outlet.longitude;
-    double maxLng = outlets.first.outlet.longitude;
+    double minLat = points.first.latitude;
+    double maxLat = points.first.latitude;
+    double minLng = points.first.longitude;
+    double maxLng = points.first.longitude;
 
-    for (final ro in outlets) {
-      final lat = ro.outlet.latitude;
-      final lng = ro.outlet.longitude;
+    for (final p in points) {
+      final lat = p.latitude;
+      final lng = p.longitude;
       if (lat < minLat) minLat = lat;
       if (lat > maxLat) maxLat = lat;
       if (lng < minLng) minLng = lng;
@@ -1052,6 +1087,56 @@ class _MapViewState extends State<_MapView> {
     final billedCount    = outlets.where((o) => o.status == RouteOutletStatus.billed).length;
     final notBilledCount = outlets.where((o) => o.status == RouteOutletStatus.notBilled).length;
     final pendingCount   = outlets.where((o) => o.status == RouteOutletStatus.pending).length;
+
+    final strip = _LastSeenStrip(
+      location: _rep,
+      failed: widget.state.lastLocationFailed,
+      onTap: _rep == null
+          ? null
+          : () async {
+              final c = _controller;
+              if (c == null) return;
+              await c.animateCamera(CameraUpdate.newLatLngZoom(
+                  LatLng(_rep!.latitude, _rep!.longitude), 16));
+              await c.showMarkerInfoWindow(
+                  const MarkerId('rep_last_location'));
+            },
+    );
+    final map = GoogleMap(
+      initialCameraPosition: widget.defaultCamera,
+      markers: _markers,
+      myLocationEnabled: true,
+      myLocationButtonEnabled: true,
+      zoomControlsEnabled: true,
+      onMapCreated: _onMapCreated,
+      // The map now runs to the bottom of the screen, so inset its own
+      // controls (my-location, zoom) clear of the system navigation bar.
+      padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
+    );
+
+    // No route today, but the rep has been seen — still worth a map.
+    if (outlets.isEmpty && _rep != null) {
+      return Column(
+        children: [
+          Container(
+            width: double.infinity,
+            color: Colors.white,
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+            child: Text(
+              'No route assigned today',
+              style: GoogleFonts.barlowCondensed(
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+                color: AppColors.foregroundMuted,
+              ),
+            ),
+          ),
+          strip,
+          Expanded(child: map),
+        ],
+      );
+    }
 
     if (outlets.isEmpty) {
       return Column(
@@ -1096,20 +1181,124 @@ class _MapViewState extends State<_MapView> {
           notBilledCount: notBilledCount,
           pendingCount: pendingCount,
         ),
-        Expanded(
-          child: GoogleMap(
-            initialCameraPosition: widget.defaultCamera,
-            markers: _markers,
-            myLocationEnabled: true,
-            myLocationButtonEnabled: true,
-            zoomControlsEnabled: true,
-            onMapCreated: _onMapCreated,
-            // The map now runs to the bottom of the screen, so inset its own
-            // controls (my-location, zoom) clear of the system navigation bar.
-            padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
+        strip,
+        Expanded(child: map),
+      ],
+    );
+  }
+}
+
+// ── Last seen ─────────────────────────────────────────────────────────────────
+
+const _monthsShort = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+];
+
+String _clock(DateTime t) {
+  final h = t.hour % 12 == 0 ? 12 : t.hour % 12;
+  final m = t.minute.toString().padLeft(2, '0');
+  return '$h:$m ${t.hour < 12 ? 'AM' : 'PM'}';
+}
+
+/// "10:42 AM · 12 min ago · ±15 m", or "Yesterday 5:10 PM · ±15 m" once
+/// the fix is from an earlier day.
+String _lastSeenText(RepLastLocation l, DateTime now) {
+  final t = l.recordedAt;
+  final today = DateTime(now.year, now.month, now.day);
+  final day = DateTime(t.year, t.month, t.day);
+  final acc = '±${l.accuracyMeters.round()} m';
+
+  if (day == today) {
+    final diff = now.difference(t);
+    final ago = diff.inMinutes < 1
+        ? 'just now'
+        : diff.inMinutes < 60
+            ? '${diff.inMinutes} min ago'
+            : '${diff.inHours} h ${diff.inMinutes % 60} min ago';
+    return '${_clock(t)} · $ago · $acc';
+  }
+  final label = today.difference(day).inDays == 1
+      ? 'Yesterday'
+      : '${_monthsShort[t.month - 1]} ${t.day}';
+  return '$label ${_clock(t)} · $acc';
+}
+
+class _LastSeenStrip extends StatelessWidget {
+  final RepLastLocation? location;
+  final bool failed;
+  final VoidCallback? onTap;
+
+  const _LastSeenStrip({
+    required this.location,
+    required this.failed,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final loc = location;
+    final (IconData icon, Color color, String text) = switch (loc) {
+      null when failed => (
+          Icons.location_off_rounded,
+          AppColors.foregroundMuted,
+          'Last location unavailable right now',
+        ),
+      null => (
+          Icons.location_off_rounded,
+          AppColors.foregroundMuted,
+          'No location received from this rep yet',
+        ),
+      _ when loc.isStale(now) => (
+          Icons.history_rounded,
+          AppColors.warning,
+          'Last seen ${_lastSeenText(loc, now)}',
+        ),
+      _ => (
+          Icons.my_location_rounded,
+          const Color(0xFF2563EB),
+          'Last seen ${_lastSeenText(loc, now)}',
+        ),
+    };
+
+    return Material(
+      color: color.withValues(alpha: 0.08),
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 9.h),
+          child: Row(
+            children: [
+              Icon(icon, size: 15.r, color: color),
+              SizedBox(width: 8.w),
+              Expanded(
+                child: Text(
+                  text,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.barlowCondensed(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                    color: color,
+                  ),
+                ),
+              ),
+              if (onTap != null)
+                Text(
+                  'SHOW',
+                  style: GoogleFonts.barlowCondensed(
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                    color: color,
+                  ),
+                ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 }

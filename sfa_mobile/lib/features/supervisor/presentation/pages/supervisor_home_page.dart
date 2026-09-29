@@ -772,6 +772,22 @@ class _ActionsSection extends StatelessWidget {
               ),
             ],
           ),
+          SizedBox(height: 10.h),
+          Row(
+            children: [
+              Expanded(
+                child: _TileActionCard(
+                  icon: Icons.bar_chart_rounded,
+                  title: 'SALES SUMMARY',
+                  subtitle: 'Rep totals by date range',
+                  color: const Color(0xFF0D9488),
+                  onTap: () => context.push('/supervisor/sales-summary'),
+                ),
+              ),
+              SizedBox(width: 10.w),
+              const Expanded(child: SizedBox()),
+            ],
+          ),
         ],
       ),
     );

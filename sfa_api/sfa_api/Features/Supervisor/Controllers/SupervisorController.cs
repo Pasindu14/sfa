@@ -5,6 +5,7 @@ using sfa_api.Common.Errors;
 using sfa_api.Common.Extensions;
 using sfa_api.Features.Supervisor.Services;
 using sfa_api.Features.Billings.Services;
+using sfa_api.Features.LocationPings.Services;
 using sfa_api.Features.SalesTargets.Services;
 
 namespace sfa_api.Features.Supervisor.Controllers;
@@ -15,11 +16,13 @@ namespace sfa_api.Features.Supervisor.Controllers;
 public class SupervisorController(
     ISupervisorService service,
     IBillingService billingService,
-    ISalesTargetService salesTargetService) : ControllerBase
+    ISalesTargetService salesTargetService,
+    ILocationPingService locationPingService) : ControllerBase
 {
     private readonly ISupervisorService _service = service;
     private readonly IBillingService _billingService = billingService;
     private readonly ISalesTargetService _salesTargetService = salesTargetService;
+    private readonly ILocationPingService _locationPingService = locationPingService;
 
     private int GetSupervisorId()
     {
@@ -65,6 +68,39 @@ public class SupervisorController(
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
         await _service.EnsureRepUnderSupervisorAsync(GetSupervisorId(), userId, ct);
         var result = await _billingService.GetRepMonthlySalesAsync(userId, year, month, ct);
+        return Ok(ResponseHelper.Ok(result, correlationId));
+    }
+
+    /// <summary>
+    /// GET /api/v1/supervisor/rep-billing-summary?userId=X&amp;from=YYYY-MM-DD&amp;to=YYYY-MM-DD
+    /// One rep's bill counts, sales, pending, discount and returns over a date range (max 92 days).
+    /// </summary>
+    [HttpGet("rep-billing-summary")]
+    public async Task<IActionResult> GetRepBillingSummary(
+        [FromQuery] int userId,
+        [FromQuery] DateOnly from,
+        [FromQuery] DateOnly to,
+        CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        await _service.EnsureRepUnderSupervisorAsync(GetSupervisorId(), userId, ct);
+        var result = await _service.GetRepBillingSummaryAsync(userId, from, to, ct);
+        return Ok(ResponseHelper.Ok(result, correlationId));
+    }
+
+    /// <summary>
+    /// GET /api/v1/supervisor/rep-last-location?userId=X
+    /// The rep's single most recent location ping (data is null if none). Only the last point —
+    /// the full movement trail stays Admin-only (LocationPingsController).
+    /// </summary>
+    [HttpGet("rep-last-location")]
+    public async Task<IActionResult> GetRepLastLocation(
+        [FromQuery] int userId,
+        CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        await _service.EnsureRepUnderSupervisorAsync(GetSupervisorId(), userId, ct);
+        var result = await _locationPingService.GetLatestForRepAsync(userId, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 
