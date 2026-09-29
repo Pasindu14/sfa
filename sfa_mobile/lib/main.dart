@@ -16,6 +16,7 @@ import 'package:uswatte/core/network/session_expired_notifier.dart';
 import 'package:uswatte/core/router/app_router.dart';
 import 'package:uswatte/core/connectivity/connectivity_service.dart';
 import 'package:uswatte/core/db/database_helper.dart';
+import 'package:uswatte/core/session/device_user_guard.dart';
 import 'package:uswatte/core/update/app_update_service.dart';
 import 'package:uswatte/core/sync/bill_sync_service.dart';
 import 'package:uswatte/features/stock/domain/usecases/sync_distributor_stock_usecase.dart';
@@ -93,6 +94,7 @@ void main() async {
     getCurrentAuthUseCase: getIt<GetCurrentAuthUseCase>(),
     deviceIdService: getIt<DeviceIdService>(),
     fcmService: getIt<FcmService>(),
+    deviceUserGuard: getIt<DeviceUserGuard>(),
   )..add(const AppStarted());
 
   runApp(SfaApp(authBloc: authBloc));

@@ -7,6 +7,8 @@ import 'package:uswatte/core/background/location_tracking_service.dart';
 import 'package:uswatte/core/device/device_id_service.dart';
 import 'package:uswatte/core/errors/app_exception.dart';
 import 'package:uswatte/core/notifications/fcm_service.dart';
+import 'package:uswatte/core/session/device_user_guard.dart';
+import 'package:uswatte/core/utils/jwt_decoder.dart';
 import 'package:uswatte/features/auth/domain/entities/user_role.dart';
 import 'package:uswatte/features/auth/domain/usecases/get_current_auth_usecase.dart';
 import 'package:uswatte/features/auth/domain/usecases/login_usecase.dart';
@@ -21,6 +23,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final GetCurrentAuthUseCase _getCurrentAuthUseCase;
   final DeviceIdService _deviceIdService;
   final FcmService _fcmService;
+  final DeviceUserGuard? _deviceUserGuard;
 
   AuthBloc({
     required LoginUseCase loginUseCase,
@@ -28,11 +31,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required GetCurrentAuthUseCase getCurrentAuthUseCase,
     required DeviceIdService deviceIdService,
     required FcmService fcmService,
+    DeviceUserGuard? deviceUserGuard,
   })  : _loginUseCase = loginUseCase,
         _logoutUseCase = logoutUseCase,
         _getCurrentAuthUseCase = getCurrentAuthUseCase,
         _deviceIdService = deviceIdService,
         _fcmService = fcmService,
+        _deviceUserGuard = deviceUserGuard,
         super(const AuthInitial()) {
     on<AppStarted>(_onAppStarted);
     on<LoginSubmitted>(_onLoginSubmitted);
@@ -50,6 +55,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final token = await _getCurrentAuthUseCase();
       if (token != null) {
+        final userId = JwtDecoder.extractSubject(token.accessToken);
+        if (userId != null) {
+          try {
+            await _deviceUserGuard?.recordIfUnknown(userId);
+          } catch (e) {
+            debugPrint('DEVICE USER RECORD ERROR: $e');
+          }
+        }
         emit(AuthAuthenticated(role: token.role, name: token.name));
         if (token.role == UserRole.salesRep) {
           unawaited(LocationTrackingService.start());
@@ -75,6 +88,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         password: event.password,
         deviceId: deviceId,
       );
+      // Must finish before AuthAuthenticated: that state mounts the home
+      // screen and kicks the post-login sync, both of which read/upload the
+      // local tables this may need to clear for a different user.
+      final userId = JwtDecoder.extractSubject(token.accessToken);
+      if (userId != null) {
+        try {
+          await _deviceUserGuard?.onLogin(userId);
+        } catch (e, stack) {
+          debugPrint('DEVICE USER GUARD ERROR: $e\n$stack');
+        }
+      }
       emit(AuthAuthenticated(role: token.role, name: token.name));
       // Fire-and-forget — failures never block login
       unawaited(_fcmService.registerToken());

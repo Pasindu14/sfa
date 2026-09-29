@@ -27,6 +27,7 @@ import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_monthl
 import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_monthly_sales_state.dart';
 import 'package:uswatte/features/notifications/presentation/bloc/notifications_bloc.dart';
 import 'package:uswatte/features/sales_rep/presentation/widgets/location_nag_banner.dart';
+import 'package:uswatte/features/sales_rep/presentation/widgets/logout_with_sync_check.dart';
 
 class SalesRepHomePage extends StatefulWidget {
   const SalesRepHomePage({super.key});
@@ -476,8 +477,7 @@ class _TopBar extends StatelessWidget {
                 SizedBox(width: 6.w),
                 _NavIconBtn(
                   icon: Icons.logout_rounded,
-                  onTap: () =>
-                      context.read<AuthBloc>().add(const LogoutRequested()),
+                  onTap: () => logoutWithSyncCheck(context),
                   accent: true,
                 ),
               ],
