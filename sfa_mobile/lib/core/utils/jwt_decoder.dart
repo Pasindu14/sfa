@@ -31,4 +31,10 @@ class JwtDecoder {
   static String? extractName(String token) {
     return _decode(token)?[_nameClaimKey] as String?;
   }
+
+  /// Returns the `sub` claim (the user's ID), or null if absent/malformed.
+  static String? extractSubject(String token) {
+    final sub = _decode(token)?['sub'];
+    return sub?.toString();
+  }
 }

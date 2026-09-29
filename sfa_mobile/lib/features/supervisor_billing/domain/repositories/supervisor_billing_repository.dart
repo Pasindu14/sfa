@@ -2,11 +2,10 @@ import 'package:uswatte/features/supervisor_billing/domain/entities/billing_deta
 import 'package:uswatte/features/supervisor_billing/domain/entities/billing_summary.dart';
 
 abstract class SupervisorBillingRepository {
+  /// Every bill for the rep on [date] (all pages).
   Future<List<BillingSummary>> getSupervisorBillings({
     required int salesRepId,
     required String date,
-    int page = 1,
-    int pageSize = 50,
   });
 
   Future<BillingDetail> getBillingDetail(int id);

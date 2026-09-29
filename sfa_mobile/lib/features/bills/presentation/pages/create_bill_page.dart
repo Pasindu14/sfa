@@ -132,7 +132,9 @@ class CreateBillPage extends StatelessWidget {
                                     p.pricingStructures !=
                                         c.pricingStructures ||
                                     p.pricingStructuresLoaded !=
-                                        c.pricingStructuresLoaded,
+                                        c.pricingStructuresLoaded ||
+                                    p.pricingStructureLocked !=
+                                        c.pricingStructureLocked,
                                 builder: (ctx, state) {
                                   if (!state.pricingStructuresLoaded) {
                                     return SizedBox(
@@ -144,6 +146,7 @@ class CreateBillPage extends StatelessWidget {
                                   return PricingStructurePicker(
                                     selected: state.selectedPricingStructure,
                                     structures: state.pricingStructures,
+                                    locked: state.pricingStructureLocked,
                                     onSelected: (s) => ctx
                                         .read<CreateBillBloc>()
                                         .add(PricingStructureSelected(s)),

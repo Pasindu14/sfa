@@ -28,19 +28,8 @@ class BillingSummaryModel extends BillingSummary {
       distributorId: json['distributorId'] as int,
       distributorName: json['distributorName'] as String,
       totalAmount: (json['totalAmount'] as num).toDouble(),
-      status: _parseStatus(json['status'] as String),
+      status: BillingStatus.fromJson(json),
       createdAt: DateTime.parse(json['createdAt'] as String),
     );
-  }
-
-  static BillingStatus _parseStatus(String s) {
-    switch (s.toLowerCase()) {
-      case 'approved':
-        return BillingStatus.approved;
-      case 'cancelled':
-        return BillingStatus.cancelled;
-      default:
-        return BillingStatus.submitted;
-    }
   }
 }

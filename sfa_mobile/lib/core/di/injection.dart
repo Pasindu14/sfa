@@ -58,6 +58,7 @@ import 'package:uswatte/features/outlets/domain/usecases/sync_outlets_usecase.da
 import 'package:uswatte/core/connectivity/connectivity_service.dart';
 import 'package:uswatte/core/sync/bill_sync_service.dart';
 import 'package:uswatte/core/sync/etag_store.dart';
+import 'package:uswatte/core/session/device_user_guard.dart';
 import 'package:uswatte/features/bills/data/datasources/bills_local_datasource.dart';
 import 'package:uswatte/features/bills/data/datasources/bills_remote_datasource.dart';
 import 'package:uswatte/features/bills/data/repositories/bills_repository_impl.dart';
@@ -232,6 +233,7 @@ Future<void> configureDependencies() async {
   // ── Products ─────────────────────────────────────────────────────────────────
   getIt.registerLazySingleton(() => DatabaseHelper.instance);
   getIt.registerLazySingleton(() => EtagStore(getIt<DatabaseHelper>()));
+  getIt.registerLazySingleton(() => DeviceUserGuard(getIt<DatabaseHelper>()));
   getIt.registerLazySingleton(
       () => ProductsLocalDatasource(getIt<DatabaseHelper>()));
   getIt.registerLazySingleton(

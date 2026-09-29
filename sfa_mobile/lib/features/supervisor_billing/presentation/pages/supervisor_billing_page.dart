@@ -1216,8 +1216,201 @@ class _ResultsSection extends StatelessWidget {
 
         // The bill cards themselves are a lazy SliverList in _ReadyBody.
         if (billings.isEmpty)
-          _EmptyBillsState(repName: repName, date: date),
+          _EmptyBillsState(repName: repName, date: date)
+        else ...[
+          _BillsTotalsCard(totals: BillingTotals.from(billings)),
+          SizedBox(height: 12.h),
+        ],
       ],
+    );
+  }
+}
+
+// ── Totals summary ────────────────────────────────────────────────────────────
+
+/// Day totals for the selected rep. Only distributor-approved bills count as
+/// sales; pending ones are shown separately; rejected/cancelled are counts only.
+class _BillsTotalsCard extends StatelessWidget {
+  final BillingTotals totals;
+
+  const _BillsTotalsCard({required this.totals});
+
+  String _formatAmount(double amount) {
+    return 'LKR ${amount.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+\.)'), (m) => '${m[1]},')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final counts = <String>[
+      '${totals.approvedCount} approved',
+      '${totals.pendingCount} pending',
+      if (totals.rejectedCount > 0) '${totals.rejectedCount} rejected',
+      if (totals.cancelledCount > 0) '${totals.cancelledCount} cancelled',
+    ].join('  ·  ');
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16.r),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1A1A11).withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Total billed
+          Padding(
+            padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 12.h),
+            child: Row(
+              children: [
+                Container(
+                  width: 34.r,
+                  height: 34.r,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(9.r),
+                  ),
+                  child: Icon(Icons.receipt_long_rounded,
+                      size: 17.r, color: AppColors.primary),
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('TOTAL BILLED',
+                          style: GoogleFonts.barlowCondensed(
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.8,
+                            color: AppColors.foregroundMuted,
+                          )),
+                      Text('Approved + pending',
+                          style: GoogleFonts.barlow(
+                            fontSize: 10.sp,
+                            color: AppColors.foregroundMuted
+                                .withValues(alpha: 0.7),
+                          )),
+                    ],
+                  ),
+                ),
+                Text(
+                  _formatAmount(totals.totalBilled),
+                  style: GoogleFonts.barlowCondensed(
+                    fontSize: 20.sp,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.3,
+                    color: AppColors.foreground,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, thickness: 1, color: Color(0xFFEEEDE6)),
+          Padding(
+            padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 12.h),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _TotalsStat(
+                    icon: Icons.check_circle_rounded,
+                    label: 'SALES · APPROVED',
+                    value: _formatAmount(totals.salesAmount),
+                    color: AppColors.success,
+                  ),
+                ),
+                SizedBox(width: 10.w),
+                Expanded(
+                  child: _TotalsStat(
+                    icon: Icons.hourglass_top_rounded,
+                    label: 'PENDING APPROVAL',
+                    value: _formatAmount(totals.pendingAmount),
+                    color: AppColors.warning,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, thickness: 1, color: Color(0xFFEEEDE6)),
+          Padding(
+            padding: EdgeInsets.fromLTRB(16.w, 9.h, 16.w, 11.h),
+            child: Text(
+              counts,
+              style: GoogleFonts.barlowCondensed(
+                fontSize: 11.sp,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.4,
+                color: AppColors.foregroundMuted,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TotalsStat extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  const _TotalsStat({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(10.w, 9.h, 10.w, 10.h),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10.r),
+        border: Border.all(color: color.withValues(alpha: 0.16)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 11.r, color: color),
+              SizedBox(width: 4.w),
+              Flexible(
+                child: Text(label,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.barlowCondensed(
+                      fontSize: 9.sp,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
+                      color: color,
+                    )),
+              ),
+            ],
+          ),
+          SizedBox(height: 4.h),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(value,
+                style: GoogleFonts.barlowCondensed(
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.2,
+                  color: AppColors.foreground,
+                )),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1308,8 +1501,9 @@ class _BillingCardState extends State<_BillingCard> {
       case BillingStatus.approved:
         return AppColors.success;
       case BillingStatus.cancelled:
+      case BillingStatus.rejected:
         return AppColors.error;
-      case BillingStatus.submitted:
+      case BillingStatus.pending:
         return AppColors.warning;
     }
   }
@@ -1320,8 +1514,10 @@ class _BillingCardState extends State<_BillingCard> {
         return 'Approved';
       case BillingStatus.cancelled:
         return 'Cancelled';
-      case BillingStatus.submitted:
-        return 'Submitted';
+      case BillingStatus.rejected:
+        return 'Rejected';
+      case BillingStatus.pending:
+        return 'Pending';
     }
   }
 

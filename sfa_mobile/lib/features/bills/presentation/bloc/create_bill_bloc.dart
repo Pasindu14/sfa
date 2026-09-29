@@ -77,10 +77,15 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     ));
   }
 
-  /// Deliberately leaves the cart alone: each line keeps the structure and
-  /// price it was added with, so one bill can mix structures.
+  /// One price list per bill: once the cart holds a line the structure is
+  /// locked, and it unlocks again only when the cart is emptied. The picker
+  /// already refuses the tap; this is the backstop.
   void _onPricingStructureSelected(
       PricingStructureSelected e, Emitter<CreateBillState> emit) {
+    if (state.pricingStructureLocked &&
+        e.structure.id != state.selectedPricingStructure?.id) {
+      return;
+    }
     emit(state.copyWith(selectedPricingStructure: e.structure));
   }
 
@@ -223,12 +228,18 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     // product — the sale vanished and the outlet was undercharged. Reachable in
     // one tap now that the quantity sheet can stage Sale and Free Issue together.
     //
-    // The structure (and the price itself) are part of the key too: the rep can
-    // switch price list mid-bill, and a merge across structures would silently
-    // bill the new quantity at the old structure's price.
+    // The structure (and the price itself) stay part of the key as a
+    // belt-and-braces guard, though a locked bill only ever has one structure.
     final structureId = e.pricingStructureId ??
         e.product.pricingStructureId ??
         state.selectedPricingStructure?.id;
+    // One price list per bill: a line priced from another structure (a stale
+    // search sheet, say) must not slip into a locked cart.
+    if (state.pricingStructureLocked &&
+        structureId != null &&
+        structureId != state.selectedPricingStructure?.id) {
+      return;
+    }
     if (e.billingItemType == 'Sale') {
       final existingIdx = state.cart.indexWhere((l) =>
           l.product.id == e.product.id &&

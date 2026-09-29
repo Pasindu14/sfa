@@ -143,8 +143,8 @@ class CreateBillState extends Equatable {
   /// tell "still loading" apart from "nothing synced".
   final bool pricingStructuresLoaded;
 
-  /// The structure new lines are priced from. Changing it never touches lines
-  /// already in the cart.
+  /// The bill's price list. Every line is priced from it; it can only be
+  /// changed while the cart is empty (see [pricingStructureLocked]).
   final PricingStructure? selectedPricingStructure;
   final List<CartLine> cart;
   final double billDiscountRate;
@@ -231,6 +231,9 @@ class CreateBillState extends Equatable {
     }
     return 'Price list #$id';
   }
+
+  /// One price list per bill — fixed as soon as the cart holds any line.
+  bool get pricingStructureLocked => cart.isNotEmpty;
 
   bool get canSubmit =>
       locationStatus == LocationCheckStatus.ready &&
