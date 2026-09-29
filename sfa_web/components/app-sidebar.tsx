@@ -38,6 +38,16 @@ type NavGroup = {
 
 const navConfig: NavGroup[] = [
   {
+    title: "Overview",
+    url: "#",
+    icon: LayoutDashboard,
+    isActive: true,
+    roles: ["Admin"],
+    items: [
+      { title: "Dashboard", url: "/dashboard" },
+    ],
+  },
+  {
     title: "Masters",
     url: "#",
     icon: Cog,

@@ -1,0 +1,243 @@
+using FluentAssertions;
+using Moq;
+using sfa_api.Common.Errors;
+using sfa_api.Common.Extensions;
+using sfa_api.Features.Dashboard.DTOs;
+using sfa_api.Features.Dashboard.Repositories;
+using sfa_api.Features.Dashboard.Services;
+using sfa_api.Features.Reports.DTOs;
+using sfa_api.Features.Reports.Enums;
+using sfa_api.Features.Reports.Requests;
+using sfa_api.Features.Reports.Services;
+using sfa_api.Infrastructure.Caching;
+
+namespace sfa_api.UnitTests.Features.Dashboard.Services;
+
+/// <summary>
+/// The dashboard's sales figures are the Sales Summary service's totals, and its repository pushes
+/// decimal SUMs into SQL (not translatable on the SQLite test provider) — so the composition and
+/// every derived number is asserted here against mocks.
+/// </summary>
+public class DashboardServiceTests
+{
+    private readonly Mock<IDashboardRepository> _repoMock = new();
+    private readonly Mock<ISalesSummaryService> _salesMock = new();
+    private readonly Mock<ICacheService> _cacheMock = new();
+    private readonly DashboardService _sut;
+
+    // April has 30 days; the 10th leaves 20 days remaining.
+    private static readonly DateOnly Day        = new(2026, 4, 10);
+    private static readonly DateOnly MonthStart = new(2026, 4, 1);
+    private static readonly DateOnly MonthEnd   = new(2026, 4, 30);
+
+    public DashboardServiceTests()
+    {
+        _sut = new DashboardService(_repoMock.Object, _salesMock.Object, _cacheMock.Object);
+
+        _cacheMock.Setup(c => c.GetAsync<DashboardDto>(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                  .ReturnsAsync((DashboardDto?)null);
+
+        // Full month target 30,000 (1,000/day). North sold 6,000 MTD, South 3,000.
+        SetupSummary(Day, Day, Totals(target: 1000m, net: 800m, discount: 40m, db: 10m, good: 25m, market: 15m),
+            Row(1, "North", target: 600m, net: 500m), Row(2, "South", target: 400m, net: 300m));
+        SetupSummary(MonthStart, Day, Totals(target: 10000m, net: 9000m, discount: 300m, db: 50m, good: 120m, market: 80m),
+            Row(1, "North", target: 6000m, net: 6000m), Row(2, "South", target: 4000m, net: 3000m));
+        SetupSummary(MonthStart, MonthEnd, Totals(target: 30000m, net: 9000m),
+            Row(1, "North", target: 18000m, net: 6000m), Row(2, "South", target: 12000m, net: 3000m));
+
+        _repoMock.Setup(r => r.CountRevenueBillsAsync(Day, Day, It.IsAny<CancellationToken>())).ReturnsAsync(12);
+        _repoMock.Setup(r => r.CountRevenueBillsAsync(MonthStart, Day, It.IsAny<CancellationToken>())).ReturnsAsync(140);
+        _repoMock.Setup(r => r.GetDailyRevenueAsync(MonthStart, Day, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync([new(new DateOnly(2026, 4, 1), 500m), new(new DateOnly(2026, 4, 3), 700m)]);
+        _repoMock.Setup(r => r.CountActiveRepsAsync(Day, It.IsAny<CancellationToken>())).ReturnsAsync(18);
+        _repoMock.Setup(r => r.CountSalesRepsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(24);
+        _repoMock.Setup(r => r.GetOutletCountsAsync(Day, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(new DashboardOutletCounts(Active: 800, Inactive: 200, NewOnDate: 3));
+        _repoMock.Setup(r => r.CountBilledOutletsAsync(Day.AddDays(-44), Day, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(600);
+    }
+
+    // ── Stubs ─────────────────────────────────────────────────────────────────────────────────
+
+    private void SetupSummary(DateOnly from, DateOnly to, SalesSummaryTotalsDto totals, params SalesSummaryRowDto[] rows) =>
+        _salesMock.Setup(s => s.GetSalesSummaryAsync(
+                      It.Is<SalesSummaryQuery>(q => q.From == from && q.To == to && q.GroupBy == SalesSummaryGroupBy.Region),
+                      It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(new SalesSummaryResponseDto(
+                      SalesSummaryGroupBy.Region, from, to, true, null, rows.Length, rows, totals));
+
+    private static SalesSummaryTotalsDto Totals(
+        decimal? target, decimal net, decimal discount = 0m, decimal db = 0m, decimal good = 0m, decimal market = 0m) =>
+        new(target, null, net + 100m, 0m, good, 0m, market, 0m, db, discount, net, 0m,
+            target is > 0m ? Math.Round(net / target.Value * 100m, 2) : null);
+
+    private static SalesSummaryRowDto Row(int? key, string name, decimal? target, decimal net) =>
+        new(key, string.Empty, name, target, null, net, 0m, 0m, 0m, 0m, 0m, 0m, 0m, net, 0m, null);
+
+    // ── Sales blocks ──────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetAsync_TodayBlock_MirrorsTheOneDaySalesSummary()
+    {
+        var result = await _sut.GetAsync(Day);
+
+        result.Today.Revenue.Should().Be(800m);
+        result.Today.TargetValue.Should().Be(1000m);
+        result.Today.AchievementPercent.Should().Be(80m);
+        result.Today.TotalDiscount.Should().Be(50m);   // 40 outlet discount + 10 distributor free issue
+        result.Today.TotalReturn.Should().Be(40m);     // 25 good + 15 market
+        result.Today.BillCount.Should().Be(12);
+    }
+
+    [Fact]
+    public async Task GetAsync_MonthToDateBlock_MirrorsTheMonthToDateSalesSummary()
+    {
+        var result = await _sut.GetAsync(Day);
+
+        result.MonthToDate.Revenue.Should().Be(9000m);
+        result.MonthToDate.TotalDiscount.Should().Be(350m);
+        result.MonthToDate.TotalReturn.Should().Be(200m);
+        result.MonthToDate.BillCount.Should().Be(140);
+    }
+
+    [Fact]
+    public async Task GetAsync_NoTargetImported_ReportsNullNotZeroPercent()
+    {
+        SetupSummary(MonthStart, MonthEnd, Totals(target: 0m, net: 9000m));
+
+        var result = await _sut.GetAsync(Day);
+
+        result.MonthTarget.TargetValue.Should().BeNull();
+        result.MonthTarget.AchievementPercent.Should().BeNull();
+        result.DailyTrend.Should().OnlyContain(p => p.Target == null && p.CumulativeTarget == null);
+    }
+
+    // ── Month target ──────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetAsync_MonthTarget_MeasuresMonthToDateAgainstTheFullMonth()
+    {
+        var result = await _sut.GetAsync(Day);
+
+        result.MonthTarget.TargetValue.Should().Be(30000m);
+        result.MonthTarget.ExpectedToDate.Should().Be(10000m);        // 10 of 30 days
+        result.MonthTarget.AchievementPercent.Should().Be(30m);       // 9,000 / 30,000
+        result.MonthTarget.Balance.Should().Be(21000m);
+        result.MonthTarget.RequiredDailyRate.Should().Be(1050m);      // 21,000 over 20 remaining days
+    }
+
+    [Fact]
+    public void BuildMonthTarget_LastDayOfMonth_HasNoRequiredRate()
+    {
+        var target = DashboardService.BuildMonthTarget(30000m, 31000m, 30, 30);
+
+        target.Balance.Should().Be(-1000m);
+        target.RequiredDailyRate.Should().BeNull();
+    }
+
+    [Fact]
+    public void BuildMonthTarget_TargetAlreadyBeaten_RequiresNothingMore()
+        => DashboardService.BuildMonthTarget(30000m, 31000m, 30, 10).RequiredDailyRate.Should().Be(0m);
+
+    // ── Reps and outlets ──────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetAsync_Reps_ReportsActiveShare()
+    {
+        var result = await _sut.GetAsync(Day);
+
+        result.Reps.ActiveToday.Should().Be(18);
+        result.Reps.TotalReps.Should().Be(24);
+        result.Reps.ActivePercent.Should().Be(75m);
+    }
+
+    [Fact]
+    public async Task GetAsync_Outlets_SplitsCustomersAndMeasuresCoverageAgainstActiveOutlets()
+    {
+        var result = await _sut.GetAsync(Day);
+
+        result.Outlets.TotalCustomers.Should().Be(1000);
+        result.Outlets.ActivePercent.Should().Be(80m);
+        result.Outlets.InactivePercent.Should().Be(20m);
+        result.Outlets.BilledLast45Days.Should().Be(600);
+        result.Outlets.BilledLast45DaysPercent.Should().Be(75m);   // 600 of 800 active
+        result.Outlets.BilledWindowFrom.Should().Be(new DateOnly(2026, 2, 25));  // 45 days inclusive of Apr 10
+        result.Outlets.NewToday.Should().Be(3);
+    }
+
+    [Fact]
+    public void BuildOutlets_NoOutlets_ReturnsNullPercentages()
+    {
+        var outlets = DashboardService.BuildOutlets(new DashboardOutletCounts(0, 0, 0), 0, Day);
+
+        outlets.ActivePercent.Should().BeNull();
+        outlets.InactivePercent.Should().BeNull();
+        outlets.BilledLast45DaysPercent.Should().BeNull();
+    }
+
+    // ── Daily trend ───────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetAsync_DailyTrend_ZeroFillsEveryDayAndAccumulates()
+    {
+        var result = await _sut.GetAsync(Day);
+
+        result.DailyTrend.Should().HaveCount(10);
+        result.DailyTrend[1].Revenue.Should().Be(0m);              // Apr 2 had no sales
+        result.DailyTrend[2].CumulativeRevenue.Should().Be(1200m); // 500 + 0 + 700
+        result.DailyTrend[0].Target.Should().Be(1000m);            // 30,000 / 30
+        result.DailyTrend[9].CumulativeTarget.Should().Be(10000m);
+    }
+
+    // ── Regions ───────────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetAsync_Regions_PairMonthToDateRevenueWithFullMonthTarget()
+    {
+        var result = await _sut.GetAsync(Day);
+
+        result.Regions.Should().HaveCount(2);
+        result.Regions[0].RegionName.Should().Be("North");
+        result.Regions[0].MonthTarget.Should().Be(18000m);
+        result.Regions[0].Revenue.Should().Be(6000m);
+        result.Regions[0].AchievementPercent.Should().Be(33.33m);
+    }
+
+    [Fact]
+    public void BuildRegions_KeepsTheUnassignedBucketAndTargetOnlyRegions()
+    {
+        var rows = DashboardService.BuildRegions(
+            [Row(null, "(Unassigned)", null, 50m)],
+            [Row(3, "East", 900m, 0m)]);
+
+        rows.Should().HaveCount(2);
+        rows.Should().Contain(r => r.RegionId == null && r.Revenue == 50m && r.MonthTarget == null);
+        rows.Should().Contain(r => r.RegionId == 3 && r.Revenue == 0m && r.AchievementPercent == 0m);
+    }
+
+    // ── Guards and caching ────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetAsync_FutureDate_Throws()
+    {
+        var act = () => _sut.GetAsync(SriLankaTime.Today.AddDays(1));
+
+        (await act.Should().ThrowAsync<BusinessRuleException>()).Which.ErrorCode.Should().Be("DASHBOARD_FUTURE_DATE");
+    }
+
+    [Fact]
+    public async Task GetAsync_CacheHit_SkipsEveryQuery()
+    {
+        var cached = await _sut.GetAsync(Day);
+        _cacheMock.Setup(c => c.GetAsync<DashboardDto>("dashboard:" + Day.DayNumber, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(cached);
+        _salesMock.Invocations.Clear();
+        _repoMock.Invocations.Clear();
+
+        var result = await _sut.GetAsync(Day);
+
+        result.Should().BeSameAs(cached);
+        _salesMock.Invocations.Should().BeEmpty();
+        _repoMock.Invocations.Should().BeEmpty();
+    }
+}

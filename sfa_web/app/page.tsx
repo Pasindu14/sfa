@@ -6,7 +6,7 @@ import { auth } from "@/auth";
  * visitor to the right place based on their session:
  *   - not signed in → /sign-in
  *   - distributor   → /distributor-dashboard
- *   - everyone else → /users
+ *   - everyone else → /dashboard (Admins get the sales dashboard)
  *
  * Runs in the Node runtime (server component), so calling auth() — which pulls
  * in the credentials provider's axios/https deps — is safe here.
@@ -19,5 +19,5 @@ export default async function RootPage() {
   }
 
   const role = session.user.role?.toLowerCase();
-  redirect(role === "distributor" ? "/distributor-dashboard" : "/users");
+  redirect(role === "distributor" ? "/distributor-dashboard" : "/dashboard");
 }

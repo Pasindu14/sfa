@@ -30,6 +30,7 @@ using sfa_api.Features.SalesTargets;
 using sfa_api.Features.LocationPings;
 using sfa_api.Features.Notifications;
 using sfa_api.Features.Reports;
+using sfa_api.Features.Dashboard;
 using sfa_api.Features.Stock;
 using sfa_api.Features.StockTaking;
 using sfa_api.Features.Fleets;
@@ -267,6 +268,7 @@ try
     builder.Services.AddNotificationsFeature();
     builder.Services.AddLocationPingsFeature();
     builder.Services.AddReportsFeature();
+    builder.Services.AddDashboardFeature();
 
     var app = builder.Build();
 
