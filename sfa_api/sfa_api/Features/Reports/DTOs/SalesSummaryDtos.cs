@@ -21,6 +21,8 @@ namespace sfa_api.Features.Reports.DTOs;
 /// <param name="GoodReturnValue">Return lines with ReturnType = MarketResell (resaleable).</param>
 /// <param name="MarketReturnValue">Return lines with ReturnType = Damage or Expire (write-offs).</param>
 /// <param name="DbDiscount">Free-issue lines funded by the distributor.</param>
+/// <param name="ThenByKeys">Keys of the 2nd, 3rd… grouping dimensions, in request order; null for a
+/// single-dimension report. <paramref name="GroupKey"/> is always the FIRST dimension's key.</param>
 public record SalesSummarySalesAgg(
     int?    GroupKey,
     decimal SaleGross,
@@ -31,7 +33,8 @@ public record SalesSummarySalesAgg(
     decimal GoodReturnQty,
     decimal MarketReturnValue,
     decimal MarketReturnQty,
-    decimal DbDiscount);
+    decimal DbDiscount,
+    IReadOnlyList<int?>? ThenByKeys = null);
 
 /// <summary>
 /// One grouped row of targets for a single calendar month. Kept at month grain because targets are
@@ -44,10 +47,18 @@ public record SalesSummaryTargetAgg(
     int     Year,
     int     Month,
     decimal TargetQtyPacks,
-    decimal TargetValue);
+    decimal TargetValue,
+    IReadOnlyList<int?>? ThenByKeys = null);
 
 /// <summary>Display label for a group key. <c>Code</c> is empty for dimensions that have no code.</summary>
 public record SalesSummaryLabel(string Code, string Name);
+
+/// <summary>One grouping dimension's value on a report row — e.g. (Territory, 7, "", "Kandy").</summary>
+public record SalesSummaryGroupCellDto(
+    SalesSummaryGroupBy Dimension,
+    int?   Key,
+    string Code,
+    string Name);
 
 // ─── Response ────────────────────────────────────────────────────────────────────────────────
 
@@ -71,7 +82,10 @@ public record SalesSummaryRowDto(
     decimal  Discount,
     decimal  NetSaleValue,
     decimal  NetSaleQty,
-    decimal? AchievementPercent);
+    decimal? AchievementPercent,
+    // One cell per grouping dimension, in request order. GroupKey/GroupCode/GroupName above
+    // mirror Groups[0] so single-dimension consumers keep working unchanged.
+    IReadOnlyList<SalesSummaryGroupCellDto>? Groups = null);
 
 /// <summary>Grand totals across every group in the report — not just a page of them.</summary>
 public record SalesSummaryTotalsDto(
@@ -99,4 +113,6 @@ public record SalesSummaryResponseDto(
     string?  TargetsUnavailableReason,
     int      GroupCount,
     IReadOnlyList<SalesSummaryRowDto> Rows,
-    SalesSummaryTotalsDto Totals);
+    SalesSummaryTotalsDto Totals,
+    // Every grouping dimension in request order; GroupBy above is Dimensions[0].
+    IReadOnlyList<SalesSummaryGroupBy>? Dimensions = null);

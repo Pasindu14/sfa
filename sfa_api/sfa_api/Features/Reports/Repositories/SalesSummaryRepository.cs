@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 using sfa_api.Features.Billings.Entities;
 using sfa_api.Features.Billings.Enums;
 using sfa_api.Features.PricingStructures;
@@ -65,6 +66,45 @@ public class SalesSummaryRepository(AppDbContext context) : ISalesSummaryReposit
         _ => throw new ArgumentOutOfRangeException(nameof(g), g, "Unsupported grouping dimension."),
     };
 
+    // ── Composite key ─────────────────────────────────────────────────────────────────────────
+    //
+    // Multi-dimension grouping projects the key into one six-slot class, binding only the slots in
+    // use. EF groups by exactly those columns (a 1-dimension report emits the same SQL as before the
+    // feature — verified), and it stays ONE grouped scan: only the GROUP BY list grows, so a
+    // 3-dimension report costs about the same as a 1-dimension one.
+
+    /// <summary>Group key projection target. Public settable properties so EF can bind a MemberInit.</summary>
+    public sealed class KeySlots
+    {
+        public int? K0 { get; set; }
+        public int? K1 { get; set; }
+        public int? K2 { get; set; }
+        public int? K3 { get; set; }
+        public int? K4 { get; set; }
+        public int? K5 { get; set; }
+    }
+
+    private static readonly System.Reflection.PropertyInfo[] Slots =
+        [.. new[] { "K0", "K1", "K2", "K3", "K4", "K5" }.Select(n => typeof(KeySlots).GetProperty(n)!)];
+
+    /// <summary>Builds <c>x => new KeySlots { K0 = sel0(x), K1 = sel1(x), … }</c> for the chosen dimensions.</summary>
+    private static Expression<Func<T, KeySlots>> CompositeKey<T>(IReadOnlyList<Expression<Func<T, int?>>> selectors)
+    {
+        var p = Expression.Parameter(typeof(T), "x");
+        var bodies = selectors
+            .Select(s => ReplacingExpressionVisitor.Replace(s.Parameters[0], p, s.Body))
+            .ToList();
+        // Bind ONLY the slots in use; the rest stay unbound (null once materialised), so the
+        // GROUP BY lists exactly the chosen columns — a 1-dimension report emits the same SQL as before.
+        var bindings = bodies.Select((body, i) => (MemberBinding)Expression.Bind(Slots[i], body));
+        return Expression.Lambda<Func<T, KeySlots>>(
+            Expression.MemberInit(Expression.New(typeof(KeySlots)), bindings), p);
+    }
+
+    /// <summary>Keys of dimensions 2..n in order; null for a single-dimension report.</summary>
+    private static IReadOnlyList<int?>? ThenByKeys(KeySlots k, int dimensionCount)
+        => dimensionCount <= 1 ? null : new[] { k.K1, k.K2, k.K3, k.K4, k.K5 }[..(dimensionCount - 1)];
+
     // ── Sales facts ───────────────────────────────────────────────────────────────────────────
 
     public async Task<List<SalesSummarySalesAgg>> GetSalesAggregatesAsync(
@@ -106,7 +146,7 @@ public class SalesSummaryRepository(AppDbContext context) : ISalesSummaryReposit
         // EF cannot bind a GroupBy result to a positional record ctor (BinCardRepository.cs:16-17),
         // so project to an anonymous type and map in memory. The aggregation still runs in SQL.
         var raw = await items
-            .GroupBy(SalesKey(q.GroupBy))
+            .GroupBy(CompositeKey(q.Dimensions.Select(SalesKey).ToList()))
             .Select(g => new
             {
                 Key = g.Key,
@@ -158,8 +198,9 @@ public class SalesSummaryRepository(AppDbContext context) : ISalesSummaryReposit
             .ToListAsync(ct);
 
         return [.. raw.Select(r => new SalesSummarySalesAgg(
-            r.Key, r.SaleGross, r.SaleQty, r.ItemWise, r.BillDisc,
-            r.GoodRetVal, r.GoodRetQty, r.MktRetVal, r.MktRetQty, r.DbDiscount))];
+            r.Key.K0, r.SaleGross, r.SaleQty, r.ItemWise, r.BillDisc,
+            r.GoodRetVal, r.GoodRetQty, r.MktRetVal, r.MktRetQty, r.DbDiscount,
+            ThenByKeys(r.Key, q.Dimensions.Count)))];
     }
 
     // ── Targets ───────────────────────────────────────────────────────────────────────────────
@@ -170,8 +211,10 @@ public class SalesSummaryRepository(AppDbContext context) : ISalesSummaryReposit
         int maxGroups,
         CancellationToken ct = default)
     {
-        var key = TargetKey(q.GroupBy);
-        if (key is null) return [];          // Route/Outlet — SalesTarget has no such column
+        // Route/Outlet in ANY slot: SalesTarget has no such column, so no target is attributable.
+        var targetKeys = q.Dimensions.Select(TargetKey).ToList();
+        if (targetKeys.Any(k => k is null)) return [];
+        var key = CompositeKey(targetKeys.Select(k => k!).ToList());
 
         // SalesTarget has no RouteId either, so a route filter cannot be honoured on the target
         // side. Returning targets anyway would pair one route's sales with the rep's company-wide
@@ -229,7 +272,8 @@ public class SalesSummaryRepository(AppDbContext context) : ISalesSummaryReposit
                 .Take(maxGroups + 1)
                 .ToListAsync(ct);
 
-            results.AddRange(raw.Select(x => new SalesSummaryTargetAgg(x.Key, year, month, x.Qty, x.Value)));
+            results.AddRange(raw.Select(x => new SalesSummaryTargetAgg(
+                x.Key.K0, year, month, x.Qty, x.Value, ThenByKeys(x.Key, q.Dimensions.Count))));
         }
 
         return results;

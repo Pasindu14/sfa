@@ -81,6 +81,24 @@ public class SalesSummaryApiTests
     }
 
     [Fact]
+    public async Task Returns400_WhenAGroupByDimensionRepeats()
+    {
+        var response = await _client.GetAsync(
+            $"{Base}?from=2026-04-01&to=2026-04-30&groupBy=SalesRep&groupBy=Area&groupBy=SalesRep");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Returns400_WhenALaterGroupByIsUnrecognised()
+    {
+        var response = await _client.GetAsync(
+            $"{Base}?from=2026-04-01&to=2026-04-30&groupBy=SalesRep&groupBy=Nonsense");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task Returns400_WhenFilterIdIsNotPositive()
     {
         var response = await _client.GetAsync($"{Base}?from=2026-04-01&to=2026-04-30&groupBy=SalesRep&salesRepId=0");

@@ -20,17 +20,17 @@ public class ReportsController(
     private readonly IValidator<SalesSummaryQuery> _salesSummaryValidator = salesSummaryValidator;
 
     /// <summary>
-    /// GET /api/v1/reports/sales-summary?from=YYYY-MM-DD&amp;to=YYYY-MM-DD&amp;groupBy=SalesRep
-    /// Targets vs gross sales, returns, discounts and net sales over a date range, grouped by the
-    /// requested dimension. All quantities are in packs. Optional id filters narrow the population;
-    /// every one of them is AND-ed.
+    /// GET /api/v1/reports/sales-summary?from=YYYY-MM-DD&amp;to=YYYY-MM-DD&amp;groupBy=SalesRep[&amp;groupBy=Territory…]
+    /// Targets vs gross sales, returns, discounts and net sales over a date range, grouped by one or
+    /// more dimensions (repeat groupBy, in order; default SalesRep). All quantities are in packs.
+    /// Optional id filters narrow the population; every one of them is AND-ed.
     /// </summary>
     [HttpGet("sales-summary")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetSalesSummary(
         [FromQuery] DateOnly from,
         [FromQuery] DateOnly to,
-        [FromQuery] SalesSummaryGroupBy groupBy = SalesSummaryGroupBy.SalesRep,
+        [FromQuery] SalesSummaryGroupBy[]? groupBy = null,
         [FromQuery] int? regionId = null,
         [FromQuery] int? areaId = null,
         [FromQuery] int? territoryId = null,
@@ -47,10 +47,13 @@ public class ReportsController(
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
 
+        var dims = groupBy is { Length: > 0 } ? groupBy : [SalesSummaryGroupBy.SalesRep];
+
         var query = new SalesSummaryQuery(
-            groupBy, from, to,
+            dims[0], from, to,
             regionId, areaId, territoryId, divisionId, routeId,
-            distributorId, salesRepId, supervisorId, asmId, rsmId, nsmId, productId);
+            distributorId, salesRepId, supervisorId, asmId, rsmId, nsmId, productId,
+            ThenBy: dims.Length > 1 ? dims[1..] : null);
 
         await _salesSummaryValidator.ValidateOrThrowAsync(query, ct);
 
