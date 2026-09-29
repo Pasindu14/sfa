@@ -6,7 +6,7 @@ using sfa_api.IntegrationTests.Infrastructure;
 namespace sfa_api.IntegrationTests.Features.Dashboard;
 
 /// <summary>
-/// End-to-end coverage for GET /api/v1/dashboard.
+/// End-to-end coverage for GET /api/v1/dashboard/{sales,activity,trend}.
 /// <para>
 /// The data path is NOT exercised here: the dashboard is built on the sales-summary report and a
 /// per-day revenue SUM, both decimal SUMs the SQLite test provider cannot translate (see
@@ -31,7 +31,7 @@ public class DashboardApiTests(SfaWebApplicationFactory factory)
     [Fact]
     public async Task Returns401_WhenUnauthenticated()
     {
-        var response = await ClientFor(null).GetAsync(Base);
+        var response = await ClientFor(null).GetAsync($"{Base}/sales");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -39,7 +39,7 @@ public class DashboardApiTests(SfaWebApplicationFactory factory)
     [Fact]
     public async Task Returns403_ForSalesRep()
     {
-        var response = await ClientFor(AuthHelper.SalesRepToken).GetAsync(Base);
+        var response = await ClientFor(AuthHelper.SalesRepToken).GetAsync($"{Base}/sales");
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -47,7 +47,7 @@ public class DashboardApiTests(SfaWebApplicationFactory factory)
     [Fact]
     public async Task Returns403_ForSupervisor()
     {
-        var response = await ClientFor(AuthHelper.SupervisorToken).GetAsync(Base);
+        var response = await ClientFor(AuthHelper.SupervisorToken).GetAsync($"{Base}/sales");
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -55,7 +55,7 @@ public class DashboardApiTests(SfaWebApplicationFactory factory)
     [Fact]
     public async Task Returns422_ForFutureDate()
     {
-        var response = await ClientFor(AuthHelper.AdminToken).GetAsync($"{Base}?date=2099-01-01");
+        var response = await ClientFor(AuthHelper.AdminToken).GetAsync($"{Base}/activity?date=2099-01-01");
 
         response.StatusCode.Should().Be((HttpStatusCode)422);
         (await response.Content.ReadAsStringAsync()).Should().Contain("DASHBOARD_FUTURE_DATE");

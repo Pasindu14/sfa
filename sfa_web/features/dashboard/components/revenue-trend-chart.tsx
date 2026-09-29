@@ -12,8 +12,8 @@ import {
   YAxis,
 } from 'recharts'
 import { formatColombo } from '@/lib/utils/datetime'
-import type { DashboardDailyPoint } from '../schema/dashboard.schema'
-import { money, moneyShort } from './format'
+import type { DashboardChartPoint } from '../schema/dashboard.schema'
+import { money } from './format'
 
 export type TrendMode = 'daily' | 'cumulative'
 
@@ -26,7 +26,7 @@ const TARGET = '#f59e0b'   // amber-500
  * month-to-date total against the running target (cumulative mode). Lives in its own module so
  * the page loads recharts on demand.
  */
-export function RevenueTrendChart({ data, mode }: { data: DashboardDailyPoint[]; mode: TrendMode }) {
+export function RevenueTrendChart({ data, mode }: { data: DashboardChartPoint[]; mode: TrendMode }) {
   const rows = data.map((p) => ({
     ...p,
     day: formatColombo(`${p.date}T00:00:00+05:30`, 'd'),
@@ -40,7 +40,7 @@ export function RevenueTrendChart({ data, mode }: { data: DashboardDailyPoint[];
         <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.6} />
         <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
         <YAxis
-          tickFormatter={(v: number) => moneyShort(v).replace('LKR ', '')}
+          tickFormatter={axisTick}
           tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
           axisLine={false}
           tickLine={false}
@@ -84,6 +84,14 @@ export function RevenueTrendChart({ data, mode }: { data: DashboardDailyPoint[];
       </ComposedChart>
     </ResponsiveContainer>
   )
+}
+
+/** Bare compact figure for the axis ("1.2M", "850K", "0") — the currency is implied by the chart. */
+function axisTick(v: number): string {
+  const abs = Math.abs(v)
+  if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`
+  if (abs >= 1_000) return `${(v / 1_000).toFixed(0)}K`
+  return String(Math.round(v))
 }
 
 function Row({ color, label, value }: { color: string; label: string; value: string }) {
