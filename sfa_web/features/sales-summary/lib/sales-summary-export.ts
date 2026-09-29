@@ -1,13 +1,17 @@
 import { loadExcelJS } from '@/lib/utils/load-excel'
 import { buildSalesSummaryColumns } from '../components/columns/sales-summary-columns'
-import type { SalesSummaryResponse } from '../schema/sales-summary.schema'
+import {
+  dimensionsOf,
+  groupByLabel,
+  type SalesSummaryResponse,
+} from '../schema/sales-summary.schema'
 
 function fileBase(data: SalesSummaryResponse): string {
-  return `sales-summary-${data.groupBy.toLowerCase()}-${data.from}_${data.to}`
+  return `sales-summary-${dimensionsOf(data).join('-').toLowerCase()}-${data.from}_${data.to}`
 }
 
 function subtitle(data: SalesSummaryResponse): string {
-  return `${data.from} to ${data.to}  ·  grouped by ${data.groupBy}  ·  ${data.groupCount} rows`
+  return `${data.from} to ${data.to}  ·  grouped by ${groupByLabel(dimensionsOf(data))}  ·  ${data.groupCount} rows`
 }
 
 function downloadBlob(blob: Blob, filename: string): void {
@@ -24,7 +28,7 @@ function downloadBlob(blob: Blob, filename: string): void {
 // ── Excel ───────────────────────────────────────────────────────────────────
 
 export async function exportSalesSummaryExcel(data: SalesSummaryResponse): Promise<void> {
-  const columns = buildSalesSummaryColumns(data.groupBy)
+  const columns = buildSalesSummaryColumns(dimensionsOf(data))
 
   const ExcelJS = await loadExcelJS()
   const wb = new ExcelJS.Workbook()
@@ -62,7 +66,7 @@ export async function exportSalesSummaryExcel(data: SalesSummaryResponse): Promi
   totalRow.font = { bold: true }
 
   ws.columns.forEach((col, i) => {
-    col.width = i === 0 ? 28 : 16
+    col.width = columns[i]?.groupIndex !== undefined ? 28 : 16
   })
 
   const buf = await wb.xlsx.writeBuffer()
@@ -80,7 +84,7 @@ export function exportSalesSummaryPdf(data: SalesSummaryResponse): void {
   const win = window.open('', '_blank', 'width=1200,height=800')
   if (!win) return
 
-  const columns = buildSalesSummaryColumns(data.groupBy)
+  const columns = buildSalesSummaryColumns(dimensionsOf(data))
 
   const esc = (s: string) =>
     s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

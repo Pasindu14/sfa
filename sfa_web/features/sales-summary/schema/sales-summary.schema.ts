@@ -23,7 +23,13 @@ export const SALES_SUMMARY_GROUP_BY = [
 
 export const salesSummaryGroupBySchema = z.enum(SALES_SUMMARY_GROUP_BY)
 
-/** Labels for the Group by dropdown, in the order a manager is most likely to want them. */
+/** The API groups by at most this many dimensions (SalesSummaryQueryValidator.MaxDimensions). */
+export const MAX_GROUP_BY = 6
+
+/** Opens with rep, territory and distributor side by side — the columns managers asked for. */
+export const DEFAULT_GROUP_BY: SalesSummaryGroupBy[] = ['SalesRep', 'Territory', 'Distributor']
+
+/** Labels for the Group by picker, in the order a manager is most likely to want them. */
 export const GROUP_BY_OPTIONS: { value: SalesSummaryGroupBy; label: string }[] = [
   { value: 'SalesRep', label: 'Sales Rep' },
   { value: 'Product', label: 'Product' },
@@ -39,6 +45,14 @@ export const GROUP_BY_OPTIONS: { value: SalesSummaryGroupBy; label: string }[] =
   { value: 'Rsm', label: 'RSM' },
   { value: 'Nsm', label: 'NSM' },
 ]
+
+// One grouping dimension's value on a row, e.g. { dimension: 'Territory', name: 'Kandy' }.
+export const salesSummaryGroupCellSchema = z.object({
+  dimension: salesSummaryGroupBySchema,
+  key: z.number().nullable(),
+  code: z.string(),
+  name: z.string(),
+})
 
 // ── One report row ──────────────────────────────────────────────────────────
 // Target columns are nullable on purpose: null means "not measurable for this
@@ -61,12 +75,15 @@ export const salesSummaryRowSchema = z.object({
   netSaleValue: z.number(),
   netSaleQty: z.number(),
   achievementPercent: z.number().nullable(),
+  // One cell per grouping dimension, in order. groupKey/groupCode/groupName mirror groups[0].
+  groups: z.array(salesSummaryGroupCellSchema).nullish(),
 })
 
 export const salesSummaryTotalsSchema = salesSummaryRowSchema.omit({
   groupKey: true,
   groupCode: true,
   groupName: true,
+  groups: true,
 })
 
 // ── Full response ───────────────────────────────────────────────────────────
@@ -81,6 +98,8 @@ export const salesSummaryResponseSchema = z.object({
   groupCount: z.number(),
   rows: z.array(salesSummaryRowSchema),
   totals: salesSummaryTotalsSchema,
+  // Every grouping dimension in order; groupBy is dimensions[0].
+  dimensions: z.array(salesSummaryGroupBySchema).nullish(),
 })
 
 // ── Inferred types ──────────────────────────────────────────────────────────
@@ -89,6 +108,25 @@ export type SalesSummaryGroupBy = (typeof SALES_SUMMARY_GROUP_BY)[number]
 export type SalesSummaryRow = z.infer<typeof salesSummaryRowSchema>
 export type SalesSummaryTotals = z.infer<typeof salesSummaryTotalsSchema>
 export type SalesSummaryResponse = z.infer<typeof salesSummaryResponseSchema>
+export type SalesSummaryGroupCell = z.infer<typeof salesSummaryGroupCellSchema>
+
+/** The dimensions a response was grouped by, in order. */
+export function dimensionsOf(data: SalesSummaryResponse): SalesSummaryGroupBy[] {
+  return data.dimensions?.length ? data.dimensions : [data.groupBy]
+}
+
+/** Row cell for dimension i; falls back to the single-dimension fields. */
+export function groupCell(
+  row: SalesSummaryRow,
+  i: number,
+): Pick<SalesSummaryGroupCell, 'key' | 'code' | 'name'> {
+  return row.groups?.[i] ?? { key: row.groupKey, code: row.groupCode, name: row.groupName }
+}
+
+/** "Sales Rep → Territory → Distributor" */
+export function groupByLabel(dims: SalesSummaryGroupBy[]): string {
+  return dims.map((d) => GROUP_BY_OPTIONS.find((o) => o.value === d)?.label ?? d).join(' → ')
+}
 
 /** Every optional narrowing filter the report accepts. All are AND-ed server-side. */
 export interface SalesSummaryFilterIds {

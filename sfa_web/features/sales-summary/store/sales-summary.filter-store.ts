@@ -2,7 +2,9 @@ import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import { toColomboDateStr } from '@/lib/utils/datetime'
 import {
+  DEFAULT_GROUP_BY,
   GEO_CHAIN,
+  MAX_GROUP_BY,
   ROLE_FILTER_KEY,
   type PeopleRole,
   type SalesSummaryFilterIds,
@@ -47,7 +49,8 @@ const ALL_ROLE_KEYS = Object.values(ROLE_FILTER_KEY)
 export interface AppliedSalesSummaryFilters extends SalesSummaryFilterIds {
   from: string
   to: string
-  groupBy: SalesSummaryGroupBy
+  /** Grouping dimensions in order — each row is one combination. */
+  groupBy: SalesSummaryGroupBy[]
   /** Bumped on every Load so pressing it again is a fresh request, not a silent cache hit. */
   loadCount: number
 }
@@ -55,13 +58,15 @@ export interface AppliedSalesSummaryFilters extends SalesSummaryFilterIds {
 interface SalesSummaryFilterState extends SalesSummaryFilterIds {
   from: string
   to: string
-  groupBy: SalesSummaryGroupBy
+  groupBy: SalesSummaryGroupBy[]
   /** Which org level the People picker is currently choosing from. */
   role: PeopleRole | null
   appliedFilters: AppliedSalesSummaryFilters | null
 
   setDateRange: (from: string, to: string) => void
-  setGroupBy: (groupBy: SalesSummaryGroupBy) => void
+  setGroupBy: (groupBy: SalesSummaryGroupBy[]) => void
+  /** Adds a dimension at the end, or removes it (never below one). */
+  toggleGroupBy: (dim: SalesSummaryGroupBy) => void
   setGeoId: (key: (typeof GEO_CHAIN)[number], value: number | null) => void
   setFilterId: (key: keyof SalesSummaryFilterIds, value: number | null) => void
   setRole: (role: PeopleRole | null) => void
@@ -81,13 +86,22 @@ export const useSalesSummaryFilterStore = create<SalesSummaryFilterState>()(
     (set, get) => ({
       from: defaultFrom(),
       to: defaultTo(),
-      groupBy: 'SalesRep',
+      groupBy: DEFAULT_GROUP_BY,
       role: null,
       ...NO_FILTERS,
       appliedFilters: null,
 
       setDateRange: (from, to) => set({ from, to }),
       setGroupBy: (groupBy) => set({ groupBy }),
+
+      toggleGroupBy: (dim) => {
+        const cur = get().groupBy
+        if (cur.includes(dim)) {
+          if (cur.length > 1) set({ groupBy: cur.filter((d) => d !== dim) })
+        } else if (cur.length < MAX_GROUP_BY) {
+          set({ groupBy: [...cur, dim] })
+        }
+      },
 
       /**
        * Setting a geo level clears every level BELOW it. A Territory chosen under the old Area is
@@ -151,7 +165,7 @@ export const useSalesSummaryFilterStore = create<SalesSummaryFilterState>()(
         set({
           from: defaultFrom(),
           to: defaultTo(),
-          groupBy: 'SalesRep',
+          groupBy: DEFAULT_GROUP_BY,
           role: null,
           ...NO_FILTERS,
           appliedFilters: null,

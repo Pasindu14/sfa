@@ -1,7 +1,8 @@
-import type {
-  SalesSummaryGroupBy,
-  SalesSummaryRow,
-  SalesSummaryTotals,
+import {
+  groupCell,
+  type SalesSummaryGroupBy,
+  type SalesSummaryRow,
+  type SalesSummaryTotals,
 } from '../../schema/sales-summary.schema'
 
 export type CellValue = string | number | null
@@ -46,6 +47,8 @@ export interface SalesSummaryColumn {
   money?: boolean
   /** Rendered as an inline achievement meter rather than a figure. */
   meter?: boolean
+  /** Which grouping dimension a label column shows (index into the response dimensions). */
+  groupIndex?: number
 }
 
 /** The label column's header follows the grouping the user picked. */
@@ -76,28 +79,34 @@ const GROUP_HEADER: Record<SalesSummaryGroupBy, string> = {
  * of good returns, and Net sale qty deducts good return qty only (damage/expiry stock never
  * re-enters saleable inventory, so its quantity is never subtracted).
  */
-export function buildSalesSummaryColumns(groupBy: SalesSummaryGroupBy): SalesSummaryColumn[] {
-  const isProduct = groupBy === 'Product'
-
-  return [
-    ...(isProduct
+export function buildSalesSummaryColumns(dims: SalesSummaryGroupBy[]): SalesSummaryColumn[] {
+  // One label column per grouping dimension, in the order picked. Product also gets its code,
+  // just before the name — the only dimension whose code people actually read.
+  const labelColumns = dims.flatMap((dim, i): SalesSummaryColumn[] => [
+    ...(dim === 'Product'
       ? [
           {
-            key: 'groupCode',
+            key: `group-${i}-code`,
             header: 'Code',
             band: 'label' as const,
-            get: (r: SalesSummaryRow) => r.groupCode,
+            get: (r: SalesSummaryRow) => groupCell(r, i).code,
             align: 'left' as const,
+            groupIndex: i,
           },
         ]
       : []),
     {
-      key: 'groupName',
-      header: GROUP_HEADER[groupBy],
+      key: `group-${i}-name`,
+      header: GROUP_HEADER[dim],
       band: 'label',
-      get: (r) => r.groupName,
+      get: (r) => groupCell(r, i).name,
       align: 'left',
+      groupIndex: i,
     },
+  ])
+
+  return [
+    ...labelColumns,
 
     { key: 'targetValue',     header: 'Value',   band: 'target',    get: (r) => r.targetValue,     getTotal: (t) => t.targetValue,     align: 'right', money: true },
     { key: 'targetQty',       header: 'Qty',     band: 'target',    get: (r) => r.targetQty,       getTotal: (t) => t.targetQty,       align: 'right' },
