@@ -1276,7 +1276,7 @@ class _BillsTotalsCard extends StatelessWidget {
                     color: AppColors.primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(9.r),
                   ),
-                  child: Icon(Icons.summarize_rounded,
+                  child: Icon(Icons.receipt_long_rounded,
                       size: 17.r, color: AppColors.primary),
                 ),
                 SizedBox(width: 12.w),
