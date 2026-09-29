@@ -5,17 +5,22 @@ import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/features/pricing/domain/entities/pricing_structure.dart';
 
 /// Card that shows the selected pricing structure (price list) and opens a
-/// bottom sheet to change it. Changing it only affects lines added afterwards.
+/// bottom sheet to change it. Locked once the cart holds an item: one price
+/// list per bill.
 class PricingStructurePicker extends StatelessWidget {
   final PricingStructure? selected;
   final List<PricingStructure> structures;
   final ValueChanged<PricingStructure> onSelected;
+
+  /// True once the cart has a line — the list can no longer be changed.
+  final bool locked;
 
   const PricingStructurePicker({
     super.key,
     required this.selected,
     required this.structures,
     required this.onSelected,
+    this.locked = false,
   });
 
   @override
@@ -23,7 +28,11 @@ class PricingStructurePicker extends StatelessWidget {
     final isEmpty = structures.isEmpty;
 
     return GestureDetector(
-      onTap: isEmpty ? null : () => _openSheet(context),
+      onTap: isEmpty
+          ? null
+          : locked
+              ? () => _explainLocked(context)
+              : () => _openSheet(context),
       child: Container(
         padding: EdgeInsets.all(16.r),
         decoration: BoxDecoration(
@@ -123,6 +132,16 @@ class PricingStructurePicker extends StatelessWidget {
                             ],
                           ],
                         ),
+                        if (locked) ...[
+                          SizedBox(height: 2.h),
+                          Text(
+                            'Locked — remove all items to change',
+                            style: GoogleFonts.barlow(
+                              fontSize: 10.sp,
+                              color: AppColors.foregroundMuted,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
             ),
@@ -136,7 +155,11 @@ class PricingStructurePicker extends StatelessWidget {
                   borderRadius: BorderRadius.circular(6.r),
                 ),
                 child: Icon(
-                  Icons.keyboard_arrow_down_rounded,
+                  // lock_outline_rounded is already in the release icon font;
+                  // lock_rounded is not and would render blank in a patch.
+                  locked
+                      ? Icons.lock_outline_rounded
+                      : Icons.keyboard_arrow_down_rounded,
                   size: 15.r,
                   color: AppColors.foregroundMuted,
                 ),
@@ -146,6 +169,26 @@ class PricingStructurePicker extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _explainLocked(BuildContext context) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            'One price list per bill. Remove all items from the cart to '
+            'change it.',
+            style: GoogleFonts.barlow(
+                color: Colors.white, fontWeight: FontWeight.w500),
+          ),
+          backgroundColor: AppColors.darkSurface,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(16.w),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+        ),
+      );
   }
 
   Future<void> _openSheet(BuildContext context) async {
@@ -219,7 +262,7 @@ class _PricingSheet extends StatelessWidget {
           Padding(
             padding: EdgeInsets.fromLTRB(31.w, 4.h, 20.w, 0),
             child: Text(
-              'Applies to products you add next. Items already in the cart keep their price.',
+              "Choose before adding items — it's locked once the cart has an item.",
               style: GoogleFonts.barlow(
                 fontSize: 11.sp,
                 color: AppColors.foregroundMuted,
