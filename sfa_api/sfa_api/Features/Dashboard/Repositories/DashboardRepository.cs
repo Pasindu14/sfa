@@ -110,6 +110,28 @@ public class DashboardRepository(AppDbContext context) : IDashboardRepository
             newOnDate);
     }
 
+    public Task<int> CountLiveBillsAsync(DateOnly from, DateOnly to, CancellationToken ct = default)
+        => _context.Billings
+            .AsNoTracking()
+            .CountAsync(b => b.BillingDate >= from
+                          && b.BillingDate <= to
+                          && b.RepStatus != RepBillingStatus.Cancelled
+                          && b.DistributorStatus != DistributorBillingStatus.Rejected
+                          && b.IsActive, ct);
+
+    public async Task<List<DashboardReasonCount>> GetNoSaleReasonsAsync(
+        DateOnly from, DateOnly to, CancellationToken ct = default)
+    {
+        var raw = await _context.NotBillings
+            .AsNoTracking()
+            .Where(n => n.NotBillingDate >= from && n.NotBillingDate <= to && n.IsActive)
+            .GroupBy(n => n.Reason)
+            .Select(g => new { Reason = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+
+        return [.. raw.Select(r => new DashboardReasonCount(r.Reason, r.Count))];
+    }
+
     public Task<int> CountBilledOutletsAsync(DateOnly from, DateOnly to, CancellationToken ct = default)
         => _context.Billings
             .AsNoTracking()

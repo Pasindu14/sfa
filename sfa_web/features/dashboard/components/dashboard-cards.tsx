@@ -18,7 +18,7 @@ export function Section({
 }) {
   return (
     <section className={className}>
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+      <div className="mb-3 flex min-h-8 flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <h2 className="text-[15px] font-medium tracking-tight">{title}</h2>
         {aside && <div className="text-xs text-muted-foreground">{aside}</div>}
       </div>
@@ -53,16 +53,27 @@ export function SectionError({
 }
 
 /** Dims a block while it still shows the previous day's numbers for a newly picked day. */
-export function Stale({ stale, children }: { stale: boolean; children: React.ReactNode }) {
+export function Stale({ stale, children, className }: { stale: boolean; children: React.ReactNode; className?: string }) {
   return (
-    <div className={cn('transition-opacity duration-200', stale && 'pointer-events-none opacity-55')} aria-busy={stale}>
+    <div className={cn('transition-opacity duration-200', stale && 'pointer-events-none opacity-55', className)} aria-busy={stale}>
       {children}
     </div>
   )
 }
 
+/** A money figure with a quiet currency code, so the digits carry the weight. */
+export function Amount({ value, className }: { value: number | null; className?: string }) {
+  if (value === null) return <span className={className}>—</span>
+  return (
+    <span className={cn('font-report tabular-nums', className)}>
+      <span className="mr-1 text-[0.6em] font-normal tracking-normal text-muted-foreground">LKR</span>
+      {Math.round(value).toLocaleString('en-LK')}
+    </span>
+  )
+}
+
 /**
- * A thin share bar. Pine once the goal is met, neutral stone while short — over a part-finished
+ * A thin share bar. Solid brand colour once the goal is met, a lighter tint while short — over a part-finished
  * month nearly everything is short, and a wall of warning colour would alarm without informing.
  */
 export function Meter({ percent, className }: { percent: number | null; className?: string }) {
@@ -72,7 +83,7 @@ export function Meter({ percent, className }: { percent: number | null; classNam
       <div
         className={cn(
           'h-full rounded-full',
-          p >= 100 ? 'bg-[#2F6B57] dark:bg-[#5FAF93]' : 'bg-[oklch(0.62_0.03_107)]',
+          p >= 100 ? 'bg-primary' : 'bg-primary/55',
         )}
         style={{ width: `${Math.min(Math.max(p, 0), 100)}%`, minWidth: p > 0 ? 3 : 0 }}
       />

@@ -64,11 +64,33 @@ public class DashboardServiceTests
     // ── Stubs ─────────────────────────────────────────────────────────────────────────────────
 
     private void SetupSummary(DateOnly from, DateOnly to, SalesSummaryTotalsDto totals, params SalesSummaryRowDto[] rows) =>
+        SetupSummary(SalesSummaryGroupBy.Region, from, to, totals, rows);
+
+    private void SetupSummary(
+        SalesSummaryGroupBy groupBy, DateOnly from, DateOnly to, SalesSummaryTotalsDto totals, params SalesSummaryRowDto[] rows) =>
         _salesMock.Setup(s => s.GetSalesSummaryAsync(
-                      It.Is<SalesSummaryQuery>(q => q.From == from && q.To == to && q.GroupBy == SalesSummaryGroupBy.Region),
+                      It.Is<SalesSummaryQuery>(q => q.From == from && q.To == to && q.GroupBy == groupBy),
                       It.IsAny<CancellationToken>()))
                   .ReturnsAsync(new SalesSummaryResponseDto(
-                      SalesSummaryGroupBy.Region, from, to, true, null, rows.Length, rows, totals));
+                      groupBy, from, to, true, null, rows.Length, rows, totals));
+
+    /// <summary>Month-to-date product, rep and distributor rankings over a 10,000 month.</summary>
+    private void SetupBreakdown()
+    {
+        var total = Totals(target: null, net: 10000m);
+        SetupSummary(SalesSummaryGroupBy.Product, MonthStart, Day, total,
+            Enumerable.Range(1, 10).Select(i => Row(i, $"P{i}", null, i * 100m)).ToArray());   // 100..1000
+        SetupSummary(SalesSummaryGroupBy.SalesRep, MonthStart, Day, total,
+            Row(1, "Nimal", 5000m, 6000m), Row(2, "Kamal", 5000m, 4000m));
+        SetupSummary(SalesSummaryGroupBy.Distributor, MonthStart, Day, total,
+            Enumerable.Range(1, 8).Select(i => Row(i, $"D{i}", null, i * 100m)).ToArray());    // 100..800
+        _repoMock.Setup(r => r.CountLiveBillsAsync(MonthStart, Day, It.IsAny<CancellationToken>())).ReturnsAsync(60);
+        _repoMock.Setup(r => r.GetNoSaleReasonsAsync(MonthStart, Day, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync([
+                     new(sfa_api.Features.NotBillings.Enums.NotBillingReason.NoOrder, 10),
+                     new(sfa_api.Features.NotBillings.Enums.NotBillingReason.OutletClosed, 30),
+                 ]);
+    }
 
     private static SalesSummaryTotalsDto Totals(
         decimal? target, decimal net, decimal discount = 0m, decimal db = 0m, decimal good = 0m, decimal market = 0m) =>
@@ -240,6 +262,70 @@ public class DashboardServiceTests
 
         _salesMock.Invocations.Should().BeEmpty();
     }
+
+    // ── Breakdown section ─────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetBreakdownAsync_Products_TopEightByRevenueWithShareOfTheMonth()
+    {
+        SetupBreakdown();
+
+        var result = await _sut.GetBreakdownAsync(Day);
+
+        result.Products.Should().HaveCount(DashboardService.TopProducts);
+        result.Products[0].Name.Should().Be("P10");
+        result.Products[0].Revenue.Should().Be(1000m);
+        result.Products[0].SharePercent.Should().Be(10m);
+        result.Products.Select(p => p.Revenue).Should().BeInDescendingOrder();
+    }
+
+    [Fact]
+    public async Task GetBreakdownAsync_Reps_CarryTheirPaceTarget()
+    {
+        SetupBreakdown();
+
+        var result = await _sut.GetBreakdownAsync(Day);
+
+        result.Reps[0].Name.Should().Be("Nimal");
+        result.Reps[0].TargetValue.Should().Be(5000m);
+        result.Reps[0].Revenue.Should().Be(6000m);
+    }
+
+    [Fact]
+    public async Task GetBreakdownAsync_Distributors_RollTheTailIntoOthers()
+    {
+        SetupBreakdown();
+
+        var result = await _sut.GetBreakdownAsync(Day);
+
+        result.Distributors.Should().HaveCount(DashboardService.TopDistributors);
+        result.OtherDistributors.Should().NotBeNull();
+        result.OtherDistributors!.Count.Should().Be(2);          // D1 + D2
+        result.OtherDistributors.Revenue.Should().Be(300m);      // 100 + 200
+        result.OtherDistributors.SharePercent.Should().Be(3m);
+    }
+
+    [Fact]
+    public async Task GetBreakdownAsync_Visits_SaleShareAndReasonsLargestFirst()
+    {
+        SetupBreakdown();
+
+        var result = await _sut.GetBreakdownAsync(Day);
+
+        result.Visits.SaleVisits.Should().Be(60);
+        result.Visits.NoSaleVisits.Should().Be(40);
+        result.Visits.SalePercent.Should().Be(60m);
+        result.Visits.Reasons.Select(r => r.Reason).Should().Equal("OutletClosed", "NoOrder");
+        result.Visits.Reasons[0].SharePercent.Should().Be(75m);
+    }
+
+    [Fact]
+    public void Others_NothingLeftOver_ReturnsNull()
+        => DashboardService.Others([Row(1, "D1", null, 100m)], 6, 100m).Should().BeNull();
+
+    [Fact]
+    public void BuildVisits_NoVisitsAtAll_HasNoPercentage()
+        => DashboardService.BuildVisits(0, []).SalePercent.Should().BeNull();
 
     // ── Guards and caching ────────────────────────────────────────────────────────────────────
 

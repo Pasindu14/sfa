@@ -16,4 +16,7 @@ public interface IDashboardService
 
     /// <summary>Revenue per day for the month up to the date.</summary>
     Task<DashboardTrendDto> GetTrendAsync(DateOnly? date, CancellationToken ct = default);
+
+    /// <summary>Month-to-date top products, reps and distributors, and the no-sale reasons.</summary>
+    Task<DashboardBreakdownDto> GetBreakdownAsync(DateOnly? date, CancellationToken ct = default);
 }

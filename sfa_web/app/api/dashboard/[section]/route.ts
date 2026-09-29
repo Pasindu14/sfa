@@ -3,16 +3,16 @@ import client, { ApiError } from "@/lib/api/client";
 import { getSession } from "@/lib/auth/session";
 
 /**
- * GET /api/dashboard/{sales|activity|trend}?date=YYYY-MM-DD
+ * GET /api/dashboard/{sales|activity|trend|breakdown}?date=YYYY-MM-DD
  *
  * A read-only proxy to the API's dashboard sections. This is a Route Handler rather than a server
- * action on purpose: Next.js dispatches server actions from the client ONE AT A TIME, so three
+ * action on purpose: Next.js dispatches server actions from the client ONE AT A TIME, so four
  * section queries built on actions would load in series. Plain GETs run in parallel, which lets
  * each dashboard section render as soon as its own data lands.
  *
  * The proxy matcher skips /api, so authorization is enforced here.
  */
-const SECTIONS = new Set(["sales", "activity", "trend"]);
+const SECTIONS = new Set(["sales", "activity", "trend", "breakdown"]);
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function GET(

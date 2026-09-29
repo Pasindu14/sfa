@@ -93,6 +93,38 @@ public class DashboardService(
                 DateTime.UtcNow);
         });
 
+    /// <summary>How many entries each ranking shows before the rest are rolled up.</summary>
+    public const int TopProducts = 8;
+    public const int TopReps = 8;
+    public const int TopDistributors = 6;
+
+    public Task<DashboardBreakdownDto> GetBreakdownAsync(DateOnly? date, CancellationToken ct = default)
+        => Cached("breakdown", date, ct, async (day, ct) =>
+        {
+            var (monthStart, _) = MonthOf(day);
+
+            // Month to date, so each rep's target is pro-rated to the days elapsed — the ranking
+            // measures pace, not a full month the reps have not had yet.
+            var products     = await _salesSummary.GetSalesSummaryAsync(new(SalesSummaryGroupBy.Product, monthStart, day), ct);
+            var reps         = await _salesSummary.GetSalesSummaryAsync(new(SalesSummaryGroupBy.SalesRep, monthStart, day), ct);
+            var distributors = await _salesSummary.GetSalesSummaryAsync(new(SalesSummaryGroupBy.Distributor, monthStart, day), ct);
+
+            var saleVisits = await _repository.CountLiveBillsAsync(monthStart, day, ct);
+            var reasons    = await _repository.GetNoSaleReasonsAsync(monthStart, day, ct);
+
+            var total = products.Totals.NetSaleValue;
+            var topDistributors = Rank(distributors.Rows, total, TopDistributors);
+
+            return new DashboardBreakdownDto(
+                day, monthStart,
+                Products:          Rank(products.Rows, total, TopProducts),
+                Reps:              Rank(reps.Rows, total, TopReps),
+                Distributors:      topDistributors,
+                OtherDistributors: Others(distributors.Rows, topDistributors.Count, total),
+                Visits:            BuildVisits(saleVisits, reasons),
+                GeneratedAtUtc:    DateTime.UtcNow);
+        });
+
     // ── Plumbing ──────────────────────────────────────────────────────────────────────────────
 
     /// <summary>Resolves the business day, rejects a future one, and caches the section per day.</summary>
@@ -213,6 +245,51 @@ public class DashboardService(
             .ThenBy(r => r.RegionName, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
+
+    /// <summary>The top <paramref name="take"/> rows by revenue, each with its share of <paramref name="total"/>.</summary>
+    public static List<DashboardRankedDto> Rank(IReadOnlyList<SalesSummaryRowDto> rows, decimal total, int take)
+        => rows
+            .OrderByDescending(r => r.NetSaleValue)
+            .ThenBy(r => r.GroupName, StringComparer.OrdinalIgnoreCase)
+            .Take(take)
+            .Select(r => new DashboardRankedDto(
+                r.GroupKey,
+                r.GroupCode,
+                r.GroupName,
+                r.NetSaleValue,
+                Share(r.NetSaleValue, total),
+                r.NetSaleQty,
+                r.TargetValue is > 0m ? r.TargetValue : null,
+                r.AchievementPercent))
+            .ToList();
+
+    /// <summary>Everything after the first <paramref name="shown"/> rows by revenue; null when nothing is left over.</summary>
+    public static DashboardOthersDto? Others(IReadOnlyList<SalesSummaryRowDto> rows, int shown, decimal total)
+    {
+        var rest = rows.OrderByDescending(r => r.NetSaleValue).Skip(shown).ToList();
+        if (rest.Count == 0) return null;
+        var revenue = rest.Sum(r => r.NetSaleValue);
+        return new DashboardOthersDto(rest.Count, revenue, Share(revenue, total));
+    }
+
+    /// <summary>Sale visits against no-sale visits, with the no-sale reasons largest first.</summary>
+    public static DashboardVisitsDto BuildVisits(int saleVisits, IReadOnlyList<DashboardReasonCount> reasons)
+    {
+        var noSale = reasons.Sum(r => r.Count);
+        return new DashboardVisitsDto(
+            saleVisits,
+            noSale,
+            Percent(saleVisits, saleVisits + noSale),
+            reasons
+                .OrderByDescending(r => r.Count)
+                .ThenBy(r => r.Reason.ToString(), StringComparer.Ordinal)
+                .Select(r => new DashboardReasonDto(r.Reason.ToString(), r.Count, Percent(r.Count, noSale)))
+                .ToList());
+    }
+
+    /// <summary>A money share, rounded to one decimal; null when there is nothing to share.</summary>
+    private static decimal? Share(decimal part, decimal total)
+        => total <= 0m ? null : Math.Round(part / total * 100m, 1);
 
     /// <summary>Null when the whole is zero — a percentage of nothing is not 0%.</summary>
     public static decimal? Percent(int part, int whole)

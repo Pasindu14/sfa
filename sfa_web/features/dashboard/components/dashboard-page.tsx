@@ -16,30 +16,41 @@ import {
   useRefreshDashboard,
 } from '../hooks/dashboard.hooks'
 import { useDashboardStore } from '../store/dashboard.store'
-import type { DashboardActivity, DashboardSales } from '../schema/dashboard.schema'
-import { Meter, Panel, Section, SectionError, Stale } from './dashboard-cards'
+import type { DashboardActivity, DashboardSales, DashboardSalesBlock } from '../schema/dashboard.schema'
+import { Amount, Meter, Panel, Section, SectionError, Stale } from './dashboard-cards'
 import { count, money, percent } from './format'
 import { MonthRibbon, type RibbonMode } from './month-ribbon'
+import { DistributorShare, RepLeaderboard, TopProducts, VisitOutcomes } from './breakdown-charts'
 
 /** Colombo date string → a value formatColombo renders as that same calendar day. */
 const day = (d: string) => `${d}T00:00:00+05:30`
 
-const PINE = 'bg-[#2F6B57] dark:bg-[#5FAF93]'
-const STONE = 'bg-[oklch(0.62_0.03_107)]'
-const STONE_LIGHT = 'bg-[oklch(0.88_0.012_107)] dark:bg-[oklch(0.38_0.015_107)]'
+const SOLID = 'bg-primary'
+const TINT = 'bg-primary/45'
+const TINT_LIGHT = 'bg-primary/15'
 
 /**
- * The admin dashboard. Its three API sections (sales, activity, trend) load in parallel as separate
- * queries; each block renders the moment its own data arrives, so nothing waits on anything else.
+ * The admin dashboard. Its four API sections (sales, activity, trend, breakdown) load in parallel
+ * as separate queries; each block renders the moment its own data arrives, so nothing waits on
+ * anything else.
+ *
+ * Full width: one column on phones, two on laptops, three on wide screens. The third panel of each
+ * row spans both columns at the two-column size so no row is left half empty.
  */
 export function DashboardPage() {
   return (
-    <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-10 p-4 pt-0 md:p-8 md:pt-2">
+    <div className="flex w-full flex-1 flex-col gap-10 p-4 pt-0 md:p-6 md:pt-2 2xl:px-10">
       <Header />
       <Runway />
-      <div className="grid gap-10 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] xl:gap-6">
+      <div className="grid gap-x-6 gap-y-10 lg:grid-cols-2 2xl:grid-cols-3">
         <Ledger />
         <FieldAndOutlets />
+        <VisitOutcomes className="lg:col-span-2 2xl:col-span-1" />
+      </div>
+      <div className="grid gap-x-6 gap-y-10 lg:grid-cols-2 2xl:grid-cols-3">
+        <TopProducts />
+        <RepLeaderboard />
+        <DistributorShare className="lg:col-span-2 2xl:col-span-1" />
       </div>
       <Regions />
     </div>
@@ -158,32 +169,20 @@ function Runway() {
             Every day of {monthName}
             {monthTarget !== null && (
               <span className="ml-3 inline-flex items-center gap-1.5 whitespace-nowrap">
-                <span aria-hidden className="inline-block w-4 border-t-2 border-dashed border-primary" />
+                <span aria-hidden className="inline-block w-4 border-t-2 border-dashed border-foreground/55" />
                 target pace
               </span>
             )}
           </p>
-          <div role="group" aria-label="Chart shows" className="flex rounded-lg bg-muted p-0.5">
-            {(
-              [
-                ['daily', 'Each day'],
-                ['running', 'Running total'],
-              ] as const
-            ).map(([m, label]) => (
-              <button
-                key={m}
-                type="button"
-                aria-pressed={mode === m}
-                onClick={() => setMode(m)}
-                className={cn(
-                  'whitespace-nowrap rounded-md px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  mode === m ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <SegmentedToggle
+            label="Chart shows"
+            value={mode}
+            onChange={setMode}
+            options={[
+              ['daily', 'Each day'],
+              ['running', 'Running total'],
+            ]}
+          />
         </div>
 
         {trend.isPending ? (
@@ -254,7 +253,7 @@ function Headline({ s, isToday, monthName }: { s: DashboardSales; isToday: boole
                     <span className="text-muted-foreground"> behind where the month should be by now.</span>
                   </span>
                 ) : (
-                  <span className="text-[#2F6B57] dark:text-[#5FAF93]">
+                  <span className="text-primary">
                     <span className="font-report tabular-nums">{money(-behind)}</span> ahead of pace.
                   </span>
                 ))}
@@ -276,7 +275,7 @@ function Headline({ s, isToday, monthName }: { s: DashboardSales; isToday: boole
               <span
                 className={cn(
                   'font-report font-medium tabular-nums',
-                  s.today.achievementPercent >= 100 ? 'text-[#2F6B57] dark:text-[#5FAF93]' : 'text-foreground',
+                  s.today.achievementPercent >= 100 ? 'text-primary' : 'text-foreground',
                 )}
               >
                 {percent(s.today.achievementPercent, 0)}
@@ -299,112 +298,159 @@ function Fact({ label, value }: { label: string; value: string }) {
   )
 }
 
-// ── Ledger: money in and out, for the day and the month ─────────────────────
+// ── Where the money went: sold → discounts → returns → revenue ──────────────
 
 function Ledger() {
   const { data, isPending, isPlaceholderData, refetch } = useDashboardSales()
   const { isToday } = useShownDate()
+  const [span, setSpan] = useState<'day' | 'month'>('day')
+
+  const dayLabel = data ? dayName(data.date, isToday) : 'Today'
+  const monthLabel = data ? formatColombo(day(data.monthStart), 'MMMM') : 'Month'
 
   return (
-    <Section title="Sales, discounts and returns" aside="Approved bills, month figures to date">
+    <Section
+      title="Sales, discounts and returns"
+      className="flex flex-col"
+      aside={
+        <SegmentedToggle
+          label="Show figures for"
+          value={span}
+          onChange={setSpan}
+          options={[
+            ['day', dayLabel],
+            ['month', `${monthLabel} so far`],
+          ]}
+        />
+      }
+    >
       {isPending ? (
-        <Skeleton className="h-[392px] rounded-2xl" />
+        <Skeleton className="h-[392px] flex-1 rounded-2xl" />
       ) : !data ? (
-        <SectionError what="Sales, discounts and returns" onRetry={() => refetch()} className="h-[392px]" />
+        <SectionError what="Sales, discounts and returns" onRetry={() => refetch()} className="h-[392px] flex-1" />
       ) : (
-        <Stale stale={isPlaceholderData}>
-          <LedgerTable s={data} dayLabel={dayName(data.date, isToday)} monthLabel={formatColombo(day(data.monthStart), 'MMMM')} />
+        <Stale stale={isPlaceholderData} className="flex flex-1 flex-col">
+          <MoneyFlow b={span === 'day' ? data.today : data.monthToDate} />
         </Stale>
       )}
     </Section>
   )
 }
 
-function LedgerTable({ s, dayLabel, monthLabel }: { s: DashboardSales; dayLabel: string; monthLabel: string }) {
-  const d = s.today
-  const m = s.monthToDate
-  const avg = (rev: number, bills: number) => (bills > 0 ? money(rev / bills) : '—')
+function MoneyFlow({ b }: { b: DashboardSalesBlock }) {
+  // Revenue is what's left of everything sold once discounts and returns come off — the Sales
+  // Summary's own identity. Built from the parts so the bar always sums to exactly 100%.
+  const revenuePart = Math.max(b.revenue, 0)
+  const sold = revenuePart + b.totalDiscount + b.totalReturn
+  const share = (v: number) => (sold > 0 ? (v / sold) * 100 : 0)
+
+  const parts = [
+    {
+      key: 'revenue',
+      label: 'Revenue',
+      value: b.revenue,
+      swatch: 'bg-primary',
+      detail: null as string | null,
+    },
+    {
+      key: 'discounts',
+      label: 'Discounts',
+      value: b.totalDiscount,
+      swatch: 'bg-primary/40',
+      detail: `${money(b.discount)} to outlets, ${money(b.dbDiscount)} in distributor free issues`,
+    },
+    {
+      key: 'returns',
+      label: 'Returns',
+      value: b.totalReturn,
+      swatch: 'bg-foreground/15',
+      detail: `${money(b.goodReturn)} back to stock, ${money(b.marketReturn)} damaged or expired`,
+    },
+  ]
 
   return (
-    <Panel className="overflow-hidden">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b text-muted-foreground">
-            <th className="px-5 py-3 text-left font-normal">
-              <span className="sr-only">Measure</span>
-            </th>
-            <th className="whitespace-nowrap px-3 py-3 text-right font-normal">{dayLabel}</th>
-            <th className="whitespace-nowrap px-5 py-3 text-right font-normal">{monthLabel}</th>
-          </tr>
-        </thead>
-        <tbody className="font-report tabular-nums">
-          <LedgerRow label="Revenue" day={money(d.revenue)} month={money(m.revenue)} strong />
-          <LedgerRow label="Discounts" day={money(d.totalDiscount)} month={money(m.totalDiscount)} strong />
-          <LedgerRow label="Outlet discount" day={money(d.discount)} month={money(m.discount)} />
-          <LedgerRow label="Distributor free issue" day={money(d.dbDiscount)} month={money(m.dbDiscount)} />
-          <LedgerRow
-            label="Returns"
-            day={money(d.totalReturn)}
-            month={money(m.totalReturn)}
-            strong
-            tone="text-[#A23B2A] dark:text-[#E08A78]"
-          />
-          <LedgerRow label="Good, back to stock" day={money(d.goodReturn)} month={money(m.goodReturn)} />
-          <LedgerRow label="Damaged or expired" day={money(d.marketReturn)} month={money(m.marketReturn)} />
-          <LedgerRow label="Bills" day={count(d.billCount)} month={count(m.billCount)} strong />
-          <LedgerRow label="Average bill" day={avg(d.revenue, d.billCount)} month={avg(m.revenue, m.billCount)} last />
-        </tbody>
-      </table>
+    <Panel className="flex flex-1 flex-col p-5 sm:p-6">
+      <p className="text-sm text-muted-foreground">Sold before discounts and returns</p>
+      <Amount value={sold} className="mt-1 text-3xl font-light tracking-tight" />
+
+      {/* One bar, three parts. Revenue first: it's the part that counts. */}
+      <div className="mt-5 flex h-3 gap-0.5 overflow-hidden rounded-full bg-muted" role="img"
+        aria-label={parts.map((p) => `${p.label} ${percent(share(Math.max(p.value, 0)), 0)}`).join(', ')}
+      >
+        {sold > 0 &&
+          parts.map((p) =>
+            share(Math.max(p.value, 0)) > 0 ? (
+              <div key={p.key} className={cn('h-full first:rounded-l-full last:rounded-r-full', p.swatch)} style={{ width: `${share(Math.max(p.value, 0))}%` }} />
+            ) : null,
+          )}
+      </div>
+
+      <ul className="mt-5 divide-y">
+        {parts.map((p) => (
+          <li key={p.key} className="flex items-start gap-3 py-3 first:pt-0">
+            <span aria-hidden className={cn('mt-1.5 h-2.5 w-2.5 shrink-0 rounded-[3px]', p.swatch)} />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className={cn('text-sm', p.key === 'revenue' ? 'font-medium' : 'text-foreground')}>{p.label}</span>
+                <span className="flex items-baseline gap-2">
+                  <span className="font-report text-xs tabular-nums text-muted-foreground">
+                    {sold > 0 ? percent(share(Math.max(p.value, 0)), 0) : ''}
+                  </span>
+                  <Amount value={p.value} className={cn('text-lg', p.key === 'revenue' && 'font-medium')} />
+                </span>
+              </div>
+              {p.detail && <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{p.detail}</p>}
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <dl className="mt-auto grid grid-cols-2 gap-4 border-t pt-4">
+        <div>
+          <dt className="text-sm text-muted-foreground">Bills</dt>
+          <dd className="mt-0.5 font-report text-lg tabular-nums">{count(b.billCount)}</dd>
+        </div>
+        <div>
+          <dt className="text-sm text-muted-foreground">Average bill</dt>
+          <dd className="mt-0.5">
+            {b.billCount > 0 ? <Amount value={b.revenue / b.billCount} className="text-lg" /> : <span className="text-lg">—</span>}
+          </dd>
+        </div>
+      </dl>
+      <p className="mt-3 text-xs text-muted-foreground">Approved bills only.</p>
     </Panel>
   )
 }
 
-function LedgerRow({
+
+function SegmentedToggle<T extends string>({
   label,
-  day: dayValue,
-  month,
-  strong,
-  tone,
-  last,
+  value,
+  onChange,
+  options,
 }: {
   label: string
-  day: string
-  month: string
-  strong?: boolean
-  tone?: string
-  last?: boolean
+  value: T
+  onChange: (v: T) => void
+  options: readonly (readonly [T, string])[]
 }) {
   return (
-    <tr className={cn(strong && 'border-t first:border-t-0', last && 'pb-2')}>
-      <th
-        scope="row"
-        className={cn(
-          'px-5 text-left font-sans font-normal',
-          strong ? 'pt-3.5 pb-1.5 font-medium text-foreground' : 'py-1 pl-8 text-muted-foreground',
-          last && 'pb-3.5',
-        )}
-      >
-        {label}
-      </th>
-      <td
-        className={cn(
-          'px-3 text-right',
-          strong ? cn('pt-3.5 pb-1.5 text-[17px]', tone) : 'py-1 text-muted-foreground',
-          last && 'pb-3.5',
-        )}
-      >
-        {dayValue}
-      </td>
-      <td
-        className={cn(
-          'px-5 text-right',
-          strong ? cn('pt-3.5 pb-1.5 text-[17px]', tone) : 'py-1 text-muted-foreground',
-          last && 'pb-3.5',
-        )}
-      >
-        {month}
-      </td>
-    </tr>
+    <div role="group" aria-label={label} className="flex rounded-lg bg-muted p-0.5">
+      {options.map(([v, text]) => (
+        <button
+          key={v}
+          type="button"
+          aria-pressed={value === v}
+          onClick={() => onChange(v)}
+          className={cn(
+            'whitespace-nowrap rounded-md px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            value === v ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+          )}
+        >
+          {text}
+        </button>
+      ))}
+    </div>
   )
 }
 
@@ -459,7 +505,7 @@ function RepsPanel({ a, dayLabel }: { a: DashboardActivity; dayLabel: string }) 
               key={i}
               className={cn(
                 'h-2.5 w-2.5 rounded-full',
-                i < r.activeToday ? PINE : 'border border-[oklch(0.8_0.015_107)] dark:border-[oklch(0.45_0.015_107)]',
+                i < r.activeToday ? SOLID : 'border border-primary/35',
               )}
             />
           ))}
@@ -481,13 +527,13 @@ function ReachPanel({ a, dayLabel }: { a: DashboardActivity; dayLabel: string })
   const since = formatColombo(day(o.billedWindowFrom), 'd MMM')
 
   const rows = [
-    { label: 'On record', value: o.totalCustomers, share: null, bar: STONE_LIGHT },
-    { label: 'Active', value: o.activeOutlets, share: `${percent(o.activePercent)} of all`, bar: STONE },
+    { label: 'On record', value: o.totalCustomers, share: null, bar: TINT_LIGHT },
+    { label: 'Active', value: o.activeOutlets, share: `${percent(o.activePercent)} of all`, bar: TINT },
     {
       label: `Billed since ${since}`,
       value: o.billedLast45Days,
       share: `${percent(o.billedLast45DaysPercent)} of active`,
-      bar: PINE,
+      bar: SOLID,
     },
   ]
 

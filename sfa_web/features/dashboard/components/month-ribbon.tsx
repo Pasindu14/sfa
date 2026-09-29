@@ -28,6 +28,17 @@ function dateOf(monthStart: string, n: number) {
 }
 
 /**
+ * Brand colour throughout. With a target: solid once the day met it, a light tint while short.
+ * Without one there is nothing to meet, so every sold day shares one tone. The dashboard date is
+ * always the strongest bar of its kind.
+ */
+function barTone(hasTarget: boolean, met: boolean, selected: boolean) {
+  if (!hasTarget) return selected ? 'bg-primary' : 'bg-primary/75'
+  if (met) return 'bg-primary'
+  return selected ? 'bg-primary/60' : 'bg-primary/30'
+}
+
+/**
  * The whole month as a ribbon of day slots: sold days are bars, days still to come are empty
  * outlines, and the target pace is a single orange line. Pointing at (or tabbing to) a day shows
  * its figures in the readout above, so nothing floats over the bars.
@@ -92,7 +103,7 @@ export function MonthRibbon({ points, monthStart, daysInMonth, selectedDate, mon
           (mode === 'daily' ? (
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-x-0 z-10 border-t-2 border-dashed border-primary"
+              className="pointer-events-none absolute inset-x-0 z-10 border-t-2 border-dashed border-foreground/55"
               style={{ bottom: pct(perDay) }}
             />
           ) : (
@@ -107,7 +118,7 @@ export function MonthRibbon({ points, monthStart, daysInMonth, selectedDate, mon
                 y1="100"
                 x2="100"
                 y2={100 - ((perDay * daysInMonth) / peak) * 100}
-                className="stroke-primary"
+                className="stroke-foreground/55"
                 strokeWidth="2"
                 strokeDasharray="6 5"
                 vectorEffect="non-scaling-stroke"
@@ -142,10 +153,7 @@ export function MonthRibbon({ points, monthStart, daysInMonth, selectedDate, mon
                   <span
                     className={cn(
                       'w-full origin-bottom rounded-t-[3px] transition-colors motion-safe:animate-[dash-grow_700ms_cubic-bezier(0.2,0.7,0.2,1)_both]',
-                      met
-                        ? 'bg-[#2F6B57] dark:bg-[#5FAF93]'
-                        : 'bg-[oklch(0.82_0.018_107)] dark:bg-[oklch(0.45_0.018_107)]',
-                      isSelected && !met && 'bg-[oklch(0.62_0.03_107)] dark:bg-[oklch(0.62_0.03_107)]',
+                      barTone(s.target !== null, met, isSelected),
                       'group-hover:brightness-90',
                     )}
                     style={{

@@ -1,10 +1,10 @@
 import { z } from 'zod'
 
-// Mirrors sfa_api Features/Dashboard/DTOs/DashboardDtos.cs. The dashboard is three independently
+// Mirrors sfa_api Features/Dashboard/DTOs/DashboardDtos.cs. The dashboard is four independently
 // loaded sections. Dates are Colombo `YYYY-MM-DD` business dates; money is LKR. A null
 // target/percentage means "no target imported" — render a dash, never 0%.
 
-export const DASHBOARD_SECTIONS = ['sales', 'activity', 'trend'] as const
+export const DASHBOARD_SECTIONS = ['sales', 'activity', 'trend', 'breakdown'] as const
 export type DashboardSection = (typeof DASHBOARD_SECTIONS)[number]
 
 const salesBlockSchema = z.object({
@@ -83,7 +83,47 @@ export const dashboardTrendSchema = z.object({
   generatedAtUtc: z.string(),
 })
 
+const rankedSchema = z.object({
+  id: z.number().nullable(),
+  code: z.string(),
+  name: z.string(),
+  revenue: z.number(),
+  sharePercent: z.number().nullable(),
+  quantity: z.number(),
+  targetValue: z.number().nullable(),
+  achievementPercent: z.number().nullable(),
+})
+
+export const NO_SALE_REASONS = ['OutletClosed', 'OwnerAbsent', 'CreditIssue', 'NoOrder', 'OutOfStock'] as const
+
+export const dashboardBreakdownSchema = z.object({
+  date: z.string(),
+  monthStart: z.string(),
+  products: z.array(rankedSchema),
+  reps: z.array(rankedSchema),
+  distributors: z.array(rankedSchema),
+  otherDistributors: z
+    .object({ count: z.number(), revenue: z.number(), sharePercent: z.number().nullable() })
+    .nullable(),
+  visits: z.object({
+    saleVisits: z.number(),
+    noSaleVisits: z.number(),
+    salePercent: z.number().nullable(),
+    reasons: z.array(
+      z.object({
+        // Mirrors the API's NotBillingReason; an unknown future member still parses.
+        reason: z.string(),
+        count: z.number(),
+        sharePercent: z.number().nullable(),
+      }),
+    ),
+  }),
+  generatedAtUtc: z.string(),
+})
+
 export type DashboardSales = z.infer<typeof dashboardSalesSchema>
 export type DashboardActivity = z.infer<typeof dashboardActivitySchema>
 export type DashboardTrend = z.infer<typeof dashboardTrendSchema>
 export type DashboardSalesBlock = z.infer<typeof salesBlockSchema>
+export type DashboardBreakdown = z.infer<typeof dashboardBreakdownSchema>
+export type DashboardRanked = z.infer<typeof rankedSchema>

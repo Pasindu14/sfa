@@ -26,4 +26,10 @@ public interface IDashboardRepository
 
     /// <summary>Distinct outlets with a live (not cancelled, not rejected) bill over [from, to].</summary>
     Task<int> CountBilledOutletsAsync(DateOnly from, DateOnly to, CancellationToken ct = default);
+
+    /// <summary>Live (not cancelled, not rejected) bills over [from, to] — each one a visit that ended in a sale.</summary>
+    Task<int> CountLiveBillsAsync(DateOnly from, DateOnly to, CancellationToken ct = default);
+
+    /// <summary>No-sale visits over [from, to], counted per reason.</summary>
+    Task<List<DashboardReasonCount>> GetNoSaleReasonsAsync(DateOnly from, DateOnly to, CancellationToken ct = default);
 }

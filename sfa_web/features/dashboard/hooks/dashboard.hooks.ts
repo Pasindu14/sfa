@@ -5,6 +5,7 @@ import type { z } from 'zod'
 import { ActionError } from '@/lib/actions/action-error'
 import {
   dashboardActivitySchema,
+  dashboardBreakdownSchema,
   dashboardSalesSchema,
   dashboardTrendSchema,
   type DashboardSection,
@@ -22,7 +23,7 @@ const REFRESH_MS = 2 * 60 * 1000
 
 /**
  * Fetches one section through the `/api/dashboard/[section]` route handler — NOT a server action.
- * Next.js dispatches server actions one at a time per client, so actions would load the three
+ * Next.js dispatches server actions one at a time per client, so actions would load the four
  * sections in series; plain GETs run in parallel.
  */
 async function fetchSection<S extends z.ZodTypeAny>(
@@ -61,6 +62,7 @@ function useSection<S extends z.ZodTypeAny>(section: DashboardSection, schema: S
 export const useDashboardSales = () => useSection('sales', dashboardSalesSchema)
 export const useDashboardActivity = () => useSection('activity', dashboardActivitySchema)
 export const useDashboardTrend = () => useSection('trend', dashboardTrendSchema)
+export const useDashboardBreakdown = () => useSection('breakdown', dashboardBreakdownSchema)
 
 /** True while any section is fetching — drives the header's refresh spinner. */
 export function useDashboardIsFetching() {
