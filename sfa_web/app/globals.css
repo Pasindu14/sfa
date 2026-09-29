@@ -151,3 +151,8 @@
   background-color: #cbd5e0;
   /* Color of the scrollbar track */
 }
+/* Admin dashboard: the month ribbon's bars rise once on load (see month-ribbon.tsx). */
+@keyframes dash-grow {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}

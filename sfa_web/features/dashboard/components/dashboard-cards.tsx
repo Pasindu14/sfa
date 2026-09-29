@@ -1,114 +1,81 @@
 'use client'
 
+import { AlertCircle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
-export function SectionHeading({ children, hint }: { children: React.ReactNode; hint?: string }) {
-  return (
-    <div className="mb-3 flex items-center gap-3">
-      <p className="whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.25em] text-muted-foreground">
-        {children}
-      </p>
-      <div className="h-px flex-1 bg-border" />
-      {hint && <p className="whitespace-nowrap text-[11px] text-muted-foreground">{hint}</p>}
-    </div>
-  )
-}
-
-/**
- * A progress bar against a target. Green only once the target is met — over a part-finished
- * month almost everything is short, and a wall of red would alarm without informing.
- * `marker` draws where the value "should" be by now (e.g. the pro-rated target for today).
- */
-export function TargetBar({
-  percent,
-  marker,
+/** A titled block of the dashboard. `aside` sits on the heading's right (a note or a control). */
+export function Section({
+  title,
+  aside,
+  children,
   className,
 }: {
-  percent: number | null
-  marker?: number | null
+  title: string
+  aside?: React.ReactNode
+  children: React.ReactNode
   className?: string
 }) {
-  if (percent === null) return <div className={cn('h-2.5 rounded-full bg-muted', className)} aria-label="No target" />
-
-  const met = percent >= 100
-  const onPace = marker !== null && marker !== undefined && percent >= marker
   return (
-    <div
-      className={cn('relative h-2.5 overflow-hidden rounded-full bg-muted', className)}
-      role="meter"
-      aria-valuenow={Math.round(percent)}
-      aria-valuemin={0}
-      aria-valuemax={100}
-    >
-      <div
-        className={cn(
-          'h-full rounded-full transition-[width] duration-500 motion-reduce:transition-none',
-          met ? 'bg-emerald-600' : onPace ? 'bg-emerald-500/80' : 'bg-amber-500',
-        )}
-        style={{ width: `${Math.max(0, Math.min(percent, 100))}%` }}
-      />
-      {marker !== null && marker !== undefined && marker > 0 && marker < 100 && (
-        <span
-          aria-hidden
-          className="absolute inset-y-0 w-0.5 bg-foreground/60"
-          style={{ left: `${marker}%` }}
-        />
-      )}
-    </div>
+    <section className={className}>
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 className="text-[15px] font-medium tracking-tight">{title}</h2>
+        {aside && <div className="text-xs text-muted-foreground">{aside}</div>}
+      </div>
+      {children}
+    </section>
   )
 }
 
-interface StatTileProps {
-  icon: React.ElementType
-  label: string
-  value: React.ReactNode
-  sub?: React.ReactNode
-  accent: string
-  children?: React.ReactNode
+/** The one surface style. Panels differ by what's inside them, not by decoration. */
+export function Panel({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <div className={cn('rounded-2xl border bg-card', className)}>{children}</div>
 }
 
-/** KPI tile — left-border accent, same visual language as the distributor dashboard. */
-export function StatTile({ icon: Icon, label, value, sub, accent, children }: StatTileProps) {
+export function SectionError({
+  what,
+  onRetry,
+  className,
+}: {
+  what: string
+  onRetry: () => void
+  className?: string
+}) {
   return (
-    <div
-      className={cn(
-        'relative flex min-h-[118px] flex-col justify-between gap-3 overflow-hidden rounded-xl border border-l-[3px] bg-card px-5 py-4 shadow-sm',
-        accent,
-      )}
-    >
-      <Icon className="pointer-events-none absolute bottom-2 right-3 h-14 w-14 select-none opacity-[0.05]" />
-      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{label}</p>
-      <div>
-        <p className="text-[1.6rem] font-bold leading-none tracking-tight tabular-nums">{value}</p>
-        {sub && <p className="mt-1.5 text-[11px] leading-tight text-muted-foreground">{sub}</p>}
-      </div>
+    <Panel className={cn('flex flex-col items-center justify-center gap-3 p-6 text-center', className)}>
+      <AlertCircle className="h-5 w-5 text-muted-foreground" />
+      <p className="text-sm text-muted-foreground">{what} didn&apos;t load. Check your connection and try again.</p>
+      <Button variant="outline" size="sm" onClick={onRetry}>
+        Try again
+      </Button>
+    </Panel>
+  )
+}
+
+/** Dims a block while it still shows the previous day's numbers for a newly picked day. */
+export function Stale({ stale, children }: { stale: boolean; children: React.ReactNode }) {
+  return (
+    <div className={cn('transition-opacity duration-200', stale && 'pointer-events-none opacity-55')} aria-busy={stale}>
       {children}
     </div>
   )
 }
 
-/** A label/value pair used inside the larger cards. */
-export function Figure({
-  label,
-  value,
-  tone,
-}: {
-  label: string
-  value: React.ReactNode
-  tone?: 'good' | 'warn'
-}) {
+/**
+ * A thin share bar. Pine once the goal is met, neutral stone while short — over a part-finished
+ * month nearly everything is short, and a wall of warning colour would alarm without informing.
+ */
+export function Meter({ percent, className }: { percent: number | null; className?: string }) {
+  const p = percent ?? 0
   return (
-    <div className="min-w-0">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{label}</p>
-      <p
+    <div className={cn('h-1.5 overflow-hidden rounded-full bg-muted', className)} aria-hidden>
+      <div
         className={cn(
-          'mt-1 truncate text-sm font-semibold tabular-nums',
-          tone === 'good' && 'text-emerald-600 dark:text-emerald-400',
-          tone === 'warn' && 'text-amber-600 dark:text-amber-400',
+          'h-full rounded-full',
+          p >= 100 ? 'bg-[#2F6B57] dark:bg-[#5FAF93]' : 'bg-[oklch(0.62_0.03_107)]',
         )}
-      >
-        {value}
-      </p>
+        style={{ width: `${Math.min(Math.max(p, 0), 100)}%`, minWidth: p > 0 ? 3 : 0 }}
+      />
     </div>
   )
 }
