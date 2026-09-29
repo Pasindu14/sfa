@@ -132,6 +132,7 @@ import 'package:uswatte/features/stock/domain/usecases/sync_distributor_stock_us
 import 'package:uswatte/core/background/background_sync_service.dart';
 import 'package:uswatte/features/supervisor_achievement/data/datasources/supervisor_achievement_remote_datasource.dart';
 import 'package:uswatte/features/supervisor_sales_summary/data/datasources/supervisor_sales_summary_remote_datasource.dart';
+import 'package:uswatte/features/supervisor_itemwise_sales/data/datasources/supervisor_itemwise_sales_remote_datasource.dart';
 import 'package:uswatte/features/purchase_orders/data/datasources/purchase_orders_remote_datasource.dart';
 import 'package:uswatte/features/purchase_orders/data/repositories/purchase_orders_repository_impl.dart';
 import 'package:uswatte/features/purchase_orders/domain/repositories/purchase_orders_repository.dart';
@@ -513,6 +514,10 @@ Future<void> configureDependencies() async {
   // ── Supervisor Sales Summary ──────────────────────────────────────────────
   getIt.registerLazySingleton(
       () => SupervisorSalesSummaryRemoteDatasource(getIt<Dio>()));
+
+  // ── Supervisor Item-wise Sales ────────────────────────────────────────────
+  getIt.registerLazySingleton(
+      () => SupervisorItemwiseSalesRemoteDatasource(getIt<Dio>()));
 
   // ── Today's Route Map ─────────────────────────────────────────────────────
   getIt.registerLazySingleton<TodaysRouteMapRepository>(

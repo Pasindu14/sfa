@@ -114,6 +114,9 @@ import 'package:uswatte/features/supervisor_achievement/presentation/pages/super
 import 'package:uswatte/features/supervisor_sales_summary/data/datasources/supervisor_sales_summary_remote_datasource.dart';
 import 'package:uswatte/features/supervisor_sales_summary/presentation/cubit/supervisor_sales_summary_cubit.dart';
 import 'package:uswatte/features/supervisor_sales_summary/presentation/pages/supervisor_sales_summary_page.dart';
+import 'package:uswatte/features/supervisor_itemwise_sales/data/datasources/supervisor_itemwise_sales_remote_datasource.dart';
+import 'package:uswatte/features/supervisor_itemwise_sales/presentation/cubit/supervisor_itemwise_sales_cubit.dart';
+import 'package:uswatte/features/supervisor_itemwise_sales/presentation/pages/supervisor_itemwise_sales_page.dart';
 import 'package:uswatte/features/purchase_orders/domain/usecases/get_pending_purchase_orders_usecase.dart';
 import 'package:uswatte/features/purchase_orders/domain/usecases/get_purchase_order_usecase.dart';
 import 'package:uswatte/features/purchase_orders/domain/usecases/rep_approve_purchase_order_usecase.dart';
@@ -738,6 +741,17 @@ class AppRouter {
                   remote: getIt<SupervisorSalesSummaryRemoteDatasource>(),
                 )..loadReps(),
                 child: const SupervisorSalesSummaryPage(),
+              ),
+            ),
+            GoRoute(
+              path: 'itemwise-sales',
+              name: 'supervisorItemwiseSales',
+              builder: (_, __) => BlocProvider(
+                create: (_) => SupervisorItemwiseSalesCubit(
+                  getMyReps: getIt<GetMyRepsUseCase>(),
+                  remote: getIt<SupervisorItemwiseSalesRemoteDatasource>(),
+                )..loadReps(),
+                child: const SupervisorItemwiseSalesPage(),
               ),
             ),
             GoRoute(

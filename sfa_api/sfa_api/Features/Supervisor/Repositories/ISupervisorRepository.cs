@@ -23,4 +23,15 @@ public interface ISupervisorRepository
     /// </summary>
     Task<RepBillingReturnTotals> GetRepReturnTotalsAsync(
         int salesRepId, DateOnly from, DateOnly to, CancellationToken ct = default);
+
+    /// <summary>
+    /// Per-product sale / free-issue / return sums over the rep's approved + pending bills in
+    /// [from, to]. Products with only DistributorReturn lines still come back (all zeros).
+    /// </summary>
+    Task<List<RepItemSalesAgg>> GetRepItemSalesAsync(
+        int salesRepId, DateOnly from, DateOnly to, CancellationToken ct = default);
+
+    /// <summary>Code and name for each id, including deactivated/deleted products.</summary>
+    Task<Dictionary<int, (string Code, string Name)>> GetProductNamesAsync(
+        IEnumerable<int> productIds, CancellationToken ct = default);
 }
