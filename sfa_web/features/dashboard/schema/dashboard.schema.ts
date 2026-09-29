@@ -1,8 +1,11 @@
 import { z } from 'zod'
 
-// Mirrors sfa_api Features/Dashboard/DTOs/DashboardDtos.cs. Dates are Colombo `YYYY-MM-DD`
-// business dates; money is LKR. A null target/percentage means "no target imported" — render a
-// dash, never 0%.
+// Mirrors sfa_api Features/Dashboard/DTOs/DashboardDtos.cs. The dashboard is three independently
+// loaded sections. Dates are Colombo `YYYY-MM-DD` business dates; money is LKR. A null
+// target/percentage means "no target imported" — render a dash, never 0%.
+
+export const DASHBOARD_SECTIONS = ['sales', 'activity', 'trend'] as const
+export type DashboardSection = (typeof DASHBOARD_SECTIONS)[number]
 
 const salesBlockSchema = z.object({
   targetValue: z.number().nullable(),
@@ -18,7 +21,7 @@ const salesBlockSchema = z.object({
   billCount: z.number(),
 })
 
-export const dashboardSchema = z.object({
+export const dashboardSalesSchema = z.object({
   date: z.string(),
   monthStart: z.string(),
   monthEnd: z.string(),
@@ -33,6 +36,20 @@ export const dashboardSchema = z.object({
     balance: z.number().nullable(),
     requiredDailyRate: z.number().nullable(),
   }),
+  regions: z.array(
+    z.object({
+      regionId: z.number().nullable(),
+      regionName: z.string(),
+      monthTarget: z.number().nullable(),
+      revenue: z.number(),
+      achievementPercent: z.number().nullable(),
+    }),
+  ),
+  generatedAtUtc: z.string(),
+})
+
+export const dashboardActivitySchema = z.object({
+  date: z.string(),
   reps: z.object({
     activeToday: z.number(),
     totalReps: z.number(),
@@ -49,28 +66,34 @@ export const dashboardSchema = z.object({
     billedWindowFrom: z.string(),
     newToday: z.number(),
   }),
-  dailyTrend: z.array(
-    z.object({
-      date: z.string(),
-      revenue: z.number(),
-      target: z.number().nullable(),
-      cumulativeRevenue: z.number(),
-      cumulativeTarget: z.number().nullable(),
-    }),
-  ),
-  regions: z.array(
-    z.object({
-      regionId: z.number().nullable(),
-      regionName: z.string(),
-      monthTarget: z.number().nullable(),
-      revenue: z.number(),
-      achievementPercent: z.number().nullable(),
-    }),
-  ),
   generatedAtUtc: z.string(),
 })
 
-export type DashboardDto = z.infer<typeof dashboardSchema>
+const trendPointSchema = z.object({
+  date: z.string(),
+  revenue: z.number(),
+  cumulativeRevenue: z.number(),
+})
+
+export const dashboardTrendSchema = z.object({
+  date: z.string(),
+  monthStart: z.string(),
+  daysInMonth: z.number(),
+  points: z.array(trendPointSchema),
+  generatedAtUtc: z.string(),
+})
+
+/**
+ * A trend point with the target line merged in on the client. Targets are null until the sales
+ * section has loaded, or when no target was imported for the month.
+ */
+export const dashboardChartPointSchema = trendPointSchema.extend({
+  target: z.number().nullable(),
+  cumulativeTarget: z.number().nullable(),
+})
+
+export type DashboardSales = z.infer<typeof dashboardSalesSchema>
+export type DashboardActivity = z.infer<typeof dashboardActivitySchema>
+export type DashboardTrend = z.infer<typeof dashboardTrendSchema>
 export type DashboardSalesBlock = z.infer<typeof salesBlockSchema>
-export type DashboardDailyPoint = DashboardDto['dailyTrend'][number]
-export type DashboardRegionRow = DashboardDto['regions'][number]
+export type DashboardChartPoint = z.infer<typeof dashboardChartPointSchema>

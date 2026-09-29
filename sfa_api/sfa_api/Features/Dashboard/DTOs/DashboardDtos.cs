@@ -1,10 +1,12 @@
 namespace sfa_api.Features.Dashboard.DTOs;
 
 /// <summary>
-/// The admin dashboard for one business day. Every sales figure is the Sales Summary report's own
-/// number (same service, same formulas), so the dashboard and the report can never disagree.
+/// The admin dashboard is served as three independent sections so the page can request them in
+/// parallel and render each as soon as it lands — the cheap counts never wait behind the heavier
+/// sales aggregates. Every sales figure is the Sales Summary report's own number (same service,
+/// same formulas), so the dashboard and the report can never disagree.
 /// </summary>
-public record DashboardDto(
+public record DashboardSalesDto(
     DateOnly Date,
     DateOnly MonthStart,
     DateOnly MonthEnd,
@@ -13,10 +15,26 @@ public record DashboardDto(
     DashboardSalesBlockDto Today,
     DashboardSalesBlockDto MonthToDate,
     DashboardTargetDto     MonthTarget,
-    DashboardRepsDto       Reps,
-    DashboardOutletsDto    Outlets,
-    IReadOnlyList<DashboardDailyPointDto>   DailyTrend,
-    IReadOnlyList<DashboardRegionRowDto>    Regions,
+    IReadOnlyList<DashboardRegionRowDto> Regions,
+    DateTime GeneratedAtUtc);
+
+/// <summary>Field-force and outlet counts for the day — no sales aggregates, so it answers fast.</summary>
+public record DashboardActivityDto(
+    DateOnly Date,
+    DashboardRepsDto    Reps,
+    DashboardOutletsDto Outlets,
+    DateTime GeneratedAtUtc);
+
+/// <summary>
+/// Revenue per day from the 1st of the month to the dashboard date. Carries no target: the client
+/// draws the target line from the sales section's month target, so this endpoint never repeats the
+/// sales-summary target query.
+/// </summary>
+public record DashboardTrendDto(
+    DateOnly Date,
+    DateOnly MonthStart,
+    int      DaysInMonth,
+    IReadOnlyList<DashboardDailyPointDto> Points,
     DateTime GeneratedAtUtc);
 
 /// <summary>
@@ -71,8 +89,8 @@ public record DashboardOutletsDto(
     DateOnly BilledWindowFrom,
     int      NewToday);
 
-/// <summary>One day of the month: revenue against that day's pro-rated share of the monthly target.</summary>
-public record DashboardDailyPointDto(DateOnly Date, decimal Revenue, decimal? Target, decimal CumulativeRevenue, decimal? CumulativeTarget);
+/// <summary>One day of the month, zero-filled, with the running month-to-date total.</summary>
+public record DashboardDailyPointDto(DateOnly Date, decimal Revenue, decimal CumulativeRevenue);
 
 public record DashboardRegionRowDto(
     int?     RegionId,

@@ -1,31 +1,42 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import {
+  AlertCircle,
   ArrowUpRight,
   BadgePercent,
   CalendarDays,
+  ReceiptText,
   RefreshCw,
+  Sparkles,
   Store,
   StoreIcon,
   TrendingUp,
   Undo2,
   UserCheck,
   Users,
-  Sparkles,
-  ReceiptText,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ErrorState } from '@/components/error-state'
 import { cn } from '@/lib/utils'
 import { formatColombo, toColomboDateStr } from '@/lib/utils/datetime'
-import { useDashboard } from '../hooks/dashboard.hooks'
+import {
+  useDashboardActivity,
+  useDashboardIsFetching,
+  useDashboardSales,
+  useDashboardTrend,
+  useRefreshDashboard,
+} from '../hooks/dashboard.hooks'
 import { useDashboardStore } from '../store/dashboard.store'
-import type { DashboardDto, DashboardSalesBlock } from '../schema/dashboard.schema'
+import type {
+  DashboardActivity,
+  DashboardChartPoint,
+  DashboardSales,
+  DashboardSalesBlock,
+} from '../schema/dashboard.schema'
 import { Figure, SectionHeading, StatTile, TargetBar } from './dashboard-cards'
 import { count, money, moneyShort, percent } from './format'
 import type { TrendMode } from './revenue-trend-chart'
@@ -36,61 +47,78 @@ const RevenueTrendChart = dynamic(
   { ssr: false, loading: () => <Skeleton className="h-full w-full rounded-lg" /> },
 )
 
-/** Colombo date string → a Date that formatColombo renders as that same calendar day. */
+/** Colombo date string → a value formatColombo renders as that same calendar day. */
 const day = (d: string) => `${d}T00:00:00+05:30`
 
+/**
+ * The admin dashboard. The three API sections (sales, activity, trend) are separate queries that
+ * load in parallel. Each block renders the moment its own data arrives, with its own skeleton and
+ * error, so a slow section never holds up the others and nothing blocks the page.
+ */
 export function DashboardPage() {
-  const { data, isLoading, isError, isFetching, refetch } = useDashboard()
-
   return (
     <div className="flex flex-1 flex-col gap-8 p-4 pt-0 md:p-6 md:pt-0">
-      <Header data={data} isFetching={isFetching} onRefresh={() => refetch()} />
+      <Header />
+      <TargetSection />
+      <SalesSection />
+      <FieldSection />
+      <TrendSection />
+      <RegionSection />
+    </div>
+  )
+}
 
-      {isError && !data ? (
-        <ErrorState />
-      ) : isLoading || !data ? (
-        <LoadingState />
-      ) : (
-        <>
-          <TargetSection d={data} />
-          <SalesSection d={data} />
-          <FieldSection d={data} />
-          <TrendSection d={data} />
-          <RegionSection d={data} />
-        </>
+// ── Shared section states ───────────────────────────────────────────────────
+
+function SectionError({ onRetry, className }: { onRetry: () => void; className?: string }) {
+  return (
+    <div
+      className={cn(
+        'flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed bg-card p-6 text-center',
+        className,
       )}
+    >
+      <AlertCircle className="h-5 w-5 text-muted-foreground" />
+      <p className="text-sm text-muted-foreground">This section couldn&apos;t be loaded.</p>
+      <Button variant="outline" size="sm" onClick={onRetry}>
+        Try again
+      </Button>
+    </div>
+  )
+}
+
+/** Dims a section while it shows the previous day's numbers for a newly picked day. */
+function Stale({ stale, children }: { stale: boolean; children: React.ReactNode }) {
+  return (
+    <div className={cn('transition-opacity', stale && 'pointer-events-none opacity-60')} aria-busy={stale}>
+      {children}
     </div>
   )
 }
 
 // ── Header ──────────────────────────────────────────────────────────────────
 
-function Header({
-  data,
-  isFetching,
-  onRefresh,
-}: {
-  data: DashboardDto | undefined
-  isFetching: boolean
-  onRefresh: () => void
-}) {
+function Header() {
   const date = useDashboardStore((s) => s.date)
   const setDate = useDashboardStore((s) => s.setDate)
+  const isFetching = useDashboardIsFetching()
+  const refresh = useRefreshDashboard()
+  const { data: sales } = useDashboardSales()
+
   const today = toColomboDateStr(new Date())
-  const isToday = date === null || date === today
+  const shown = date ?? today
+  const isToday = shown === today
 
   return (
     <div className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Sales Dashboard</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {data ? formatColombo(day(data.date), 'EEEE, d MMMM yyyy') : 'Loading…'}
-          {data && (
-            <span className="ml-2 text-xs">
-              · updated {formatColombo(data.generatedAtUtc, 'HH:mm')}
-              {isToday && ' · refreshes every 2 min'}
-            </span>
-          )}
+          {formatColombo(day(shown), 'EEEE, d MMMM yyyy')}
+          <span className="ml-2 text-xs">
+            {sales && <>· updated {formatColombo(sales.generatedAtUtc, 'HH:mm')}</>}
+            {isToday && ' · refreshes every 2 min'}
+          </span>
         </p>
       </div>
 
@@ -101,7 +129,7 @@ function Header({
             type="date"
             aria-label="Dashboard date"
             className="h-9 w-[170px] pl-8"
-            value={date ?? today}
+            value={shown}
             max={today}
             onChange={(e) => {
               const v = e.target.value
@@ -115,7 +143,7 @@ function Header({
             Today
           </Button>
         )}
-        <Button variant="outline" size="sm" className="h-9 gap-2" onClick={onRefresh} disabled={isFetching}>
+        <Button variant="outline" size="sm" className="h-9 gap-2" onClick={refresh} disabled={isFetching}>
           <RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} />
           Refresh
         </Button>
@@ -124,9 +152,33 @@ function Header({
   )
 }
 
-// ── 1. Target & achievement ─────────────────────────────────────────────────
+// ── 1. Target & achievement (sales section) ─────────────────────────────────
 
-function TargetSection({ d }: { d: DashboardDto }) {
+function TargetSection() {
+  const { data, isPending, isError, isPlaceholderData, refetch } = useDashboardSales()
+
+  return (
+    <section>
+      <SectionHeading hint={data ? `Day ${data.daysElapsed} of ${data.daysInMonth}` : undefined}>
+        Target &amp; achievement
+      </SectionHeading>
+      {isPending ? (
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Skeleton className="h-[250px] rounded-xl lg:col-span-2" />
+          <Skeleton className="h-[250px] rounded-xl" />
+        </div>
+      ) : isError && !data ? (
+        <SectionError onRetry={() => refetch()} className="h-[250px]" />
+      ) : (
+        <Stale stale={isPlaceholderData}>
+          <TargetCards d={data} />
+        </Stale>
+      )}
+    </section>
+  )
+}
+
+function TargetCards({ d }: { d: DashboardSales }) {
   const t = d.monthTarget
   const monthLabel = formatColombo(day(d.monthStart), 'MMMM yyyy')
   // Where the month "should" be by now, as a % of the full target — drawn as a tick on the bar.
@@ -134,147 +186,180 @@ function TargetSection({ d }: { d: DashboardDto }) {
   const ahead = t.achievementPercent !== null && t.achievementPercent >= pace
 
   return (
-    <section>
-      <SectionHeading hint={`Day ${d.daysElapsed} of ${d.daysInMonth}`}>Target &amp; achievement</SectionHeading>
-      <div className="grid gap-4 lg:grid-cols-3">
-        {/* Monthly */}
-        <div className="rounded-xl border bg-card p-5 shadow-sm lg:col-span-2">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold">Monthly target — {monthLabel}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Month-to-date revenue against the full month&apos;s target
-              </p>
-            </div>
-            {t.targetValue !== null && (
-              <span
-                className={cn(
-                  'rounded-full px-2.5 py-1 text-[11px] font-semibold',
-                  ahead
-                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
-                    : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
-                )}
-              >
-                {ahead ? 'On pace' : 'Behind pace'}
-              </span>
-            )}
+    <div className="grid gap-4 lg:grid-cols-3">
+      {/* Monthly */}
+      <div className="rounded-xl border bg-card p-5 shadow-sm lg:col-span-2">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold">Monthly target — {monthLabel}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Month-to-date revenue against the full month&apos;s target
+            </p>
           </div>
-
-          <div className="mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <span className="text-4xl font-bold tracking-tight tabular-nums">{percent(t.achievementPercent)}</span>
-            <span className="text-sm text-muted-foreground">
-              {money(d.monthToDate.revenue)} of {money(t.targetValue)}
-            </span>
-          </div>
-          <TargetBar percent={t.achievementPercent} marker={t.targetValue !== null ? pace : null} className="mt-3" />
           {t.targetValue !== null && (
+            <span
+              className={cn(
+                'rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                ahead
+                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                  : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+              )}
+            >
+              {ahead ? 'On pace' : 'Behind pace'}
+            </span>
+          )}
+        </div>
+
+        {t.targetValue === null ? (
+          // No target: lead with what we do know rather than a dash.
+          <div className="mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="text-4xl font-bold tracking-tight tabular-nums">{money(d.monthToDate.revenue)}</span>
+            <span className="text-sm text-muted-foreground">revenue month to date</span>
+          </div>
+        ) : (
+          <>
+            <div className="mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <span className="text-4xl font-bold tracking-tight tabular-nums">{percent(t.achievementPercent)}</span>
+              <span className="text-sm text-muted-foreground">
+                {money(d.monthToDate.revenue)} of {money(t.targetValue)}
+              </span>
+            </div>
+            <TargetBar percent={t.achievementPercent} marker={pace} className="mt-3" />
             <p className="mt-1.5 text-[11px] text-muted-foreground">
               The tick marks where the month should be today ({pace.toFixed(0)}%).
             </p>
-          )}
+          </>
+        )}
 
-          {t.targetValue === null ? (
-            <p className="mt-5 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
-              No sales targets have been imported for {monthLabel}.{' '}
-              <Link href="/sales-targets" className="font-medium text-foreground underline underline-offset-2">
-                Import targets
-              </Link>
-            </p>
-          ) : (
-            <div className="mt-5 grid grid-cols-2 gap-4 border-t pt-4 sm:grid-cols-4">
-              <Figure label="Monthly target" value={money(t.targetValue)} />
-              <Figure label="Expected by today" value={money(t.expectedToDate)} />
-              <Figure
-                label={t.balance !== null && t.balance < 0 ? 'Above target by' : 'Balance to target'}
-                value={money(t.balance !== null ? Math.abs(t.balance) : null)}
-                tone={t.balance !== null && t.balance <= 0 ? 'good' : undefined}
-              />
-              <Figure
-                label="Needed per day"
-                value={t.requiredDailyRate !== null ? money(t.requiredDailyRate) : '—'}
-                tone={t.requiredDailyRate !== null && d.today.targetValue !== null && t.requiredDailyRate > d.today.targetValue ? 'warn' : undefined}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Daily */}
-        <div className="flex flex-col rounded-xl border bg-card p-5 shadow-sm">
-          <p className="text-sm font-semibold">Daily achievement</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {formatColombo(day(d.date), 'd MMM')} revenue against the day&apos;s share of the target
+        {t.targetValue === null ? (
+          <p className="mt-5 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+            No sales targets have been imported for {monthLabel}.{' '}
+            <Link href="/sales-targets" className="font-medium text-foreground underline underline-offset-2">
+              Import targets
+            </Link>
           </p>
-          <div className="mt-5 flex items-baseline gap-3">
-            <span className="text-4xl font-bold tracking-tight tabular-nums">{percent(d.today.achievementPercent)}</span>
+        ) : (
+          <div className="mt-5 grid grid-cols-2 gap-4 border-t pt-4 sm:grid-cols-4">
+            <Figure label="Monthly target" value={money(t.targetValue)} />
+            <Figure label="Expected by today" value={money(t.expectedToDate)} />
+            <Figure
+              label={t.balance !== null && t.balance < 0 ? 'Above target by' : 'Balance to target'}
+              value={money(t.balance !== null ? Math.abs(t.balance) : null)}
+              tone={t.balance !== null && t.balance <= 0 ? 'good' : undefined}
+            />
+            <Figure
+              label="Needed per day"
+              value={money(t.requiredDailyRate)}
+              tone={
+                t.requiredDailyRate !== null && d.today.targetValue !== null && t.requiredDailyRate > d.today.targetValue
+                  ? 'warn'
+                  : undefined
+              }
+            />
           </div>
-          <TargetBar percent={d.today.achievementPercent} className="mt-3" />
-          <div className="mt-auto grid grid-cols-2 gap-4 border-t pt-4">
-            <Figure label="Revenue" value={money(d.today.revenue)} />
-            <Figure label="Daily target" value={money(d.today.targetValue)} />
+        )}
+      </div>
+
+      {/* Daily */}
+      <div className="flex flex-col rounded-xl border bg-card p-5 shadow-sm">
+        <p className="text-sm font-semibold">Daily achievement</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {formatColombo(day(d.date), 'd MMM')} revenue against the day&apos;s share of the target
+        </p>
+        {d.today.targetValue === null ? (
+          <div className="mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="text-4xl font-bold tracking-tight tabular-nums">{money(d.today.revenue)}</span>
+            <span className="text-sm text-muted-foreground">no target set</span>
           </div>
+        ) : (
+          <>
+            <div className="mt-5 flex items-baseline gap-3">
+              <span className="text-4xl font-bold tracking-tight tabular-nums">{percent(d.today.achievementPercent)}</span>
+            </div>
+            <TargetBar percent={d.today.achievementPercent} className="mt-3" />
+          </>
+        )}
+        <div className="mt-auto grid grid-cols-2 gap-4 border-t pt-4">
+          <Figure label="Revenue" value={money(d.today.revenue)} />
+          <Figure label="Daily target" value={money(d.today.targetValue)} />
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── 2. Revenue, discounts, returns (sales section) ──────────────────────────
+
+function SalesSection() {
+  const { data, isPending, isError, isPlaceholderData, refetch } = useDashboardSales()
+
+  return (
+    <section>
+      <SectionHeading hint="Approved bills only">Revenue, discounts &amp; returns</SectionHeading>
+      {isPending ? (
+        <TileSkeletons />
+      ) : isError && !data ? (
+        <SectionError onRetry={() => refetch()} className="h-[140px]" />
+      ) : (
+        <Stale stale={isPlaceholderData}>
+          <SalesTiles t={data.today} m={data.monthToDate} />
+        </Stale>
+      )}
     </section>
   )
 }
 
-// ── 2. Revenue, discounts, returns ──────────────────────────────────────────
-
-function SalesSection({ d }: { d: DashboardDto }) {
-  const t = d.today
-  const m = d.monthToDate
+function SalesTiles({ t, m }: { t: DashboardSalesBlock; m: DashboardSalesBlock }) {
   return (
-    <section>
-      <SectionHeading hint="Approved bills only">Revenue, discounts &amp; returns</SectionHeading>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatTile
-          icon={TrendingUp}
-          label="Revenue"
-          accent="border-l-emerald-500"
-          value={moneyShort(t.revenue)}
-          sub={<>Today · <b className="text-foreground">{moneyShort(m.revenue)}</b> month to date</>}
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <StatTile
+        icon={TrendingUp}
+        label="Revenue"
+        accent="border-l-emerald-500"
+        value={moneyShort(t.revenue)}
+        sub={<>Today · <b className="text-foreground">{moneyShort(m.revenue)}</b> month to date</>}
+      />
+      <StatTile
+        icon={BadgePercent}
+        label="Total discount"
+        accent="border-l-violet-500"
+        value={moneyShort(t.totalDiscount)}
+        sub={<>Today · <b className="text-foreground">{moneyShort(m.totalDiscount)}</b> month to date</>}
+      >
+        <Split
+          items={[
+            { label: 'Outlet discount', today: t.discount, mtd: m.discount },
+            { label: 'Distributor free issue', today: t.dbDiscount, mtd: m.dbDiscount },
+          ]}
         />
-        <StatTile
-          icon={BadgePercent}
-          label="Total discount"
-          accent="border-l-violet-500"
-          value={moneyShort(t.totalDiscount)}
-          sub={<>Today · <b className="text-foreground">{moneyShort(m.totalDiscount)}</b> month to date</>}
-        >
-          <Split
-            items={[
-              { label: 'Outlet discount', today: t.discount, mtd: m.discount },
-              { label: 'Distributor free issue', today: t.dbDiscount, mtd: m.dbDiscount },
-            ]}
-          />
-        </StatTile>
-        <StatTile
-          icon={Undo2}
-          label="Total returns"
-          accent="border-l-rose-500"
-          value={moneyShort(t.totalReturn)}
-          sub={<>Today · <b className="text-foreground">{moneyShort(m.totalReturn)}</b> month to date</>}
-        >
-          <Split
-            items={[
-              { label: 'Good (resaleable)', today: t.goodReturn, mtd: m.goodReturn },
-              { label: 'Damage / expiry', today: t.marketReturn, mtd: m.marketReturn },
-            ]}
-          />
-        </StatTile>
-        <StatTile
-          icon={ReceiptText}
-          label="Bills"
-          accent="border-l-sky-500"
-          value={count(t.billCount)}
-          sub={<>Today · <b className="text-foreground">{count(m.billCount)}</b> month to date</>}
-        >
-          <p className="text-[11px] text-muted-foreground">
-            Avg bill today <b className="text-foreground">{avgBill(t)}</b> · month <b className="text-foreground">{avgBill(m)}</b>
-          </p>
-        </StatTile>
-      </div>
-    </section>
+      </StatTile>
+      <StatTile
+        icon={Undo2}
+        label="Total returns"
+        accent="border-l-rose-500"
+        value={moneyShort(t.totalReturn)}
+        sub={<>Today · <b className="text-foreground">{moneyShort(m.totalReturn)}</b> month to date</>}
+      >
+        <Split
+          items={[
+            { label: 'Good (resaleable)', today: t.goodReturn, mtd: m.goodReturn },
+            { label: 'Damage / expiry', today: t.marketReturn, mtd: m.marketReturn },
+          ]}
+        />
+      </StatTile>
+      <StatTile
+        icon={ReceiptText}
+        label="Bills"
+        accent="border-l-sky-500"
+        value={count(t.billCount)}
+        sub={<>Today · <b className="text-foreground">{count(m.billCount)}</b> month to date</>}
+      >
+        <p className="text-[11px] text-muted-foreground">
+          Avg bill today <b className="text-foreground">{avgBill(t)}</b> · month{' '}
+          <b className="text-foreground">{avgBill(m)}</b>
+        </p>
+      </StatTile>
+    </div>
   )
 }
 
@@ -297,63 +382,95 @@ function Split({ items }: { items: { label: string; today: number; mtd: number }
   )
 }
 
-// ── 3. Field force & outlets ────────────────────────────────────────────────
+function TileSkeletons() {
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {[1, 2, 3, 4].map((i) => (
+        <Skeleton key={i} className="h-[140px] rounded-xl" />
+      ))}
+    </div>
+  )
+}
 
-function FieldSection({ d }: { d: DashboardDto }) {
-  const r = d.reps
-  const o = d.outlets
+// ── 3. Field force & outlets (activity section) ─────────────────────────────
+
+function FieldSection() {
+  const { data, isPending, isError, isPlaceholderData, refetch } = useDashboardActivity()
+
   return (
     <section>
       <SectionHeading>Field force &amp; outlets</SectionHeading>
-      <div className="grid gap-3 lg:grid-cols-3">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:col-span-2">
-          <StatTile
-            icon={UserCheck}
-            label="Active reps today"
-            accent="border-l-blue-500"
-            value={
-              <>
-                {count(r.activeToday)}
-                <span className="text-base font-medium text-muted-foreground"> / {count(r.totalReps)}</span>
-              </>
-            }
-            sub={`${percent(r.activePercent)} of reps billed or logged a visit`}
-          >
-            <TargetBar percent={r.activePercent} />
-          </StatTile>
-          <StatTile
-            icon={Store}
-            label="Active shops"
-            accent="border-l-emerald-500"
-            value={count(o.activeOutlets)}
-            sub="Outlets currently active"
-          />
-          <StatTile
-            icon={ReceiptText}
-            label="Billed outlets · last 45 days"
-            accent="border-l-amber-500"
-            value={count(o.billedLast45Days)}
-            sub={`${percent(o.billedLast45DaysPercent)} of active shops · since ${formatColombo(day(o.billedWindowFrom), 'd MMM')}`}
-          >
-            <TargetBar percent={o.billedLast45DaysPercent} />
-          </StatTile>
-          <StatTile
-            icon={Sparkles}
-            label="New outlets today"
-            accent="border-l-fuchsia-500"
-            value={count(o.newToday)}
-            sub={`Registered on ${formatColombo(day(d.date), 'd MMM')}`}
-          />
+      {isPending ? (
+        <div className="grid gap-3 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:col-span-2">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-[118px] rounded-xl" />
+            ))}
+          </div>
+          <Skeleton className="h-[248px] rounded-xl" />
         </div>
-
-        <CustomerCard d={d} />
-      </div>
+      ) : isError && !data ? (
+        <SectionError onRetry={() => refetch()} className="h-[248px]" />
+      ) : (
+        <Stale stale={isPlaceholderData}>
+          <FieldTiles a={data} />
+        </Stale>
+      )}
     </section>
   )
 }
 
-function CustomerCard({ d }: { d: DashboardDto }) {
-  const o = d.outlets
+function FieldTiles({ a }: { a: DashboardActivity }) {
+  const r = a.reps
+  const o = a.outlets
+  return (
+    <div className="grid gap-3 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:col-span-2">
+        <StatTile
+          icon={UserCheck}
+          label="Active reps today"
+          accent="border-l-blue-500"
+          value={
+            <>
+              {count(r.activeToday)}
+              <span className="text-base font-medium text-muted-foreground"> / {count(r.totalReps)}</span>
+            </>
+          }
+          sub={`${percent(r.activePercent)} of reps billed or logged a visit`}
+        >
+          <TargetBar percent={r.activePercent} />
+        </StatTile>
+        <StatTile
+          icon={Store}
+          label="Active shops"
+          accent="border-l-emerald-500"
+          value={count(o.activeOutlets)}
+          sub="Outlets currently active"
+        />
+        <StatTile
+          icon={ReceiptText}
+          label="Billed outlets · last 45 days"
+          accent="border-l-amber-500"
+          value={count(o.billedLast45Days)}
+          sub={`${percent(o.billedLast45DaysPercent)} of active shops · since ${formatColombo(day(o.billedWindowFrom), 'd MMM')}`}
+        >
+          <TargetBar percent={o.billedLast45DaysPercent} />
+        </StatTile>
+        <StatTile
+          icon={Sparkles}
+          label="New outlets today"
+          accent="border-l-fuchsia-500"
+          value={count(o.newToday)}
+          sub={`Registered on ${formatColombo(day(a.date), 'd MMM')}`}
+        />
+      </div>
+
+      <CustomerCard o={o} />
+    </div>
+  )
+}
+
+function CustomerCard({ o }: { o: DashboardActivity['outlets'] }) {
   return (
     <div className="flex flex-col rounded-xl border bg-card p-5 shadow-sm">
       <div className="flex items-center justify-between">
@@ -397,11 +514,27 @@ function LegendRow({ color, label, n, pct }: { color: string; label: string; n: 
   )
 }
 
-// ── 4. Trend ────────────────────────────────────────────────────────────────
+// ── 4. Trend (trend section + target from the sales section) ────────────────
 
-function TrendSection({ d }: { d: DashboardDto }) {
+function TrendSection() {
   const [mode, setMode] = useState<TrendMode>('daily')
-  const hasTarget = d.monthTarget.targetValue !== null
+  const { data: trend, isPending, isError, isPlaceholderData, refetch } = useDashboardTrend()
+  // The target line comes from the sales section, which is loading in parallel. The bars render
+  // as soon as the trend lands, and the target line joins them when (and if) the sales data arrives.
+  const { data: sales } = useDashboardSales()
+  const monthTarget = sales && trend && sales.monthStart === trend.monthStart ? sales.monthTarget.targetValue : null
+
+  const points = useMemo<DashboardChartPoint[]>(() => {
+    if (!trend) return []
+    const perDay = monthTarget !== null ? monthTarget / trend.daysInMonth : null
+    return trend.points.map((p, i) => ({
+      ...p,
+      target: perDay !== null ? Math.round(perDay * 100) / 100 : null,
+      cumulativeTarget: perDay !== null ? Math.round(perDay * (i + 1) * 100) / 100 : null,
+    }))
+  }, [trend, monthTarget])
+
+  const hasTarget = monthTarget !== null
 
   return (
     <section>
@@ -429,7 +562,7 @@ function TrendSection({ d }: { d: DashboardDto }) {
                 type="button"
                 onClick={() => setMode(m)}
                 className={cn(
-                  'rounded px-3 py-1 text-xs font-medium capitalize transition-colors',
+                  'rounded px-3 py-1 text-xs font-medium transition-colors',
                   mode === m ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
@@ -439,7 +572,17 @@ function TrendSection({ d }: { d: DashboardDto }) {
           </div>
         </div>
         <div className="h-[280px] px-2 py-4">
-          <RevenueTrendChart data={d.dailyTrend} mode={mode} />
+          {isPending ? (
+            <Skeleton className="h-full w-full rounded-lg" />
+          ) : isError && !trend ? (
+            <SectionError onRetry={() => refetch()} className="h-full border-0" />
+          ) : (
+            <Stale stale={isPlaceholderData}>
+              <div className="h-[248px]">
+                <RevenueTrendChart data={points} mode={mode} />
+              </div>
+            </Stale>
+          )}
         </div>
       </div>
     </section>
@@ -455,15 +598,36 @@ function LegendDot({ color, label }: { color: string; label: string }) {
   )
 }
 
-// ── 5. Regions ──────────────────────────────────────────────────────────────
+// ── 5. Regions (sales section) ──────────────────────────────────────────────
 
-function RegionSection({ d }: { d: DashboardDto }) {
-  if (d.regions.length === 0) return null
-  const pace = (d.daysElapsed / d.daysInMonth) * 100
+function RegionSection() {
+  const { data, isPending, isError, isPlaceholderData } = useDashboardSales()
+
+  // The target section above already shows the retry for a failed sales request.
+  if (isError && !data) return null
 
   return (
     <section>
       <SectionHeading hint="Month to date vs full-month target">By region</SectionHeading>
+      {isPending ? (
+        <Skeleton className="h-[200px] rounded-xl" />
+      ) : data.regions.length === 0 ? (
+        <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+          No sales or targets recorded this month yet.
+        </p>
+      ) : (
+        <Stale stale={isPlaceholderData}>
+          <RegionTable d={data} />
+        </Stale>
+      )}
+    </section>
+  )
+}
+
+function RegionTable({ d }: { d: DashboardSales }) {
+  const pace = (d.daysElapsed / d.daysInMonth) * 100
+  return (
+    <>
       <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
         <table className="w-full min-w-[560px] text-sm">
           <thead>
@@ -482,7 +646,11 @@ function RegionSection({ d }: { d: DashboardDto }) {
                 <td className="px-3 py-3 text-right font-medium tabular-nums">{money(r.revenue)}</td>
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-3">
-                    <TargetBar percent={r.achievementPercent} marker={r.achievementPercent !== null ? pace : null} className="flex-1" />
+                    <TargetBar
+                      percent={r.achievementPercent}
+                      marker={r.achievementPercent !== null ? pace : null}
+                      className="flex-1"
+                    />
                     <span className="w-14 shrink-0 text-right text-xs tabular-nums">{percent(r.achievementPercent)}</span>
                   </div>
                 </td>
@@ -496,25 +664,6 @@ function RegionSection({ d }: { d: DashboardDto }) {
           Full breakdown in Sales Summary <ArrowUpRight className="h-3 w-3" />
         </Link>
       </p>
-    </section>
-  )
-}
-
-// ── Loading ─────────────────────────────────────────────────────────────────
-
-function LoadingState() {
-  return (
-    <div className="flex flex-col gap-8">
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Skeleton className="h-[260px] rounded-xl lg:col-span-2" />
-        <Skeleton className="h-[260px] rounded-xl" />
-      </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {[1, 2, 3, 4].map((i) => (
-          <Skeleton key={i} className="h-[140px] rounded-xl" />
-        ))}
-      </div>
-      <Skeleton className="h-[320px] rounded-xl" />
-    </div>
+    </>
   )
 }
