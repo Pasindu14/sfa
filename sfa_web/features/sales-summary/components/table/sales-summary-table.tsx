@@ -135,8 +135,10 @@ export function SalesSummaryTable({ data }: { data: SalesSummaryResponse }) {
                   key={band.id}
                   colSpan={span}
                   className={cn(
-                    'sticky top-0 z-20 whitespace-nowrap border-b px-3 pb-1 pt-2.5 text-left text-[11px] font-semibold text-foreground/70',
-                    band.tinted ? 'bg-[#F6F3EF]' : 'bg-card',
+                    'sticky top-0 z-20 h-9 whitespace-nowrap border-b border-t-[3px] px-3 text-left align-middle text-xs font-bold uppercase tracking-wider text-foreground',
+                    band.tinted
+                      ? 'border-t-foreground/60 bg-[#EDE6DE]'
+                      : 'border-t-foreground/25 bg-[#F5F2EE]',
                     i > 0 && 'border-l',
                     band.id === 'label' && 'left-0 z-30'
                   )}
@@ -151,9 +153,9 @@ export function SalesSummaryTable({ data }: { data: SalesSummaryResponse }) {
                 <th
                   key={col.key}
                   className={cn(
-                    'sticky top-[30px] z-20 whitespace-nowrap border-b px-3 pb-2 text-[11px] font-medium text-muted-foreground',
+                    'sticky top-9 z-20 whitespace-nowrap border-b-2 border-b-foreground/15 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-foreground/75',
                     col.align === 'right' ? 'text-right' : 'text-left',
-                    bandOf(col.band).tinted ? 'bg-[#F6F3EF]' : 'bg-card',
+                    bandOf(col.band).tinted ? 'bg-[#F3EEE8]' : 'bg-[#FAF8F5]',
                     startsBand(col, i) && 'border-l',
                     i === 0 && 'left-0 z-30'
                   )}
