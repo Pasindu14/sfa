@@ -683,51 +683,43 @@ class _ActionsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Future<void> pushAndRefresh(String location) async {
+      await context.push(location);
+      if (context.mounted) {
+        context.read<SupervisorSummaryCubit>().refresh();
+      }
+    }
+
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Column(
         children: [
           _HeroActionCard(
             icon: Icons.map_rounded,
-            title: 'ASSIGN DAILY ROUTE',
-            subtitle: 'Schedule a route for a sales rep',
-            onTap: () async {
-              await context.push('/supervisor/assign-route');
-              if (context.mounted) {
-                context.read<SupervisorSummaryCubit>().refresh();
-              }
-            },
+            title: 'ASSIGN ROUTE',
+            subtitle: '+ DAILY',
+            onTap: () => pushAndRefresh('/supervisor/assign-route'),
           ),
-          SizedBox(height: 12.h),
+          SizedBox(height: 14.h),
           Row(
             children: [
               Expanded(
                 child: _TileActionCard(
                   icon: Icons.list_alt_rounded,
-                  title: 'VIEW\nASSIGNMENTS',
+                  title: 'ASSIGNMENTS',
                   subtitle: "Today's route assignments",
                   color: const Color(0xFF2563EB),
-                  onTap: () async {
-                    await context.push('/supervisor/assignments');
-                    if (context.mounted) {
-                      context.read<SupervisorSummaryCubit>().refresh();
-                    }
-                  },
+                  onTap: () => pushAndRefresh('/supervisor/assignments'),
                 ),
               ),
               SizedBox(width: 10.w),
               Expanded(
                 child: _TileActionCard(
                   icon: Icons.receipt_long_rounded,
-                  title: 'VIEW REP\nBILLS',
+                  title: 'REP BILLS',
                   subtitle: 'Bills created by your reps',
                   color: const Color(0xFF7C3AED),
-                  onTap: () async {
-                    await context.push('/supervisor/billing');
-                    if (context.mounted) {
-                      context.read<SupervisorSummaryCubit>().refresh();
-                    }
-                  },
+                  onTap: () => pushAndRefresh('/supervisor/billing'),
                 ),
               ),
             ],
@@ -737,23 +729,18 @@ class _ActionsSection extends StatelessWidget {
             children: [
               Expanded(
                 child: _TileActionCard(
-                  icon: Icons.block_rounded,
-                  title: 'VIEW\nNON-BILLINGS',
+                  icon: Icons.report_problem_outlined,
+                  title: 'NON-BILLINGS',
                   subtitle: 'Non-billing visits by reps',
                   color: const Color(0xFFDC2626),
-                  onTap: () async {
-                    await context.push('/supervisor/not-billing');
-                    if (context.mounted) {
-                      context.read<SupervisorSummaryCubit>().refresh();
-                    }
-                  },
+                  onTap: () => pushAndRefresh('/supervisor/not-billing'),
                 ),
               ),
               SizedBox(width: 10.w),
               Expanded(
                 child: _TileActionCard(
                   icon: Icons.map_rounded,
-                  title: "REP ROUTE\nMAP",
+                  title: 'REP ROUTE MAP',
                   subtitle: "View a rep's route on map",
                   color: const Color(0xFF16A34A),
                   onTap: () => context.push('/supervisor/rep-route-map'),
@@ -762,20 +749,28 @@ class _ActionsSection extends StatelessWidget {
             ],
           ),
           SizedBox(height: 10.h),
-          _TileActionCard(
-            icon: Icons.emoji_events_rounded,
-            title: 'REP ACHIEVEMENT',
-            subtitle: 'Item-wise target vs sold by month',
-            color: const Color(0xFFCA8A04),
-            onTap: () => context.push('/supervisor/achievement'),
-          ),
-          SizedBox(height: 10.h),
-          _TileActionCard(
-            icon: Icons.assignment_turned_in_rounded,
-            title: 'PURCHASE ORDERS',
-            subtitle: 'Approve orders pending manager review',
-            color: const Color(0xFFEA580C),
-            onTap: () => context.push('/supervisor/purchase-orders'),
+          Row(
+            children: [
+              Expanded(
+                child: _TileActionCard(
+                  icon: Icons.emoji_events_rounded,
+                  title: 'REP ACHIEVEMENT',
+                  subtitle: 'Item-wise target vs sold',
+                  color: const Color(0xFFCA8A04),
+                  onTap: () => context.push('/supervisor/achievement'),
+                ),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: _TileActionCard(
+                  icon: Icons.assignment_turned_in_rounded,
+                  title: 'PURCHASE ORDERS',
+                  subtitle: 'Approve pending orders',
+                  color: const Color(0xFFEA580C),
+                  onTap: () => context.push('/supervisor/purchase-orders'),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -783,8 +778,8 @@ class _ActionsSection extends StatelessWidget {
   }
 }
 
-// ── Hero action card (primary CTA) ────────────────────────────────────────────
-class _HeroActionCard extends StatelessWidget {
+// ── Hero action card (primary CTA — matches the rep's NEW ORDER button) ───────
+class _HeroActionCard extends StatefulWidget {
   const _HeroActionCard({
     required this.icon,
     required this.title,
@@ -796,126 +791,127 @@ class _HeroActionCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_HeroActionCard> createState() => _HeroActionCardState();
+}
+
+class _HeroActionCardState extends State<_HeroActionCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse;
+  late final Animation<double> _glow;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat(reverse: true);
+    _glow = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16.r),
-        child: Ink(
-          height: 92.h,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [AppColors.primaryDark, AppColors.primary, AppColors.primaryLight],
-              stops: const [0.0, 0.55, 1.0],
+    return AnimatedBuilder(
+      animation: _glow,
+      builder: (context, child) => Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16.r),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary
+                  .withValues(alpha: 0.28 + _glow.value * 0.18),
+              blurRadius: 18 + _glow.value * 14,
+              offset: const Offset(0, 6),
+              spreadRadius: _glow.value * 1.5,
             ),
-            borderRadius: BorderRadius.circular(16.r),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.38),
-                blurRadius: 22,
-                offset: const Offset(0, 8),
+          ],
+        ),
+        child: child,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: widget.onTap,
+          borderRadius: BorderRadius.circular(16.r),
+          splashColor: Colors.white.withValues(alpha: 0.14),
+          highlightColor: Colors.white.withValues(alpha: 0.07),
+          child: Ink(
+            height: 74.h,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [
+                  AppColors.primaryDark,
+                  AppColors.primary,
+                  AppColors.primaryLight,
+                ],
+                stops: [0.0, 0.5, 1.0],
               ),
-            ],
-          ),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Positioned(
-                right: -12.w,
-                top: -18.h,
-                child: Container(
-                  width: 110.r,
-                  height: 110.r,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(16.r),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16.r),
+              child: Stack(
+                children: [
+                  const Positioned.fill(
+                    child: CustomPaint(painter: _DiagonalStripePainter()),
                   ),
-                ),
-              ),
-              Positioned(
-                right: 50.w,
-                bottom: -14.h,
-                child: Container(
-                  width: 55.r,
-                  height: 55.r,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.05),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 22.w),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 52.r,
-                      height: 52.r,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(14.r),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.22),
-                        ),
-                      ),
-                      child: Icon(icon, color: Colors.white, size: 24.r),
-                    ),
-                    SizedBox(width: 18.w),
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 7.w, vertical: 2.h),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.18),
-                              borderRadius: BorderRadius.circular(4.r),
-                            ),
-                            child: Text('PRIMARY ACTION',
-                                style: GoogleFonts.barlowCondensed(
-                                  fontSize: 8.sp,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 1.5,
-                                  color: Colors.white.withValues(alpha: 0.88),
-                                )),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20.w),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(widget.subtitle,
+                                  style: GoogleFonts.barlowCondensed(
+                                    fontSize: 9.sp,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 3.0,
+                                    color: Colors.white.withValues(alpha: 0.62),
+                                  )),
+                              Text(widget.title,
+                                  style: GoogleFonts.barlowCondensed(
+                                    fontSize: 30.sp,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.8,
+                                    height: 1.0,
+                                    color: Colors.white,
+                                  )),
+                            ],
                           ),
-                          SizedBox(height: 5.h),
-                          Text(title,
-                              style: GoogleFonts.barlowCondensed(
-                                fontSize: 23.sp,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 1.0,
-                                height: 1.0,
-                                color: Colors.white,
-                              )),
-                          SizedBox(height: 3.h),
-                          Text(subtitle,
-                              style: GoogleFonts.barlow(
-                                fontSize: 11.sp,
-                                color: Colors.white.withValues(alpha: 0.72),
-                              )),
-                        ],
-                      ),
+                        ),
+                        Container(
+                          width: 46.r,
+                          height: 46.r,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.17),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.28),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Icon(widget.icon,
+                              color: Colors.white, size: 20.r),
+                        ),
+                      ],
                     ),
-                    Container(
-                      width: 32.r,
-                      height: 32.r,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(Icons.arrow_forward_rounded,
-                          color: Colors.white, size: 15.r),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -923,7 +919,29 @@ class _HeroActionCard extends StatelessWidget {
   }
 }
 
-// ── Tile action card (secondary CTA) ─────────────────────────────────────────
+class _DiagonalStripePainter extends CustomPainter {
+  const _DiagonalStripePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.055)
+      ..strokeWidth = 10;
+    const spacing = 22.0;
+    for (double x = -size.height; x < size.width + size.height; x += spacing) {
+      canvas.drawLine(
+        Offset(x, 0),
+        Offset(x + size.height, size.height),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
+}
+
+// ── Tile action card (secondary CTA — matches the rep home tiles) ─────────────
 class _TileActionCard extends StatelessWidget {
   const _TileActionCard({
     required this.icon,
@@ -937,99 +955,79 @@ class _TileActionCard extends StatelessWidget {
   final Color color;
   final VoidCallback? onTap;
 
+  Color _darken(Color c) {
+    final hsl = HSLColor.fromColor(c);
+    return hsl.withLightness((hsl.lightness - 0.18).clamp(0.0, 1.0)).toColor();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
+      borderRadius: BorderRadius.circular(16.r),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14.r),
+        borderRadius: BorderRadius.circular(16.r),
+        splashColor: Colors.white.withValues(alpha: 0.12),
+        highlightColor: Colors.white.withValues(alpha: 0.06),
         child: Ink(
+          height: 108.h,
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14.r),
-            border: Border.all(color: color.withValues(alpha: 0.14)),
+            borderRadius: BorderRadius.circular(16.r),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [color, _darken(color)],
+            ),
             boxShadow: [
               BoxShadow(
-                color: color.withValues(alpha: 0.09),
-                blurRadius: 14,
+                color: color.withValues(alpha: 0.38),
+                blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                height: 64.h,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.09),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(14.r),
-                    topRight: Radius.circular(14.r),
+          child: Padding(
+            padding: EdgeInsets.all(14.r),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  width: 40.r,
+                  height: 40.r,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(11.r),
                   ),
+                  child: Icon(icon, color: Colors.white, size: 20.r),
                 ),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Positioned(
-                      right: -10.w,
-                      top: -10.h,
-                      child: Container(
-                        width: 54.r,
-                        height: 54.r,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: color.withValues(alpha: 0.07),
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 36.r,
-                            height: 36.r,
-                            decoration: BoxDecoration(
-                              color: color.withValues(alpha: 0.16),
-                              borderRadius: BorderRadius.circular(10.r),
-                            ),
-                            child: Icon(icon, color: color, size: 18.r),
-                          ),
-                          Icon(Icons.arrow_outward_rounded,
-                              color: color.withValues(alpha: 0.40), size: 14.r),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: EdgeInsets.fromLTRB(14.w, 10.h, 14.w, 14.h),
-                child: Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title,
-                        style: GoogleFonts.barlowCondensed(
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.6,
-                          height: 1.0,
-                          color: AppColors.foreground,
-                        )),
-                    SizedBox(height: 3.h),
-                    Text(subtitle,
-                        style: GoogleFonts.barlow(
-                          fontSize: 10.sp,
-                          color: AppColors.foregroundMuted,
-                        )),
+                    Text(
+                      title,
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.4,
+                        height: 1.1,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.barlow(
+                        fontSize: 9.sp,
+                        height: 1.2,
+                        color: Colors.white.withValues(alpha: 0.72),
+                      ),
+                    ),
                   ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
