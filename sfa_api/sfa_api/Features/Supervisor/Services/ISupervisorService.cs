@@ -19,4 +19,12 @@ public interface ISupervisorService
     /// </summary>
     Task<RepBillingSummaryDto> GetRepBillingSummaryAsync(
         int salesRepId, DateOnly from, DateOnly to, CancellationToken ct = default);
+
+    /// <summary>
+    /// One rep's per-product sales for BillingDate in [from, to] over approved + pending bills
+    /// (same range cap as <see cref="GetRepBillingSummaryAsync"/>). Caller must have checked
+    /// the rep belongs to the supervisor.
+    /// </summary>
+    Task<RepItemwiseSalesDto> GetRepItemwiseSalesAsync(
+        int salesRepId, DateOnly from, DateOnly to, CancellationToken ct = default);
 }

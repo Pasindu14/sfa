@@ -785,7 +785,15 @@ class _ActionsSection extends StatelessWidget {
                 ),
               ),
               SizedBox(width: 10.w),
-              const Expanded(child: SizedBox()),
+              Expanded(
+                child: _TileActionCard(
+                  icon: Icons.inventory_2_rounded,
+                  title: 'ITEM-WISE SALES',
+                  subtitle: 'Rep sales per product',
+                  color: const Color(0xFF4F46E5),
+                  onTap: () => context.push('/supervisor/itemwise-sales'),
+                ),
+              ),
             ],
           ),
         ],

@@ -89,6 +89,23 @@ public class SupervisorController(
     }
 
     /// <summary>
+    /// GET /api/v1/supervisor/rep-itemwise-sales?userId=X&amp;from=YYYY-MM-DD&amp;to=YYYY-MM-DD
+    /// One rep's sales per product (packs and values) over a date range (max 92 days).
+    /// </summary>
+    [HttpGet("rep-itemwise-sales")]
+    public async Task<IActionResult> GetRepItemwiseSales(
+        [FromQuery] int userId,
+        [FromQuery] DateOnly from,
+        [FromQuery] DateOnly to,
+        CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        await _service.EnsureRepUnderSupervisorAsync(GetSupervisorId(), userId, ct);
+        var result = await _service.GetRepItemwiseSalesAsync(userId, from, to, ct);
+        return Ok(ResponseHelper.Ok(result, correlationId));
+    }
+
+    /// <summary>
     /// GET /api/v1/supervisor/rep-last-location?userId=X
     /// The rep's single most recent location ping (data is null if none). Only the last point —
     /// the full movement trail stays Admin-only (LocationPingsController).
