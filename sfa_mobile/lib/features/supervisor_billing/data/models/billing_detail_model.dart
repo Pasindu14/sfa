@@ -24,17 +24,6 @@ class BillingDetailModel extends BillingDetail {
     required super.items,
   });
 
-  static BillingStatus _parseStatus(String s) {
-    switch (s.toLowerCase()) {
-      case 'approved':
-        return BillingStatus.approved;
-      case 'cancelled':
-        return BillingStatus.cancelled;
-      default:
-        return BillingStatus.submitted;
-    }
-  }
-
   factory BillingDetailModel.fromJson(Map<String, dynamic> json) {
     final rawItems = json['items'] as List<dynamic>? ?? [];
     return BillingDetailModel(
@@ -52,7 +41,7 @@ class BillingDetailModel extends BillingDetail {
       billDiscountRate: (json['billDiscountRate'] as num).toDouble(),
       billDiscountAmount: (json['billDiscountAmount'] as num).toDouble(),
       totalAmount: (json['totalAmount'] as num).toDouble(),
-      status: _parseStatus(json['status'] as String),
+      status: BillingStatus.fromJson(json),
       notes: json['notes'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       items: rawItems

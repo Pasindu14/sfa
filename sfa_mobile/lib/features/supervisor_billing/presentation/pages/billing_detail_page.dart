@@ -273,8 +273,9 @@ class _DetailBody extends StatelessWidget {
       case BillingStatus.approved:
         return AppColors.success;
       case BillingStatus.cancelled:
+      case BillingStatus.rejected:
         return AppColors.error;
-      case BillingStatus.submitted:
+      case BillingStatus.pending:
         return AppColors.warning;
     }
   }
@@ -285,8 +286,10 @@ class _DetailBody extends StatelessWidget {
         return 'Approved';
       case BillingStatus.cancelled:
         return 'Cancelled';
-      case BillingStatus.submitted:
-        return 'Submitted';
+      case BillingStatus.rejected:
+        return 'Rejected';
+      case BillingStatus.pending:
+        return 'Pending';
     }
   }
 

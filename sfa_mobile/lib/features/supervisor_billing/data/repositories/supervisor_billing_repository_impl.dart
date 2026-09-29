@@ -12,14 +12,10 @@ class SupervisorBillingRepositoryImpl implements SupervisorBillingRepository {
   Future<List<BillingSummary>> getSupervisorBillings({
     required int salesRepId,
     required String date,
-    int page = 1,
-    int pageSize = 50,
   }) =>
       _datasource.getSupervisorBillings(
         salesRepId: salesRepId,
         date: date,
-        page: page,
-        pageSize: pageSize,
       );
 
   @override

@@ -9,13 +9,9 @@ class GetSupervisorBillingsUseCase {
   Future<List<BillingSummary>> call({
     required int salesRepId,
     required String date,
-    int page = 1,
-    int pageSize = 50,
   }) =>
       _repository.getSupervisorBillings(
         salesRepId: salesRepId,
         date: date,
-        page: page,
-        pageSize: pageSize,
       );
 }
