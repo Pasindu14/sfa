@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { AlertCircle, BarChart3, Info, Loader2 } from 'lucide-react'
 import { useSalesSummary } from '../../hooks/sales-summary.hooks'
 import { useSalesSummaryFilters } from '../../store'
-import { GROUP_BY_OPTIONS } from '../../schema/sales-summary.schema'
+import { dimensionsOf, groupByLabel } from '../../schema/sales-summary.schema'
 import { SalesSummaryCriteria } from '../filters/sales-summary-criteria'
 import { SalesSummaryHeadline } from '../summary/sales-summary-headline'
 import { SalesSummaryTable } from '../table/sales-summary-table'
@@ -33,9 +33,8 @@ export function SalesSummaryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const groupLabel = data
-    ? (GROUP_BY_OPTIONS.find((o) => o.value === data.groupBy)?.label ?? data.groupBy)
-    : ''
+  const dims = data ? dimensionsOf(data) : []
+  const groupLabel = groupByLabel(dims)
 
   return (
     <div className="mx-auto flex max-w-[1600px] flex-col gap-5 overflow-x-hidden p-6">
@@ -77,7 +76,7 @@ export function SalesSummaryPage() {
             // Remounting on the grouping/range resets paging: page 4 of the old grouping is
             // meaningless against a new one.
             <SalesSummaryTable
-              key={`${data.groupBy}-${data.from}-${data.to}`}
+              key={`${dims.join('-')}-${data.from}-${data.to}`}
               data={data}
             />
           ) : (

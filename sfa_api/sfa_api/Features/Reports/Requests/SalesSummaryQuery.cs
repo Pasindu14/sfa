@@ -27,4 +27,11 @@ public record SalesSummaryQuery(
     int? AsmId         = null,
     int? RsmId         = null,
     int? NsmId         = null,
-    int? ProductId     = null);
+    int? ProductId     = null,
+    // Extra grouping dimensions after GroupBy, in order (e.g. SalesRep then Territory then
+    // Distributor). Each row is one combination; grand totals are the same for any grouping.
+    IReadOnlyList<SalesSummaryGroupBy>? ThenBy = null)
+{
+    /// <summary>Every grouping dimension in order — GroupBy first.</summary>
+    public IReadOnlyList<SalesSummaryGroupBy> Dimensions => [GroupBy, .. ThenBy ?? []];
+}

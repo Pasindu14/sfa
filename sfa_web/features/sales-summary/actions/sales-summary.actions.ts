@@ -27,10 +27,13 @@ export const getSalesSummaryAction = createAction(
   async (
     from: string,
     to: string,
-    groupBy: SalesSummaryGroupBy,
+    groupBy: SalesSummaryGroupBy[],
     filters: SalesSummaryFilterIds,
   ): Promise<SalesSummaryResponse> => {
     const res = await client.get('/api/v1/reports/sales-summary', {
+      // Repeat the key (`groupBy=SalesRep&groupBy=Territory`), which is what ASP.NET binds to an
+      // array. axios' default `groupBy[]=…` would bind to nothing and silently fall back to SalesRep.
+      paramsSerializer: { indexes: null },
       params: {
         from,
         to,

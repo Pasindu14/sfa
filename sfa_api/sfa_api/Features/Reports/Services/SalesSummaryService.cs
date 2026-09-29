@@ -48,7 +48,7 @@ public class SalesSummaryService(
         // Why targets may be missing, decided once and reported to the UI so it can explain the
         // dashes rather than leaving the reader to guess.
         var targetsUnavailableReason =
-            q.GroupBy is SalesSummaryGroupBy.Route or SalesSummaryGroupBy.Outlet ? RouteOutletReason
+            q.Dimensions.Any(d => d is SalesSummaryGroupBy.Route or SalesSummaryGroupBy.Outlet) ? RouteOutletReason
             : q.RouteId is not null                                              ? RouteFilterReason
             : null;
         var targetsAvailable = targetsUnavailableReason is null;
@@ -71,8 +71,8 @@ public class SalesSummaryService(
         // "(Unassigned)" row that must survive or the report stops summing to the company total.
         // Dictionary<TKey,TValue> rejects a null key even when TKey is a nullable value type
         // (TryInsert null-checks the key before ever consulting the comparer); ToLookup allows it.
-        var salesByKey   = sales.ToLookup(s => s.GroupKey);
-        var targetsByKey = targetRows.ToLookup(t => t.GroupKey);
+        var salesByKey   = sales.ToLookup(s => RowKey.Of(s.GroupKey, s.ThenByKeys));
+        var targetsByKey = targetRows.ToLookup(t => RowKey.Of(t.GroupKey, t.ThenByKeys));
 
         // Full-outer-join emulation (BillingService.cs:863). A group with a target and zero sales
         // must still produce a row — that 0%-achievement line is the point of the report — and a
@@ -82,13 +82,19 @@ public class SalesSummaryService(
             .ToList();
         GuardGroupCount(keys.Count, q);
 
-        var labels = await _repository.GetLabelsAsync(
-            q.GroupBy, [.. keys.Where(k => k.HasValue).Select(k => k!.Value)], ct);
+        // One small lookup per dimension (sequential — shared DbContext).
+        var dims   = q.Dimensions;
+        var labels = new List<IReadOnlyDictionary<int, SalesSummaryLabel>>(dims.Count);
+        for (var i = 0; i < dims.Count; i++)
+        {
+            var ids = keys.Select(k => k[i]).Where(k => k.HasValue).Select(k => k!.Value).Distinct().ToList();
+            labels.Add(await _repository.GetLabelsAsync(dims[i], ids, ct));
+        }
 
         var rows = new List<SalesSummaryRowDto>(keys.Count);
         foreach (var key in keys)
         {
-            var s = salesByKey[key].FirstOrDefault() ?? EmptySales(key);
+            var s = salesByKey[key].FirstOrDefault() ?? EmptySales(key.K0);
 
             // Pro-rate each month's target by the share of its days the requested range covers,
             // then roll the months up. Rounded because a decimal factor like 16/30 does not divide
@@ -99,22 +105,20 @@ public class SalesSummaryService(
                 : (Math.Round(slices.Sum(x => x.TargetQtyPacks * factor[(x.Year, x.Month)]), 2),
                    Math.Round(slices.Sum(x => x.TargetValue    * factor[(x.Year, x.Month)]), 2));
 
-            rows.Add(BuildRow(key, s, target, targetsAvailable, labels));
+            rows.Add(BuildRow(key, dims, s, target, targetsAvailable, labels));
         }
 
         // Largest contributor first — the order a manager reads this report in. Name breaks ties so
         // the output is deterministic across runs (important for the Excel export diffing cleanly).
-        var ordered = rows
-            .OrderByDescending(r => r.NetSaleValue)
-            .ThenBy(r => r.GroupName, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        var ordered = Order(rows, dims.Count);
 
         var response = new SalesSummaryResponseDto(
             q.GroupBy, q.From, q.To,
             targetsAvailable, targetsUnavailableReason,
             ordered.Count,
             ordered,
-            BuildTotals(ordered, targetsAvailable));
+            BuildTotals(ordered, targetsAvailable),
+            dims);
 
         await _cache.SetAsync(cacheKey, response, CacheTtl, ct);
         return response;
@@ -137,11 +141,12 @@ public class SalesSummaryService(
     /// </para>
     /// </summary>
     private static SalesSummaryRowDto BuildRow(
-        int? key,
+        RowKey key,
+        IReadOnlyList<SalesSummaryGroupBy> dims,
         SalesSummarySalesAgg s,
         (decimal Qty, decimal Value)? target,
         bool targetsAvailable,
-        IReadOnlyDictionary<int, SalesSummaryLabel> labels)
+        IReadOnlyList<IReadOnlyDictionary<int, SalesSummaryLabel>> labels)
     {
         // Rounded to money scale. The pro-rata bill-discount term is a division
         // (TotalPrice × rate / 100), so without this it drags 20+ digits of scale through
@@ -156,17 +161,50 @@ public class SalesSummaryService(
         decimal? targetValue = targetsAvailable ? target?.Value ?? 0m : null;
         decimal? targetQty   = targetsAvailable ? target?.Qty   ?? 0m : null;
 
-        var (code, name) = ResolveLabel(key, labels);
+        var groups = dims
+            .Select((d, i) =>
+            {
+                var (c, n) = ResolveLabel(key[i], labels[i]);
+                return new SalesSummaryGroupCellDto(d, key[i], c, n);
+            })
+            .ToList();
 
         return new SalesSummaryRowDto(
-            key, code, name,
+            key.K0, groups[0].Code, groups[0].Name,
             targetValue, targetQty,
             grossSaleValue, s.SaleQty,
             Money(s.GoodReturnValue), s.GoodReturnQty,
             Money(s.MarketReturnValue), s.MarketReturnQty,
             Money(s.DbDiscount), discount,
             netSaleValue, netSaleQty,
-            Achievement(netSaleValue, targetValue));
+            Achievement(netSaleValue, targetValue),
+            groups);
+    }
+
+    /// <summary>
+    /// One dimension: largest contributor first — the order a manager reads this report in. Several
+    /// dimensions: rows of the same first-dimension value stay together, blocks ordered by their
+    /// combined net, then largest first inside each block. Names break ties so the output is
+    /// deterministic across runs (important for the Excel export diffing cleanly).
+    /// </summary>
+    private static List<SalesSummaryRowDto> Order(List<SalesSummaryRowDto> rows, int dimensionCount)
+    {
+        if (dimensionCount <= 1)
+            return rows
+                .OrderByDescending(r => r.NetSaleValue)
+                .ThenBy(r => r.GroupName, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+        var blockNet = rows.ToLookup(r => r.GroupKey)
+            .ToDictionary(g => g.Key ?? int.MinValue, g => g.Sum(r => r.NetSaleValue));
+
+        return rows
+            .OrderByDescending(r => blockNet[r.GroupKey ?? int.MinValue])
+            .ThenBy(r => r.GroupName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(r => r.GroupKey)
+            .ThenByDescending(r => r.NetSaleValue)
+            .ThenBy(r => string.Join("|", r.Groups!.Select(g => g.Name)), StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private static SalesSummaryTotalsDto BuildTotals(
@@ -220,7 +258,7 @@ public class SalesSummaryService(
 
         _logger.LogWarning(
             "Sales summary exceeded {MaxGroups} groups for {GroupBy} over {From}..{To}",
-            MaxGroups, q.GroupBy, q.From, q.To);
+            MaxGroups, string.Join(",", q.Dimensions), q.From, q.To);
 
         throw new BusinessRuleException(
             "REPORT_TOO_MANY_GROUPS",
@@ -232,8 +270,28 @@ public class SalesSummaryService(
     /// share a cached result, which surfaces as one filter silently returning another's numbers.
     /// </summary>
     private static string BuildCacheKey(SalesSummaryQuery q) => string.Join(':',
-        "sales-summary", q.GroupBy, q.From.DayNumber, q.To.DayNumber,
+        "sales-summary", string.Join(",", q.Dimensions), q.From.DayNumber, q.To.DayNumber,
         q.RegionId, q.AreaId, q.TerritoryId, q.DivisionId, q.RouteId,
         q.DistributorId, q.SalesRepId, q.SupervisorId,
         q.AsmId, q.RsmId, q.NsmId, q.ProductId);
+}
+
+/// <summary>
+/// A report row's identity: one key per grouping dimension, unused slots null. A value type with
+/// structural equality, so it works as a lookup key even when individual slots are null (the
+/// "(Unassigned)" bucket of a nullable FK).
+/// </summary>
+internal readonly record struct RowKey(int? K0, int? K1, int? K2, int? K3, int? K4, int? K5)
+{
+    public int? this[int i] => i switch
+    {
+        0 => K0, 1 => K1, 2 => K2, 3 => K3, 4 => K4, 5 => K5,
+        _ => throw new ArgumentOutOfRangeException(nameof(i)),
+    };
+
+    public static RowKey Of(int? first, IReadOnlyList<int?>? rest)
+    {
+        int? At(int i) => rest is not null && i < rest.Count ? rest[i] : null;
+        return new(first, At(0), At(1), At(2), At(3), At(4));
+    }
 }

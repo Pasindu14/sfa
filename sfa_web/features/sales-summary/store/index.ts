@@ -28,6 +28,7 @@ export const useSalesSummaryFilters = () =>
       appliedFilters: s.appliedFilters,
       setDateRange: s.setDateRange,
       setGroupBy: s.setGroupBy,
+      toggleGroupBy: s.toggleGroupBy,
       setGeoId: s.setGeoId,
       setFilterId: s.setFilterId,
       setRole: s.setRole,

@@ -9,10 +9,24 @@ public class SalesSummaryQueryValidator : AbstractValidator<SalesSummaryQuery>
     // Also bounds the per-month target loop to at most 13 queries.
     private const int MaxRangeDays = 366;
 
+    /// <summary>Matches the six key slots <c>SalesSummaryRepository</c> groups by.</summary>
+    public const int MaxDimensions = 6;
+
     public SalesSummaryQueryValidator()
     {
         RuleFor(x => x.GroupBy)
             .IsInEnum().WithMessage("GroupBy is not a recognised grouping dimension.");
+
+        RuleForEach(x => x.ThenBy)
+            .IsInEnum().WithMessage("GroupBy is not a recognised grouping dimension.");
+
+        RuleFor(x => x.Dimensions)
+            .Must(d => d.Count <= MaxDimensions)
+            .WithName("GroupBy")
+            .WithMessage($"Group by at most {MaxDimensions} dimensions.")
+            .Must(d => d.Distinct().Count() == d.Count)
+            .WithName("GroupBy")
+            .WithMessage("Each grouping dimension can be chosen only once.");
 
         RuleFor(x => x.To)
             .GreaterThanOrEqualTo(x => x.From)

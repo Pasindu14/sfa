@@ -43,17 +43,16 @@ import {
   useUsersByRoleFetcher,
 } from '../../hooks/sales-summary.hooks'
 import {
-  GROUP_BY_OPTIONS,
   PEOPLE_ROLES,
   ROLE_FILTER_KEY,
   type PeopleRole,
-  type SalesSummaryGroupBy,
   type SalesSummaryResponse,
   type UserOption,
 } from '../../schema/sales-summary.schema'
 import { useSalesSummaryFilters } from '../../store'
 import { exportSalesSummaryExcel, exportSalesSummaryPdf } from '../../lib/sales-summary-export'
 import { IdSelect } from '../selects/id-select'
+import { GroupByPicker } from './group-by-picker'
 
 // Module-level so their identity is stable across renders — IdSelect memoizes on these, and an
 // inline arrow here would defeat that and reintroduce the render loop.
@@ -85,7 +84,7 @@ export function SalesSummaryCriteria({ data }: { data?: SalesSummaryResponse }) 
     applied !== null &&
     (applied.from !== f.from ||
       applied.to !== f.to ||
-      applied.groupBy !== f.groupBy ||
+      applied.groupBy.join() !== f.groupBy.join() ||
       applied.regionId !== f.regionId ||
       applied.areaId !== f.areaId ||
       applied.territoryId !== f.territoryId ||
@@ -129,20 +128,9 @@ export function SalesSummaryCriteria({ data }: { data?: SalesSummaryResponse }) 
             />
           </div>
 
-          <div className="flex w-full flex-col gap-1.5 sm:w-56">
+          <div className="flex w-full flex-col gap-1.5 sm:w-96">
             <label className="text-xs font-medium text-muted-foreground">Group by</label>
-            <Select value={f.groupBy} onValueChange={(v) => f.setGroupBy(v as SalesSummaryGroupBy)}>
-              <SelectTrigger className="h-9 w-full">
-                <SelectValue placeholder="Group by" />
-              </SelectTrigger>
-              <SelectContent>
-                {GROUP_BY_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <GroupByPicker value={f.groupBy} onToggle={f.toggleGroupBy} />
           </div>
 
           <div className="flex items-center gap-2">

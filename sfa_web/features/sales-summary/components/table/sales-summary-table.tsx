@@ -2,7 +2,12 @@
 
 import { useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
-import type { SalesSummaryResponse } from '../../schema/sales-summary.schema'
+import {
+  dimensionsOf,
+  groupCell,
+  type SalesSummaryResponse,
+  type SalesSummaryRow,
+} from '../../schema/sales-summary.schema'
 import {
   BANDS,
   buildSalesSummaryColumns,
@@ -13,8 +18,17 @@ import {
 import { AchievementMeter } from '../summary/achievement-meter'
 import { ALL_ROWS, SalesSummaryPagination } from './sales-summary-pagination'
 
+/** True when two rows share every grouping value up to and including dimension `upTo`. */
+function sameLeading(a: SalesSummaryRow, b: SalesSummaryRow, upTo: number): boolean {
+  for (let i = 0; i <= upTo; i++) {
+    if (groupCell(a, i).key !== groupCell(b, i).key) return false
+  }
+  return true
+}
+
 export function SalesSummaryTable({ data }: { data: SalesSummaryResponse }) {
-  const columns = useMemo(() => buildSalesSummaryColumns(data.groupBy), [data.groupBy])
+  const dims = useMemo(() => dimensionsOf(data), [data])
+  const columns = useMemo(() => buildSalesSummaryColumns(dims), [dims])
 
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(25)
@@ -91,13 +105,20 @@ export function SalesSummaryTable({ data }: { data: SalesSummaryResponse }) {
           <tbody>
             {rows.map((row, ri) => (
               <tr
-                key={`${row.groupKey ?? 'unassigned'}-${ri}`}
+                key={`${dims.map((_, i) => groupCell(row, i).key ?? 'u').join('-')}-${ri}`}
                 className="border-b last:border-0 hover:bg-muted/30"
               >
                 {columns.map((col, ci) => {
                   const raw = col.get(row)
                   const negative = typeof raw === 'number' && raw < 0
                   const tinted = bandOf(col.band).tinted
+                  // Rows arrive grouped by their leading dimensions; a label that just repeats the
+                  // row above is dimmed so each block reads as a block. Still printed (not blanked)
+                  // so a row makes sense on its own after sorting, paging or copying.
+                  const repeated =
+                    col.groupIndex !== undefined &&
+                    ri > 0 &&
+                    sameLeading(rows[ri - 1], row, col.groupIndex)
 
                   return (
                     <td
@@ -109,7 +130,8 @@ export function SalesSummaryTable({ data }: { data: SalesSummaryResponse }) {
                         startsBand(col, ci) && 'border-l',
                         ci === 0 && 'sticky left-0 bg-card font-medium',
                         col.key === 'netSaleValue' && 'font-semibold',
-                        negative && 'text-red-600'
+                        negative && 'text-red-600',
+                        repeated && 'font-normal text-muted-foreground/60'
                       )}
                     >
                       {col.meter ? (
