@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { AlertCircle, BarChart3, Info, Loader2 } from 'lucide-react'
+import { AlertCircle, BarChart3, CalendarDays, Layers, Loader2 } from 'lucide-react'
 import { useSalesSummary } from '../../hooks/sales-summary.hooks'
 import { useSalesSummaryFilters } from '../../store'
 import { dimensionsOf, groupByLabel } from '../../schema/sales-summary.schema'
@@ -37,18 +37,23 @@ export function SalesSummaryPage() {
   const groupLabel = groupByLabel(dims)
 
   return (
-    <div className="mx-auto flex max-w-[1600px] flex-col gap-5 overflow-x-hidden p-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Sales summary</h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          {data
-            ? `By ${groupLabel.toLowerCase()}, ${readableRange(data.from, data.to)}`
-            : 'Targets against gross sales, returns, discounts and net sales'}
+    <div className="flex flex-col gap-6 overflow-x-hidden p-6">
+      {/* Same hero as the other report pages (Bin Card, Rep Bills). Title only — the criteria live
+          in their own card below, because the date picker's popover is clipped by this padding. */}
+      <div className="rounded-lg bg-muted/90 p-10">
+        <h1 className="text-3xl font-bold tracking-tight">Sales Summary</h1>
+        <p className="text-muted-foreground">
+          Targets against gross sales, returns, discounts and net sales — grouped any way you need
         </p>
-      </header>
-
-      {/* The answer comes before the working. */}
-      {data && <SalesSummaryHeadline data={data} />}
+        {data && (
+          <div className="mt-4 flex flex-wrap gap-2 text-xs">
+            <HeroChip icon={<CalendarDays className="h-3.5 w-3.5" />}>
+              {readableRange(data.from, data.to)}
+            </HeroChip>
+            <HeroChip icon={<Layers className="h-3.5 w-3.5" />}>{groupLabel}</HeroChip>
+          </div>
+        )}
+      </div>
 
       <SalesSummaryCriteria data={data} />
 
@@ -63,14 +68,9 @@ export function SalesSummaryPage() {
           subtitle={error instanceof Error ? error.message : 'Try again.'}
         />
       ) : data ? (
-        <div className="flex flex-col gap-3">
-          {/* Say why the target columns are dashes rather than leaving the reader to guess. */}
-          {!data.targetsAvailable && data.targetsUnavailableReason && (
-            <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
-              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <span>{data.targetsUnavailableReason}</span>
-            </div>
-          )}
+        <div className="flex flex-col gap-4">
+          {/* The Target tile also says why target columns are dashes, when they are. */}
+          <SalesSummaryHeadline data={data} />
 
           {data.rows.length > 0 ? (
             // Remounting on the grouping/range resets paging: page 4 of the old grouping is
@@ -126,5 +126,14 @@ function MessageState({
       <p className="text-sm font-medium">{title}</p>
       {subtitle && <p className="max-w-md text-xs text-muted-foreground">{subtitle}</p>}
     </div>
+  )
+}
+
+function HeroChip({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-foreground/10 bg-background/70 px-3 py-1 font-medium text-foreground/80">
+      {icon}
+      {children}
+    </span>
   )
 }
