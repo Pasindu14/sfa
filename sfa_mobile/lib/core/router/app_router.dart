@@ -110,6 +110,9 @@ import 'package:uswatte/features/supervisor_summary/presentation/cubit/superviso
 import 'package:uswatte/features/supervisor_achievement/data/datasources/supervisor_achievement_remote_datasource.dart';
 import 'package:uswatte/features/supervisor_achievement/presentation/cubit/supervisor_achievement_cubit.dart';
 import 'package:uswatte/features/supervisor_achievement/presentation/pages/supervisor_achievement_page.dart';
+import 'package:uswatte/features/supervisor_sales_summary/data/datasources/supervisor_sales_summary_remote_datasource.dart';
+import 'package:uswatte/features/supervisor_sales_summary/presentation/cubit/supervisor_sales_summary_cubit.dart';
+import 'package:uswatte/features/supervisor_sales_summary/presentation/pages/supervisor_sales_summary_page.dart';
 import 'package:uswatte/features/purchase_orders/domain/usecases/get_pending_purchase_orders_usecase.dart';
 import 'package:uswatte/features/purchase_orders/domain/usecases/get_purchase_order_usecase.dart';
 import 'package:uswatte/features/purchase_orders/domain/usecases/rep_approve_purchase_order_usecase.dart';
@@ -722,6 +725,17 @@ class AppRouter {
                   remote: getIt<SupervisorAchievementRemoteDatasource>(),
                 )..loadReps(),
                 child: const SupervisorAchievementPage(),
+              ),
+            ),
+            GoRoute(
+              path: 'sales-summary',
+              name: 'supervisorSalesSummary',
+              builder: (_, __) => BlocProvider(
+                create: (_) => SupervisorSalesSummaryCubit(
+                  getMyReps: getIt<GetMyRepsUseCase>(),
+                  remote: getIt<SupervisorSalesSummaryRemoteDatasource>(),
+                )..loadReps(),
+                child: const SupervisorSalesSummaryPage(),
               ),
             ),
             GoRoute(
