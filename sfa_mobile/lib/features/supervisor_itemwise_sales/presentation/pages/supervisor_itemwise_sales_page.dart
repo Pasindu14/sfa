@@ -215,7 +215,7 @@ class _ReadyBodyState extends State<_ReadyBody> {
             else
               for (final item in items) ...[
                 _ItemCard(item: item),
-                SizedBox(height: 10.h),
+                SizedBox(height: 8.h),
               ],
           ],
           SizedBox(height: 6.h),
@@ -485,9 +485,10 @@ class _SearchField extends StatelessWidget {
     );
   }
 }
-
 // ── Item card ─────────────────────────────────────────────────────────────────
 
+/// Compact on purpose — a rep can bill dozens of items. Every figure is still
+/// here: net, packs sold / free / good + market returns, gross, discount, returns.
 class _ItemCard extends StatelessWidget {
   final ItemwiseSalesLine item;
   const _ItemCard({required this.item});
@@ -496,72 +497,62 @@ class _ItemCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final i = item;
 
-    Widget qty(String label, double v, {bool highlight = false}) => Expanded(
-      child: Column(
-        children: [
-          Text(
-            _fmtQty(v),
-            style: GoogleFonts.barlowCondensed(
-              fontSize: 17.sp,
-              fontWeight: FontWeight.w800,
-              height: 1.0,
-              color: highlight
-                  ? AppColors.primaryDark
-                  : v == 0
-                  ? AppColors.foregroundMuted
-                  : AppColors.foreground,
-            ),
+    // "7 SOLD" on one line: bold value, muted label; zeros fade out.
+    Widget cell(
+      String value,
+      String label, {
+      bool zero = false,
+      bool highlight = false,
+    }) => Expanded(
+      // Scale down rather than ellipsize — a figure must never be cut off.
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: value,
+                style: GoogleFonts.barlowCondensed(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w800,
+                  color: highlight
+                      ? AppColors.primaryDark
+                      : zero
+                      ? AppColors.foregroundMuted
+                      : AppColors.foreground,
+                ),
+              ),
+              TextSpan(
+                text: ' $label',
+                style: GoogleFonts.barlowCondensed(
+                  fontSize: 9.sp,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.6,
+                  color: AppColors.foregroundMuted,
+                ),
+              ),
+            ],
           ),
-          SizedBox(height: 3.h),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.barlowCondensed(
-              fontSize: 9.sp,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.0,
-              color: AppColors.foregroundMuted,
-            ),
-          ),
-        ],
+          maxLines: 1,
+        ),
       ),
     );
 
-    Widget money(String label, double v, {bool minus = false}) => Row(
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: GoogleFonts.barlowCondensed(
-              fontSize: 11.sp,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.8,
-              color: AppColors.foregroundMuted,
-            ),
-          ),
-        ),
-        Text(
-          '${minus && v != 0 ? '−' : ''}${fmtLkr(v)}',
-          style: GoogleFonts.barlowCondensed(
-            fontSize: 13.sp,
-            fontWeight: FontWeight.w600,
-            color: AppColors.foreground,
-          ),
-        ),
-      ],
-    );
+    // LKR is dropped inside the strip — the NET figure above carries it.
+    String amt(double v, {bool minus = false}) =>
+        '${minus && v != 0 ? '−' : ''}${fmtLkr(v).substring(4)}';
 
     return Container(
-      padding: EdgeInsets.all(14.r),
+      padding: EdgeInsets.fromLTRB(12.w, 10.h, 12.w, 10.h),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14.r),
+        borderRadius: BorderRadius.circular(12.r),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF1A1A11).withValues(alpha: 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -572,79 +563,107 @@ class _ItemCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: i.itemName,
+                        style: GoogleFonts.barlow(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w700,
+                          height: 1.2,
+                          color: AppColors.foreground,
+                        ),
+                      ),
+                      TextSpan(
+                        text: '  ${i.itemCode}',
+                        style: GoogleFonts.barlowCondensed(
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.6,
+                          color: AppColors.foregroundMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              SizedBox(width: 8.w),
+              Text.rich(
+                TextSpan(
                   children: [
-                    Text(
-                      i.itemName,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.barlow(
-                        fontSize: 14.sp,
+                    TextSpan(
+                      text: 'NET ',
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 9.sp,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.foreground,
+                        letterSpacing: 1.0,
+                        color: AppColors.foregroundMuted,
                       ),
                     ),
-                    SizedBox(height: 2.h),
-                    Text(
-                      i.itemCode,
+                    TextSpan(
+                      text: fmtLkr(i.netValue),
                       style: GoogleFonts.barlowCondensed(
-                        fontSize: 11.sp,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.8,
-                        color: AppColors.foregroundMuted,
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.primaryDark,
                       ),
                     ),
                   ],
                 ),
               ),
-              SizedBox(width: 10.w),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    fmtLkr(i.netValue),
-                    style: GoogleFonts.barlowCondensed(
-                      fontSize: 17.sp,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.primaryDark,
-                    ),
-                  ),
-                  Text(
-                    'NET',
-                    style: GoogleFonts.barlowCondensed(
-                      fontSize: 9.sp,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
-                      color: AppColors.foregroundMuted,
-                    ),
-                  ),
-                ],
-              ),
             ],
           ),
-          SizedBox(height: 12.h),
+          SizedBox(height: 7.h),
           Container(
-            padding: EdgeInsets.symmetric(vertical: 9.h),
+            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(10.r),
+              borderRadius: BorderRadius.circular(8.r),
             ),
-            child: Row(
+            child: Column(
               children: [
-                qty('SOLD PKS', i.saleQty, highlight: true),
-                qty('FREE', i.freeIssueQty),
-                qty('GOOD RTN', i.goodReturnQty),
-                qty('MKT RTN', i.marketReturnQty),
+                Row(
+                  children: [
+                    cell(_fmtQty(i.saleQty), 'SOLD', highlight: true),
+                    cell(
+                      _fmtQty(i.freeIssueQty),
+                      'FREE',
+                      zero: i.freeIssueQty == 0,
+                    ),
+                    cell(
+                      _fmtQty(i.goodReturnQty),
+                      'GOOD RTN',
+                      zero: i.goodReturnQty == 0,
+                    ),
+                    cell(
+                      _fmtQty(i.marketReturnQty),
+                      'MKT RTN',
+                      zero: i.marketReturnQty == 0,
+                    ),
+                  ],
+                ),
+                SizedBox(height: 3.h),
+                Row(
+                  children: [
+                    cell(amt(i.grossValue), 'GROSS', zero: i.grossValue == 0),
+                    cell(
+                      amt(i.discount, minus: true),
+                      'DISC',
+                      zero: i.discount == 0,
+                    ),
+                    cell(
+                      amt(i.returnValue, minus: true),
+                      'RTN',
+                      zero: i.returnValue == 0,
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
-          SizedBox(height: 10.h),
-          money('GROSS', i.grossValue),
-          SizedBox(height: 3.h),
-          money('DISCOUNT', i.discount, minus: true),
-          SizedBox(height: 3.h),
-          money('RETURNS', i.returnValue, minus: true),
         ],
       ),
     );
