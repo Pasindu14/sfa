@@ -112,6 +112,7 @@ import 'package:uswatte/features/supervisor_summary/domain/usecases/get_supervis
 import 'package:uswatte/features/supervisor_route_map/data/datasources/supervisor_route_map_remote_datasource.dart';
 import 'package:uswatte/features/supervisor_route_map/data/repositories/supervisor_route_map_repository_impl.dart';
 import 'package:uswatte/features/supervisor_route_map/domain/repositories/supervisor_route_map_repository.dart';
+import 'package:uswatte/features/supervisor_route_map/domain/usecases/get_rep_last_location_usecase.dart';
 import 'package:uswatte/features/supervisor_route_map/domain/usecases/get_supervisor_route_map_usecase.dart';
 import 'package:uswatte/features/todays_route_map/data/repositories/todays_route_map_repository_impl.dart';
 import 'package:uswatte/features/todays_route_map/domain/repositories/todays_route_map_repository.dart';
@@ -492,6 +493,8 @@ Future<void> configureDependencies() async {
   );
   getIt.registerLazySingleton(
       () => GetSupervisorRouteMapUseCase(getIt<SupervisorRouteMapRepository>()));
+  getIt.registerLazySingleton(
+      () => GetRepLastLocationUseCase(getIt<SupervisorRouteMapRepository>()));
 
   // ── Distributor Stock ─────────────────────────────────────────────────────
   getIt.registerLazySingleton(

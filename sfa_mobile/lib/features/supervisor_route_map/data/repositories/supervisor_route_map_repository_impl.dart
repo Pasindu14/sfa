@@ -1,5 +1,6 @@
 import 'package:uswatte/features/outlets/data/models/outlet_model.dart';
 import 'package:uswatte/features/supervisor_route_map/data/datasources/supervisor_route_map_remote_datasource.dart';
+import 'package:uswatte/features/supervisor_route_map/domain/entities/rep_last_location.dart';
 import 'package:uswatte/features/supervisor_route_map/domain/repositories/supervisor_route_map_repository.dart';
 import 'package:uswatte/features/todays_route_map/domain/entities/route_map_outlet.dart';
 import 'package:uswatte/features/todays_route_map/domain/enums/route_outlet_status.dart';
@@ -40,6 +41,10 @@ class SupervisorRouteMapRepositoryImpl implements SupervisorRouteMapRepository {
       return RouteMapOutlet(outlet: outlet, status: status);
     }).toList();
   }
+
+  @override
+  Future<RepLastLocation?> getRepLastLocation(int userId) =>
+      _datasource.getRepLastLocation(userId);
 
   String _fmt(DateTime dt) =>
       '${dt.year.toString().padLeft(4, '0')}-'

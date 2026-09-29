@@ -98,6 +98,7 @@ import 'package:uswatte/features/supervisor_billing/presentation/pages/billing_d
 import 'package:uswatte/features/supervisor_billing/presentation/pages/supervisor_billing_page.dart';
 import 'package:uswatte/features/route_assignment/domain/usecases/get_my_reps_usecase.dart';
 import 'package:uswatte/features/supervisor_summary/domain/usecases/get_supervisor_summary_usecase.dart';
+import 'package:uswatte/features/supervisor_route_map/domain/usecases/get_rep_last_location_usecase.dart';
 import 'package:uswatte/features/supervisor_route_map/domain/usecases/get_supervisor_route_map_usecase.dart';
 import 'package:uswatte/features/supervisor_route_map/presentation/bloc/supervisor_route_map_bloc.dart';
 import 'package:uswatte/features/supervisor_route_map/presentation/bloc/supervisor_route_map_event.dart';
@@ -712,6 +713,7 @@ class AppRouter {
                 create: (_) => SupervisorRouteMapBloc(
                   getMyReps: getIt<GetMyRepsUseCase>(),
                   getRouteMap: getIt<GetSupervisorRouteMapUseCase>(),
+                  getLastLocation: getIt<GetRepLastLocationUseCase>(),
                 )..add(const SupervisorRouteMapRepsRequested()),
                 child: const SupervisorRouteMapPage(),
               ),

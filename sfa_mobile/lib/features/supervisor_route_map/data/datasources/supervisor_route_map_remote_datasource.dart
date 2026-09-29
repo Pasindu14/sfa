@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:uswatte/core/errors/app_exception.dart';
 import 'package:uswatte/core/network/api_response.dart';
 import 'package:uswatte/features/outlets/data/models/outlet_model.dart';
+import 'package:uswatte/features/supervisor_route_map/domain/entities/rep_last_location.dart';
 
 class SupervisorRouteMapRemoteDatasource {
   final Dio _dio;
@@ -99,6 +100,26 @@ class SupervisorRouteMapRemoteDatasource {
       throw _mapDioError(e);
     } catch (_) {
       throw const ParseException(message: 'Failed to read not-billing data.');
+    }
+  }
+
+  /// Null when the rep has never sent a ping.
+  Future<RepLastLocation?> getRepLastLocation(int userId) async {
+    try {
+      final response = await _dio.get(
+        '/api/v1/supervisor/rep-last-location',
+        queryParameters: {'userId': userId},
+      );
+      final body = response.data as Map<String, dynamic>;
+      final data = body['data'];
+      if (data == null) return null;
+      return RepLastLocation.fromJson(data as Map<String, dynamic>);
+    } on AppException {
+      rethrow;
+    } on DioException catch (e) {
+      throw _mapDioError(e);
+    } catch (_) {
+      throw const ParseException(message: 'Failed to read location data.');
     }
   }
 
