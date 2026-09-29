@@ -37,6 +37,17 @@ class RepBillingSummary extends Equatable {
     required this.marketReturn,
   });
 
+  /// Net sales exactly as the rep's bill shows it (NET TOTAL = SALES −
+  /// DISCOUNT − RETURNS, create_bill_state.dart): each bill's TotalAmount,
+  /// summed over approved + pending bills — i.e. [totalBilled].
+  double get netSales => totalBilled;
+
+  /// Sales before any discount or return, rebuilt from the net. Exact because
+  /// discount and both return buckets are summed over the same approved +
+  /// pending bills, and TotalAmount = gross − TotalDiscount − ReturnValue with
+  /// ReturnValue = good (MarketResell) + market (Damage + Expire).
+  double get grossSales => netSales + totalDiscount + goodReturn + marketReturn;
+
   factory RepBillingSummary.fromJson(Map<String, dynamic> json) {
     double d(String k) => (json[k] as num?)?.toDouble() ?? 0.0;
     int i(String k) => (json[k] as num?)?.toInt() ?? 0;

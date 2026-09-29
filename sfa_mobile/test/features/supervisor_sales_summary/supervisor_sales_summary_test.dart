@@ -43,6 +43,14 @@ void main() {
     expect(s.marketReturn, 12.25);
   });
 
+  test('net sales matches the rep bill: gross − discount − returns', () {
+    final s = RepBillingSummary.fromJson(_json);
+    expect(s.netSales, 1400);
+    expect(s.grossSales, 1400 + 70 + 30 + 12.25);
+    expect(s.grossSales - s.totalDiscount - s.goodReturn - s.marketReturn,
+        s.netSales);
+  });
+
   group('SupervisorSalesSummaryCubit', () {
     late _MockReps reps;
     late _MockRemote remote;
