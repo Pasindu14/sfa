@@ -487,64 +487,26 @@ class _SearchField extends StatelessWidget {
 }
 // ── Item card ─────────────────────────────────────────────────────────────────
 
-/// Compact on purpose — a rep can bill dozens of items. Every figure is still
-/// here: net, packs sold / free / good + market returns, gross, discount, returns.
+/// Compact on purpose — a rep can bill dozens of items. Name + code on one
+/// line, then a 2 × 4 grid: packs (sold / free / good rtn / mkt rtn) over
+/// values (gross / discount / returns / net). Columns line up, every figure
+/// has its own labelled cell.
 class _ItemCard extends StatelessWidget {
   final ItemwiseSalesLine item;
   const _ItemCard({required this.item});
+
+  static const _line = Color(0xFFEEEDE6);
 
   @override
   Widget build(BuildContext context) {
     final i = item;
 
-    // "7 SOLD" on one line: bold value, muted label; zeros fade out.
-    Widget cell(
-      String value,
-      String label, {
-      bool zero = false,
-      bool highlight = false,
-    }) => Expanded(
-      // Scale down rather than ellipsize — a figure must never be cut off.
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: Alignment.centerLeft,
-        child: Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(
-                text: value,
-                style: GoogleFonts.barlowCondensed(
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w800,
-                  color: highlight
-                      ? AppColors.primaryDark
-                      : zero
-                      ? AppColors.foregroundMuted
-                      : AppColors.foreground,
-                ),
-              ),
-              TextSpan(
-                text: ' $label',
-                style: GoogleFonts.barlowCondensed(
-                  fontSize: 9.sp,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.6,
-                  color: AppColors.foregroundMuted,
-                ),
-              ),
-            ],
-          ),
-          maxLines: 1,
-        ),
-      ),
-    );
-
-    // LKR is dropped inside the strip — the NET figure above carries it.
+    // Amounts drop the LKR prefix — the VALUE row caption carries it.
     String amt(double v, {bool minus = false}) =>
         '${minus && v != 0 ? '−' : ''}${fmtLkr(v).substring(4)}';
 
     return Container(
-      padding: EdgeInsets.fromLTRB(12.w, 10.h, 12.w, 10.h),
+      padding: EdgeInsets.fromLTRB(12.w, 10.h, 12.w, 12.h),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12.r),
@@ -560,110 +522,190 @@ class _ItemCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(
-                        text: i.itemName,
-                        style: GoogleFonts.barlow(
-                          fontSize: 13.sp,
-                          fontWeight: FontWeight.w700,
-                          height: 1.2,
-                          color: AppColors.foreground,
-                        ),
-                      ),
-                      TextSpan(
-                        text: '  ${i.itemCode}',
-                        style: GoogleFonts.barlowCondensed(
-                          fontSize: 11.sp,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.6,
-                          color: AppColors.foregroundMuted,
-                        ),
-                      ),
-                    ],
-                  ),
-                  maxLines: 2,
+              Flexible(
+                child: Text(
+                  i.itemName,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.barlow(
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.foreground,
+                  ),
                 ),
               ),
-              SizedBox(width: 8.w),
-              Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(
-                      text: 'NET ',
-                      style: GoogleFonts.barlowCondensed(
-                        fontSize: 9.sp,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.0,
-                        color: AppColors.foregroundMuted,
-                      ),
-                    ),
-                    TextSpan(
-                      text: fmtLkr(i.netValue),
-                      style: GoogleFonts.barlowCondensed(
-                        fontSize: 15.sp,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.primaryDark,
-                      ),
-                    ),
-                  ],
+              SizedBox(width: 6.w),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 1.h),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(4.r),
+                ),
+                child: Text(
+                  i.itemCode,
+                  style: GoogleFonts.barlowCondensed(
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                    color: AppColors.primaryDark,
+                  ),
                 ),
               ),
             ],
           ),
-          SizedBox(height: 7.h),
+          SizedBox(height: 8.h),
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.05),
+              border: Border.all(color: _line),
               borderRadius: BorderRadius.circular(8.r),
             ),
             child: Column(
               children: [
-                Row(
-                  children: [
-                    cell(_fmtQty(i.saleQty), 'SOLD', highlight: true),
-                    cell(
-                      _fmtQty(i.freeIssueQty),
+                _GridRow(
+                  caption: 'PACKS',
+                  cells: [
+                    _Cell('SOLD', _fmtQty(i.saleQty), zero: i.saleQty == 0),
+                    _Cell(
                       'FREE',
+                      _fmtQty(i.freeIssueQty),
                       zero: i.freeIssueQty == 0,
                     ),
-                    cell(
-                      _fmtQty(i.goodReturnQty),
+                    _Cell(
                       'GOOD RTN',
+                      _fmtQty(i.goodReturnQty),
                       zero: i.goodReturnQty == 0,
                     ),
-                    cell(
-                      _fmtQty(i.marketReturnQty),
+                    _Cell(
                       'MKT RTN',
+                      _fmtQty(i.marketReturnQty),
                       zero: i.marketReturnQty == 0,
                     ),
                   ],
                 ),
-                SizedBox(height: 3.h),
-                Row(
-                  children: [
-                    cell(amt(i.grossValue), 'GROSS', zero: i.grossValue == 0),
-                    cell(
+                const Divider(height: 1, thickness: 1, color: _line),
+                _GridRow(
+                  caption: 'LKR',
+                  cells: [
+                    _Cell('GROSS', amt(i.grossValue), zero: i.grossValue == 0),
+                    _Cell(
+                      'DISCOUNT',
                       amt(i.discount, minus: true),
-                      'DISC',
                       zero: i.discount == 0,
                     ),
-                    cell(
+                    _Cell(
+                      'RETURNS',
                       amt(i.returnValue, minus: true),
-                      'RTN',
                       zero: i.returnValue == 0,
                     ),
+                    _Cell('NET', amt(i.netValue), highlight: true),
                   ],
                 ),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Cell {
+  final String label;
+  final String value;
+  final bool zero;
+  final bool highlight;
+  const _Cell(
+    this.label,
+    this.value, {
+    this.zero = false,
+    this.highlight = false,
+  });
+}
+
+/// One grid row: a narrow row caption, then equal columns split by lines.
+class _GridRow extends StatelessWidget {
+  final String caption;
+  final List<_Cell> cells;
+  const _GridRow({required this.caption, required this.cells});
+
+  @override
+  Widget build(BuildContext context) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            width: 20.w,
+            color: const Color(0xFFF8F7F2),
+            alignment: Alignment.center,
+            child: RotatedBox(
+              quarterTurns: 3,
+              child: Text(
+                caption,
+                style: GoogleFonts.barlowCondensed(
+                  fontSize: 8.sp,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.2,
+                  color: AppColors.foregroundMuted,
+                ),
+              ),
+            ),
+          ),
+          for (final c in cells) ...[
+            const VerticalDivider(
+              width: 1,
+              thickness: 1,
+              color: _ItemCard._line,
+            ),
+            Expanded(
+              child: Container(
+                color: c.highlight
+                    ? AppColors.primary.withValues(alpha: 0.08)
+                    : null,
+                padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 6.h),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      c.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 8.5.sp,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                        color: c.highlight
+                            ? AppColors.primaryDark
+                            : AppColors.foregroundMuted,
+                      ),
+                    ),
+                    SizedBox(height: 2.h),
+                    // Scale down rather than ellipsize — never cut a figure off.
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        c.value,
+                        maxLines: 1,
+                        style: GoogleFonts.barlowCondensed(
+                          fontSize: 14.sp,
+                          fontWeight: c.highlight
+                              ? FontWeight.w900
+                              : FontWeight.w700,
+                          color: c.highlight
+                              ? AppColors.primaryDark
+                              : c.zero
+                              ? AppColors.foregroundMuted
+                              : AppColors.foreground,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
