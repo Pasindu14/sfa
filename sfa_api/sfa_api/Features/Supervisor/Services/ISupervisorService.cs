@@ -11,4 +11,12 @@ public interface ISupervisorService
     /// active SalesRep reporting to <paramref name="supervisorId"/>. Guards rep-scoped endpoints against IDOR.
     /// </summary>
     Task EnsureRepUnderSupervisorAsync(int supervisorId, int userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// One rep's billing totals for BillingDate in [from, to] (at most
+    /// <see cref="SupervisorService.MaxSummaryRangeDays"/> days). Caller must have checked
+    /// the rep belongs to the supervisor.
+    /// </summary>
+    Task<RepBillingSummaryDto> GetRepBillingSummaryAsync(
+        int salesRepId, DateOnly from, DateOnly to, CancellationToken ct = default);
 }

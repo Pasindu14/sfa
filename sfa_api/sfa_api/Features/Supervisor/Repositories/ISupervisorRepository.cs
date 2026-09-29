@@ -1,3 +1,5 @@
+using sfa_api.Features.Supervisor.DTOs;
+
 namespace sfa_api.Features.Supervisor.Repositories;
 
 public interface ISupervisorRepository
@@ -7,4 +9,18 @@ public interface ISupervisorRepository
     Task<int> CountAssignedRepsTodayAsync(int supervisorId, DateOnly date, CancellationToken ct = default);
     Task<(int Count, decimal TotalAmount)> CountAndSumBillsTodayAsync(int supervisorId, DateOnly date, CancellationToken ct = default);
     Task<int> CountNonBillingsTodayBySupervisorAsync(int supervisorId, DateOnly date, CancellationToken ct = default);
+
+    /// <summary>
+    /// One rep's live, non-deleted bills with BillingDate in [from, to], grouped by
+    /// (RepStatus, DistributorStatus) with COUNT, SUM(TotalAmount) and SUM(TotalDiscount).
+    /// </summary>
+    Task<List<RepBillingStatusGroupRow>> GetRepBillingStatusGroupsAsync(
+        int salesRepId, DateOnly from, DateOnly to, CancellationToken ct = default);
+
+    /// <summary>
+    /// Good (MarketResell) and market (Damage + Expire) return-line totals for the rep's
+    /// approved + pending bills in [from, to]. DistributorReturn lines are in neither bucket.
+    /// </summary>
+    Task<RepBillingReturnTotals> GetRepReturnTotalsAsync(
+        int salesRepId, DateOnly from, DateOnly to, CancellationToken ct = default);
 }

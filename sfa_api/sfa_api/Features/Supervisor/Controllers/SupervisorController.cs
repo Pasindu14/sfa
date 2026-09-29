@@ -68,6 +68,23 @@ public class SupervisorController(
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 
+    /// <summary>
+    /// GET /api/v1/supervisor/rep-billing-summary?userId=X&amp;from=YYYY-MM-DD&amp;to=YYYY-MM-DD
+    /// One rep's bill counts, sales, pending, discount and returns over a date range (max 92 days).
+    /// </summary>
+    [HttpGet("rep-billing-summary")]
+    public async Task<IActionResult> GetRepBillingSummary(
+        [FromQuery] int userId,
+        [FromQuery] DateOnly from,
+        [FromQuery] DateOnly to,
+        CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        await _service.EnsureRepUnderSupervisorAsync(GetSupervisorId(), userId, ct);
+        var result = await _service.GetRepBillingSummaryAsync(userId, from, to, ct);
+        return Ok(ResponseHelper.Ok(result, correlationId));
+    }
+
     /// <summary>GET /api/v1/supervisor/rep-monthly-target?userId=X&amp;year=Y&amp;month=M</summary>
     [HttpGet("rep-monthly-target")]
     public async Task<IActionResult> GetRepMonthlyTarget(
