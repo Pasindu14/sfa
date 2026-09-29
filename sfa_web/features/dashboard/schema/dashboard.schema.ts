@@ -83,17 +83,7 @@ export const dashboardTrendSchema = z.object({
   generatedAtUtc: z.string(),
 })
 
-/**
- * A trend point with the target line merged in on the client. Targets are null until the sales
- * section has loaded, or when no target was imported for the month.
- */
-export const dashboardChartPointSchema = trendPointSchema.extend({
-  target: z.number().nullable(),
-  cumulativeTarget: z.number().nullable(),
-})
-
 export type DashboardSales = z.infer<typeof dashboardSalesSchema>
 export type DashboardActivity = z.infer<typeof dashboardActivitySchema>
 export type DashboardTrend = z.infer<typeof dashboardTrendSchema>
 export type DashboardSalesBlock = z.infer<typeof salesBlockSchema>
-export type DashboardChartPoint = z.infer<typeof dashboardChartPointSchema>
