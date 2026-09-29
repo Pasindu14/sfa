@@ -54,6 +54,9 @@ public class LocationPingService(
 
     private const int DefaultLiveMapWindowHours = 0;
 
+    public Task<RepLastLocationDto?> GetLatestForRepAsync(int repId, CancellationToken ct = default)
+        => repository.GetLatestForRepAsync(repId, ct);
+
     public async Task<RepRouteDto> GetRepRouteAsync(int repId, DateOnly date, CancellationToken ct = default)
     {
         // Resolve the rep first so an unknown id 404s rather than returning an empty

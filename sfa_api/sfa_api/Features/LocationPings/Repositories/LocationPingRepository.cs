@@ -71,6 +71,17 @@ public class LocationPingRepository(AppDbContext db) : ILocationPingRepository
             .ToListAsync(ct);
     }
 
+    /// One index probe on (RepId, RecordedAt DESC). RecordedAt, not ReceivedAt: an offline
+    /// back-fill can arrive after a newer ping, and the map must show where the rep last was.
+    public async Task<RepLastLocationDto?> GetLatestForRepAsync(int repId, CancellationToken ct = default)
+        => await db.RepLocationPings
+            .AsNoTracking()
+            .Where(p => p.RepId == repId)
+            .OrderByDescending(p => p.RecordedAt)
+            .Select(p => new RepLastLocationDto(
+                p.Latitude, p.Longitude, p.Accuracy, p.RecordedAt, p.ReceivedAt))
+            .FirstOrDefaultAsync(ct);
+
     /// Plain LINQ — unlike GetLatestPerRepAsync this needs no DISTINCT ON, and the
     /// (RepId, RecordedAt) composite index covers both the filter and the ordering.
     /// No Include(p => p.Rep): the caller already resolves the rep, and joining the

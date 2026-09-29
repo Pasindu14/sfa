@@ -15,6 +15,9 @@ public interface ILocationPingRepository
     Task<IReadOnlyList<RepLocationPingDto>> GetLatestPerRepAsync(
         DateTimeOffset? sinceUtc, CancellationToken ct = default);
 
+    /// <summary>One rep's most recent ping by device capture time, or null if none.</summary>
+    Task<RepLastLocationDto?> GetLatestForRepAsync(int repId, CancellationToken ct = default);
+
     /// <summary>
     /// Every ping for one rep within a half-open instant range, oldest first — the rep's
     /// travelled route. Ordered by <c>RecordedAt</c> (device capture time), which is the
