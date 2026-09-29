@@ -19,14 +19,6 @@ import {
 import { AchievementMeter } from '../summary/achievement-meter'
 import { ALL_ROWS, SalesSummaryPagination } from './sales-summary-pagination'
 
-/** True when two rows share every grouping value up to and including dimension `upTo`. */
-function sameLeading(a: SalesSummaryRow, b: SalesSummaryRow, upTo: number): boolean {
-  for (let i = 0; i <= upTo; i++) {
-    if (groupCell(a, i).key !== groupCell(b, i).key) return false
-  }
-  return true
-}
-
 const blockKey = (row: SalesSummaryRow) => String(groupCell(row, 0).key ?? 'unassigned')
 
 interface Block {
@@ -229,13 +221,6 @@ export function SalesSummaryTable({ data }: { data: SalesSummaryResponse }) {
                       const raw = col.get(row)
                       const negative = typeof raw === 'number' && raw < 0
                       const tinted = bandOf(col.band).tinted
-                      // Rows arrive grouped by their leading dimensions; a label that just repeats the
-                      // row above (or the block header) is dimmed so each block reads as a block. Still
-                      // printed, not blanked, so a row makes sense on its own when copied.
-                      const repeated =
-                        col.groupIndex !== undefined &&
-                        ((col.groupIndex === 0 && inBlock) ||
-                          (ri > 0 && sameLeading(rows[ri - 1], row, col.groupIndex)))
 
                       return (
                         <td
@@ -249,8 +234,7 @@ export function SalesSummaryTable({ data }: { data: SalesSummaryResponse }) {
                             // Indent detail rows under their block header.
                             ci === 0 && inBlock && 'pl-6',
                             col.key === 'netSaleValue' && 'font-semibold',
-                            negative && 'text-red-600',
-                            repeated && 'font-normal text-muted-foreground/60'
+                            negative && 'text-red-600'
                           )}
                         >
                           {col.meter ? (
