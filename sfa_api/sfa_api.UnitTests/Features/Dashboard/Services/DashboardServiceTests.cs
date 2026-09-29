@@ -320,6 +320,16 @@ public class DashboardServiceTests
     }
 
     [Fact]
+    public void Rank_LeavesOutRowsThatEarnedNothing()
+    {
+        var ranked = DashboardService.Rank(
+            [Row(1, "Sold", null, 500m), Row(2, "Returned more than sold", null, -626m), Row(3, "Nothing", null, 0m)],
+            total: 500m, take: 8);
+
+        ranked.Select(r => r.Name).Should().Equal("Sold");
+    }
+
+    [Fact]
     public void Others_NothingLeftOver_ReturnsNull()
         => DashboardService.Others([Row(1, "D1", null, 100m)], 6, 100m).Should().BeNull();
 

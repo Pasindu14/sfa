@@ -246,9 +246,14 @@ public class DashboardService(
             .ToList();
     }
 
-    /// <summary>The top <paramref name="take"/> rows by revenue, each with its share of <paramref name="total"/>.</summary>
+    /// <summary>
+    /// The top <paramref name="take"/> rows by revenue, each with its share of <paramref name="total"/>.
+    /// Only rows that actually earned something rank: a product whose returns outweighed its sales
+    /// has negative revenue, and listing it among the "top" would be nonsense.
+    /// </summary>
     public static List<DashboardRankedDto> Rank(IReadOnlyList<SalesSummaryRowDto> rows, decimal total, int take)
         => rows
+            .Where(r => r.NetSaleValue > 0m)
             .OrderByDescending(r => r.NetSaleValue)
             .ThenBy(r => r.GroupName, StringComparer.OrdinalIgnoreCase)
             .Take(take)

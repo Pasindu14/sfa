@@ -47,7 +47,7 @@ export function DashboardPage() {
         <FieldAndOutlets />
         <VisitOutcomes className="lg:col-span-2 2xl:col-span-1" />
       </div>
-      <div className="grid gap-x-6 gap-y-10 lg:grid-cols-2 2xl:grid-cols-3">
+      <div className="grid items-start gap-x-6 gap-y-10 lg:grid-cols-2 2xl:grid-cols-3">
         <TopProducts />
         <RepLeaderboard />
         <DistributorShare className="lg:col-span-2 2xl:col-span-1" />
@@ -461,17 +461,17 @@ function FieldAndOutlets() {
   const { isToday } = useShownDate()
 
   return (
-    <Section title="Field force and outlets">
+    <Section title="Field force and outlets" className="flex flex-col">
       {isPending ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
           <Skeleton className="h-[150px] rounded-2xl" />
           <Skeleton className="h-[226px] rounded-2xl" />
         </div>
       ) : !data ? (
         <SectionError what="Rep and outlet counts" onRetry={() => refetch()} className="h-[392px]" />
       ) : (
-        <Stale stale={isPlaceholderData}>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
+        <Stale stale={isPlaceholderData} className="flex flex-1 flex-col">
+          <div className="grid flex-1 gap-4 sm:grid-cols-2 lg:grid-cols-1 lg:grid-rows-[auto_1fr]">
             <RepsPanel a={data} dayLabel={dayName(data.date, isToday)} />
             <ReachPanel a={data} dayLabel={dayName(data.date, isToday)} />
           </div>
@@ -538,7 +538,7 @@ function ReachPanel({ a, dayLabel }: { a: DashboardActivity; dayLabel: string })
   ]
 
   return (
-    <Panel className="p-5">
+    <Panel className="flex h-full flex-col p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="text-sm font-medium">Outlet reach</p>
         <Link href="/outlets" className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
@@ -546,7 +546,7 @@ function ReachPanel({ a, dayLabel }: { a: DashboardActivity; dayLabel: string })
         </Link>
       </div>
 
-      <div className="mt-4 space-y-3.5">
+      <div className="mt-4 mb-5 space-y-3.5">
         {rows.map((row) => (
           <div key={row.label}>
             <div className="flex items-baseline justify-between gap-3 text-sm">
@@ -566,7 +566,7 @@ function ReachPanel({ a, dayLabel }: { a: DashboardActivity; dayLabel: string })
         ))}
       </div>
 
-      <dl className="mt-5 grid grid-cols-2 gap-4 border-t pt-4 text-sm">
+      <dl className="mt-auto grid grid-cols-2 gap-4 border-t pt-4 text-sm">
         <div>
           <dt className="text-muted-foreground">Deactivated</dt>
           <dd className="mt-0.5 font-report tabular-nums">

@@ -114,7 +114,7 @@ export function TopProducts({ className }: { className?: string }) {
           empty={`No products sold in ${monthOf(d)} yet.`}
           secondary={(r) => (
             <span className="font-report tabular-nums">
-              {count(Math.round(r.quantity))} packs, {percent(r.sharePercent, 0)}
+              {count(Math.round(r.quantity))} {Math.round(r.quantity) === 1 ? 'pack' : 'packs'}, {percent(r.sharePercent, 0)}
             </span>
           )}
         />
