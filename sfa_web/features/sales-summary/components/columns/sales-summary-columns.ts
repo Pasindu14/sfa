@@ -26,7 +26,7 @@ export interface Band {
 }
 
 export const BANDS: Band[] = [
-  { id: 'label',     header: '',          tinted: false },
+  { id: 'label',     header: 'Grouped by', tinted: false },
   { id: 'target',    header: 'Target',    tinted: true },
   { id: 'sales',     header: 'Sales',     tinted: false },
   { id: 'returns',   header: 'Returns',   tinted: true },
