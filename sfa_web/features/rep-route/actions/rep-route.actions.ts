@@ -2,7 +2,7 @@
 
 import { createAction } from '@/lib/actions/wrapper'
 import client from '@/lib/api/client'
-import type { RepOptionDto, RepRouteDto } from '../schema/rep-route.schema'
+import type { RepDayTimelineDto, RepOptionDto, RepRouteDto } from '../schema/rep-route.schema'
 
 /**
  * One rep's travelled route for a single Sri Lanka business day.
@@ -16,6 +16,21 @@ export const getRepRouteAction = createAction(
       params: { date },
     })
     return res.data.data as RepRouteDto
+  },
+)
+
+/**
+ * One rep's business day: route trail plus every bill, no-sale visit, stop, GPS gap and
+ * unlock request, with day KPIs. Embeds the route, so the page makes this single call.
+ * `date` is a Colombo `YYYY-MM-DD` string, same as `getRepRouteAction`.
+ */
+export const getRepTimelineAction = createAction(
+  { name: 'getRepTimelineAction', requireAuth: true, requiredRole: 'Admin' },
+  async (repId: number, date: string) => {
+    const res = await client.get(`/api/v1/rep-timeline/${repId}`, {
+      params: { date },
+    })
+    return res.data.data as RepDayTimelineDto
   },
 )
 

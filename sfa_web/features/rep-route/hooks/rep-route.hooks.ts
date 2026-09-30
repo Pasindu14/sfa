@@ -2,13 +2,19 @@
 
 import { useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { getRepRouteAction, getRepsForSelectAction } from '../actions/rep-route.actions'
+import {
+  getRepRouteAction,
+  getRepTimelineAction,
+  getRepsForSelectAction,
+} from '../actions/rep-route.actions'
 import type { RepOptionDto } from '../schema/rep-route.schema'
 import { ActionError } from '@/lib/actions/action-error'
 
 export const repRouteKeys = {
   all: ['rep-route'] as const,
   route: (repId: number, date: string) => [...repRouteKeys.all, repId, date] as const,
+  timeline: (repId: number, date: string) =>
+    [...repRouteKeys.all, 'timeline', repId, date] as const,
 }
 
 /**
@@ -23,6 +29,23 @@ export function useRepRoute(repId: number | null, date: string | null) {
     queryKey: repRouteKeys.route(repId ?? 0, date ?? ''),
     queryFn: async () => {
       const result = await getRepRouteAction(repId!, date!)
+      if (!result.success) throw new ActionError(result)
+      return result.data
+    },
+    enabled: !!repId && !!date,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+/**
+ * A rep's whole day — route trail, activity events and KPIs — in one request. Same caching
+ * reasoning as `useRepRoute`: this is history, so no polling and a long `staleTime`.
+ */
+export function useRepTimeline(repId: number | null, date: string | null) {
+  return useQuery({
+    queryKey: repRouteKeys.timeline(repId ?? 0, date ?? ''),
+    queryFn: async () => {
+      const result = await getRepTimelineAction(repId!, date!)
       if (!result.success) throw new ActionError(result)
       return result.data
     },
