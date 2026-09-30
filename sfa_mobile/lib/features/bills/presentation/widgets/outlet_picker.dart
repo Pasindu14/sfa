@@ -599,7 +599,7 @@ class _OutletSheetState extends State<_OutletSheet> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.lock_open_rounded,
+                Icon(Icons.my_location_rounded,
                     size: 10.r, color: AppColors.primary),
                 SizedBox(width: 4.w),
                 Text(
@@ -806,7 +806,7 @@ class _OutletSheetState extends State<_OutletSheet> {
                         child: OutlinedButton.icon(
                           key: const ValueKey('request-unlock-empty'),
                           onPressed: _openUnlockRequest,
-                          icon: Icon(Icons.lock_open_rounded, size: 16.r),
+                          icon: Icon(Icons.my_location_rounded, size: 16.r),
                           label: Text(
                             'Request unlock',
                             style: GoogleFonts.barlowCondensed(

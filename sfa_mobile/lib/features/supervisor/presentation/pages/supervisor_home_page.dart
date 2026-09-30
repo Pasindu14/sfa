@@ -709,7 +709,7 @@ class _ActionsSection extends StatelessWidget {
           // above the reporting tiles, full width, with the waiting count.
           BlocBuilder<PendingUnlockCountCubit, int>(
             builder: (context, pending) => _TileActionCard(
-              icon: Icons.lock_open_rounded,
+              icon: Icons.my_location_rounded,
               title: 'UNLOCK REQUESTS',
               subtitle: pending > 0
                   ? '$pending waiting for your decision'

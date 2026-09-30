@@ -322,7 +322,7 @@ class RouteUnlockStrip extends StatelessWidget {
       // re-syncing outlets. Once the policy lands the exemption banner takes
       // over.
       return _StripContent(
-        icon: Icons.lock_open_rounded,
+        icon: Icons.my_location_rounded,
         color: AppColors.success,
         title: 'Unlock approved',
         body: r.reviewedByName == null
@@ -348,7 +348,7 @@ class RouteUnlockStrip extends StatelessWidget {
     if (r.isRevoked) {
       final by = r.revokedByName;
       return _StripContent(
-        icon: Icons.lock_rounded,
+        icon: Icons.lock_outline_rounded,
         color: AppColors.error,
         title: 'Unlock revoked',
         body: by == null ? 'Your unlock was withdrawn.' : 'Withdrawn by $by.',
