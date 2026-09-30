@@ -82,6 +82,8 @@ class NotBillingModel {
         'notBillingDate': _dateOnly(notBillingDate),
         'reason': reason.apiValue,
         'notes': notes,
+        // When the rep actually recorded it — see BillModel.toCreateRequestJson.
+        'capturedAt': createdAt.toUtc().toIso8601String(),
       };
 
   NotBilling toEntity() => NotBilling(

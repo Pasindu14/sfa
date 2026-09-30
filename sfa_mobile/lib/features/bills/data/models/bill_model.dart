@@ -130,6 +130,9 @@ class BillModel {
         if (longitude != null) 'longitude': longitude,
         if (gpsAccuracyMeters != null) 'gpsAccuracyMeters': gpsAccuracyMeters,
         if (pricingStructureId != null) 'pricingStructureId': pricingStructureId,
+        // When the rep actually made it — the server's CreatedAt is only when it
+        // arrived, which for an offline bill can be hours later.
+        'capturedAt': createdAt.toUtc().toIso8601String(),
         'items': items.map((i) => i.toCreateRequestJson()).toList(),
       };
 
