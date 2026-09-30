@@ -10,6 +10,7 @@ import 'package:uswatte/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:uswatte/features/supervisor_summary/presentation/cubit/supervisor_summary_cubit.dart';
 import 'package:uswatte/features/supervisor_summary/presentation/cubit/supervisor_summary_state.dart';
 import 'package:uswatte/features/notifications/presentation/bloc/notifications_bloc.dart';
+import 'package:uswatte/features/route_unlock/presentation/cubit/unlock_requests_cubit.dart';
 
 
 class SupervisorHomePage extends StatefulWidget {
@@ -57,8 +58,10 @@ class _SupervisorHomePageState extends State<SupervisorHomePage>
       backgroundColor: AppColors.background,
       body: RefreshIndicator(
         color: AppColors.primary,
-        onRefresh: () async =>
-            context.read<SupervisorSummaryCubit>().refresh(),
+        onRefresh: () async {
+          context.read<PendingUnlockCountCubit>().refresh();
+          context.read<SupervisorSummaryCubit>().refresh();
+        },
         child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
@@ -687,6 +690,7 @@ class _ActionsSection extends StatelessWidget {
       await context.push(location);
       if (context.mounted) {
         context.read<SupervisorSummaryCubit>().refresh();
+        context.read<PendingUnlockCountCubit>().refresh();
       }
     }
 
@@ -701,6 +705,21 @@ class _ActionsSection extends StatelessWidget {
             onTap: () => pushAndRefresh('/supervisor/assign-route'),
           ),
           SizedBox(height: 14.h),
+          // Time-critical — a rep is standing at a shop waiting — so it sits
+          // above the reporting tiles, full width, with the waiting count.
+          BlocBuilder<PendingUnlockCountCubit, int>(
+            builder: (context, pending) => _TileActionCard(
+              icon: Icons.my_location_rounded,
+              title: 'UNLOCK REQUESTS',
+              subtitle: pending > 0
+                  ? '$pending waiting for your decision'
+                  : 'Reps asking to bill their full route',
+              color: const Color(0xFFB45309),
+              badge: pending,
+              onTap: () => pushAndRefresh('/supervisor/unlock-requests'),
+            ),
+          ),
+          SizedBox(height: 10.h),
           Row(
             children: [
               Expanded(
@@ -973,11 +992,15 @@ class _TileActionCard extends StatelessWidget {
     required this.subtitle,
     required this.color,
     this.onTap,
+    this.badge = 0,
   });
   final IconData icon;
   final String title, subtitle;
   final Color color;
   final VoidCallback? onTap;
+
+  /// Count shown in a pill next to the icon; hidden at zero.
+  final int badge;
 
   Color _darken(Color c) {
     final hsl = HSLColor.fromColor(c);
@@ -1017,14 +1040,38 @@ class _TileActionCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(
-                  width: 40.r,
-                  height: 40.r,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(11.r),
-                  ),
-                  child: Icon(icon, color: Colors.white, size: 20.r),
+                Row(
+                  children: [
+                    Container(
+                      width: 40.r,
+                      height: 40.r,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(11.r),
+                      ),
+                      child: Icon(icon, color: Colors.white, size: 20.r),
+                    ),
+                    if (badge > 0) ...[
+                      const Spacer(),
+                      Container(
+                        key: const ValueKey('tile-badge'),
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 9.w, vertical: 3.h),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20.r),
+                        ),
+                        child: Text(
+                          badge > 99 ? '99+' : '$badge',
+                          style: GoogleFonts.barlowCondensed(
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w800,
+                            color: color,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

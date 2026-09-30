@@ -8,6 +8,7 @@ using sfa_api.Features.Outlets.Entities;
 using sfa_api.Features.Products.Entities;
 using sfa_api.Features.PurchaseOrders.Entities;
 using sfa_api.Features.Regions.Entities;
+using sfa_api.Features.RouteUnlockRequests.Entities;
 using sfa_api.Features.SalesInvoices.Entities;
 using sfa_api.Features.Territories.Entities;
 using sfa_api.Features.UserProximityExemptions.Entities;
@@ -137,6 +138,9 @@ public class TestAppDbContext(DbContextOptions<AppDbContext> options) : AppDbCon
             // one another's revoke. That 409 path is PostgreSQL-only, as above — here
             // the column just has to be insertable.
             () => modelBuilder.Entity<UserProximityExemption>().Property(x => x.RowVersion)
+                    .HasColumnType("INTEGER").HasDefaultValue(1u).ValueGeneratedOnAdd().IsConcurrencyToken(false),
+            // Route unlock requests carry xmin for the same two-reviewers-racing reason.
+            () => modelBuilder.Entity<RouteUnlockRequest>().Property(x => x.RowVersion)
                     .HasColumnType("INTEGER").HasDefaultValue(1u).ValueGeneratedOnAdd().IsConcurrencyToken(false),
             () => modelBuilder.Entity<sfa_api.Features.PricingStructures.Entities.PricingStructure>().Property(x => x.RowVersion)
                     .HasColumnType("INTEGER").HasDefaultValue(1u).ValueGeneratedOnAdd().IsConcurrencyToken(false),

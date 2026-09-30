@@ -14,6 +14,21 @@ import 'package:uswatte/features/outlets/domain/usecases/get_outlets_usecase.dar
 import 'package:uswatte/features/outlets/domain/usecases/sync_outlets_usecase.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_bloc.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_event.dart';
+import 'package:uswatte/features/outlets/presentation/bloc/outlets_state.dart';
+import 'package:uswatte/core/background/background_sync_service.dart';
+import 'package:uswatte/core/connectivity/connectivity_service.dart';
+import 'package:uswatte/features/route_unlock/domain/usecases/approve_unlock_usecase.dart';
+import 'package:uswatte/features/route_unlock/domain/usecases/cancel_route_unlock_usecase.dart';
+import 'package:uswatte/features/route_unlock/domain/usecases/get_pending_unlock_count_usecase.dart';
+import 'package:uswatte/features/route_unlock/domain/usecases/get_today_unlock_request_usecase.dart';
+import 'package:uswatte/features/route_unlock/domain/usecases/get_unlock_request_detail_usecase.dart';
+import 'package:uswatte/features/route_unlock/domain/usecases/get_unlock_requests_usecase.dart';
+import 'package:uswatte/features/route_unlock/domain/usecases/reject_unlock_usecase.dart';
+import 'package:uswatte/features/route_unlock/domain/usecases/request_route_unlock_usecase.dart';
+import 'package:uswatte/features/route_unlock/domain/usecases/revoke_unlock_usecase.dart';
+import 'package:uswatte/features/route_unlock/presentation/cubit/route_unlock_cubit.dart';
+import 'package:uswatte/features/route_unlock/presentation/cubit/unlock_requests_cubit.dart';
+import 'package:uswatte/features/route_unlock/presentation/pages/unlock_requests_page.dart';
 import 'package:uswatte/features/outlets/presentation/pages/outlets_page.dart';
 import 'package:uswatte/features/route_assignment/domain/usecases/delete_assignment_usecase.dart';
 import 'package:uswatte/features/route_assignment/domain/usecases/get_assignments_usecase.dart';
@@ -415,6 +430,43 @@ class AppRouter {
                               getIt<ClearDailyOutletsUseCase>(),
                         )..add(const LoadOutletsRequested()),
                       ),
+                      BlocProvider(
+                        create: (ctx) {
+                          final outlets = ctx.read<OutletsBloc>();
+                          return RouteUnlockCubit(
+                            getToday: getIt<GetTodayUnlockRequestUseCase>(),
+                            requestUnlock: getIt<RequestRouteUnlockUseCase>(),
+                            cancelUnlock: getIt<CancelRouteUnlockUseCase>(),
+                            connectivity: getIt<ConnectivityService>(),
+                            isProximityEnforced: () {
+                              final s = outlets.state;
+                              return s is OutletsLoaded
+                                  ? s.policy.isEnforcedNow
+                                  : true;
+                            },
+                            // The server says unlocked, this device still
+                            // filters: pull the policy down on this page's
+                            // bloc so the picker opens up without a restart.
+                            onResyncNeeded: (request) {
+                              final routeName = request?.routeName;
+                              if (request != null && routeName != null) {
+                                outlets.add(SyncDailyOutletsRequested(
+                                  routeId: request.routeId,
+                                  routeName: routeName,
+                                ));
+                                return;
+                              }
+                              getIt<BackgroundSyncService>()
+                                  .refreshTodaysOutlets()
+                                  .then((_) {
+                                if (!outlets.isClosed) {
+                                  outlets.add(const LoadOutletsRequested());
+                                }
+                              });
+                            },
+                          )..load();
+                        },
+                      ),
                     ],
                     child: const CreateBillPage(),
                   ),
@@ -655,8 +707,27 @@ class AppRouter {
                       markAllRead: getIt<MarkAllReadUseCase>(),
                     )..add(const LoadNotifications()),
                   ),
+                  BlocProvider(
+                    create: (_) => PendingUnlockCountCubit(
+                      getIt<GetPendingUnlockCountUseCase>(),
+                    )..refresh(),
+                  ),
                 ],
                 child: const SupervisorHomePage(),
+              ),
+            ),
+            GoRoute(
+              path: 'unlock-requests',
+              name: 'supervisorUnlockRequests',
+              builder: (_, __) => BlocProvider(
+                create: (_) => UnlockRequestsCubit(
+                  getRequests: getIt<GetUnlockRequestsUseCase>(),
+                  getDetail: getIt<GetUnlockRequestDetailUseCase>(),
+                  approve: getIt<ApproveUnlockUseCase>(),
+                  reject: getIt<RejectUnlockUseCase>(),
+                  revoke: getIt<RevokeUnlockUseCase>(),
+                )..load(),
+                child: const UnlockRequestsPage(),
               ),
             ),
             GoRoute(

@@ -1,9 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/features/outlets/domain/entities/outlet.dart';
 import 'package:uswatte/features/outlets/domain/usecases/filter_nearby_outlets.dart';
+import 'package:uswatte/features/route_unlock/presentation/cubit/route_unlock_cubit.dart';
+import 'package:uswatte/features/route_unlock/presentation/widgets/route_unlock_widgets.dart';
 
 /// Tappable card that opens an outlet bottom-sheet.
 class OutletPicker extends StatelessWidget {
@@ -23,6 +28,16 @@ class OutletPicker extends StatelessWidget {
   /// visible and dated rather than mysterious.
   final DateTime? exemptionUntil;
 
+  /// The server's reason code for the exemption — `RouteUnlock` when a
+  /// supervisor-approved route unlock is what relaxes the check.
+  final String? exemptionReason;
+
+  /// Accuracy of the rep's fix, sent along with an unlock request.
+  final double? repAccuracyMeters;
+
+  /// Today's route-unlock request. Null hides every unlock affordance.
+  final RouteUnlockCubit? unlockCubit;
+
   const OutletPicker({
     super.key,
     required this.selected,
@@ -34,6 +49,9 @@ class OutletPicker extends StatelessWidget {
     required this.radiusMeters,
     this.proximityEnforced = true,
     this.exemptionUntil,
+    this.exemptionReason,
+    this.repAccuracyMeters,
+    this.unlockCubit,
   });
 
   @override
@@ -199,6 +217,11 @@ class OutletPicker extends StatelessWidget {
   }
 
   Future<void> _openSheet(BuildContext context) async {
+    // Fresh status every time the list opens — this is also when an approval
+    // whose push was missed gets noticed and the outlets re-synced.
+    final cubit = unlockCubit;
+    if (cubit != null) unawaited(cubit.load());
+
     final picked = await showModalBottomSheet<Outlet>(
       context: context,
       isScrollControlled: true,
@@ -215,6 +238,9 @@ class OutletPicker extends StatelessWidget {
             radiusMeters: radiusMeters,
             proximityEnforced: proximityEnforced,
             exemptionUntil: exemptionUntil,
+            exemptionReason: exemptionReason,
+            repAccuracyMeters: repAccuracyMeters,
+            unlockCubit: unlockCubit,
           ),
     );
     if (picked != null) onSelected(picked);
@@ -230,6 +256,9 @@ class _OutletSheet extends StatefulWidget {
   final double radiusMeters;
   final bool proximityEnforced;
   final DateTime? exemptionUntil;
+  final String? exemptionReason;
+  final double? repAccuracyMeters;
+  final RouteUnlockCubit? unlockCubit;
 
   const _OutletSheet({
     required this.outlets,
@@ -240,6 +269,9 @@ class _OutletSheet extends StatefulWidget {
     required this.radiusMeters,
     required this.proximityEnforced,
     required this.exemptionUntil,
+    this.exemptionReason,
+    this.repAccuracyMeters,
+    this.unlockCubit,
   });
 
   @override
@@ -334,8 +366,8 @@ class _OutletSheetState extends State<_OutletSheet> {
                     color: AppColors.foregroundMuted,
                   ),
                 ),
-                if (hasGps) ...[
-                  const Spacer(),
+                const Spacer(),
+                if (hasGps)
                   // The chip is the rep's only signal that the distance rule is
                   // off. A silent exemption reads as a loophole; a labelled one
                   // reads as a supervised allowance — and it saves the support
@@ -348,11 +380,26 @@ class _OutletSheetState extends State<_OutletSheet> {
                         ? AppColors.primary
                         : AppColors.warning,
                   ),
-                ],
+                if (_unlockCubit != null)
+                  BlocBuilder<RouteUnlockCubit, RouteUnlockState>(
+                    bloc: _unlockCubit,
+                    // Once there is a request the strip below owns the action
+                    // ("Cancel" / "Request again"); only a clean slate shows it
+                    // up here.
+                    builder: (_, s) =>
+                        s.request == null || s.request!.isCancelled
+                            ? _requestUnlockLink()
+                            : const SizedBox.shrink(),
+                  ),
               ],
             ),
           ),
           if (!widget.proximityEnforced) _exemptionBanner(),
+          if (_unlockCubit != null)
+            RouteUnlockStrip(
+              cubit: _unlockCubit!,
+              onRequest: _openUnlockRequest,
+            ),
           SizedBox(height: 12.h),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 16.w),
@@ -520,6 +567,55 @@ class _OutletSheetState extends State<_OutletSheet> {
     );
   }
 
+  /// Unlock affordances only make sense while the distance check is on.
+  RouteUnlockCubit? get _unlockCubit =>
+      widget.proximityEnforced ? widget.unlockCubit : null;
+
+  void _openUnlockRequest() {
+    final cubit = _unlockCubit;
+    if (cubit == null) return;
+    showRouteUnlockRequestSheet(
+      context,
+      cubit: cubit,
+      latitude: widget.repLat,
+      longitude: widget.repLng,
+      gpsAccuracyMeters: widget.repAccuracyMeters,
+    );
+  }
+
+  Widget _requestUnlockLink() => Padding(
+        padding: EdgeInsets.only(left: 6.w),
+        child: InkWell(
+          key: const ValueKey('request-unlock-header'),
+          onTap: _openUnlockRequest,
+          borderRadius: BorderRadius.circular(20.r),
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20.r),
+              border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.35)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.my_location_rounded,
+                    size: 10.r, color: AppColors.primary),
+                SizedBox(width: 4.w),
+                Text(
+                  'Request unlock',
+                  style: GoogleFonts.barlowCondensed(
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
   Widget _chip({required String label, required Color color}) => Container(
         padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
         decoration: BoxDecoration(
@@ -546,7 +642,25 @@ class _OutletSheetState extends State<_OutletSheet> {
   /// Explains the relaxed behaviour in the rep's own terms, and dates it, so an
   /// exemption never looks like the app quietly losing its rules.
   Widget _exemptionBanner() {
+    final cubit = widget.unlockCubit;
+    if (widget.exemptionReason != 'RouteUnlock' || cubit == null) {
+      return _exemptionBannerFor(approvedBy: null);
+    }
+    // Who approved it only comes with today's request, fetched as the sheet
+    // opens — rebuild when it lands.
+    return BlocBuilder<RouteUnlockCubit, RouteUnlockState>(
+      bloc: cubit,
+      builder: (_, s) {
+        final r = s.request;
+        return _exemptionBannerFor(
+            approvedBy: r != null && r.isLive ? r.reviewedByName : null);
+      },
+    );
+  }
+
+  Widget _exemptionBannerFor({required String? approvedBy}) {
     final until = widget.exemptionUntil;
+    final routeUnlock = widget.exemptionReason == 'RouteUnlock';
     const accent = AppColors.warning;
 
     return Padding(
@@ -568,7 +682,9 @@ class _OutletSheetState extends State<_OutletSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Distance check turned off',
+                    routeUnlock
+                        ? 'Route unlocked for today'
+                        : 'Distance check turned off',
                     style: GoogleFonts.barlowCondensed(
                       fontSize: 13.sp,
                       fontWeight: FontWeight.w700,
@@ -577,10 +693,15 @@ class _OutletSheetState extends State<_OutletSheet> {
                   ),
                   SizedBox(height: 2.h),
                   Text(
-                    until == null
-                        ? 'You can bill any outlet on today\'s route, whatever the distance.'
-                        : 'You can bill any outlet on today\'s route until '
-                            '${_formatUntil(until)}, whatever the distance.',
+                    // A route unlock always ends at tonight's midnight, so
+                    // "until <date>" would only restate "today".
+                    routeUnlock
+                        ? '${approvedBy == null ? '' : 'Approved by $approvedBy. '}'
+                            'You can bill any outlet on today\'s route, whatever the distance.'
+                        : until == null
+                            ? 'You can bill any outlet on today\'s route, whatever the distance.'
+                            : 'You can bill any outlet on today\'s route until '
+                                '${_formatUntil(until)}, whatever the distance.',
                     style: GoogleFonts.barlow(
                       fontSize: 12.sp,
                       height: 1.3,
@@ -676,6 +797,35 @@ class _OutletSheetState extends State<_OutletSheet> {
                 height: 1.5,
               ),
             ),
+            if (_unlockCubit != null)
+              BlocBuilder<RouteUnlockCubit, RouteUnlockState>(
+                bloc: _unlockCubit,
+                builder: (_, s) => s.canRequest
+                    ? Padding(
+                        padding: EdgeInsets.only(top: 14.h),
+                        child: OutlinedButton.icon(
+                          key: const ValueKey('request-unlock-empty'),
+                          onPressed: _openUnlockRequest,
+                          icon: Icon(Icons.my_location_rounded, size: 16.r),
+                          label: Text(
+                            'Request unlock',
+                            style: GoogleFonts.barlowCondensed(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.primary,
+                            side: BorderSide(
+                                color:
+                                    AppColors.primary.withValues(alpha: 0.5)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10.r)),
+                          ),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
           ],
         ),
       ),

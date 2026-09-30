@@ -146,14 +146,15 @@ public class OutletService(
             await _cache.SetAsync(cacheKey, outletDtos, RouteCacheTtl, ct);
         }
 
-        var policy = await _policyResolver.ResolveAsync(callerId, ct: ct);
+        // Route-scoped: an approved route unlock relaxes this route only.
+        var policy = await _policyResolver.ResolveAsync(callerId, routeId, ct: ct);
 
         return new MobileOutletSyncDto(
             Outlets: outletDtos,
             GeofenceRadiusMeters: policy.RadiusMeters,
             GeofenceEnforced: policy.Enforced,
             GeofenceEnforcedFrom: policy.EnforcedFrom,
-            ExemptionReason: policy.Reason?.ToString());
+            ExemptionReason: policy.ExemptionReasonLabel);
     }
 
     public async Task<IEnumerable<OutletMapPointDto>> GetMapPointsAsync(OutletMapBounds? bounds = null, CancellationToken ct = default)

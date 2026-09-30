@@ -143,6 +143,18 @@ import 'package:uswatte/features/purchase_orders/domain/usecases/manager_approve
 import 'package:uswatte/features/purchase_orders/domain/usecases/reject_purchase_order_usecase.dart';
 import 'package:uswatte/features/purchase_orders/domain/usecases/update_purchase_order_usecase.dart';
 import 'package:uswatte/features/purchase_orders/domain/usecases/get_products_for_distributor_usecase.dart';
+import 'package:uswatte/features/route_unlock/data/datasources/route_unlock_remote_datasource.dart';
+import 'package:uswatte/features/route_unlock/data/repositories/route_unlock_repository_impl.dart';
+import 'package:uswatte/features/route_unlock/domain/repositories/route_unlock_repository.dart';
+import 'package:uswatte/features/route_unlock/domain/usecases/approve_unlock_usecase.dart';
+import 'package:uswatte/features/route_unlock/domain/usecases/cancel_route_unlock_usecase.dart';
+import 'package:uswatte/features/route_unlock/domain/usecases/get_pending_unlock_count_usecase.dart';
+import 'package:uswatte/features/route_unlock/domain/usecases/get_today_unlock_request_usecase.dart';
+import 'package:uswatte/features/route_unlock/domain/usecases/get_unlock_request_detail_usecase.dart';
+import 'package:uswatte/features/route_unlock/domain/usecases/get_unlock_requests_usecase.dart';
+import 'package:uswatte/features/route_unlock/domain/usecases/reject_unlock_usecase.dart';
+import 'package:uswatte/features/route_unlock/domain/usecases/request_route_unlock_usecase.dart';
+import 'package:uswatte/features/route_unlock/domain/usecases/revoke_unlock_usecase.dart';
 import 'package:uswatte/core/notifications/fcm_service.dart';
 import 'package:uswatte/features/notifications/data/datasources/notifications_remote_datasource.dart';
 import 'package:uswatte/features/notifications/data/repositories/notifications_repository_impl.dart';
@@ -550,6 +562,30 @@ Future<void> configureDependencies() async {
       () => UpdatePurchaseOrderUseCase(getIt<PurchaseOrdersRepository>()));
   getIt.registerLazySingleton(
       () => GetProductsForDistributorUseCase(getIt<PurchaseOrdersRepository>()));
+
+  // ── Route Unlock Requests ────────────────────────────────────────────────────
+  getIt.registerLazySingleton(() => RouteUnlockRemoteDatasource(getIt<Dio>()));
+  getIt.registerLazySingleton<RouteUnlockRepository>(
+    () => RouteUnlockRepositoryImpl(getIt<RouteUnlockRemoteDatasource>()),
+  );
+  getIt.registerLazySingleton(
+      () => GetTodayUnlockRequestUseCase(getIt<RouteUnlockRepository>()));
+  getIt.registerLazySingleton(
+      () => RequestRouteUnlockUseCase(getIt<RouteUnlockRepository>()));
+  getIt.registerLazySingleton(
+      () => CancelRouteUnlockUseCase(getIt<RouteUnlockRepository>()));
+  getIt.registerLazySingleton(
+      () => GetUnlockRequestsUseCase(getIt<RouteUnlockRepository>()));
+  getIt.registerLazySingleton(
+      () => GetUnlockRequestDetailUseCase(getIt<RouteUnlockRepository>()));
+  getIt.registerLazySingleton(
+      () => GetPendingUnlockCountUseCase(getIt<RouteUnlockRepository>()));
+  getIt.registerLazySingleton(
+      () => ApproveUnlockUseCase(getIt<RouteUnlockRepository>()));
+  getIt.registerLazySingleton(
+      () => RejectUnlockUseCase(getIt<RouteUnlockRepository>()));
+  getIt.registerLazySingleton(
+      () => RevokeUnlockUseCase(getIt<RouteUnlockRepository>()));
 
   // ── Notifications ────────────────────────────────────────────────────────────
   getIt.registerLazySingleton(

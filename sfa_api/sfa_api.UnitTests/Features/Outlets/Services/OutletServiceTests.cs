@@ -42,7 +42,7 @@ public class OutletServiceTests
         // Default: geofence enforced, no exemption — the state almost every test wants.
         var geo = new BillingGeoOptions();
         _policyResolverMock
-            .Setup(r => r.ResolveAsync(It.IsAny<int>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.ResolveAsync(It.IsAny<int>(), It.IsAny<int?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ProximityPolicy(true, geo.RadiusMeters, geo.ToleranceMeters, null, null, null));
 
         _sut = new OutletService(_repoMock.Object, _cacheMock.Object, NullLogger<OutletService>.Instance,

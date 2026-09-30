@@ -6,8 +6,11 @@ public interface IProximityPolicyResolver
 {
     /// <summary>
     /// Resolves the effective geofence policy for <paramref name="userId"/> at
-    /// <paramref name="atUtc"/> (defaults to now). Falls back to the configured
-    /// <c>BillingGeo</c> options when the rep holds no live exemption.
+    /// <paramref name="atUtc"/> (defaults to now). An admin exemption applies on
+    /// any route; an approved route unlock applies only when
+    /// <paramref name="routeId"/> is the route it was approved for. Falls back to
+    /// the configured <c>BillingGeo</c> options when neither is live.
     /// </summary>
-    Task<ProximityPolicy> ResolveAsync(int userId, DateTime? atUtc = null, CancellationToken ct = default);
+    Task<ProximityPolicy> ResolveAsync(
+        int userId, int? routeId = null, DateTime? atUtc = null, CancellationToken ct = default);
 }

@@ -375,6 +375,9 @@ namespace sfa_api.Migrations
                     b.Property<int?>("RouteId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("RouteUnlockRequestId")
+                        .HasColumnType("integer");
+
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -427,6 +430,9 @@ namespace sfa_api.Migrations
                     b.HasIndex("PricingStructureId");
 
                     b.HasIndex("RepStatus");
+
+                    b.HasIndex("RouteUnlockRequestId")
+                        .HasFilter("\"RouteUnlockRequestId\" IS NOT NULL");
 
                     b.HasIndex("AreaId", "BillingDate");
 
@@ -1950,6 +1956,192 @@ namespace sfa_api.Migrations
                         .HasFilter("\"IsActive\" = true");
 
                     b.ToTable("Regions");
+                });
+
+            modelBuilder.Entity("sfa_api.Features.RouteUnlockRequests.Entities.RouteUnlockRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateOnly>("BusinessDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DailyRouteAssignmentId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<double?>("RequestGpsAccuracyMeters")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("RequestLatitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("RequestLongitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("RequestReason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReviewNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReviewedByRole")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int?>("ReviewedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RevokeReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("RevokedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RouteId")
+                        .HasColumnType("integer");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int?>("SupervisorUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ValidFrom")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ValidTo")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DailyRouteAssignmentId");
+
+                    b.HasIndex("RequestedAt");
+
+                    b.HasIndex("ReviewedByUserId");
+
+                    b.HasIndex("RevokedByUserId");
+
+                    b.HasIndex("RouteId");
+
+                    b.HasIndex("SupervisorUserId");
+
+                    b.HasIndex("Status", "BusinessDate");
+
+                    b.HasIndex("UserId", "BusinessDate")
+                        .IsUnique()
+                        .HasDatabaseName("UX_RouteUnlockRequests_UserId_BusinessDate_Open")
+                        .HasFilter("\"Status\" IN ('Pending', 'Approved') AND \"IsDeleted\" = false");
+
+                    b.HasIndex("UserId", "RouteId", "Status", "ValidTo")
+                        .HasDatabaseName("IX_RouteUnlockRequests_Effective");
+
+                    b.ToTable("RouteUnlockRequests");
+                });
+
+            modelBuilder.Entity("sfa_api.Features.RouteUnlockRequests.Entities.RouteUnlockRequestEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("FromStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("PerformedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PerformedByRole")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int>("PerformedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RouteUnlockRequestId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ToStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PerformedByUserId");
+
+                    b.HasIndex("RouteUnlockRequestId", "PerformedAt");
+
+                    b.ToTable("RouteUnlockRequestEvents");
                 });
 
             modelBuilder.Entity("sfa_api.Features.Routes.Entities.Route", b =>
@@ -3923,6 +4115,71 @@ namespace sfa_api.Migrations
                     b.Navigation("PurchaseOrder");
                 });
 
+            modelBuilder.Entity("sfa_api.Features.RouteUnlockRequests.Entities.RouteUnlockRequest", b =>
+                {
+                    b.HasOne("sfa_api.Features.DailyRouteAssignments.Entities.DailyRouteAssignment", null)
+                        .WithMany()
+                        .HasForeignKey("DailyRouteAssignmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("sfa_api.Features.Users.Entities.User", "ReviewedByUser")
+                        .WithMany()
+                        .HasForeignKey("ReviewedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("sfa_api.Features.Users.Entities.User", "RevokedByUser")
+                        .WithMany()
+                        .HasForeignKey("RevokedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("sfa_api.Features.Routes.Entities.Route", "Route")
+                        .WithMany()
+                        .HasForeignKey("RouteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("sfa_api.Features.Users.Entities.User", "SupervisorUser")
+                        .WithMany()
+                        .HasForeignKey("SupervisorUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("sfa_api.Features.Users.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ReviewedByUser");
+
+                    b.Navigation("RevokedByUser");
+
+                    b.Navigation("Route");
+
+                    b.Navigation("SupervisorUser");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("sfa_api.Features.RouteUnlockRequests.Entities.RouteUnlockRequestEvent", b =>
+                {
+                    b.HasOne("sfa_api.Features.Users.Entities.User", "PerformedByUser")
+                        .WithMany()
+                        .HasForeignKey("PerformedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("sfa_api.Features.RouteUnlockRequests.Entities.RouteUnlockRequest", "Request")
+                        .WithMany("Events")
+                        .HasForeignKey("RouteUnlockRequestId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("PerformedByUser");
+
+                    b.Navigation("Request");
+                });
+
             modelBuilder.Entity("sfa_api.Features.Routes.Entities.Route", b =>
                 {
                     b.HasOne("sfa_api.Features.Areas.Entities.Area", "Area")
@@ -4469,6 +4726,11 @@ namespace sfa_api.Migrations
                     b.Navigation("History");
 
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("sfa_api.Features.RouteUnlockRequests.Entities.RouteUnlockRequest", b =>
+                {
+                    b.Navigation("Events");
                 });
 
             modelBuilder.Entity("sfa_api.Features.SalesInvoices.Entities.SalesInvoice", b =>
