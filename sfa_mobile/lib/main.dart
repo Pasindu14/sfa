@@ -363,6 +363,11 @@ class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
     // App is in foreground — show an in-app banner
     _fcmForegroundSub = FirebaseMessaging.onMessage.listen((message) {
       if (!mounted) return;
+      // Before the banner check: a decision on the rep's route unlock changes
+      // the geofence policy, and that must land even for a data-only message.
+      if (_routeUnlockDecisionTypes.contains(message.data['type'])) {
+        _refreshOutletsAfterUnlockDecision();
+      }
       final notification = message.notification;
       if (notification == null) return;
       final ctx = _router.routerDelegate.navigatorKey.currentContext;
@@ -409,7 +414,61 @@ class _SfaAppState extends State<SfaApp> with WidgetsBindingObserver {
       } else {
         _router.goNamed('bills');
       }
+      return;
     }
+
+    final isRouteUnlock = type == 'ROUTE_UNLOCK_REQUESTED' ||
+        type == 'ROUTE_UNLOCK_CANCELLED' ||
+        _routeUnlockDecisionTypes.contains(type);
+    if (!isRouteUnlock) return;
+
+    // Where these go depends on who is signed in, so on a cold start opened
+    // from the notification wait for the session restore to finish first.
+    if (widget.authBloc.state is AuthInitial) {
+      widget.authBloc.stream
+          .firstWhere((s) => s is! AuthInitial)
+          .then((_) {
+        if (mounted) _navigateFromNotification(data);
+      });
+      return;
+    }
+
+    // Decisions go to the rep, but also to the supervisor when an admin acted
+    // on web — so route by who is signed in, not by the type alone.
+    final auth = widget.authBloc.state;
+    if (auth is! AuthAuthenticated) return;
+    if (auth.role == UserRole.supervisor) {
+      final location = _router.routerDelegate.currentConfiguration.uri.path;
+      if (location == '/supervisor/unlock-requests') return;
+      // Same push-vs-go reasoning as the bill case above.
+      if (location.startsWith('/supervisor')) {
+        _router.pushNamed('supervisorUnlockRequests');
+      } else {
+        _router.goNamed('supervisorUnlockRequests');
+      }
+      return;
+    }
+
+    if (auth.role == UserRole.salesRep &&
+        _routeUnlockDecisionTypes.contains(type)) {
+      _refreshOutletsAfterUnlockDecision();
+      _router.goNamed('salesRepHome');
+    }
+  }
+
+  static const _routeUnlockDecisionTypes = {
+    'ROUTE_UNLOCK_APPROVED',
+    'ROUTE_UNLOCK_REJECTED',
+    'ROUTE_UNLOCK_REVOKED',
+  };
+
+  /// Pulls today's outlets and geofence policy so an approval (or a revoke)
+  /// takes effect now rather than at the next periodic sync. Reps only — the
+  /// supervisor has no outlet cache. Fire-and-forget; the service never throws.
+  void _refreshOutletsAfterUnlockDecision() {
+    final auth = widget.authBloc.state;
+    if (auth is! AuthAuthenticated || auth.role != UserRole.salesRep) return;
+    unawaited(getIt<BackgroundSyncService>().refreshTodaysOutlets());
   }
 
   @override

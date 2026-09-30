@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -7,8 +9,10 @@ class FcmService {
 
   FcmService(this._dio);
 
-  /// Called after successful login — requests permission, gets the FCM token,
-  /// sends it to the API, and listens for token rotations.
+  StreamSubscription<String>? _tokenRefreshSub;
+
+  /// Called after login and on session restore — requests permission, gets the
+  /// FCM token, sends it to the API, and listens for token rotations.
   Future<void> registerToken() async {
     try {
       await FirebaseMessaging.instance.requestPermission(
@@ -19,7 +23,11 @@ class FcmService {
       final token = await FirebaseMessaging.instance.getToken();
       if (token == null) return;
       await _sendToken(token);
-      FirebaseMessaging.instance.onTokenRefresh.listen(_sendToken);
+      // Registration runs on every restore and every login, so replace the
+      // rotation listener rather than stacking a new one each time.
+      await _tokenRefreshSub?.cancel();
+      _tokenRefreshSub =
+          FirebaseMessaging.instance.onTokenRefresh.listen(_sendToken);
     } catch (e) {
       debugPrint('[FCM] registerToken failed: $e');
     }
@@ -28,6 +36,8 @@ class FcmService {
   /// Called before logout — clears the token from the API so no stale
   /// notifications are sent after the user signs out.
   Future<void> clearToken() async {
+    await _tokenRefreshSub?.cancel();
+    _tokenRefreshSub = null;
     try {
       await _dio.delete('/api/v1/users/me/fcm-token');
     } catch (e) {

@@ -119,6 +119,11 @@ class BackgroundSyncService {
     return true;
   }
 
+  /// Re-downloads just today's outlets and geofence policy — used when a route
+  /// unlock is approved, rejected or revoked, so the new policy lands without
+  /// waiting for the next full sync. Never throws.
+  Future<void> refreshTodaysOutlets() => _guard(_syncTodaysOutlets);
+
   Future<void> _syncTodaysOutlets() async {
     // Always re-confirm today's assignment from the server before syncing
     // outlets — never fall back to the routeId already on the device. That

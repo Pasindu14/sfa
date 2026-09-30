@@ -64,6 +64,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           }
         }
         emit(AuthAuthenticated(role: token.role, name: token.name));
+        // Same fire-and-forget as login. Without it a user who never signs in
+        // again keeps whatever token (if any) the server last saw, and misses
+        // every push after the device rotates it or reinstalls the app.
+        unawaited(_fcmService.registerToken());
         if (token.role == UserRole.salesRep) {
           unawaited(LocationTrackingService.start());
         }

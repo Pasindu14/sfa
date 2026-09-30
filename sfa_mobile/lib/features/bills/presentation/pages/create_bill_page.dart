@@ -18,6 +18,7 @@ import 'package:uswatte/features/bills/presentation/widgets/product_search_deleg
 import 'package:uswatte/core/connectivity/connectivity_service.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_bloc.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_state.dart';
+import 'package:uswatte/features/route_unlock/presentation/cubit/route_unlock_cubit.dart';
 
 class CreateBillPage extends StatelessWidget {
   const CreateBillPage({super.key});
@@ -214,6 +215,12 @@ class CreateBillPage extends StatelessWidget {
                                               state.proximityEnforced,
                                           exemptionUntil:
                                               state.policy.enforcedFrom,
+                                          exemptionReason:
+                                              state.policy.exemptionReason,
+                                          repAccuracyMeters:
+                                              state.gpsAccuracyMeters,
+                                          unlockCubit:
+                                              ctx.read<RouteUnlockCubit>(),
                                         ),
                                         if (state.outlet != null) ...[
                                           SizedBox(height: 8.h),
