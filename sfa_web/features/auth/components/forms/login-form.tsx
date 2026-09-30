@@ -37,7 +37,7 @@ export function LoginForm({
       } else {
         const session = await getSession()
         const role = session?.user?.role?.toLowerCase()
-        router.push(role === "distributor" ? "/distributor-dashboard" : "/users")
+        router.push(role === "distributor" ? "/distributor-dashboard" : "/dashboard")
         router.refresh()
       }
     } catch (err) {
