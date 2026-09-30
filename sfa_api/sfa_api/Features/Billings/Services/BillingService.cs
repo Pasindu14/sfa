@@ -93,7 +93,9 @@ public class BillingService(
             || (repLat == 0 && repLng == 0))
             throw new BillingLocationRequiredException();
 
-        var policy = await _policyResolver.ResolveAsync(salesRepId, ct: ct);
+        // The outlet's own route: a route unlock relaxes only the route it was
+        // approved for, so billing an outlet on another route stays gated.
+        var policy = await _policyResolver.ResolveAsync(salesRepId, outlet.RouteId, ct: ct);
 
         // A MaxValue distance means the OUTLET has no stored coordinates (a 0,0
         // placeholder). Those outlets stay billable from anywhere until someone
@@ -323,6 +325,7 @@ public class BillingService(
                 GpsAccuracyMeters        = request.GpsAccuracyMeters,
                 ProximityOverridden      = proximityOverridden,
                 ProximityExemptionId     = proximityOverridden ? policy.ExemptionId : null,
+                RouteUnlockRequestId     = proximityOverridden ? policy.RouteUnlockRequestId : null,
                 PricingStructureId       = headerStructureId,
                 CreatedAt                = DateTime.UtcNow,
                 UpdatedAt         = DateTime.UtcNow,

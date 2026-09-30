@@ -28,6 +28,7 @@ using sfa_api.Features.DailyRouteAssignments.Entities;
 using sfa_api.Features.DailyRouteAssignments.Enums;
 using sfa_api.Features.UserGeoAssignments.Entities;
 using sfa_api.Features.UserProximityExemptions.Entities;
+using sfa_api.Features.RouteUnlockRequests.Entities;
 using sfa_api.Features.UserReportingLines.Entities;
 using sfa_api.Features.Users.Entities;
 using sfa_api.Features.SalesTargets.Entities;
@@ -83,6 +84,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<UserReportingLine> UserReportingLines => Set<UserReportingLine>();
     public DbSet<UserGeoAssignment> UserGeoAssignments => Set<UserGeoAssignment>();
     public DbSet<UserProximityExemption> UserProximityExemptions => Set<UserProximityExemption>();
+    public DbSet<RouteUnlockRequest> RouteUnlockRequests => Set<RouteUnlockRequest>();
+    public DbSet<RouteUnlockRequestEvent> RouteUnlockRequestEvents => Set<RouteUnlockRequestEvent>();
     public DbSet<DailyRouteAssignment> DailyRouteAssignments => Set<DailyRouteAssignment>();
     public DbSet<Billing> Billings => Set<Billing>();
     public DbSet<BillingItem> BillingItems => Set<BillingItem>();
@@ -422,6 +425,79 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .HasForeignKey(x => x.GrantedByUserId)
              .IsRequired()
              .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // RouteUnlockRequest — rep-requested, supervisor/admin-approved relief from the
+        // billing geofence for one route for one Sri Lanka business day.
+        modelBuilder.Entity<RouteUnlockRequest>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+
+            // Enum member names, sized with headroom (see StockType: a column sized
+            // to today's longest name 500s the first time a longer one appears).
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+            e.Property(x => x.RequestReason).HasMaxLength(500).IsRequired();
+            e.Property(x => x.ReviewedByRole).HasMaxLength(20);
+            e.Property(x => x.ReviewNote).HasMaxLength(500);
+            e.Property(x => x.RevokeReason).HasMaxLength(500);
+
+            // At most one open (Pending/Approved) request per rep per day — the real
+            // guard against double-submit; the service's lock is only the fast path.
+            e.HasIndex(x => new { x.UserId, x.BusinessDate })
+             .IsUnique()
+             .HasFilter("\"Status\" IN ('Pending', 'Approved') AND \"IsDeleted\" = false")
+             .HasDatabaseName("UX_RouteUnlockRequests_UserId_BusinessDate_Open");
+            // The resolver's hot path.
+            e.HasIndex(x => new { x.UserId, x.RouteId, x.Status, x.ValidTo })
+             .HasDatabaseName("IX_RouteUnlockRequests_Effective");
+            e.HasIndex(x => new { x.Status, x.BusinessDate });
+            e.HasIndex(x => x.RequestedAt);
+
+            e.HasQueryFilter(x => !x.IsDeleted);
+
+            e.Property(x => x.RowVersion)
+             .IsRowVersion()
+             .HasColumnName("xmin")
+             .HasColumnType("xid");
+
+            // Restrict everywhere — this is audit history and must outlive any
+            // attempt to remove the people or route it names.
+            e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId)
+             .IsRequired().OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Route).WithMany().HasForeignKey(x => x.RouteId)
+             .IsRequired().OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<DailyRouteAssignment>().WithMany().HasForeignKey(x => x.DailyRouteAssignmentId)
+             .IsRequired().OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.SupervisorUser).WithMany().HasForeignKey(x => x.SupervisorUserId)
+             .IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.ReviewedByUser).WithMany().HasForeignKey(x => x.ReviewedByUserId)
+             .IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.RevokedByUser).WithMany().HasForeignKey(x => x.RevokedByUserId)
+             .IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // RouteUnlockRequestEvent — append-only timeline; the permanent audit trail
+        // (AuditLog is purged after 90 days).
+        modelBuilder.Entity<RouteUnlockRequestEvent>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).UseIdentityColumn();
+            e.Property(x => x.Action).HasConversion<string>().HasMaxLength(20).IsRequired();
+            e.Property(x => x.FromStatus).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.ToStatus).HasConversion<string>().HasMaxLength(20).IsRequired();
+            e.Property(x => x.PerformedByRole).HasMaxLength(20).IsRequired();
+            e.Property(x => x.Note).HasMaxLength(500);
+            e.Property(x => x.IpAddress).HasMaxLength(64);
+            e.Property(x => x.CorrelationId).HasMaxLength(100);
+
+            e.HasIndex(x => new { x.RouteUnlockRequestId, x.PerformedAt });
+            e.HasIndex(x => x.PerformedByUserId);
+
+            e.HasOne(x => x.Request).WithMany(r => r.Events).HasForeignKey(x => x.RouteUnlockRequestId)
+             .IsRequired().OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.PerformedByUser).WithMany().HasForeignKey(x => x.PerformedByUserId)
+             .IsRequired().OnDelete(DeleteBehavior.Restrict);
         });
 
         // Route
@@ -1113,6 +1189,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             // abandoned in-flight request resent while the original is still committing — cannot
             // both insert. Filtered to non-null so web bills (which send no key) are unaffected.
             e.HasIndex(x => x.ClientBillId).IsUnique().HasFilter("\"ClientBillId\" IS NOT NULL");
+            // Drives the route-unlock audit view ("bills that relied on this unlock").
+            // Partial: almost every bill has none.
+            e.HasIndex(x => x.RouteUnlockRequestId).HasFilter("\"RouteUnlockRequestId\" IS NOT NULL");
             e.Property(x => x.RepStatus).HasConversion<string>().HasMaxLength(15);
             e.Property(x => x.DistributorStatus).HasConversion<string>().HasMaxLength(15);
             e.Property(x => x.RejectionReason).HasMaxLength(500);

@@ -3,6 +3,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using sfa_api.Features.Billings.Options;
+using sfa_api.Features.RouteUnlockRequests.Entities;
+using sfa_api.Features.UserProximityExemptions.DTOs;
+using sfa_api.Features.RouteUnlockRequests.Repositories;
 using sfa_api.Features.UserProximityExemptions.Entities;
 using sfa_api.Features.UserProximityExemptions.Repositories;
 using sfa_api.Features.UserProximityExemptions.Services;
@@ -18,10 +21,12 @@ namespace sfa_api.UnitTests.Features.UserProximityExemptions.Services;
 public class ProximityPolicyResolverTests
 {
     private readonly Mock<IUserProximityExemptionRepository> _repoMock = new();
+    private readonly Mock<IRouteUnlockRequestRepository> _routeUnlockRepoMock = new();
 
     private ProximityPolicyResolver Build(BillingGeoOptions? options = null)
         => new(
             _repoMock.Object,
+            _routeUnlockRepoMock.Object,
             Options.Create(options ?? new BillingGeoOptions()),
             NullLogger<ProximityPolicyResolver>.Instance);
 
@@ -61,7 +66,7 @@ public class ProximityPolicyResolverTests
         _repoMock.Setup(r => r.GetEffectiveAsync(42, now, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(Grant(now.AddDays(-1), validTo));
 
-        var policy = await Build().ResolveAsync(42, now);
+        var policy = await Build().ResolveAsync(42, atUtc: now);
 
         policy.Enforced.Should().BeFalse();
         policy.ExemptionId.Should().Be(7);
@@ -97,8 +102,104 @@ public class ProximityPolicyResolverTests
         _repoMock.Setup(r => r.GetEffectiveAsync(42, at, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((UserProximityExemption?)null);
 
-        await Build().ResolveAsync(42, at);
+        await Build().ResolveAsync(42, atUtc: at);
 
         _repoMock.Verify(r => r.GetEffectiveAsync(42, at, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // ── Route unlock ─────────────────────────────────────────────────────
+
+    private static RouteUnlockRequest Unlock(int routeId, DateTime validTo, int id = 55) => new()
+    {
+        Id = id,
+        UserId = 42,
+        RouteId = routeId,
+        Status = RouteUnlockStatus.Approved,
+        ValidFrom = validTo.AddHours(-5),
+        ValidTo = validTo
+    };
+
+    private void NoAdminExemption()
+        => _repoMock.Setup(r => r.GetEffectiveAsync(42, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync((UserProximityExemption?)null);
+
+    private void VerifyUnlockNeverQueried()
+        => _routeUnlockRepoMock.Verify(
+            r => r.GetEffectiveAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+
+    [Fact]
+    public async Task ResolveAsync_ApprovedUnlockForThisRoute_RelaxesAndLabelsRouteUnlock()
+    {
+        var now = new DateTime(2026, 9, 30, 6, 0, 0, DateTimeKind.Utc);
+        var validTo = new DateTime(2026, 9, 30, 18, 30, 0, DateTimeKind.Utc);
+        NoAdminExemption();
+        _routeUnlockRepoMock.Setup(r => r.GetEffectiveAsync(42, 3, now, It.IsAny<CancellationToken>()))
+                            .ReturnsAsync(Unlock(3, validTo));
+
+        var policy = await Build().ResolveAsync(42, routeId: 3, atUtc: now);
+
+        policy.Enforced.Should().BeFalse();
+        policy.Source.Should().Be(ProximityPolicySource.RouteUnlock);
+        policy.RouteUnlockRequestId.Should().Be(55);
+        policy.ExemptionId.Should().BeNull();
+        policy.EnforcedFrom.Should().Be(validTo);
+        policy.ExemptionReasonLabel.Should().Be("RouteUnlock");
+    }
+
+    [Fact]
+    public async Task ResolveAsync_UnlockExistsOnlyForAnotherRoute_StaysEnforced()
+    {
+        var now = new DateTime(2026, 9, 30, 6, 0, 0, DateTimeKind.Utc);
+        NoAdminExemption();
+        // The repo is keyed by route: route 3 is unlocked, route 4 is not.
+        _routeUnlockRepoMock.Setup(r => r.GetEffectiveAsync(42, 3, now, It.IsAny<CancellationToken>()))
+                            .ReturnsAsync(Unlock(3, now.AddHours(10)));
+        _routeUnlockRepoMock.Setup(r => r.GetEffectiveAsync(42, 4, now, It.IsAny<CancellationToken>()))
+                            .ReturnsAsync((RouteUnlockRequest?)null);
+
+        var policy = await Build().ResolveAsync(42, routeId: 4, atUtc: now);
+
+        policy.Enforced.Should().BeTrue();
+        policy.Source.Should().Be(ProximityPolicySource.None);
+        policy.RouteUnlockRequestId.Should().BeNull();
+        policy.ExemptionReasonLabel.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ResolveAsync_NoRouteId_IgnoresUnlockAndNeverQueriesIt()
+    {
+        NoAdminExemption();
+
+        var policy = await Build().ResolveAsync(42);
+
+        policy.Enforced.Should().BeTrue();
+        VerifyUnlockNeverQueried();
+    }
+
+    [Fact]
+    public async Task ResolveAsync_AdminExemptionAndUnlock_AdminExemptionWins()
+    {
+        var now = new DateTime(2026, 9, 30, 6, 0, 0, DateTimeKind.Utc);
+        _repoMock.Setup(r => r.GetEffectiveAsync(42, now, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(Grant(now.AddDays(-1), now.AddDays(2)));
+
+        var policy = await Build().ResolveAsync(42, routeId: 3, atUtc: now);
+
+        policy.Enforced.Should().BeFalse();
+        policy.Source.Should().Be(ProximityPolicySource.AdminExemption);
+        policy.ExemptionId.Should().Be(7);
+        policy.RouteUnlockRequestId.Should().BeNull();
+        policy.ExemptionReasonLabel.Should().Be(nameof(ProximityExemptionReason.BadOutletCoordinates));
+        VerifyUnlockNeverQueried();
+    }
+
+    [Fact]
+    public async Task ResolveAsync_KillSwitchOff_DoesNotQueryUnlocks()
+    {
+        var policy = await Build(new BillingGeoOptions { EnforceProximity = false }).ResolveAsync(42, routeId: 3);
+
+        policy.Enforced.Should().BeFalse();
+        VerifyUnlockNeverQueried();
     }
 }

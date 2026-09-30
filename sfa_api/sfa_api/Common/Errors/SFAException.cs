@@ -169,3 +169,21 @@ public class LockServiceUnavailableException : InfrastructureException
     public LockServiceUnavailableException()
         : base("LOCK_SERVICE_UNAVAILABLE", "Lock service is temporarily unavailable.") { }
 }
+
+/// Route-unlock state conflicts (409): a second open request, a transition from
+/// the wrong state, or another reviewer holding the lock.
+public class RouteUnlockConflictException(string code, string message)
+    : ConflictException(code, message)
+{
+    public static RouteUnlockConflictException AlreadyOpen() => new(
+        "ROUTE_UNLOCK_ALREADY_OPEN",
+        "You already have an unlock request pending or approved for today.");
+
+    public static RouteUnlockConflictException InvalidState(string current) => new(
+        "ROUTE_UNLOCK_INVALID_STATE",
+        $"This request is already {current.ToLowerInvariant()} and cannot be changed that way.");
+
+    public static RouteUnlockConflictException Busy() => new(
+        "ROUTE_UNLOCK_BUSY",
+        "Someone else is acting on this request right now. Refresh and try again.");
+}

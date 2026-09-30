@@ -105,6 +105,10 @@ public class Billing
     // The grant that allowed it, so the report can name the reason and the approver.
     public int? ProximityExemptionId { get; set; }
 
+    // The rep's approved route unlock that allowed it (same only-when-overridden
+    // rule), so the unlock's audit view can list the bills that relied on it.
+    public int? RouteUnlockRequestId { get; set; }
+
     /// <summary>
     /// The pricing structure the rep had selected when the bill was submitted. A bill may mix
     /// structures (a rep can switch mid-bill), so <see cref="BillingItem.PricingStructureId"/> is the
