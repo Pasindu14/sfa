@@ -85,6 +85,7 @@ public class NotBillingService(
             NotBillingNumber  = notBillingNumber,
             ClientRecordId    = string.IsNullOrWhiteSpace(clientRecordId) ? null : clientRecordId,
             NotBillingDate    = date,
+            CapturedAt        = CaptureTime.Sanitize(request.CapturedAt, DateTime.UtcNow),
             OutletId          = request.OutletId,
             SalesRepId        = salesRepId,
             Reason            = request.Reason,

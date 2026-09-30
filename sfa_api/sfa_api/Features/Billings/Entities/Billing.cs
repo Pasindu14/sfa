@@ -117,6 +117,10 @@ public class Billing
     public int? PricingStructureId { get; set; }
 
     // Audit
+    /// Device time the bill was made (see CaptureTime). Null for older app builds or an
+    /// implausible phone clock — readers fall back to CreatedAt.
+    public DateTime? CapturedAt { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public int? CreatedBy { get; set; }
