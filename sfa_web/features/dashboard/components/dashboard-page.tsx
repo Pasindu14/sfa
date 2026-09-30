@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { CalendarDays, RefreshCw } from 'lucide-react'
+import { CalendarDays, ChevronRight, Clock, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -21,6 +21,7 @@ import { Amount, Meter, Panel, Section, SectionError, Stale } from './dashboard-
 import { count, money, percent } from './format'
 import { MonthRibbon, type RibbonMode } from './month-ribbon'
 import { DistributorShare, RepLeaderboard, TopProducts, VisitOutcomes } from './breakdown-charts'
+import { useRouteUnlockPendingCount } from '@/features/route-unlock-request/hooks/route-unlock-request.hooks'
 
 /** Colombo date string → a value formatColombo renders as that same calendar day. */
 const day = (d: string) => `${d}T00:00:00+05:30`
@@ -41,6 +42,7 @@ export function DashboardPage() {
   return (
     <div className="flex w-full flex-1 flex-col gap-10 p-4 pt-0 md:p-6 md:pt-2 2xl:px-10">
       <Header />
+      <UnlockRequestsStrip />
       <Runway />
       <div className="grid gap-x-6 gap-y-10 lg:grid-cols-2 2xl:grid-cols-3">
         <Ledger />
@@ -122,6 +124,56 @@ function Header() {
         </Button>
       </div>
     </header>
+  )
+}
+
+// ── Route unlock requests awaiting review ───────────────────────────────────
+
+/**
+ * Today's pending route-unlock requests, so an admin covering for an absent supervisor sees them
+ * without opening the Unlock Requests page. Always today's count — it ignores the dashboard's date
+ * picker, since a past day's request can no longer be approved.
+ */
+function UnlockRequestsStrip() {
+  const { data, isLoading, isError } = useRouteUnlockPendingCount()
+  const pending = isLoading || isError ? null : (data ?? 0)
+  const waiting = pending !== null && pending > 0
+
+  return (
+    <Link
+      href="/route-unlock-requests"
+      className="group -mt-4 block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <Panel
+        className={cn(
+          'flex items-center gap-4 px-5 py-4 transition-colors group-hover:bg-muted/40',
+          waiting && 'border-amber-300 bg-amber-50/60 group-hover:bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/10',
+        )}
+      >
+        <div className={cn('rounded-md p-2', waiting ? 'bg-amber-100 dark:bg-amber-500/20' : 'bg-muted')}>
+          <Clock className={cn('h-4 w-4', waiting ? 'text-amber-600' : 'text-muted-foreground')} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium">Route unlock requests</p>
+          <p className="text-sm text-muted-foreground">
+            {pending === null
+              ? 'Pending unlock requests today'
+              : waiting
+                ? `${count(pending)} ${pending === 1 ? 'rep is' : 'reps are'} waiting for approval today`
+                : 'Nothing waiting for approval today'}
+          </p>
+        </div>
+        <span
+          className={cn(
+            'font-report text-3xl font-light tabular-nums',
+            waiting ? 'text-amber-600' : 'text-muted-foreground',
+          )}
+        >
+          {pending === null ? '—' : count(pending)}
+        </span>
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+      </Panel>
+    </Link>
   )
 }
 
