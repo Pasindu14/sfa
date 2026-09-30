@@ -2,20 +2,21 @@ import { z } from 'zod'
 
 // ── Enums ──────────────────────────────────────────────────────────────────
 
+// The API serializes enums by member name (JsonStringEnumConverter), not by number.
 export const DeletionStatus = {
-  None: 0,
-  PendingApproval: 1,
-  Approved: 2,
-  Rejected: 3,
+  None: 'None',
+  PendingApproval: 'PendingApproval',
+  Approved: 'Approved',
+  Rejected: 'Rejected',
 } as const
 
 export type DeletionStatusValue = (typeof DeletionStatus)[keyof typeof DeletionStatus]
 
 export const deletionStatusLabels: Record<DeletionStatusValue, string> = {
-  0: 'None',
-  1: 'Pending Approval',
-  2: 'Approved',
-  3: 'Rejected',
+  None: 'None',
+  PendingApproval: 'Pending Approval',
+  Approved: 'Approved',
+  Rejected: 'Rejected',
 }
 
 // ── Action schemas ─────────────────────────────────────────────────────────
@@ -33,18 +34,18 @@ export type RejectCancellationInput = z.infer<typeof rejectCancellationSchema>
 
 export type RouteCancellationDto = {
   id: number
-  date: string
   userId: number
   userName: string
   routeId: number
-  routeCode: string
   routeName: string
+  assignedDate: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
   deletionStatus: DeletionStatusValue
   deletionRequestedAt: string | null
   deletionRequestReason: string | null
   deletionRejectionReason: string | null
-  isActive: boolean
-  createdAt: string
 }
 
 export type RouteCancellationListDto = {

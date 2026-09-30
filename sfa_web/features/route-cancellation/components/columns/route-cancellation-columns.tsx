@@ -120,11 +120,11 @@ function ActionsCell({ row }: { row: { original: RouteCancellationDto } }) {
 export function getRouteCancellationColumns(): ColumnDef<RouteCancellationDto>[] {
   return [
     {
-      accessorKey: "date",
+      accessorKey: "assignedDate",
       header: "Assignment Date",
       cell: ({ row }) => (
         <span className="text-sm font-medium">
-          {formatDate(row.original.date)}
+          {formatDate(row.original.assignedDate)}
         </span>
       ),
     },
@@ -136,17 +136,10 @@ export function getRouteCancellationColumns(): ColumnDef<RouteCancellationDto>[]
       ),
     },
     {
-      accessorKey: "routeCode",
+      accessorKey: "routeName",
       header: "Route",
       cell: ({ row }) => (
-        <div className="flex flex-col">
-          <span className="font-mono text-xs font-semibold text-primary">
-            {row.original.routeCode}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            {row.original.routeName}
-          </span>
-        </div>
+        <span className="text-sm">{row.original.routeName}</span>
       ),
     },
     {
