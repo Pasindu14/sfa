@@ -5,7 +5,13 @@ namespace sfa_api.Infrastructure.Locking;
 public class PostgresAdvisoryLockService(IConfiguration config,
     ILogger<PostgresAdvisoryLockService> logger) : IDistributedLockService
 {
-    private readonly string _connectionString = config.GetConnectionString("DefaultConnection")!;
+    // Session-level advisory locks must lock and unlock on the same backend, which a
+    // transaction-mode pooler (PgBouncer, Neon -pooler) does not guarantee. LockConnection
+    // lets locks bypass the pooler with a direct connection; unset falls back to DefaultConnection.
+    private readonly string _connectionString =
+        config.GetConnectionString("LockConnection") is { Length: > 0 } lockConn
+            ? lockConn
+            : config.GetConnectionString("DefaultConnection")!;
     private readonly ILogger<PostgresAdvisoryLockService> _logger = logger;
 
     public async Task<IAsyncDisposable?> AcquireAsync(
