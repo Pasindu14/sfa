@@ -1,14 +1,28 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { APIProvider, Map, useMap } from '@vis.gl/react-google-maps'
 import { Spinner } from '@/components/ui/spinner'
 import { Button } from '@/components/ui/button'
 import { DateOnlyPicker } from '@/components/date-only-picker'
 import { MapPin, Route as RouteIcon, Search, TriangleAlert } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { RepSelect } from '../selects/rep-select'
-import { useRepRoute } from '../../hooks/rep-route.hooks'
-import type { RepRoutePointDto } from '../../schema/rep-route.schema'
+import { ActivityMarkers } from '../map/activity-markers'
+import { RepTimelinePanel } from '../timeline/rep-timeline-panel'
+import {
+  IDLE_HIGHLIGHT_MINUTES,
+  MARKER_COLORS,
+  formatLkr,
+  formatMinutes,
+  type TimelineSelection,
+} from '../timeline/timeline-display'
+import { useRepTimeline } from '../../hooks/rep-route.hooks'
+import type {
+  RepDayTimelineDto,
+  RepRoutePointDto,
+  RepTimelineEventDto,
+} from '../../schema/rep-route.schema'
 import { formatColombo, toColomboDateStr } from '@/lib/utils/datetime'
 
 const CENTER = { lat: 7.8731, lng: 80.7718 } // Sri Lanka centre — fallback before a route loads
@@ -201,21 +215,42 @@ export function RepRoutePage() {
   const [pendingDate, setPendingDate] = useState<string>(() => toColomboDateStr(new Date()))
   const [applied, setApplied] = useState<{ repId: number; date: string } | null>(null)
 
+  // One call for the whole day — the route rides along inside the timeline. Fetching them
+  // separately would queue, since Next.js runs server actions one at a time.
   const {
-    data: route,
+    data: timeline,
     isLoading,
     isError,
     error,
     refetch,
-  } = useRepRoute(applied?.repId ?? null, applied?.date ?? null)
+  } = useRepTimeline(applied?.repId ?? null, applied?.date ?? null)
+  const route = timeline?.route
 
   // Stable identity so RouteTrail's effect doesn't rebuild every overlay on each render.
   const points = useMemo(() => route?.points ?? [], [route])
+  const events = useMemo(() => timeline?.events ?? [], [timeline])
+
+  // Tagged with the events array it indexes into, so a reload (new array) drops a stale
+  // selection on its own instead of highlighting whatever now sits at that index.
+  const [selectionState, setSelectionState] = useState<
+    (TimelineSelection & { events: RepTimelineEventDto[] }) | null
+  >(null)
+  const selection = selectionState?.events === events ? selectionState : null
+
+  const selectFromList = useCallback(
+    (index: number) => setSelectionState({ index, source: 'list', events }),
+    [events],
+  )
+  const selectFromMap = useCallback(
+    (index: number) => setSelectionState({ index, source: 'map', events }),
+    [events],
+  )
 
   const gapThresholdMs =
     (route?.summary.gapThresholdMinutes ?? FALLBACK_GAP_MINUTES) * 60_000
 
-  const isEmpty = !!applied && !isLoading && !isError && points.length === 0
+  const hasData = points.length > 0 || events.length > 0
+  const isEmpty = !!applied && !isLoading && !isError && !hasData
 
   // Only surface the failure if it is more recent than the last position we got — otherwise
   // the phone already recovered and the warning would be noise.
@@ -244,14 +279,14 @@ export function RepRoutePage() {
   return (
     <div className="flex flex-col gap-6 p-6">
       <div className="rounded-lg bg-muted/90 p-10">
-        <h1 className="text-3xl font-bold tracking-tight">Rep Route History</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Rep Day</h1>
         <p className="text-muted-foreground">
-          {route && points.length > 0
-            ? `${route.repName} · ${formatDistance(route.summary.measuredDistanceMeters)} recorded · ${route.summary.pointCount} pings` +
+          {timeline && route && hasData
+            ? `${timeline.repName} · ${timeline.assignment?.routeName ?? 'no route assigned'} · ${formatDistance(route.summary.measuredDistanceMeters)} recorded · ${route.summary.pointCount} pings` +
               (route.summary.gapCount > 0
                 ? ` · ${route.summary.gapCount} gap${route.summary.gapCount === 1 ? '' : 's'} not measured`
                 : '')
-            : 'Select a sales rep and a date to see where they travelled'}
+            : 'Select a sales rep and a date to see where they travelled and what they did along the way'}
         </p>
       </div>
 
@@ -291,22 +326,7 @@ export function RepRoutePage() {
         )}
       </div>
 
-      {route && points.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <SummaryTile
-            label="Distance recorded"
-            value={formatDistance(route.summary.measuredDistanceMeters)}
-            hint={
-              route.summary.gapCount > 0
-                ? `excludes ${route.summary.gapCount} gap${route.summary.gapCount === 1 ? '' : 's'}`
-                : 'straight-line, not road distance'
-            }
-          />
-          <SummaryTile label="Pings" value={String(route.summary.pointCount)} />
-          <SummaryTile label="First ping" value={formatColombo(route.summary.firstPingAt, 'HH:mm')} />
-          <SummaryTile label="Last ping" value={formatColombo(route.summary.lastPingAt, 'HH:mm')} />
-        </div>
-      )}
+      {timeline && hasData && <DayKpis timeline={timeline} />}
 
       {statusIsCurrent && status && (
         <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/40">
@@ -326,94 +346,217 @@ export function RepRoutePage() {
         </div>
       )}
 
-      <div className="relative" style={{ height: 'calc(100vh - 320px)' }}>
-        {isLoading && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-background/60 backdrop-blur-sm">
-            <Spinner className="h-8 w-8" />
-          </div>
-        )}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="relative lg:col-span-2" style={{ height: 'calc(100vh - 320px)' }}>
+          {isLoading && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-background/60 backdrop-blur-sm">
+              <Spinner className="h-8 w-8" />
+            </div>
+          )}
 
-        {!applied && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 rounded-xl bg-background/80 backdrop-blur-sm">
-            <RouteIcon className="h-10 w-10 text-muted-foreground" />
-            <p className="text-sm font-medium">Choose a sales rep and a date</p>
-            <p className="text-xs text-muted-foreground">
-              Then press <span className="font-medium">Show route</span> to load the day
+          {!applied && (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 rounded-xl bg-background/80 backdrop-blur-sm">
+              <RouteIcon className="h-10 w-10 text-muted-foreground" />
+              <p className="text-sm font-medium">Choose a sales rep and a date</p>
+              <p className="text-xs text-muted-foreground">
+                Then press <span className="font-medium">Show route</span> to load the day
+              </p>
+            </div>
+          )}
+
+          {isError && (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 rounded-xl bg-background/80 backdrop-blur-sm">
+              <MapPin className="h-10 w-10 text-destructive" />
+              <p className="text-sm font-medium">Could not load this route</p>
+              <p className="text-xs text-muted-foreground">
+                {error instanceof Error ? error.message : 'Unknown error'}
+              </p>
+            </div>
+          )}
+
+          {isEmpty && (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 rounded-xl bg-background/80 backdrop-blur-sm">
+              <MapPin className="h-10 w-10 text-muted-foreground" />
+              <p className="text-sm font-medium">
+                No location data or activity for {timeline?.repName ?? 'this rep'} on{' '}
+                {formatColombo(`${applied?.date}T00:00:00`)}
+              </p>
+              <p className="max-w-md text-center text-xs text-muted-foreground">
+                {status
+                  ? `${SKIP_REASONS[status.reason] ?? status.reason} — last reported ${formatColombo(status.reportedAt, 'd MMM, HH:mm')}.`
+                  : 'No reason was reported either, which usually means the tracking service was not running at all.'}
+              </p>
+            </div>
+          )}
+
+          <APIProvider apiKey={apiKey}>
+            <Map
+              defaultCenter={CENTER}
+              defaultZoom={8}
+              gestureHandling="cooperative"
+              className="h-full w-full overflow-hidden rounded-xl border"
+            >
+              <RouteTrail points={points} gapThresholdMs={gapThresholdMs} />
+              <ActivityMarkers
+                events={events}
+                selection={selection}
+                onSelect={selectFromMap}
+                fitToEvents={points.length === 0}
+              />
+            </Map>
+          </APIProvider>
+
+          <div className="absolute top-4 right-4 z-10 max-h-[calc(100%-2rem)] w-52 space-y-2 overflow-y-auto rounded-lg border bg-background p-3 text-xs shadow-md">
+            <p className="text-sm font-semibold">Legend</p>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-green-600 text-[9px] font-bold text-white">
+                A
+              </span>
+              First ping of the day
+            </div>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-red-600 text-[9px] font-bold text-white">
+                B
+              </span>
+              Last ping of the day
+            </div>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <span className="h-1 w-5 shrink-0 rounded bg-orange-500" />
+              Recorded path
+            </div>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <span
+                className="h-1 w-5 shrink-0 rounded"
+                style={{
+                  backgroundImage:
+                    'repeating-linear-gradient(to right, #f97316 0 3px, transparent 3px 6px)',
+                }}
+              />
+              Gap — no data
+            </div>
+            {LEGEND_MARKERS.map(({ kind, label }) => (
+              <div key={kind} className="flex items-center gap-2 text-muted-foreground">
+                <span
+                  className="h-3 w-3 shrink-0 rounded-full border-2 border-white shadow-sm"
+                  style={{ backgroundColor: MARKER_COLORS[kind] }}
+                />
+                {label}
+              </div>
+            ))}
+            <p className="pt-1 text-[11px] leading-snug text-muted-foreground">
+              Each small dot is one recorded position. A dashed run means more than{' '}
+              {route?.summary.gapThresholdMinutes ?? FALLBACK_GAP_MINUTES} minutes passed with
+              no ping — the path there is unknown, so it is left out of the distance.
             </p>
           </div>
-        )}
+        </div>
 
-        {isError && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 rounded-xl bg-background/80 backdrop-blur-sm">
-            <MapPin className="h-10 w-10 text-destructive" />
-            <p className="text-sm font-medium">Could not load this route</p>
-            <p className="text-xs text-muted-foreground">
-              {error instanceof Error ? error.message : 'Unknown error'}
-            </p>
+        <div className="flex h-[480px] flex-col overflow-hidden rounded-xl border bg-background lg:h-[calc(100vh-320px)]">
+          <div className="flex items-baseline justify-between border-b px-4 py-3">
+            <p className="text-sm font-semibold">Activity</p>
+            {events.length > 0 && (
+              <p className="text-xs text-muted-foreground">Click an entry to find it on the map</p>
+            )}
           </div>
-        )}
-
-        {isEmpty && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 rounded-xl bg-background/80 backdrop-blur-sm">
-            <MapPin className="h-10 w-10 text-muted-foreground" />
-            <p className="text-sm font-medium">
-              No location data for {route?.repName ?? 'this rep'} on{' '}
-              {formatColombo(`${applied?.date}T00:00:00`)}
-            </p>
-            <p className="max-w-md text-center text-xs text-muted-foreground">
-              {status
-                ? `${SKIP_REASONS[status.reason] ?? status.reason} — last reported ${formatColombo(status.reportedAt, 'd MMM, HH:mm')}.`
-                : 'No reason was reported either, which usually means the tracking service was not running at all.'}
-            </p>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {timeline ? (
+              <RepTimelinePanel events={events} selection={selection} onSelect={selectFromList} />
+            ) : (
+              <div className="flex h-full items-center justify-center p-6 text-center text-xs text-muted-foreground">
+                {isLoading ? <Spinner className="h-6 w-6" /> : 'The day’s bills, visits and stops appear here'}
+              </div>
+            )}
           </div>
-        )}
-
-        <APIProvider apiKey={apiKey}>
-          <Map
-            defaultCenter={CENTER}
-            defaultZoom={8}
-            gestureHandling="cooperative"
-            className="h-full w-full overflow-hidden rounded-xl border"
-          >
-            <RouteTrail points={points} gapThresholdMs={gapThresholdMs} />
-          </Map>
-        </APIProvider>
-
-        <div className="absolute top-4 right-4 z-10 w-52 space-y-2 rounded-lg border bg-background p-3 text-xs shadow-md">
-          <p className="text-sm font-semibold">Legend</p>
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-green-600 text-[9px] font-bold text-white">
-              A
-            </span>
-            First ping of the day
-          </div>
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-red-600 text-[9px] font-bold text-white">
-              B
-            </span>
-            Last ping of the day
-          </div>
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <span className="h-1 w-5 shrink-0 rounded bg-orange-500" />
-            Recorded path
-          </div>
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <span
-              className="h-1 w-5 shrink-0 rounded"
-              style={{
-                backgroundImage:
-                  'repeating-linear-gradient(to right, #f97316 0 3px, transparent 3px 6px)',
-              }}
-            />
-            Gap — no data
-          </div>
-          <p className="pt-1 text-[11px] leading-snug text-muted-foreground">
-            Each dot is one recorded position. A dashed run means more than{' '}
-            {route?.summary.gapThresholdMinutes ?? FALLBACK_GAP_MINUTES} minutes passed with
-            no ping — the path there is unknown, so it is left out of the distance.
-          </p>
         </div>
       </div>
+    </div>
+  )
+}
+
+const LEGEND_MARKERS = [
+  { kind: 'Bill', label: 'Bill' },
+  { kind: 'NoSale', label: 'No-sale visit' },
+  { kind: 'Stop', label: 'Stop with nothing recorded' },
+  { kind: 'Unlock', label: 'Route unlock request' },
+] as const
+
+/**
+ * The day at a glance. Distance stays from the route summary; everything else is the
+ * timeline's own KPIs, so tiles and list are computed by the same server pass.
+ */
+function DayKpis({ timeline }: { timeline: RepDayTimelineDto }) {
+  const s = timeline.summary
+  const route = timeline.route.summary
+  const flagCount =
+    s.gpsGapCount + s.unrecordedStopCount + s.outOfRangeBillCount + s.lateSyncCount
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
+
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7">
+      <SummaryTile
+        label="Working time"
+        value={
+          s.dayStartAt
+            ? `${formatColombo(s.dayStartAt, 'HH:mm')}–${formatColombo(s.dayEndAt, 'HH:mm')}`
+            : '—'
+        }
+        hint={
+          `${formatMinutes(s.workingMinutes)}` +
+          (s.firstActivityAt ? ` · first sale/visit ${formatColombo(s.firstActivityAt, 'HH:mm')}` : '')
+        }
+      />
+      <SummaryTile
+        label="Bills"
+        value={String(s.billCount)}
+        hint={
+          formatLkr(s.billRevenue) +
+          (s.cancelledBillCount > 0 ? ` · ${s.cancelledBillCount} cancelled` : '')
+        }
+      />
+      <SummaryTile
+        label="Coverage"
+        value={
+          s.plannedOutlets != null
+            ? `${s.outletsCovered}/${s.plannedOutlets}` +
+              (s.coveragePercent != null ? ` (${Math.round(s.coveragePercent)}%)` : '')
+            : String(s.outletsCovered)
+        }
+        hint={timeline.assignment?.routeName ?? 'no route assigned — outlets visited'}
+      />
+      <SummaryTile label="No-sale visits" value={String(s.noSaleCount)} />
+      <SummaryTile
+        label="Longest idle"
+        value={formatMinutes(s.longestIdleMinutes)}
+        hint="between consecutive bills / visits"
+        warn={(s.longestIdleMinutes ?? 0) >= IDLE_HIGHLIGHT_MINUTES}
+      />
+      <SummaryTile
+        label="Flags"
+        value={String(flagCount)}
+        hint={
+          flagCount === 0
+            ? 'nothing unusual'
+            : [
+                s.gpsGapCount > 0 &&
+                  `${plural(s.gpsGapCount, 'GPS gap')} (${formatMinutes(s.gpsGapMinutes)})`,
+                s.unrecordedStopCount > 0 && plural(s.unrecordedStopCount, 'unrecorded stop'),
+                s.outOfRangeBillCount > 0 && `${s.outOfRangeBillCount} out of range`,
+                s.lateSyncCount > 0 && `${s.lateSyncCount} late sync`,
+              ]
+                .filter(Boolean)
+                .join(' · ')
+        }
+        warn={flagCount > 0}
+      />
+      <SummaryTile
+        label="Distance recorded"
+        value={formatDistance(route.measuredDistanceMeters)}
+        hint={
+          route.gapCount > 0
+            ? `excludes ${plural(route.gapCount, 'gap')} · ${route.pointCount} pings`
+            : `straight-line, not road distance · ${route.pointCount} pings`
+        }
+      />
     </div>
   )
 }
@@ -422,13 +565,20 @@ function SummaryTile({
   label,
   value,
   hint,
+  warn = false,
 }: {
   label: string
   value: string
   hint?: string
+  warn?: boolean
 }) {
   return (
-    <div className="rounded-lg border bg-background p-3">
+    <div
+      className={cn(
+        'rounded-lg border bg-background p-3',
+        warn && 'border-amber-300 bg-amber-50/60 dark:border-amber-900 dark:bg-amber-950/30',
+      )}
+    >
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="text-lg font-semibold tabular-nums">{value}</p>
       {hint && <p className="text-[11px] leading-tight text-muted-foreground">{hint}</p>}

@@ -14,5 +14,7 @@ public record CreateBillingRequest(
     double? GpsAccuracyMeters = null,
     /// Pricing structure the rep had selected at submit. Optional — older app builds don't send it;
     /// the server then stamps the default structure, which is what those builds priced from.
-    int? PricingStructureId = null
+    int? PricingStructureId = null,
+    /// Device time the rep made the bill. Optional — older app builds do not send it.
+    DateTimeOffset? CapturedAt = null
 );

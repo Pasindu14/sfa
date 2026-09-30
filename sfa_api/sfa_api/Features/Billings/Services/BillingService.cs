@@ -303,6 +303,7 @@ public class BillingService(
                 BillingNumber = billingNumber,
                 ClientBillId  = clientBillId,
                 BillingDate   = request.BillingDate ?? SriLankaTime.Today,
+                CapturedAt    = CaptureTime.Sanitize(request.CapturedAt, DateTime.UtcNow),
                 OutletId          = request.OutletId,
                 SalesRepId        = salesRepId,
                 DistributorId     = distributor.Id,

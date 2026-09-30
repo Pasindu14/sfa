@@ -8,4 +8,7 @@ public class CreateNotBillingRequest
     public NotBillingReason Reason { get; set; }
     public string? Notes { get; set; }
     public DateOnly? NotBillingDate { get; set; }
+
+    /// Device time the rep recorded the visit. Optional — older app builds do not send it.
+    public DateTimeOffset? CapturedAt { get; set; }
 }
