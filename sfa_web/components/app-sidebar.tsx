@@ -76,6 +76,7 @@ const navConfig: NavGroup[] = [
       { title: "Route Assignments", url: "/route-assignments" },
       { title: "Route Cancellations", url: "/route-cancellations" },
       { title: "Proximity Exemptions", url: "/proximity-exemptions" },
+      { title: "Unlock Requests", url: "/route-unlock-requests" },
       { title: "Field Reps Live Map", url: "/field-reps-live-map" },
       { title: "Rep Route History", url: "/rep-route-history" },
     ],
