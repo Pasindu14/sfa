@@ -27,7 +27,7 @@ export function StockAdjustmentDetailDialog({
 
   return (
     <Dialog open={adjustmentId !== null} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-5xl">
         <DialogHeader>
           <DialogTitle>{data ? `Stock adjustment ${data.adjustmentNumber}` : 'Stock adjustment'}</DialogTitle>
           <DialogDescription>
@@ -70,35 +70,44 @@ export function StockAdjustmentDetailDialog({
               </span>
             </div>
             <ScrollArea className="max-h-80 rounded-lg border">
-              <table className="w-full text-sm">
+              <table className="w-full table-fixed text-sm">
+                {/* Fixed widths for the short columns; Product takes whatever is left, so
+                    the numbers line up row to row instead of drifting with the name length. */}
+                <colgroup>
+                  <col className="w-20" />
+                  <col />
+                  <col className="w-24" />
+                  <col className="w-36" />
+                  <col className="w-36" />
+                  <col className="w-40" />
+                </colgroup>
                 <thead className="sticky top-0 bg-background text-xs text-muted-foreground">
                   <tr className="border-b">
-                    <th className="px-3 py-2 text-left font-medium">Product</th>
-                    <th className="px-3 py-2 text-left font-medium">Type</th>
-                    <th className="px-3 py-2 text-right font-medium">Before → After</th>
-                    <th className="px-3 py-2 text-right font-medium">Difference</th>
+                    <th className="px-4 py-2.5 text-left font-medium">Code</th>
+                    <th className="px-4 py-2.5 text-left font-medium">Product</th>
+                    <th className="px-4 py-2.5 text-left font-medium">Type</th>
+                    <th className="border-l px-4 py-2.5 text-right font-medium">Before</th>
+                    <th className="px-4 py-2.5 text-right font-medium">After</th>
+                    <th className="border-l px-4 py-2.5 text-right font-medium">Difference</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.lines.map((line) => (
                     <tr key={line.id} className="border-b last:border-0">
-                      <td className="px-3 py-1.5">
-                        <span className="font-mono text-xs">{line.productCode}</span>{' '}
-                        <span className="text-muted-foreground">{line.productDescription}</span>
-                      </td>
-                      <td className="px-3 py-1.5 text-xs">
+                      <td className="px-4 py-2.5 font-mono text-xs whitespace-nowrap">{line.productCode}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">{line.productDescription}</td>
+                      <td className="px-4 py-2.5 text-xs whitespace-nowrap">
                         {line.stockType === 'FreeIssue' ? 'Free Issue' : 'Normal'}
                       </td>
-                      <td className="px-3 py-1.5 text-right tabular-nums whitespace-nowrap">
-                        <span className="text-muted-foreground">
-                          {formatCasesPieces(line.quantityBefore, line.piecesPerPack)}
-                        </span>
-                        {' → '}
-                        <span className="font-medium">{formatCasesPieces(line.newQuantity, line.piecesPerPack)}</span>
+                      <td className="border-l px-4 py-2.5 text-right tabular-nums whitespace-nowrap text-muted-foreground">
+                        {formatCasesPieces(line.quantityBefore, line.piecesPerPack)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right tabular-nums font-medium whitespace-nowrap">
+                        {formatCasesPieces(line.newQuantity, line.piecesPerPack)}
                       </td>
                       <td
                         className={cn(
-                          'px-3 py-1.5 text-right tabular-nums font-semibold whitespace-nowrap',
+                          'border-l px-4 py-2.5 text-right tabular-nums font-semibold whitespace-nowrap',
                           line.difference > 0 ? 'text-green-600' : 'text-destructive',
                         )}
                       >
