@@ -27,7 +27,9 @@ class DeviceUserGuard {
     'distributor_stocks_last_synced_at',
   ];
 
-  static const _unsynced = "sync_status IN ('pending', 'failed')";
+  // 'syncing' counts too: a row whose sender died mid-request is stuck there
+  // until the outbox resets it, and it is still unsent work.
+  static const _unsynced = "sync_status IN ('pending', 'failed', 'syncing')";
 
   final DatabaseHelper _dbHelper;
 

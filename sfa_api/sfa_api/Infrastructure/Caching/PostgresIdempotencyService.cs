@@ -30,8 +30,21 @@ public class PostgresIdempotencyService(AppDbContext db,
         // A row for this key may already exist — a prior completed request still within TTL, or
         // a concurrent store. Storing again is harmless (the response is already cached), so we
         // must never let a primary-key violation bubble up as a 500 for a request that succeeded.
-        if (await _db.IdempotencyKeys.AnyAsync(x => x.Key == key, ct))
+        var existing = await _db.IdempotencyKeys.FirstOrDefaultAsync(x => x.Key == key, ct);
+        if (existing is not null)
+        {
+            if (existing.ExpiresAt > DateTime.UtcNow)
+                return;
+
+            // Expired but not yet swept by the hourly cleanup: refresh it in place. Skipping here
+            // would leave a reused key uncached for the rest of the hour.
+            existing.StatusCode = statusCode;
+            existing.ResponseJson = responseJson;
+            existing.ExpiresAt = DateTime.UtcNow.AddHours(24);
+            try { await _db.SaveChangesAsync(ct); }
+            catch (DbUpdateException) { _db.Entry(existing).State = EntityState.Detached; }
             return;
+        }
 
         var entity = new IdempotencyKey
         {

@@ -133,6 +133,8 @@ void main() {
     expect(clearedWhole('pending_location_pings'), isFalse);
     expect(log.deletes, contains(startsWith('bills WHERE NOT (')));
     expect(log.deletes, contains(startsWith('not_billings WHERE NOT (')));
+    // A row stuck in 'syncing' (its sender died) is still unsent work.
+    expect(log.deletes, contains(contains("'syncing'")));
     expect(clearedWhole('daily_outlets'), isTrue);
     expect(clearedWhole('distributor_stocks'), isTrue);
     expect(log.writes.single['value'], '7');

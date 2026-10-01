@@ -66,7 +66,8 @@ public class StockTransfersController(
 
         await _createValidator.ValidateOrThrowAsync(request, ct);
 
-        var transfer = await _service.CreateAsync(request, GetCallerId(), ct);
+        var clientTransferId = Request.Headers["X-Idempotency-Key"].FirstOrDefault();
+        var transfer = await _service.CreateAsync(request, GetCallerId(), clientTransferId, ct);
         return CreatedAtAction(nameof(GetById), new { id = transfer.Id }, ResponseHelper.Created(transfer, correlationId));
     }
 }

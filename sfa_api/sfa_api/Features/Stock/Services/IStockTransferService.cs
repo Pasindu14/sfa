@@ -5,7 +5,8 @@ namespace sfa_api.Features.Stock.Services;
 
 public interface IStockTransferService
 {
-    Task<StockTransferDto> CreateAsync(CreateStockTransferRequest request, int callerId, CancellationToken ct = default);
+    Task<StockTransferDto> CreateAsync(
+        CreateStockTransferRequest request, int callerId, string? clientTransferId = null, CancellationToken ct = default);
 
     Task<(List<StockTransferSummaryDto> Items, int TotalCount)> GetPagedAsync(
         int page, int pageSize, int? distributorId, CancellationToken ct = default);

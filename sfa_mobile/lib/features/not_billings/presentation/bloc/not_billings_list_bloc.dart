@@ -74,7 +74,14 @@ class NotBillingsListBloc
 
   Future<void> _onDelete(
       DeleteNotBillingRequested e, Emitter<NotBillingsListState> emit) async {
-    await _deleteNotBilling(e.clientNotBillingId);
+    try {
+      await _deleteNotBilling(e.clientNotBillingId);
+      e.result?.complete(null);
+    } on AppException catch (ex) {
+      e.result?.complete(ex.message);
+    } catch (_) {
+      e.result?.complete("We couldn't delete this visit. Please try again.");
+    }
     add(const LoadNotBillingsRequested());
   }
 

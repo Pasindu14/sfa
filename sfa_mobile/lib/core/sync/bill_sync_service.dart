@@ -46,6 +46,12 @@ class BillSyncService {
   /// retrievable via GET /api/v1/billings when the rep needs it.
   static const Duration retentionWindow = Duration(days: 14);
 
+  /// A row left in `syncing` longer than this has lost its sender (killed
+  /// process, torn-down isolate) and is put back to `pending`. Deliberately
+  /// longer than any request can run (15s connect + 15s receive), so a claim
+  /// held by another isolate is never reset out from under it.
+  static const Duration syncingStaleAfter = Duration(minutes: 2);
+
   final BillsLocalDatasource _local;
   final BillsRemoteDatasource _remote;
   final ConnectivityService _connectivity;
@@ -112,8 +118,28 @@ class BillSyncService {
     });
   }
 
+  /// Puts rows stuck in `syncing` back to `pending` so they show up in the
+  /// pending badge / logout check and get re-sent. Skips rows this isolate is
+  /// sending right now and rows claimed within [syncingStaleAfter] (another
+  /// isolate may be mid-request). Safe to re-send: the client bill id is the
+  /// server's idempotency key. Never throws — recovery must not block a flush.
+  /// Returns how many rows were reset.
+  Future<int> recoverStuckRows() async {
+    try {
+      final reset = await _local.resetStaleSyncing(
+        staleBefore: _now().subtract(syncingStaleAfter),
+        inFlightIds: Set.of(_inFlight),
+      );
+      if (reset > 0) await _emitStatus();
+      return reset;
+    } catch (_) {
+      return 0;
+    }
+  }
+
   Future<void> _flushAll({required bool force}) async {
     _attemptedDuringFlush.clear();
+    await recoverStuckRows();
     final rows = await _local.getPendingForSync();
     var synced = 0;
     for (final row in rows) {
@@ -196,19 +222,38 @@ class BillSyncService {
   /// not apply. Refreshes distributor stock on success.
   Future<void> flushOne(String clientBillId) async {
     if (_inFlight.contains(clientBillId)) return;
-    final row = await _local.getById(clientBillId);
+    var row = await _local.getById(clientBillId);
     if (row == null) return;
-    if (row.syncStatus.dbValue == 'synced') return;
-    if (row.syncStatus.dbValue == 'syncing') return;
+    if (row.syncStatus == SyncStatus.syncing) {
+      // A manual retry on a row whose sender died: recover it if it is stale,
+      // otherwise somebody is genuinely sending it.
+      if (await recoverStuckRows() == 0) return;
+      row = await _local.getById(clientBillId);
+      if (row == null) return;
+    }
+    if (row.syncStatus == SyncStatus.synced ||
+        row.syncStatus == SyncStatus.syncing ||
+        row.syncStatus == SyncStatus.cancelled) {
+      return;
+    }
     if (_terminalErrorCodes.contains(row.lastSyncErrorCode)) return;
 
     if (await _sync(row)) await _refreshStock();
     await _emitStatus();
   }
 
-  /// Cancels a bill locally and, if it was already synced to the server,
-  /// also calls the cancel endpoint. Best-effort — network failures are
-  /// swallowed so the local row is always marked cancelled.
+  /// Cancels (deletes) a bill.
+  ///
+  /// Synced bills: best-effort PATCH cancel — network failures are swallowed
+  /// so the local row is always marked cancelled.
+  ///
+  /// Unsynced bills the server may nevertheless hold (an attempt was made but
+  /// no confirmation came back, so the response was lost): the server is asked
+  /// first. Found → cancelled there too (unless it already is); 404 → it never
+  /// arrived, cancel locally. If the server cannot be asked, or is mid-send,
+  /// the delete is refused by throwing an [AppException] with a rep-friendly
+  /// message — deleting locally would leave a live bill on the server that the
+  /// phone no longer shows.
   Future<void> cancelOne(String clientBillId) async {
     final row = await _local.getById(clientBillId);
     if (row == null || row.syncStatus == SyncStatus.cancelled) return;
@@ -219,10 +264,96 @@ class BillSyncService {
       } catch (_) {
         // Network or server error — still cancel locally.
       }
+      await _local.markCancelled(clientBillId);
+      await _emitStatus();
+      return;
     }
 
-    await _local.markCancelled(clientBillId);
+    // Claim the id so a concurrent flush cannot send the row while the server
+    // is being asked about it (and so a delete cannot start mid-send).
+    if (_isBeingSent(row) || !_inFlight.add(clientBillId)) {
+      throw _sendInProgress;
+    }
+    try {
+      if (_wasAttempted(row)) await _cancelOnServerIfPresent(row);
+      await _local.markCancelled(clientBillId);
+    } finally {
+      _inFlight.remove(clientBillId);
+    }
     await _emitStatus();
+  }
+
+  static const _sendInProgress = BusinessRuleException(
+    code: 'BILL_SYNC_IN_PROGRESS',
+    message: 'This bill is being sent right now. Try again in a moment.',
+  );
+
+  static const _needsInternet = NetworkException(
+    message: 'Connect to the internet to delete this bill.',
+  );
+
+  /// In flight in this isolate, or claimed so recently another isolate may be
+  /// sending it. A stale `syncing` claim is not "being sent" — its sender is gone.
+  bool _isBeingSent(BillModel row) {
+    if (_inFlight.contains(row.clientBillId)) return true;
+    if (row.syncStatus != SyncStatus.syncing) return false;
+    final claimedAt = row.lastAttemptAt;
+    return claimedAt != null &&
+        !claimedAt.isBefore(_now().subtract(syncingStaleAfter));
+  }
+
+  /// Whether a POST for this row may have reached the server: any recorded
+  /// attempt, or a claim that never got a result.
+  bool _wasAttempted(BillModel row) =>
+      row.syncAttempts > 0 ||
+      row.lastAttemptAt != null ||
+      row.syncStatus == SyncStatus.syncing;
+
+  Future<void> _cancelOnServerIfPresent(BillModel row) async {
+    final ServerBillLookup? found;
+    try {
+      found = await _remote.findByClientBillId(row.clientBillId);
+    } on NetworkException {
+      throw _needsInternet;
+    } on AppException {
+      throw const BusinessRuleException(
+        code: 'BILL_LOOKUP_FAILED',
+        message:
+            "We couldn't check this bill with the server. Please try again in a moment.",
+      );
+    }
+    // The server never received it — nothing to undo there.
+    if (found == null || found.isCancelled) return;
+
+    try {
+      await _remote.cancelBilling(found.id);
+    } on NetworkException {
+      throw _needsInternet;
+    } on AppException catch (e) {
+      final refused = e is BusinessRuleException ||
+          e is ConflictException ||
+          e is ValidationException;
+      if (!refused) {
+        throw const BusinessRuleException(
+          code: 'BILL_CANCEL_FAILED',
+          message:
+              "We couldn't delete this bill right now. Please try again in a moment.",
+        );
+      }
+      // The server holds a live bill it will not cancel (e.g. already
+      // approved). Show it as the synced bill it is rather than hiding it.
+      await _local.markSynced(
+        row.clientBillId,
+        serverBillId: found.id,
+        serverBillNumber: found.billingNumber ?? '',
+      );
+      await _emitStatus();
+      throw const BusinessRuleException(
+        code: 'BILL_ALREADY_RECEIVED',
+        message:
+            'This bill had already reached the server and can no longer be deleted here. It now shows as synced.',
+      );
+    }
   }
 
   /// Sends one row. Returns true when the server accepted it.
@@ -231,7 +362,12 @@ class BillSyncService {
     // checked _inFlight a moment earlier can't also send the row.
     if (!_inFlight.add(row.clientBillId)) return false;
     try {
-      await _local.markSyncing(row.clientBillId);
+      // Second, cross-isolate claim: only one sender wins the DB transition
+      // pending/failed -> syncing, so the WorkManager isolate and this one
+      // cannot both POST the row.
+      if (!await _local.claimForSync(row.clientBillId, now: _now())) {
+        return false;
+      }
       _statusCtrl.add(BillOutboxStatus(
         pendingOrFailedCount: await _local.countPendingOrFailed(),
         activeClientBillId: row.clientBillId,

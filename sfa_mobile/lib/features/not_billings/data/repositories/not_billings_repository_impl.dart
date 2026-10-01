@@ -49,7 +49,7 @@ class NotBillingsRepositoryImpl implements NotBillingsRepository {
 
   @override
   Future<void> deleteLocalNotBilling(String clientNotBillingId) =>
-      _local.delete(clientNotBillingId);
+      _syncService.deleteOne(clientNotBillingId);
 
   @override
   Future<void> retrySync(String clientNotBillingId) =>

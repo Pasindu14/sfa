@@ -21,6 +21,10 @@ class NotBillingOutboxStatus {
 class NotBillingSyncService {
   static const Duration retentionWindow = Duration(days: 14);
 
+  /// A row left in `syncing` longer than this has lost its sender and is put
+  /// back to `pending`. See BillSyncService.syncingStaleAfter.
+  static const Duration syncingStaleAfter = Duration(minutes: 2);
+
   final NotBillingsLocalDatasource _local;
   final NotBillingsRemoteDatasource _remote;
   final ConnectivityService _connectivity;
@@ -81,8 +85,24 @@ class NotBillingSyncService {
     });
   }
 
+  /// Puts rows stuck in `syncing` back to `pending` so they are counted and
+  /// re-sent — see BillSyncService.recoverStuckRows. Never throws.
+  Future<int> recoverStuckRows() async {
+    try {
+      final reset = await _local.resetStaleSyncing(
+        staleBefore: _now().subtract(syncingStaleAfter),
+        inFlightIds: Set.of(_inFlight),
+      );
+      if (reset > 0) await _emitStatus();
+      return reset;
+    } catch (_) {
+      return 0;
+    }
+  }
+
   Future<void> _flushAll({required bool force}) async {
     _attemptedDuringFlush.clear();
+    await recoverStuckRows();
     final rows = await _local.getPendingForSync();
     for (final row in rows) {
       if (_inFlight.contains(row.clientNotBillingId)) continue;
@@ -108,13 +128,44 @@ class NotBillingSyncService {
   /// with a terminal error code are left for the rep to resolve.
   Future<void> flushOne(String clientNotBillingId) async {
     if (_inFlight.contains(clientNotBillingId)) return;
-    final row = await _local.getById(clientNotBillingId);
+    var row = await _local.getById(clientNotBillingId);
     if (row == null) return;
-    if (row.syncStatus.dbValue == 'synced') return;
-    if (row.syncStatus.dbValue == 'syncing') return;
+    if (row.syncStatus == SyncStatus.syncing) {
+      // A manual retry on a row whose sender died: recover it if stale,
+      // otherwise somebody is genuinely sending it.
+      if (await recoverStuckRows() == 0) return;
+      row = await _local.getById(clientNotBillingId);
+      if (row == null) return;
+    }
+    if (row.syncStatus == SyncStatus.synced ||
+        row.syncStatus == SyncStatus.syncing) {
+      return;
+    }
     if (_terminalErrorCodes.contains(row.lastSyncErrorCode)) return;
 
     await _sync(row);
+    await _emitStatus();
+  }
+
+  /// Deletes an unsynced visit from the device. Refused while the row is
+  /// being sent — deleting under an in-flight POST would leave a visit on the
+  /// server that the phone no longer shows. A stale `syncing` claim (its
+  /// sender died) is not "being sent". Throws an [AppException] with a
+  /// rep-friendly message when refused.
+  Future<void> deleteOne(String clientNotBillingId) async {
+    final row = await _local.getById(clientNotBillingId);
+    if (row == null) return;
+    final claimedAt = row.lastAttemptAt;
+    final claimIsLive = row.syncStatus == SyncStatus.syncing &&
+        claimedAt != null &&
+        !claimedAt.isBefore(_now().subtract(syncingStaleAfter));
+    if (_inFlight.contains(clientNotBillingId) || claimIsLive) {
+      throw const BusinessRuleException(
+        code: 'NOT_BILLING_SYNC_IN_PROGRESS',
+        message: 'This visit is being sent right now. Try again in a moment.',
+      );
+    }
+    await _local.delete(clientNotBillingId);
     await _emitStatus();
   }
 
@@ -122,7 +173,11 @@ class NotBillingSyncService {
     // Claim synchronously so a concurrent caller can't also send the row.
     if (!_inFlight.add(row.clientNotBillingId)) return;
     try {
-      await _local.markSyncing(row.clientNotBillingId);
+      // Second, cross-isolate claim: only one sender wins the DB transition
+      // pending/failed -> syncing.
+      if (!await _local.claimForSync(row.clientNotBillingId, now: _now())) {
+        return;
+      }
       _statusCtrl.add(NotBillingOutboxStatus(
         pendingOrFailedCount: await _local.countPendingOrFailed(),
         activeClientNotBillingId: row.clientNotBillingId,

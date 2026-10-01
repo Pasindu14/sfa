@@ -85,6 +85,19 @@ const TRANSFER_ERROR_MESSAGES: Record<string, string> = {
     'Another stock transfer for this distributor is in progress. Please wait a moment and try again.',
 }
 
+/**
+ * True when the API definitively refused the request, so no transfer was created and the
+ * idempotency key can be discarded. 408/409/429 and anything without an HTTP status (a lost
+ * server-action call, network failure, timeout, 5xx) are AMBIGUOUS: the transfer may have
+ * committed, so the caller must retry with the same key.
+ */
+export function isDefinitiveRejection(error: unknown): boolean {
+  const { status, code } = (error ?? {}) as { status?: number; code?: string }
+  if (code === 'VALIDATION_ERROR') return true
+  if (typeof status !== 'number') return false
+  return status >= 400 && status < 500 && status !== 408 && status !== 409 && status !== 429
+}
+
 export function useCreateStockTransfer(onSuccess?: (transfer: StockTransfer) => void) {
   const queryClient = useQueryClient()
 

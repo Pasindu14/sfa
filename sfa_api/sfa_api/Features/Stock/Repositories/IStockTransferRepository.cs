@@ -19,6 +19,9 @@ public interface IStockTransferRepository
 
     Task<StockTransferDto?> GetByIdAsync(int id, CancellationToken ct = default);
 
+    /// <summary>Id of the transfer created with this client key, or null.</summary>
+    Task<int?> FindIdByClientTransferIdAsync(string clientTransferId, CancellationToken ct = default);
+
     Task AddAsync(StockTransfer transfer, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
     Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct = default);

@@ -72,7 +72,16 @@ class BillsListBloc extends Bloc<BillsListEvent, BillsListState> {
 
   Future<void> _onDelete(
       DeleteBillRequested e, Emitter<BillsListState> emit) async {
-    await _deleteBill(e.clientBillId);
+    try {
+      await _deleteBill(e.clientBillId);
+      e.result?.complete(null);
+    } on AppException catch (ex) {
+      // Refused (offline, mid-send, server holds an uncancellable bill): the
+      // row may have changed (e.g. adopted as synced), so reload either way.
+      e.result?.complete(ex.message);
+    } catch (_) {
+      e.result?.complete("We couldn't delete this bill. Please try again.");
+    }
     add(const LoadBillsRequested());
   }
 

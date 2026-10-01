@@ -260,6 +260,127 @@ public class StockTransferServiceTests
         _txMock.Verify(t => t.RollbackAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    // ── Client transfer id (duplicate protection) ──────────────────────────
+
+    private const int WinnerTransferId = 777;
+
+    [Fact]
+    public async Task CreateAsync_KeyAlreadyPersisted_ReturnsOriginalWithoutMovingStock()
+    {
+        _repoMock
+            .Setup(r => r.FindIdByClientTransferIdAsync("key-1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(WinnerTransferId);
+
+        var result = await _sut.CreateAsync(Request(), CallerId, "key-1");
+
+        result.Id.Should().Be(WinnerTransferId);
+        _lockServiceMock.Verify(l => l.AcquireAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _repoMock.Verify(r => r.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _repoMock.Verify(r => r.AddAsync(It.IsAny<StockTransfer>(), It.IsAny<CancellationToken>()), Times.Never);
+        _stockRepoMock.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task CreateAsync_NewKey_PersistsTrimmedKeyOnTheTransfer()
+    {
+        SetupSourceStock((ProductA, StockType.Normal, 50m));
+        var captured = CaptureInsert();
+
+        await _sut.CreateAsync(Request(), CallerId, "  key-2  ");
+
+        captured()!.ClientTransferId.Should().Be("key-2");
+        _repoMock.Verify(r => r.FindIdByClientTransferIdAsync("key-2", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task CreateAsync_BlankKey_IsTreatedAsNoKey(string? key)
+    {
+        SetupSourceStock((ProductA, StockType.Normal, 50m));
+        var captured = CaptureInsert();
+
+        var result = await _sut.CreateAsync(Request(), CallerId, key);
+
+        result.Id.Should().Be(NewTransferId);
+        captured()!.ClientTransferId.Should().BeNull();
+        _repoMock.Verify(r => r.FindIdByClientTransferIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateAsync_KeyLongerThan64Chars_IsIgnoredAndNotLookedUp()
+    {
+        SetupSourceStock((ProductA, StockType.Normal, 50m));
+        var captured = CaptureInsert();
+
+        var result = await _sut.CreateAsync(Request(), CallerId, new string('x', 65));
+
+        result.Id.Should().Be(NewTransferId);
+        captured()!.ClientTransferId.Should().BeNull();
+        _repoMock.Verify(r => r.FindIdByClientTransferIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateAsync_KeyExactly64Chars_IsKept()
+    {
+        SetupSourceStock((ProductA, StockType.Normal, 50m));
+        var captured = CaptureInsert();
+        var key = new string('x', 64);
+
+        await _sut.CreateAsync(Request(), CallerId, key);
+
+        captured()!.ClientTransferId.Should().Be(key);
+    }
+
+    [Fact]
+    public async Task CreateAsync_LostInsertRaceOnSameKey_ReturnsTheWinnerAndRollsBack()
+    {
+        SetupSourceStock((ProductA, StockType.Normal, 50m));
+        _repoMock.SetupSequence(r => r.FindIdByClientTransferIdAsync("race-key", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((int?)null)            // fast path: nothing committed yet
+            .ReturnsAsync(WinnerTransferId);     // after the unique index rejected our insert
+        _repoMock
+            .Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new DbUpdateException("duplicate key value violates unique constraint"));
+
+        var result = await _sut.CreateAsync(Request(), CallerId, "race-key");
+
+        result.Id.Should().Be(WinnerTransferId);
+        _txMock.Verify(t => t.RollbackAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _txMock.Verify(t => t.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateAsync_DbUpdateExceptionButNoWinnerFound_Rethrows()
+    {
+        SetupSourceStock((ProductA, StockType.Normal, 50m));
+        _repoMock
+            .Setup(r => r.FindIdByClientTransferIdAsync("orphan-key", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((int?)null);
+        _repoMock
+            .Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new DbUpdateException("some other failure"));
+
+        var act = () => _sut.CreateAsync(Request(), CallerId, "orphan-key");
+
+        await act.Should().ThrowAsync<DbUpdateException>();
+    }
+
+    [Fact]
+    public async Task CreateAsync_DbUpdateExceptionWithoutKey_Rethrows()
+    {
+        SetupSourceStock((ProductA, StockType.Normal, 50m));
+        _repoMock
+            .Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new DbUpdateException("some other failure"));
+
+        var act = () => _sut.CreateAsync(Request(), CallerId);
+
+        await act.Should().ThrowAsync<DbUpdateException>();
+        _repoMock.Verify(r => r.FindIdByClientTransferIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     [Fact]
     public async Task GetByIdAsync_Missing_ThrowsNotFound()
     {
