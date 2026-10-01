@@ -119,18 +119,6 @@ public class OutletService(
         );
     }
 
-    public async Task<IEnumerable<OutletDto>> GetAllActiveAsync(CancellationToken ct = default)
-    {
-        // Company-wide list, read far more often than it changes. Invalidated on every outlet,
-        // route and geo write and on LastBillDate stamps — see OutletCacheKeys.
-        var cached = await _cache.GetAsync<List<OutletDto>>(OutletCacheKeys.ActiveAll, ct);
-        if (cached is not null) return cached;
-
-        var outlets = await _repo.GetAllActiveAsync(ct);
-        await _cache.SetAsync(OutletCacheKeys.ActiveAll, outlets, OutletCacheKeys.ActiveTtl, ct);
-        return outlets;
-    }
-
     public async Task<MobileOutletSyncDto> GetByRouteIdAsync(int routeId, int callerId, CancellationToken ct = default)
     {
         // Only the outlet list is cached, and only by route. The geofence policy is
@@ -212,7 +200,6 @@ public class OutletService(
 
         _logger.LogInformation("Outlet {OutletId} created", outlet.Id);
         await _cache.RemoveByPrefixAsync(RouteCachePrefix, ct);
-        await _cache.RemoveByPrefixAsync(OutletCacheKeys.ActivePrefix, ct);
 
         var created = await _repo.GetByIdAsync(outlet.Id, ct)
             ?? throw new NotFoundException("Outlet", outlet.Id);
@@ -272,7 +259,6 @@ public class OutletService(
 
         _logger.LogInformation("Outlet {OutletId} updated", id);
         await _cache.RemoveByPrefixAsync(RouteCachePrefix, ct);
-        await _cache.RemoveByPrefixAsync(OutletCacheKeys.ActivePrefix, ct);
 
         var updated = await _repo.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("Outlet", id);
@@ -289,7 +275,6 @@ public class OutletService(
 
         _logger.LogInformation("Outlet {OutletId} deleted", id);
         await _cache.RemoveByPrefixAsync(RouteCachePrefix, ct);
-        await _cache.RemoveByPrefixAsync(OutletCacheKeys.ActivePrefix, ct);
     }
 
     public async Task ActivateAsync(int id, int? callerId, CancellationToken ct = default)
@@ -306,7 +291,6 @@ public class OutletService(
 
         _logger.LogInformation("Outlet {OutletId} activated", id);
         await _cache.RemoveByPrefixAsync(RouteCachePrefix, ct);
-        await _cache.RemoveByPrefixAsync(OutletCacheKeys.ActivePrefix, ct);
     }
 
     public async Task DeactivateAsync(int id, int? callerId, CancellationToken ct = default)
@@ -323,7 +307,6 @@ public class OutletService(
 
         _logger.LogInformation("Outlet {OutletId} deactivated", id);
         await _cache.RemoveByPrefixAsync(RouteCachePrefix, ct);
-        await _cache.RemoveByPrefixAsync(OutletCacheKeys.ActivePrefix, ct);
     }
 
     private static OutletDto MapToDto(Outlet o) => new(

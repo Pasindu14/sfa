@@ -437,7 +437,6 @@ public class BillingService(
                 .Where(o => o.Id == billing.OutletId)
                 .ExecuteUpdateAsync(s => s.SetProperty(o => o.LastBillDate, lastBillDate), ct);
             await _cache.RemoveAsync(Outlets.Services.OutletService.RouteOutletsCacheKey(outlet.RouteId), ct);
-            await _cache.RemoveAsync(Outlets.OutletCacheKeys.ActiveAll, ct);   // GET /outlets/active carries LastBillDate too
         }
 
         // A new bill lands as Pending, so it does not move the approved-only sales summary — but it

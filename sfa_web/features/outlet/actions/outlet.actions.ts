@@ -44,14 +44,6 @@ export const getOutletByIdAction = createAction(
   }
 )
 
-export const getActiveOutletsAction = createAction(
-  { name: 'getActiveOutletsAction', requireAuth: true, requiredRole: 'Admin' },
-  async () => {
-    const res = await client.get('/api/v1/outlets/active')
-    return res.data.data as OutletDto[]
-  }
-)
-
 // Optional bounding box: all four params → only points inside the (inclusive) bounds;
 // omitted → the full list. Never send a partial box — the API rejects it with 400.
 export type OutletMapBounds = {

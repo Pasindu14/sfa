@@ -71,7 +71,6 @@ public class RegionService(
 
         _logger.LogInformation("Region {RegionId} created", region.Id);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
-        await _cache.RemoveByPrefixAsync(sfa_api.Features.Outlets.OutletCacheKeys.ActivePrefix, ct);
         return MapToDto(region);
     }
 
@@ -93,7 +92,6 @@ public class RegionService(
 
         _logger.LogInformation("Region {RegionId} updated", id);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
-        await _cache.RemoveByPrefixAsync(sfa_api.Features.Outlets.OutletCacheKeys.ActivePrefix, ct);
         return MapToDto(region);
     }
 
@@ -111,7 +109,6 @@ public class RegionService(
 
         _logger.LogInformation("Region {RegionId} activated", id);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
-        await _cache.RemoveByPrefixAsync(sfa_api.Features.Outlets.OutletCacheKeys.ActivePrefix, ct);
     }
 
     public async Task DeactivateAsync(int id, int? callerId, CancellationToken ct = default)
@@ -136,7 +133,6 @@ public class RegionService(
 
         _logger.LogInformation("Region {RegionId} deactivated", id);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
-        await _cache.RemoveByPrefixAsync(sfa_api.Features.Outlets.OutletCacheKeys.ActivePrefix, ct);
     }
 
     public async Task DeleteAsync(int id, int? callerId, CancellationToken ct = default)
@@ -164,7 +160,6 @@ public class RegionService(
 
         _logger.LogInformation("Region {RegionId} deleted by {CallerId}", id, callerId);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
-        await _cache.RemoveByPrefixAsync(sfa_api.Features.Outlets.OutletCacheKeys.ActivePrefix, ct);
     }
 
     private static RegionDto MapToDto(Region region) => new(

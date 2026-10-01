@@ -9,7 +9,6 @@ public interface IOutletService
     Task<OutletDto> GetByIdAsync(int id, int callerId, UserRole callerRole, CancellationToken ct = default);
     Task<OutletListDto> GetAllAsync(int page, int pageSize, int callerId, UserRole callerRole, bool? isActive = null, string? search = null, int? territoryId = null, int? routeId = null, CancellationToken ct = default);
     Task<OutletListDto> GetAllByTerritoryAsync(int territoryId, int page, int pageSize, bool? isActive = null, string? search = null, CancellationToken ct = default);
-    Task<IEnumerable<OutletDto>> GetAllActiveAsync(CancellationToken ct = default);
     /// <summary>Active outlet map points; when <paramref name="bounds"/> is set, only those inside it (inclusive).</summary>
     Task<IEnumerable<OutletMapPointDto>> GetMapPointsAsync(Requests.OutletMapBounds? bounds = null, CancellationToken ct = default);
     Task<MobileOutletSyncDto> GetByRouteIdAsync(int routeId, int callerId, CancellationToken ct = default);

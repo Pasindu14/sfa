@@ -81,7 +81,6 @@ public class TerritoryService(
 
         _logger.LogInformation("Territory {TerritoryId} created", territory.Id);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
-        await _cache.RemoveByPrefixAsync(sfa_api.Features.Outlets.OutletCacheKeys.ActivePrefix, ct);
 
         var created = await _repo.GetByIdAsync(territory.Id, ct)
             ?? throw new NotFoundException("Territory", territory.Id);
@@ -138,7 +137,6 @@ public class TerritoryService(
         }
 
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
-        await _cache.RemoveByPrefixAsync(sfa_api.Features.Outlets.OutletCacheKeys.ActivePrefix, ct);
 
         var updated = await _repo.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("Territory", id);
@@ -159,7 +157,6 @@ public class TerritoryService(
 
         _logger.LogInformation("Territory {TerritoryId} activated", id);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
-        await _cache.RemoveByPrefixAsync(sfa_api.Features.Outlets.OutletCacheKeys.ActivePrefix, ct);
     }
 
     public async Task DeactivateAsync(int id, int? callerId, CancellationToken ct = default)
@@ -184,7 +181,6 @@ public class TerritoryService(
 
         _logger.LogInformation("Territory {TerritoryId} deactivated", id);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
-        await _cache.RemoveByPrefixAsync(sfa_api.Features.Outlets.OutletCacheKeys.ActivePrefix, ct);
     }
 
     public async Task DeleteAsync(int id, int? callerId, CancellationToken ct = default)
@@ -211,7 +207,6 @@ public class TerritoryService(
 
         _logger.LogInformation("Territory {TerritoryId} deleted by {CallerId}", id, callerId);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
-        await _cache.RemoveByPrefixAsync(sfa_api.Features.Outlets.OutletCacheKeys.ActivePrefix, ct);
     }
 
     // Clears the live descendants' list caches after a re-parent cascade.

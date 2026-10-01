@@ -68,18 +68,6 @@ public class OutletsController(
     }
 
     /// <summary>
-    /// GET /api/v1/outlets/active
-    /// </summary>
-    [HttpGet("active")]
-    [Authorize]
-    public async Task<IActionResult> GetAllActive(CancellationToken ct = default)
-    {
-        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
-        var result = await _service.GetAllActiveAsync(ct);
-        return Ok(ResponseHelper.Ok(result, correlationId));
-    }
-
-    /// <summary>
     /// GET /api/v1/outlets/by-route/{routeId}
     /// Returns all active outlets for a route — used by mobile for offline sync.
     /// The response also carries the caller's effective geofence policy, so it is

@@ -5,7 +5,9 @@ import { FileText, Loader2, AlertCircle } from 'lucide-react'
 import { useBinCard } from '../../hooks/bin-card.hooks'
 import { useBinCardFilters } from '../../store'
 import { BinCardCriteria } from '../bin-card-criteria'
+import { BinCardSummary } from '../bin-card-summary'
 import { BinCardTable } from '../table/bin-card-table'
+import { formatRange } from '../../lib/format'
 
 export function BinCardPage() {
   const { appliedFilters, reset } = useBinCardFilters()
@@ -39,15 +41,17 @@ export function BinCardPage() {
           subtitle={error instanceof Error ? error.message : 'Please try again.'}
         />
       ) : data ? (
-        <div className="flex flex-col gap-3">
-          <div>
-            <h2 className="text-xl font-semibold tracking-tight">
-              Bin Card Details ({data.recordCount} records)
-            </h2>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-1">
+            <div>
+              <h2 className="text-xl font-semibold tracking-tight">{data.distributorName}</h2>
+              <p className="text-sm text-muted-foreground">{formatRange(data.from, data.to)}</p>
+            </div>
             <p className="text-sm text-muted-foreground">
-              {data.distributorName} &nbsp;|&nbsp; {data.from} to {data.to}
+              {data.recordCount} {data.recordCount === 1 ? 'item' : 'items'}
             </p>
           </div>
+          {data.rows.length > 0 && <BinCardSummary totals={data.totals} />}
           {data.rows.length > 0 ? (
             <BinCardTable data={data} />
           ) : (

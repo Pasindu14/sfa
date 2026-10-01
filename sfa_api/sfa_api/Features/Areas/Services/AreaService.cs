@@ -90,7 +90,6 @@ public class AreaService(
         // Invalidate caches after write — prefix covers both "areas:active" and "areas:active:{regionId}" variants
         await _cache.RemoveByPrefixAsync(ActiveCacheKey, ct);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
-        await _cache.RemoveByPrefixAsync(sfa_api.Features.Outlets.OutletCacheKeys.ActivePrefix, ct);
 
         // Re-fetch to populate navigation property (RegionName)
         var created = await _repo.GetByIdAsync(area.Id, ct)
@@ -152,7 +151,6 @@ public class AreaService(
         // Invalidate caches after write — prefix covers both "areas:active" and "areas:active:{regionId}" variants
         await _cache.RemoveByPrefixAsync(ActiveCacheKey, ct);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
-        await _cache.RemoveByPrefixAsync(sfa_api.Features.Outlets.OutletCacheKeys.ActivePrefix, ct);
 
         // Re-fetch to populate navigation property
         var updated = await _repo.GetByIdAsync(id, ct)
@@ -178,7 +176,6 @@ public class AreaService(
 
         await _cache.RemoveByPrefixAsync(ActiveCacheKey, ct);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
-        await _cache.RemoveByPrefixAsync(sfa_api.Features.Outlets.OutletCacheKeys.ActivePrefix, ct);
     }
 
     public async Task DeactivateAsync(int id, int? callerId, CancellationToken ct = default)
@@ -207,7 +204,6 @@ public class AreaService(
 
         await _cache.RemoveByPrefixAsync(ActiveCacheKey, ct);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
-        await _cache.RemoveByPrefixAsync(sfa_api.Features.Outlets.OutletCacheKeys.ActivePrefix, ct);
     }
 
     public async Task DeleteAsync(int id, int? callerId, CancellationToken ct = default)
@@ -234,7 +230,6 @@ public class AreaService(
 
         await _cache.RemoveByPrefixAsync(ActiveCacheKey, ct);
         await _cache.RemoveByPrefixAsync(ListCachePrefix, ct);
-        await _cache.RemoveByPrefixAsync(sfa_api.Features.Outlets.OutletCacheKeys.ActivePrefix, ct);
     }
 
     // Clears the live descendants' list caches after a re-parent cascade so no stale region survives

@@ -6,7 +6,6 @@ import { toast } from 'sonner'
 import {
   getOutletsAction,
   getOutletByIdAction,
-  getActiveOutletsAction,
   getOutletMapPointsAction,
   createOutletAction,
   updateOutletAction,
@@ -36,7 +35,6 @@ export const outletKeys = {
   list: (filters: object) => [...outletKeys.lists(), filters] as const,
   details: () => [...outletKeys.all, 'detail'] as const,
   detail: (id: number) => [...outletKeys.details(), id] as const,
-  active: () => [...outletKeys.all, 'active'] as const,
 }
 
 // --- Query options factory ---
@@ -67,17 +65,6 @@ export function useOutlet(id: number | null) {
       return result.data
     },
     enabled: id !== null,
-  })
-}
-
-export function useActiveOutlets() {
-  return useQuery({
-    queryKey: outletKeys.active(),
-    queryFn: async () => {
-      const result = await getActiveOutletsAction()
-      if (!result.success) throw new ActionError(result)
-      return result.data
-    },
   })
 }
 
