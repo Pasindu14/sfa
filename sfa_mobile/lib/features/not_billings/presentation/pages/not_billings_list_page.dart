@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -178,10 +180,18 @@ class NotBillingsListPage extends StatelessWidget {
                             .read<NotBillingsListBloc>()
                             .add(RetryNotBillingRequested(
                                 r.clientNotBillingId)),
-                        onDelete: () => context
-                            .read<NotBillingsListBloc>()
-                            .add(DeleteNotBillingRequested(
-                                r.clientNotBillingId)),
+                        onDelete: () async {
+                          final result = Completer<String?>();
+                          context.read<NotBillingsListBloc>().add(
+                              DeleteNotBillingRequested(r.clientNotBillingId,
+                                  result: result));
+                          final refusal = await result.future;
+                          if (refusal == null || !context.mounted) return;
+                          ScaffoldMessenger.of(context)
+                            ..hideCurrentSnackBar()
+                            ..showSnackBar(
+                                SnackBar(content: Text(refusal)));
+                        },
                         onTap: () => context.pushNamed(
                           'notBillingDetail',
                           pathParameters: {'id': r.clientNotBillingId},

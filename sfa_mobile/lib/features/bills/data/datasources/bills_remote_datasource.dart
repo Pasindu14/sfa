@@ -18,6 +18,26 @@ class CreateBillingResponse {
   });
 }
 
+/// What the server holds for one client bill id — the fields the delete flow
+/// needs to decide whether a cancel is still required.
+class ServerBillLookup {
+  final int id;
+  final String? billingNumber;
+
+  /// `Submitted` or `Cancelled` (the API serialises enums as strings).
+  final String? repStatus;
+  final String? distributorStatus;
+
+  const ServerBillLookup({
+    required this.id,
+    this.billingNumber,
+    this.repStatus,
+    this.distributorStatus,
+  });
+
+  bool get isCancelled => repStatus == 'Cancelled';
+}
+
 class BillsRemoteDatasource {
   final Dio _dio;
 
@@ -192,7 +212,71 @@ class BillsRemoteDatasource {
     } on DioException catch (e) {
       final passthrough = e.error;
       if (passthrough is AppException) throw passthrough;
+
+      // The server answered — keep what it said so the delete flow can tell a
+      // refusal ("already approved") from a dropped connection.
+      final response = e.response;
+      final data = response?.data;
+      if (response != null &&
+          data is Map<String, dynamic> &&
+          data['error'] is Map<String, dynamic>) {
+        throw ApiError.fromJson(data['error'] as Map<String, dynamic>)
+            .toException(response.statusCode ?? 0);
+      }
       throw NetworkException(message: _networkMessage(e));
+    }
+  }
+
+  /// Looks up the rep's own bill by the client bill id the phone generated.
+  /// GET /api/v1/billings/by-client-id/{clientBillId}
+  ///
+  /// Returns null ONLY when the server answered with its 404 error envelope —
+  /// "I do not hold this bill". A 404 without the envelope (a proxy, or an API
+  /// build that predates the endpoint) is not an answer about the bill, so it
+  /// surfaces as a [ServerException] rather than being read as "not found".
+  Future<ServerBillLookup?> findByClientBillId(String clientBillId) async {
+    try {
+      final response = await _dio.get(
+        '/api/v1/billings/by-client-id/${Uri.encodeComponent(clientBillId)}',
+      );
+      final body = response.data as Map<String, dynamic>;
+      final data = body['data'] as Map<String, dynamic>;
+      return ServerBillLookup(
+        id: data['id'] as int,
+        billingNumber: data['billingNumber'] as String?,
+        repStatus: data['repStatus'] as String?,
+        distributorStatus: data['distributorStatus'] as String?,
+      );
+    } on NotFoundException {
+      return null;
+    } on AppException {
+      rethrow;
+    } on DioException catch (e) {
+      final passthrough = e.error;
+      if (passthrough is NotFoundException) return null;
+      if (passthrough is AppException) throw passthrough;
+
+      final response = e.response;
+      if (response != null) {
+        final statusCode = response.statusCode ?? 0;
+        final data = response.data;
+        if (data is Map<String, dynamic> && data['error'] is Map<String, dynamic>) {
+          final exception =
+              ApiError.fromJson(data['error'] as Map<String, dynamic>)
+                  .toException(statusCode);
+          if (exception is NotFoundException) return null;
+          throw exception;
+        }
+        throw ServerException(
+          code: 'HTTP_$statusCode',
+          message: 'Unexpected server response ($statusCode).',
+        );
+      }
+      throw NetworkException(message: _networkMessage(e));
+    } catch (_) {
+      throw const ParseException(
+        message: 'Failed to read the bill lookup response from server.',
+      );
     }
   }
 

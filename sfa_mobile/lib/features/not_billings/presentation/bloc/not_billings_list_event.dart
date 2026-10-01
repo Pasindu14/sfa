@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 
 sealed class NotBillingsListEvent extends Equatable {
@@ -23,7 +25,12 @@ final class RetryNotBillingRequested extends NotBillingsListEvent {
 
 final class DeleteNotBillingRequested extends NotBillingsListEvent {
   final String clientNotBillingId;
-  const DeleteNotBillingRequested(this.clientNotBillingId);
+
+  /// Completed once the delete has been decided: null when deleted, otherwise
+  /// a rep-friendly reason it was refused (e.g. the visit is being sent now).
+  final Completer<String?>? result;
+
+  const DeleteNotBillingRequested(this.clientNotBillingId, {this.result});
   @override
   List<Object?> get props => [clientNotBillingId];
 }

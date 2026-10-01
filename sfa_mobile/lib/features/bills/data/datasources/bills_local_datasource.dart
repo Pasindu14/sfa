@@ -292,13 +292,60 @@ class BillsLocalDatasource {
     return (rows.first['c'] as int?) ?? 0;
   }
 
-  Future<void> markSyncing(String clientBillId) async {
+  /// Atomically claims a row for sending: pending/failed -> syncing, stamping
+  /// the claim time in `last_attempt_at`. Returns true only when THIS call made
+  /// the change, so two senders racing for one row (flushOne vs flushAll, or
+  /// the UI isolate vs the WorkManager isolate) cannot both POST it.
+  ///
+  /// The stamp is what lets [resetStaleSyncing] tell a claim that is still
+  /// being worked on from one whose sender died mid-request.
+  Future<bool> claimForSync(String clientBillId, {DateTime? now}) async {
     final db = await _dbHelper.database;
-    await db.update(
-      'bills',
-      {'sync_status': SyncStatus.syncing.dbValue},
-      where: 'client_bill_id = ?',
-      whereArgs: [clientBillId],
+    final changed = await db.rawUpdate(
+      '''UPDATE bills
+         SET sync_status = ?,
+             last_attempt_at = ?
+         WHERE client_bill_id = ?
+           AND sync_status IN ('pending', 'failed')''',
+      [
+        SyncStatus.syncing.dbValue,
+        (now ?? DateTime.now()).toUtc().toIso8601String(),
+        clientBillId,
+      ],
+    );
+    return changed == 1;
+  }
+
+  /// Puts rows stuck in `syncing` back to `pending` so the outbox (and the
+  /// pending badge, logout check and device-user guard, which count
+  /// pending/failed) can see them again. A sender that dies mid-request —
+  /// process killed, isolate torn down — leaves its row behind otherwise.
+  ///
+  /// A row is left alone when it is in [inFlightIds] (being sent by THIS
+  /// isolate) or its claim is newer than [staleBefore] (possibly being sent by
+  /// another isolate). Re-sending a reset row is safe: the stable client bill
+  /// id is the server's idempotency key. Returns how many rows were reset.
+  Future<int> resetStaleSyncing({
+    required DateTime staleBefore,
+    Set<String> inFlightIds = const {},
+  }) async {
+    final db = await _dbHelper.database;
+    final skip = inFlightIds.isEmpty
+        ? ''
+        : 'AND client_bill_id NOT IN '
+            '(${List.filled(inFlightIds.length, '?').join(',')})';
+    return db.rawUpdate(
+      '''UPDATE bills
+         SET sync_status = ?
+         WHERE sync_status = ?
+           AND (last_attempt_at IS NULL OR last_attempt_at < ?)
+           $skip''',
+      [
+        SyncStatus.pending.dbValue,
+        SyncStatus.syncing.dbValue,
+        staleBefore.toUtc().toIso8601String(),
+        ...inFlightIds,
+      ],
     );
   }
 
@@ -335,7 +382,8 @@ class BillsLocalDatasource {
              last_sync_error_code = ?,
              last_sync_error = ?,
              last_attempt_at = ?
-         WHERE client_bill_id = ?''',
+         WHERE client_bill_id = ?
+           AND sync_status NOT IN ('synced', 'cancelled')''',
       [
         SyncStatus.failed.dbValue,
         errorCode,
@@ -347,6 +395,8 @@ class BillsLocalDatasource {
   }
 
   /// Network error → keep pending but bump attempts so the UI can show them.
+  /// Like [markFailed], never touches a row that is already synced or
+  /// cancelled: a late failure report must not downgrade it.
   Future<void> markPendingAfterNetworkError(String clientBillId) async {
     final db = await _dbHelper.database;
     await db.rawUpdate(
@@ -354,7 +404,8 @@ class BillsLocalDatasource {
          SET sync_status = ?,
              sync_attempts = sync_attempts + 1,
              last_attempt_at = ?
-         WHERE client_bill_id = ?''',
+         WHERE client_bill_id = ?
+           AND sync_status NOT IN ('synced', 'cancelled')''',
       [
         SyncStatus.pending.dbValue,
         DateTime.now().toUtc().toIso8601String(),

@@ -19,6 +19,7 @@ import 'package:uswatte/core/db/database_helper.dart';
 import 'package:uswatte/core/session/device_user_guard.dart';
 import 'package:uswatte/core/update/app_update_service.dart';
 import 'package:uswatte/core/sync/bill_sync_service.dart';
+import 'package:uswatte/core/sync/not_billing_sync_service.dart';
 import 'package:uswatte/features/stock/domain/usecases/sync_distributor_stock_usecase.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/features/auth/domain/usecases/get_current_auth_usecase.dart';
@@ -87,6 +88,11 @@ void main() async {
     DatabaseHelper.instance.database,
   ]);
 
+  // Rows a previous run left in `syncing` (process killed mid-request) go back
+  // to `pending` so the badge counts them and the next flush re-sends them.
+  // Not awaited: nothing the first frame draws depends on it.
+  unawaited(_recoverStuckOutbox());
+
   // Composition root: wire use cases explicitly — presentation never touches getIt
   final authBloc = AuthBloc(
     loginUseCase: getIt<LoginUseCase>(),
@@ -110,6 +116,21 @@ void main() async {
   WidgetsBinding.instance.addPostFrameCallback((_) {
     unawaited(_initBackgroundWork());
   });
+}
+
+/// Resets stale `syncing` outbox rows. Each flush does the same at its start;
+/// this one makes them visible without waiting for a flush trigger. Rows
+/// claimed within the last couple of minutes are left alone (a background
+/// isolate may still be sending them) and are picked up by a later flush.
+Future<void> _recoverStuckOutbox() async {
+  await _logFailure(
+    'bill outbox recovery',
+    () async => getIt<BillSyncService>().recoverStuckRows(),
+  );
+  await _logFailure(
+    'not-billing outbox recovery',
+    () async => getIt<NotBillingSyncService>().recoverStuckRows(),
+  );
 }
 
 /// Post-first-frame platform setup. Each part logs its own failure so one

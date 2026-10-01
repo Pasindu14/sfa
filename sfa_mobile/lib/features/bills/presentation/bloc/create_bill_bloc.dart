@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uswatte/core/errors/app_exception.dart';
@@ -43,7 +44,10 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
     on<CartItemFreeIssueSourceChanged>(_onFreeIssueSourceChanged);
     on<CartItemExpireDateChanged>(_onExpireDateChanged);
     on<BillDiscountChanged>(_onDiscountChanged);
-    on<SubmitPressed>(_onSubmit);
+    // droppable: a second tap while the first submit is still running is
+    // discarded outright instead of queued — each submit mints a fresh client
+    // bill id, so a second one would be a second bill, not a retry.
+    on<SubmitPressed>(_onSubmit, transformer: droppable());
     on<LocationRefreshRequested>(_onLocationRefreshRequested);
     _loadPricingStructures();
     _captureLocation();
@@ -417,6 +421,9 @@ class CreateBillBloc extends Bloc<CreateBillEvent, CreateBillState> {
 
   Future<void> _onSubmit(
       SubmitPressed e, Emitter<CreateBillState> emit) async {
+    // Already submitted: the page is on its way out, and another submit would
+    // create a second bill.
+    if (state.submittedClientBillId != null) return;
     if (!state.canSubmit) return;
     emit(state.copyWith(submitting: true, clearError: true));
 

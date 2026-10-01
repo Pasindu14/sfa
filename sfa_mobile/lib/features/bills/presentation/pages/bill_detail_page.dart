@@ -985,7 +985,7 @@ class _TotalsCard extends StatelessWidget {
 
 // ── Action row ────────────────────────────────────────────────────────────────
 
-class _ActionRow extends StatelessWidget {
+class _ActionRow extends StatefulWidget {
   final Bill bill;
   final VoidCallback onReload;
   const _ActionRow({required this.bill, required this.onReload});
@@ -998,28 +998,57 @@ class _ActionRow extends StatelessWidget {
     'BILLING_LOCATION_REQUIRED',
   };
 
+  @override
+  State<_ActionRow> createState() => _ActionRowState();
+}
+
+class _ActionRowState extends State<_ActionRow> {
+  Bill get bill => widget.bill;
+
+  /// True from the confirmed tap until the delete is decided. Deleting may
+  /// ask the server first, so it can take a moment — and a second tap must not
+  /// start a second delete.
+  bool _deleting = false;
+
   bool get _isTerminalFailure =>
-      _terminalCodes.contains(bill.lastSyncErrorCode);
+      _ActionRow._terminalCodes.contains(bill.lastSyncErrorCode);
+
+  Future<void> _delete() async {
+    if (_deleting) return;
+    final confirmed = await _confirmDelete(context);
+    if (!confirmed || !mounted) return;
+
+    setState(() => _deleting = true);
+    final result = Completer<String?>();
+    context
+        .read<BillsListBloc>()
+        .add(DeleteBillRequested(bill.clientBillId, result: result));
+    final refusal = await result.future;
+    if (!mounted) return;
+
+    if (refusal != null) {
+      // Stay on the bill: it is still there (or now shows as synced).
+      setState(() => _deleting = false);
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(refusal)));
+      widget.onReload();
+      return;
+    }
+    // Pop back to the existing list (which reloads on return) rather than
+    // goNamed('bills'), which would discard the SalesRepHome page underneath
+    // and leave the empty /sales-rep shell (black screen) on the next back.
+    context.pop();
+  }
 
   @override
   Widget build(BuildContext context) {
     final deleteButton = Expanded(
       child: _ActionButton(
         icon: Icons.delete_outline_rounded,
-        label: 'Delete',
+        label: _deleting ? 'Deleting…' : 'Delete',
         color: AppColors.error,
-        onTap: () async {
-          final confirmed = await _confirmDelete(context);
-          if (!confirmed) return;
-          if (!context.mounted) return;
-          context
-              .read<BillsListBloc>()
-              .add(DeleteBillRequested(bill.clientBillId));
-          // Pop back to the existing list (which reloads on return) rather than
-          // goNamed('bills'), which would discard the SalesRepHome page underneath
-          // and leave the empty /sales-rep shell (black screen) on the next back.
-          context.pop();
-        },
+        onTap: _delete,
       ),
     );
 
@@ -1038,7 +1067,7 @@ class _ActionRow extends StatelessWidget {
               context
                   .read<BillsListBloc>()
                   .add(RetryBillRequested(bill.clientBillId));
-              onReload();
+              widget.onReload();
             },
           ),
         ),
@@ -1056,8 +1085,8 @@ class _ActionRow extends StatelessWidget {
             style: GoogleFonts.barlowCondensed(
                 fontSize: 18.sp, fontWeight: FontWeight.w700)),
         content: Text(
-          "This removes the order from your device. It hasn't been synced yet, "
-          "so the server won't be affected.",
+          "This deletes the order. If the server may already have received it, "
+          "it will be cancelled there too, so you'll need to be online.",
           style: GoogleFonts.barlow(fontSize: 13.sp),
         ),
         actions: [

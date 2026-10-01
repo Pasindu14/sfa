@@ -1,3 +1,4 @@
+import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uswatte/core/errors/app_exception.dart';
@@ -45,7 +46,9 @@ class CreateOutletBloc extends Bloc<CreateOutletEvent, CreateOutletState> {
           longitude: e.lng,
         )));
     on<OutletLocationCaptureRequested>(_onLocationCapture);
-    on<CreateOutletSubmitRequested>(_onSubmit);
+    // droppable: a second tap while the first submit is running is discarded,
+    // not queued behind it (that would create the outlet twice).
+    on<CreateOutletSubmitRequested>(_onSubmit, transformer: droppable());
   }
 
   void _onProvinceChanged(OutletProvinceChanged event, Emitter<CreateOutletState> emit) {
@@ -121,6 +124,9 @@ class CreateOutletBloc extends Bloc<CreateOutletEvent, CreateOutletState> {
     CreateOutletSubmitRequested event,
     Emitter<CreateOutletState> emit,
   ) async {
+    // Already in flight or already created — never start a second create.
+    if (state.isSubmitting || state.submitted) return;
+
     final validationErrors = _validate();
     if (validationErrors.isNotEmpty) {
       emit(state.copyWith(errors: validationErrors));
