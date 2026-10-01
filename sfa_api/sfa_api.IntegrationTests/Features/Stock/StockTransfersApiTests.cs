@@ -9,7 +9,10 @@ using Microsoft.Extensions.DependencyInjection;
 using sfa_api.Features.Distributors.Entities;
 using sfa_api.Features.Products.Entities;
 using sfa_api.Features.Stock.Entities;
+using sfa_api.Features.Stock.DTOs;
 using sfa_api.Features.Stock.Enums;
+using sfa_api.Features.Stock.Requests;
+using sfa_api.Features.Stock.Services;
 using sfa_api.Infrastructure.Persistence;
 using sfa_api.IntegrationTests.Infrastructure;
 
@@ -248,6 +251,176 @@ public class StockTransfersApiTests
         var response = await _client.GetAsync($"{BaseUrl}/999999");
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // ── Duplicate protection (persisted X-Idempotency-Key) ─────────────────
+
+    private Task<HttpResponseMessage> PostWithKeyAsync(StringContent body, string? key)
+    {
+        var req = new HttpRequestMessage(HttpMethod.Post, BaseUrl) { Content = body };
+        if (key is not null) req.Headers.Add("X-Idempotency-Key", key);
+        return _client.SendAsync(req);
+    }
+
+    private async Task<TransferResult> ReadCreatedAsync(HttpResponseMessage response)
+    {
+        var raw = await response.Content.ReadAsStringAsync();
+        response.StatusCode.Should().Be(HttpStatusCode.Created, raw);
+        return JsonSerializer.Deserialize<Envelope<TransferResult>>(raw, _jsonOpts)!.Data;
+    }
+
+    private async Task<int> TransferCountAsync(int sourceId)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await db.StockTransfers.AsNoTracking().CountAsync(t => t.SourceDistributorId == sourceId);
+    }
+
+    private async Task<int> LedgerRowCountAsync(int transferId)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await db.StockTransactions.AsNoTracking()
+            .CountAsync(t => t.ReferenceType == "StockTransfer" && t.ReferenceId == transferId);
+    }
+
+    private static CreateStockTransferRequest ServiceRequest(Seed seed, decimal qty) =>
+        new(seed.SourceId, seed.TargetId, "Area closed",
+            [new CreateStockTransferLineRequest(seed.ProductA, StockType.Normal, qty)]);
+
+    /// <summary>Calls the service directly, bypassing IdempotencyMiddleware, so only the persisted key is under test.</summary>
+    private async Task<StockTransferDto> ServiceCreateAsync(CreateStockTransferRequest request, string? key)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<IStockTransferService>();
+        return await service.CreateAsync(request, callerId: 1, clientTransferId: key);
+    }
+
+    [Fact]
+    public async Task Create_SameKeyReplayedOverHttp_ReturnsSameTransfer_AndMovesStockOnce()
+    {
+        var seed = await SeedAsync();
+        var key = Guid.NewGuid().ToString();
+
+        var first = await ReadCreatedAsync(await PostWithKeyAsync(Body(seed.SourceId, seed.TargetId, (seed.ProductA, "Normal", 30m)), key));
+        var replay = await ReadCreatedAsync(await PostWithKeyAsync(Body(seed.SourceId, seed.TargetId, (seed.ProductA, "Normal", 30m)), key));
+
+        replay.Id.Should().Be(first.Id);
+        replay.TransferNumber.Should().Be(first.TransferNumber);
+        (await BalancesAsync(seed.SourceId))[(seed.ProductA, StockType.Normal)].Should().Be(70m);
+        (await BalancesAsync(seed.TargetId))[(seed.ProductA, StockType.Normal)].Should().Be(35m);
+        (await TransferCountAsync(seed.SourceId)).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task CreateService_SameKeyReplayed_ReturnsSameTransfer_AndWritesNoExtraStockOrLedgerRows()
+    {
+        var seed = await SeedAsync();
+        var key = Guid.NewGuid().ToString();
+
+        var first = await ServiceCreateAsync(ServiceRequest(seed, 30m), key);
+        var ledgerAfterFirst = await LedgerRowCountAsync(first.Id);
+        var replay = await ServiceCreateAsync(ServiceRequest(seed, 30m), key);
+
+        replay.Id.Should().Be(first.Id);
+        replay.TransferNumber.Should().Be(first.TransferNumber);
+        ledgerAfterFirst.Should().Be(2);
+        (await LedgerRowCountAsync(first.Id)).Should().Be(2);
+        (await BalancesAsync(seed.SourceId))[(seed.ProductA, StockType.Normal)].Should().Be(70m);
+        (await BalancesAsync(seed.TargetId))[(seed.ProductA, StockType.Normal)].Should().Be(35m);
+        (await TransferCountAsync(seed.SourceId)).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task CreateService_SameKeyReplayed_ReturnsOriginal_EvenWhenStockWouldNowBeInsufficient()
+    {
+        var seed = await SeedAsync();
+        var key = Guid.NewGuid().ToString();
+        var first = await ServiceCreateAsync(ServiceRequest(seed, 100m), key);   // drains the source pool
+
+        var replay = await ServiceCreateAsync(ServiceRequest(seed, 100m), key);
+
+        replay.Id.Should().Be(first.Id);
+        (await BalancesAsync(seed.SourceId))[(seed.ProductA, StockType.Normal)].Should().Be(0m);
+    }
+
+    [Fact]
+    public async Task CreateService_DifferentKeyWithEnoughStock_CreatesSecondTransfer()
+    {
+        var seed = await SeedAsync();
+
+        var first = await ServiceCreateAsync(ServiceRequest(seed, 30m), Guid.NewGuid().ToString());
+        var second = await ServiceCreateAsync(ServiceRequest(seed, 30m), Guid.NewGuid().ToString());
+
+        second.Id.Should().NotBe(first.Id);
+        (await BalancesAsync(seed.SourceId))[(seed.ProductA, StockType.Normal)].Should().Be(40m);
+        (await BalancesAsync(seed.TargetId))[(seed.ProductA, StockType.Normal)].Should().Be(65m);
+        (await TransferCountAsync(seed.SourceId)).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task CreateService_NoKey_DoesNotDedupe()
+    {
+        var seed = await SeedAsync();
+
+        var first = await ServiceCreateAsync(ServiceRequest(seed, 10m), null);
+        var second = await ServiceCreateAsync(ServiceRequest(seed, 10m), null);
+
+        second.Id.Should().NotBe(first.Id);
+        (await BalancesAsync(seed.SourceId))[(seed.ProductA, StockType.Normal)].Should().Be(80m);
+        (await TransferCountAsync(seed.SourceId)).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Create_NoKeyOverHttp_TwoPostsCreateTwoTransfers()
+    {
+        var seed = await SeedAsync();
+
+        var first = await ReadCreatedAsync(await PostWithKeyAsync(Body(seed.SourceId, seed.TargetId, (seed.ProductA, "Normal", 10m)), null));
+        var second = await ReadCreatedAsync(await PostWithKeyAsync(Body(seed.SourceId, seed.TargetId, (seed.ProductA, "Normal", 10m)), null));
+
+        second.Id.Should().NotBe(first.Id);
+        (await BalancesAsync(seed.SourceId))[(seed.ProductA, StockType.Normal)].Should().Be(80m);
+    }
+
+    [Fact]
+    public async Task Create_KeyLongerThan64Chars_IsIgnoredNotA500()
+    {
+        var seed = await SeedAsync();
+        var longKey = new string('k', 65);
+
+        var created = await ReadCreatedAsync(await PostWithKeyAsync(Body(seed.SourceId, seed.TargetId, (seed.ProductA, "Normal", 10m)), longKey));
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var row = await db.StockTransfers.AsNoTracking().SingleAsync(t => t.Id == created.Id);
+        row.ClientTransferId.Should().BeNull("an over-long key is treated as no key");
+    }
+
+    [Fact]
+    public async Task CreateService_KeyLongerThan64Chars_DoesNotDedupe()
+    {
+        var seed = await SeedAsync();
+        var longKey = new string('k', 65);
+
+        var first = await ServiceCreateAsync(ServiceRequest(seed, 10m), longKey);
+        var second = await ServiceCreateAsync(ServiceRequest(seed, 10m), longKey);
+
+        second.Id.Should().NotBe(first.Id);
+    }
+
+    [Fact]
+    public async Task Create_KeyIsPersistedTrimmedOnTheTransfer()
+    {
+        var seed = await SeedAsync();
+        var key = Guid.NewGuid().ToString();
+
+        var created = await ServiceCreateAsync(ServiceRequest(seed, 10m), $"  {key}  ");
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var row = await db.StockTransfers.AsNoTracking().SingleAsync(t => t.Id == created.Id);
+        row.ClientTransferId.Should().Be(key);
     }
 
     // ── Auth ───────────────────────────────────────────────────────────────

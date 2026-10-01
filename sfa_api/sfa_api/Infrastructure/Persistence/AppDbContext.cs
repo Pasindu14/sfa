@@ -989,6 +989,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.TransferNumber).IsRequired().HasMaxLength(30);
             e.HasIndex(x => x.TransferNumber).IsUnique();
             e.Property(x => x.Notes).HasMaxLength(500);
+            e.Property(x => x.ClientTransferId).HasMaxLength(64);
+            // DB backstop for duplicate transfers: the idempotency middleware only caches a 2xx written
+            // after the handler, so a commit followed by a timeout is re-executed. The persisted key is
+            // what makes the replay return the original. Filtered: callers without a key are unaffected.
+            e.HasIndex(x => x.ClientTransferId).IsUnique().HasFilter("\"ClientTransferId\" IS NOT NULL");
             e.HasIndex(x => x.SourceDistributorId);
             e.HasIndex(x => x.TargetDistributorId);
             // History list: ORDER BY TransferredAt DESC

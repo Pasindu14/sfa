@@ -70,6 +70,14 @@ public class StockTransferRepository(AppDbContext db) : IStockTransferRepository
         return (items, total);
     }
 
+    public async Task<int?> FindIdByClientTransferIdAsync(string clientTransferId, CancellationToken ct = default)
+        => await _db.StockTransfers
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .Where(x => x.ClientTransferId == clientTransferId)
+            .Select(x => (int?)x.Id)
+            .FirstOrDefaultAsync(ct);
+
     public async Task<StockTransferDto?> GetByIdAsync(int id, CancellationToken ct = default)
     {
         var t = await _db.StockTransfers

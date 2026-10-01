@@ -21,6 +21,12 @@ public class StockTransfer
 
     public string? Notes { get; set; }
 
+    /// <summary>
+    /// The caller's X-Idempotency-Key. Unique when present, so a replayed request (lost response,
+    /// retry, double click) returns this transfer instead of moving the stock a second time.
+    /// </summary>
+    public string? ClientTransferId { get; set; }
+
     public int TransferredBy { get; set; }
     public DateTime TransferredAt { get; set; }
 

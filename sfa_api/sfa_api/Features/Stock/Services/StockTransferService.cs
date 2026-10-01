@@ -33,8 +33,21 @@ public class StockTransferService(
     private readonly AppDbContext             _db          = db;
 
     public async Task<StockTransferDto> CreateAsync(
-        CreateStockTransferRequest request, int callerId, CancellationToken ct = default)
+        CreateStockTransferRequest request, int callerId, string? clientTransferId = null, CancellationToken ct = default)
     {
+        clientTransferId = NormalizeClientId(clientTransferId);
+
+        // Replay fast path: a retry of a transfer that already committed (lost response, timeout, a
+        // second click) returns the original and moves no stock. The unique index below is the
+        // backstop for two replays racing each other.
+        if (clientTransferId is not null)
+        {
+            var existingId = await _repo.FindIdByClientTransferIdAsync(clientTransferId, ct);
+            if (existingId is not null)
+                return await _repo.GetByIdAsync(existingId.Value, ct)
+                    ?? throw new DatabaseUnavailableException();
+        }
+
         // The validator already rejects this (400); guarded again so the service is safe on its own.
         if (request.SourceDistributorId == request.TargetDistributorId)
             throw new BusinessRuleException("SAME_DISTRIBUTOR",
@@ -68,6 +81,8 @@ public class StockTransferService(
         StockTransfer? transfer = null;
 
         var strategy = _db.Database.CreateExecutionStrategy();
+        try
+        {
         await strategy.ExecuteAsync(async () =>
         {
             // A retry re-runs this body on the same DbContext — drop whatever the failed attempt
@@ -113,6 +128,7 @@ public class StockTransferService(
                     SourceDistributorId = source.Id,
                     TargetDistributorId = target.Id,
                     Notes               = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
+                    ClientTransferId    = clientTransferId,
                     TransferredBy       = callerId,
                     TransferredAt       = now,
                     CreatedAt           = now,
@@ -158,6 +174,16 @@ public class StockTransferService(
                 throw;
             }
         });
+        }
+        catch (DbUpdateException) when (clientTransferId is not null)
+        {
+            // A concurrent request with the same key won the insert race and the unique index rejected
+            // ours (its whole transaction rolled back, so no stock moved twice). Return the winner.
+            var winnerId = await _repo.FindIdByClientTransferIdAsync(clientTransferId, ct);
+            if (winnerId is null) throw;
+            return await _repo.GetByIdAsync(winnerId.Value, ct)
+                ?? throw new DatabaseUnavailableException();
+        }
 
         return await _repo.GetByIdAsync(transfer!.Id, ct)
             ?? throw new DatabaseUnavailableException();
@@ -173,6 +199,15 @@ public class StockTransferService(
     public async Task<StockTransferDto> GetByIdAsync(int id, CancellationToken ct = default)
         => await _repo.GetByIdAsync(id, ct)
            ?? throw new NotFoundException("StockTransfer", id);
+
+    private const int ClientIdMaxLength = 64;
+
+    /// <summary>Trims the key; null when absent or longer than the column (it would only 500 on insert).</summary>
+    private static string? NormalizeClientId(string? value)
+    {
+        var trimmed = value?.Trim();
+        return string.IsNullOrEmpty(trimmed) || trimmed.Length > ClientIdMaxLength ? null : trimmed;
+    }
 
     private void DiscardFailedAttempt()
     {

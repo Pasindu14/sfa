@@ -124,12 +124,17 @@ public class IdempotencyMiddleware(RequestDelegate next, ILogger<IdempotencyMidd
 
         var statusCode = context.Response.StatusCode;
         buffer.Position = 0;
-        var responseJson = await new StreamReader(buffer).ReadToEndAsync(context.RequestAborted);
+        // In-memory read — no reason to let a client disconnect abort it.
+        var responseJson = await new StreamReader(buffer).ReadToEndAsync(CancellationToken.None);
 
         // Only cache successful responses (2xx) to avoid caching transient errors
         if (statusCode >= 200 && statusCode < 300)
         {
-            await idempotencyService.StoreAsync(scopedKey, statusCode, responseJson, context.RequestAborted);
+            // CancellationToken.None on purpose: the handler has already committed. If the client
+            // disconnects (or the request times out) right after the commit, a store tied to
+            // RequestAborted would silently skip - and the client's retry would then re-execute
+            // the whole operation. Exactly the case this middleware exists for.
+            await idempotencyService.StoreAsync(scopedKey, statusCode, responseJson, CancellationToken.None);
         }
 
         // Write the buffered response to the real stream

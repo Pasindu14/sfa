@@ -31,6 +31,9 @@ public interface IBillingService
         int salesRepId, int year, int month, CancellationToken ct = default);
 
     Task<BillingDto> CancelAsync(int billingId, int salesRepId, CancellationToken ct = default);
+
+    /// <summary>The caller's own bill with this client bill id, or null when the server has none.</summary>
+    Task<BillingDto?> GetByClientBillIdAsync(string clientBillId, int salesRepId, CancellationToken ct = default);
     Task<BillingDto> ApproveAsync(int billingId, int userId, CancellationToken ct = default);
     Task<BillingDto> RejectAsync(int billingId, int userId, string? reason, CancellationToken ct = default);
 

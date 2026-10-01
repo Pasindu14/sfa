@@ -1208,6 +1208,18 @@ public class BillingService(
         return result;
     }
 
+    public async Task<BillingDto?> GetByClientBillIdAsync(string clientBillId, int salesRepId, CancellationToken ct = default)
+    {
+        // Lets the phone learn whether a bill whose sync response was lost actually reached the server,
+        // before it deletes the local copy. Scoped to the caller: another rep's id reads as "not found".
+        var id = await _billingRepository.FindIdByClientBillIdAsync(clientBillId, ct);
+        if (id is null) return null;
+
+        var billing = await _billingRepository.GetByIdAsync(id.Value, ct);
+        if (billing is null || billing.SalesRepId != salesRepId) return null;
+        return ProjectToDto(billing);
+    }
+
     public async Task<BillingDto> CancelAsync(int billingId, int salesRepId, CancellationToken ct = default)
     {
         // Serialize all status transitions for this bill so cancel/approve/reject cannot race
@@ -1237,7 +1249,11 @@ public class BillingService(
             try
             {
                 await _billingRepository.SaveChangesAsync(ct);
-                await ReverseStockForBillingAsync(billing, salesRepId, "Stock reversed — bill cancelled by rep", ct);
+                // A distributor rejection already returned this bill's stock (RejectAsync leaves RepStatus
+                // as Submitted, so the rep can still cancel it). Reversing again would credit the
+                // same units twice, so a rejected bill is cancelled without touching stock.
+                if (billing.DistributorStatus != DistributorBillingStatus.Rejected)
+                    await ReverseStockForBillingAsync(billing, salesRepId, "Stock reversed — bill cancelled by rep", ct);
                 await _billingRepository.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);
             }

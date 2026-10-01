@@ -108,6 +108,21 @@ public class BillingsController(
     }
 
     /// <summary>
+    /// GET /api/v1/billings/by-client-id/{clientBillId}
+    /// SalesRep only - the caller's own bill with this client bill id, or 404 when the server has none.
+    /// The phone uses it before deleting a bill whose sync never confirmed.
+    /// </summary>
+    [HttpGet("by-client-id/{clientBillId}")]
+    [Authorize(Roles = "SalesRep")]
+    public async Task<IActionResult> GetByClientBillId(string clientBillId, CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var billing = await _billingService.GetByClientBillIdAsync(clientBillId, GetCallerId(), ct)
+            ?? throw new NotFoundException("Billing", clientBillId);
+        return Ok(ResponseHelper.Ok(billing, correlationId));
+    }
+
+    /// <summary>
     /// PATCH /api/v1/billings/{id}/cancel
     /// SalesRep only — cancels a submitted billing they created.
     /// Only Submitted billings can be cancelled; Approved/already-Cancelled are rejected.
