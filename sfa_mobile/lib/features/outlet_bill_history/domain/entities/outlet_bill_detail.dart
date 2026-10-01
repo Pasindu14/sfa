@@ -1,3 +1,4 @@
+import 'package:uswatte/core/utils/bill_breakdown.dart';
 import 'package:uswatte/features/outlet_bill_history/domain/entities/outlet_bill_item.dart';
 
 class OutletBillDetail {
@@ -12,6 +13,20 @@ class OutletBillDetail {
   final double billDiscountRate;
   final double billDiscountAmount;
   final double totalAmount;
+
+  /// Discounts given on the sale lines. [subTotalAmount] is already net of these.
+  final double itemWiseTotalDiscount;
+
+  /// Line discounts plus the bill-level discount.
+  final double totalDiscount;
+
+  /// Outlet returns deducted from the total.
+  final double returnValue;
+
+  /// Informational free-issue value (not part of the arithmetic), and its source split.
+  final double freeIssueValue;
+  final double freeIssueValueCompany;
+  final double freeIssueValueDistributor;
   final String repStatus;
   final String distributorStatus;
   final String? rejectionReason;
@@ -46,6 +61,12 @@ class OutletBillDetail {
     required this.billDiscountRate,
     required this.billDiscountAmount,
     required this.totalAmount,
+    this.itemWiseTotalDiscount = 0,
+    this.totalDiscount = 0,
+    this.returnValue = 0,
+    this.freeIssueValue = 0,
+    this.freeIssueValueCompany = 0,
+    this.freeIssueValueDistributor = 0,
     required this.repStatus,
     required this.distributorStatus,
     this.rejectionReason,
@@ -60,4 +81,15 @@ class OutletBillDetail {
   });
 
   bool get isAdjustedByDistributor => adjustmentCount > 0;
+
+  /// Sales (gross) − Discount − Returns = Total.
+  BillBreakdown get breakdown => BillBreakdown(
+        gross: subTotalAmount + itemWiseTotalDiscount,
+        discount: totalDiscount,
+        returns: returnValue,
+        total: totalAmount,
+        freeIssue: freeIssueValue,
+        freeIssueCompany: freeIssueValueCompany,
+        freeIssueDistributor: freeIssueValueDistributor,
+      );
 }

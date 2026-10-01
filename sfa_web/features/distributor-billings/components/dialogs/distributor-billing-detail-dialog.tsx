@@ -15,6 +15,7 @@ import { Calendar, Banknote, Store, User } from 'lucide-react'
 import { useMyBillingDetail } from '../../hooks/distributor-billing.hooks'
 import { PaymentTypeBadge } from '../columns/distributor-billing-columns'
 import type { DistributorBillingDetail } from '../../schema/distributor-billing.schema'
+import { BillBreakdown, detailBreakdown, discountNote } from '@/components/billing/billing-breakdown'
 import { formatColombo } from '@/lib/utils/datetime'
 import {
   BillingAdjustmentHistory,
@@ -272,41 +273,24 @@ export function DistributorBillingDetailDialog({ id, onClose }: Props) {
             </ScrollArea>
 
             {/* Footer totals */}
-            <div className="shrink-0 border-t bg-muted/30 px-4 sm:px-6 py-3 space-y-1">
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Subtotal</span>
-                <span className="tabular-nums">{formatCurrency(billing.subTotalAmount)}</span>
-              </div>
-              {billing.billDiscountAmount > 0 && (
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Bill Discount ({billing.billDiscountRate}%)</span>
-                  <span className="tabular-nums text-red-500">− {formatCurrency(billing.billDiscountAmount)}</span>
-                </div>
-              )}
-              {billing.returnValue > 0 && (
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Returns</span>
-                  <span className="tabular-nums text-red-500">− {formatCurrency(billing.returnValue)}</span>
-                </div>
-              )}
-              {billing.freeIssueValue > 0 && (
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Free Issue Value</span>
-                  <span className="tabular-nums text-amber-600">{formatCurrency(billing.freeIssueValue)}</span>
-                </div>
-              )}
-              {billing.distributorReturnValue > 0 && (
-                // Informational: the parent lines were already reduced, so this is never deducted.
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Distributor Returns (not deducted)</span>
-                  <span className="tabular-nums text-orange-600">{formatCurrency(billing.distributorReturnValue)}</span>
-                </div>
-              )}
-              <Separator className="my-1" />
-              <div className="flex justify-between text-sm font-bold">
-                <span>Total</span>
-                <span className="tabular-nums">{formatCurrency(billing.totalAmount)}</span>
-              </div>
+            <div className="shrink-0 border-t bg-muted/30 px-4 sm:px-6 py-3">
+              <BillBreakdown
+                amounts={detailBreakdown(billing)}
+                formatCurrency={formatCurrency}
+                discountNote={discountNote(
+                  detailBreakdown(billing).gross - billing.subTotalAmount,
+                  billing.billDiscountAmount,
+                  billing.billDiscountRate,
+                )}
+              >
+                {billing.distributorReturnValue > 0 && (
+                  // Informational: the parent lines were already reduced, so this is never deducted.
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Distributor Returns (not deducted)</span>
+                    <span className="tabular-nums text-orange-600">{formatCurrency(billing.distributorReturnValue)}</span>
+                  </div>
+                )}
+              </BillBreakdown>
             </div>
 
           </div>

@@ -1126,7 +1126,8 @@ public class BillingService(
                 g.Count(IsRevenueBill),
                 g.Where(IsRevenueBill).Sum(r => r.TotalAmount),
                 g.OrderByDescending(r => r.BillingDate)
-                 .Select(r => new BillLineDto(r.Id, r.BillingNumber, r.BillingDate, r.TotalAmount, r.RepStatus.ToString()))
+                 .Select(r => new BillLineDto(r.Id, r.BillingNumber, r.BillingDate, r.TotalAmount, r.RepStatus.ToString(),
+                     r.GrossAmount, r.TotalDiscount, r.ReturnValue, r.FreeIssueValue))
                  .ToList()))
             .OrderByDescending(x => x.TotalAmount)
             .ToList();

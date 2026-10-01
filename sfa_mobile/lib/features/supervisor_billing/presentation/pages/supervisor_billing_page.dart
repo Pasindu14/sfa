@@ -1426,6 +1426,18 @@ class _BillingCardState extends State<_BillingCard> {
                             color: AppColors.foregroundMuted),
                       ],
                     ),
+                    if (_breakdownLine != null) ...[
+                      SizedBox(height: 2.h),
+                      Text(
+                        _breakdownLine!,
+                        style: GoogleFonts.barlow(
+                          fontSize: 10.5.sp,
+                          color: AppColors.foregroundMuted,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1434,5 +1446,20 @@ class _BillingCardState extends State<_BillingCard> {
         ),
       ),
     );
+  }
+
+  /// "Sales 6,128.00 · Disc −40.79 · Returns −2,352.31", zero parts omitted.
+  /// Hidden when there is nothing beyond the total itself.
+  String? get _breakdownLine {
+    final b = widget.billing;
+    const eps = 0.001;
+    final hasDisc = b.totalDiscount > eps;
+    final hasReturns = b.returnValue > eps;
+    if (!hasDisc && !hasReturns) return null;
+    return [
+      'Sales ${_formatAmount(b.grossAmount)}',
+      if (hasDisc) 'Disc −${_formatAmount(b.totalDiscount)}',
+      if (hasReturns) 'Returns −${_formatAmount(b.returnValue)}',
+    ].join(' · ');
   }
 }

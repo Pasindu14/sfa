@@ -16,6 +16,20 @@ class BillingDetail extends Equatable {
   final double subTotalAmount;
   final double billDiscountRate;
   final double billDiscountAmount;
+
+  /// Sum of line discounts (subTotalAmount is net of these).
+  final double itemWiseTotalDiscount;
+
+  /// Line discounts + bill-level discount.
+  final double totalDiscount;
+
+  /// Outlet returns deducted from the total.
+  final double returnValue;
+
+  /// Informational only — not part of the arithmetic.
+  final double freeIssueValue;
+  final double freeIssueValueCompany;
+  final double freeIssueValueDistributor;
   final double totalAmount;
   final BillingStatus status;
   final String? notes;
@@ -36,12 +50,22 @@ class BillingDetail extends Equatable {
     required this.subTotalAmount,
     required this.billDiscountRate,
     required this.billDiscountAmount,
+    this.itemWiseTotalDiscount = 0,
+    double? totalDiscount,
+    this.returnValue = 0,
+    this.freeIssueValue = 0,
+    this.freeIssueValueCompany = 0,
+    this.freeIssueValueDistributor = 0,
     required this.totalAmount,
     required this.status,
     this.notes,
     required this.createdAt,
     required this.items,
-  });
+  }) : totalDiscount =
+            totalDiscount ?? (itemWiseTotalDiscount + billDiscountAmount);
+
+  /// Sales before any discount.
+  double get grossAmount => subTotalAmount + itemWiseTotalDiscount;
 
   @override
   List<Object?> get props => [id];

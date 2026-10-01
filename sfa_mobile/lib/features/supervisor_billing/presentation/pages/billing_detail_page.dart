@@ -346,13 +346,12 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double grossAmount = detail.items
-        .where((i) => !i.isFreeIssue && i.billingItemType == BillingItemType.sale)
-        .fold(0.0, (sum, i) => sum + i.quantity * i.unitPrice);
-    final double itemDiscountTotal = (grossAmount - detail.subTotalAmount)
-        .clamp(0.0, double.infinity);
-    final bool hasItemDiscount = itemDiscountTotal > 0.001;
-    final bool hasBillDiscount = detail.billDiscountRate > 0;
+    const eps = 0.001;
+    final bool hasDiscount = detail.totalDiscount > eps;
+    final bool hasReturns = detail.returnValue > eps;
+    final bool hasFreeIssues = detail.freeIssueValue > eps;
+    final bool hasFocSplit = detail.freeIssueValueCompany > eps ||
+        detail.freeIssueValueDistributor > eps;
 
     return Container(
       decoration: BoxDecoration(
@@ -434,27 +433,42 @@ class _InfoCard extends StatelessWidget {
                 SizedBox(height: 4.h),
                 Divider(height: 1, color: const Color(0xFFEEEDE6)),
                 SizedBox(height: 12.h),
-                if (hasItemDiscount) ...[
-                  _InfoRow(
-                    label: 'Gross',
-                    value: formatAmount(grossAmount),
-                  ),
-                  _InfoRow(
-                    label: 'Item Discount',
-                    value: '−${formatAmount(itemDiscountTotal)}',
-                    valueColor: AppColors.error,
-                  ),
-                ],
                 _InfoRow(
-                  label: 'Sub-total',
-                  value: formatAmount(detail.subTotalAmount),
+                  label: 'Sales (gross)',
+                  value: formatAmount(detail.grossAmount),
                 ),
-                if (hasBillDiscount)
+                if (hasDiscount)
                   _InfoRow(
-                    label: 'Bill Discount (${detail.billDiscountRate.toStringAsFixed(0)}%)',
-                    value: '−${formatAmount(detail.billDiscountAmount)}',
+                    label: 'Discount',
+                    value: '−${formatAmount(detail.totalDiscount)}',
                     valueColor: AppColors.error,
                   ),
+                if (hasReturns)
+                  _InfoRow(
+                    label: 'Returns',
+                    value: '−${formatAmount(detail.returnValue)}',
+                    valueColor: AppColors.error,
+                  ),
+                if (hasFreeIssues) ...[
+                  _InfoRow(
+                    label: 'Free issues (info)',
+                    value: formatAmount(detail.freeIssueValue),
+                    labelWidth: 130.w,
+                    valueColor: AppColors.foregroundMuted,
+                  ),
+                  if (hasFocSplit) ...[
+                    _InfoRow(
+                      label: '   Company',
+                      value: formatAmount(detail.freeIssueValueCompany),
+                      valueColor: AppColors.foregroundMuted,
+                    ),
+                    _InfoRow(
+                      label: '   Distributor',
+                      value: formatAmount(detail.freeIssueValueDistributor),
+                      valueColor: AppColors.foregroundMuted,
+                    ),
+                  ],
+                ],
                 Divider(height: 1, color: const Color(0xFFEEEDE6)),
                 SizedBox(height: 4.h),
                 _InfoRow(
@@ -478,6 +492,7 @@ class _InfoRow extends StatelessWidget {
   final bool mono;
   final bool bold;
   final Color? valueColor;
+  final double? labelWidth;
 
   const _InfoRow({
     required this.label,
@@ -485,6 +500,7 @@ class _InfoRow extends StatelessWidget {
     this.mono = false,
     this.bold = false,
     this.valueColor,
+    this.labelWidth,
   });
 
   @override
@@ -495,7 +511,7 @@ class _InfoRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 100.w,
+            width: labelWidth ?? 100.w,
             child: Text(
               label,
               style: GoogleFonts.barlow(

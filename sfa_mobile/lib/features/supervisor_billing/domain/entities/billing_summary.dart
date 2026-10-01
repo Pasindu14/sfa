@@ -41,6 +41,18 @@ class BillingSummary extends Equatable {
   final int distributorId;
   final String distributorName;
   final double totalAmount;
+
+  /// Sales before any discount; falls back to [totalAmount] on older servers.
+  final double grossAmount;
+
+  /// Line discounts + bill-level discount.
+  final double totalDiscount;
+
+  /// Outlet returns deducted from the total.
+  final double returnValue;
+
+  /// Informational only — not part of the arithmetic.
+  final double freeIssueValue;
   final BillingStatus status;
   final DateTime createdAt;
 
@@ -55,9 +67,13 @@ class BillingSummary extends Equatable {
     required this.distributorId,
     required this.distributorName,
     required this.totalAmount,
+    double? grossAmount,
+    this.totalDiscount = 0,
+    this.returnValue = 0,
+    this.freeIssueValue = 0,
     required this.status,
     required this.createdAt,
-  });
+  }) : grossAmount = grossAmount ?? totalAmount;
 
   @override
   List<Object?> get props => [id];

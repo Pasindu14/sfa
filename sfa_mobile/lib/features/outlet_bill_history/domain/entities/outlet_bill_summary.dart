@@ -1,3 +1,5 @@
+import 'package:uswatte/core/utils/bill_breakdown.dart';
+
 class OutletBillSummary {
   final int id;
   final String billingNumber;
@@ -7,6 +9,12 @@ class OutletBillSummary {
   final String salesRepName;
   final String distributorName;
   final double totalAmount;
+
+  /// Breakdown: Sales (gross) − Discount − Returns = [totalAmount]. Free issues are informational.
+  final double grossAmount;
+  final double totalDiscount;
+  final double returnValue;
+  final double freeIssueValue;
   final String status;
   final DateTime createdAt;
 
@@ -19,7 +27,19 @@ class OutletBillSummary {
     required this.salesRepName,
     required this.distributorName,
     required this.totalAmount,
+    required this.grossAmount,
+    this.totalDiscount = 0,
+    this.returnValue = 0,
+    this.freeIssueValue = 0,
     required this.status,
     required this.createdAt,
   });
+
+  BillBreakdown get breakdown => BillBreakdown.forList(
+        total: totalAmount,
+        gross: grossAmount,
+        discount: totalDiscount,
+        returns: returnValue,
+        freeIssue: freeIssueValue,
+      );
 }

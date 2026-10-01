@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/bill_breakdown_widgets.dart';
 import 'package:uswatte/features/outlet_billings/domain/entities/bill_line.dart';
 
 class BillLineTile extends StatelessWidget {
@@ -11,9 +12,13 @@ class BillLineTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final breakdown = bill.breakdown;
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
         children: [
           Expanded(
             flex: 3,
@@ -49,6 +54,12 @@ class BillLineTile extends StatelessWidget {
               color: AppColors.amber,
             ),
           ),
+        ],
+      ),
+          if (breakdown.hasListSubline) ...[
+            SizedBox(height: 3.h),
+            BillBreakdownSubline(breakdown: breakdown, format: _formatAmount),
+          ],
         ],
       ),
     );

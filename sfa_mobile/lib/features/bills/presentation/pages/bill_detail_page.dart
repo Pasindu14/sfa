@@ -10,7 +10,9 @@ import 'package:uswatte/core/di/injection.dart';
 import 'package:uswatte/core/sync/bill_sync_service.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/core/widgets/app_spinner.dart';
+import 'package:uswatte/core/widgets/bill_breakdown_widgets.dart';
 import 'package:uswatte/features/bills/domain/entities/bill.dart';
+import 'package:uswatte/features/bills/domain/entities/bill_amounts.dart';
 import 'package:uswatte/features/bills/domain/entities/bill_item.dart';
 import 'package:uswatte/features/bills/domain/entities/sync_status.dart';
 import 'package:uswatte/features/bills/domain/usecases/get_bill_by_id_usecase.dart';
@@ -853,134 +855,9 @@ class _TotalsCard extends StatelessWidget {
   final Bill bill;
   const _TotalsCard({required this.bill});
 
-  // FOC values derived from items — server doesn't ship the per-source split into
-  // the local Bill entity, but we already have the lines so we recompute here.
-  double _focValue(String? source) => bill.items
-      .where((i) => i.isFreeIssue && i.freeIssueSource == source)
-      .fold<double>(0, (s, i) => s + i.quantity * i.unitPrice);
-
   @override
-  Widget build(BuildContext context) {
-    final focCompany = _focValue('Company');
-    final focDistributor = _focValue('Distributor');
-    final hasFoc = focCompany > 0 || focDistributor > 0;
-
-    return Container(
-      padding: EdgeInsets.all(14.r),
-      decoration: BoxDecoration(
-        color: AppColors.darkSurface,
-        borderRadius: BorderRadius.circular(12.r),
-      ),
-      child: Column(
-        children: [
-          _line('Subtotal', bill.subTotalAmount),
-          if (bill.billDiscountAmount > 0) ...[
-            SizedBox(height: 6.h),
-            _discountLine(bill.billDiscountRate, bill.billDiscountAmount),
-          ],
-          if (hasFoc) ...[
-            SizedBox(height: 6.h),
-            _line('Free issues (info)', focCompany + focDistributor),
-            if (focCompany > 0 && focDistributor > 0) ...[
-              SizedBox(height: 4.h),
-              _subLine('  · By Company', focCompany),
-              SizedBox(height: 2.h),
-              _subLine('  · By Distributor', focDistributor),
-            ],
-          ],
-          SizedBox(height: 8.h),
-          Divider(color: Colors.white.withValues(alpha: 0.10), height: 1),
-          SizedBox(height: 10.h),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'TOTAL',
-                style: GoogleFonts.barlowCondensed(
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.5,
-                  color: Colors.white.withValues(alpha: 0.60),
-                ),
-              ),
-              Text(
-                'Rs. ${bill.totalAmount.toStringAsFixed(2)}',
-                style: GoogleFonts.barlowCondensed(
-                  fontSize: 22.sp,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.3,
-                  color: AppColors.amber,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _subLine(String label, double amount) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.barlow(
-              fontSize: 11.sp, color: Colors.white.withValues(alpha: 0.40)),
-        ),
-        Text(
-          'Rs. ${amount.toStringAsFixed(2)}',
-          style: GoogleFonts.barlowCondensed(
-            fontSize: 12.sp,
-            fontWeight: FontWeight.w600,
-            color: Colors.white.withValues(alpha: 0.65),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _line(String label, double amount) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.barlow(
-              fontSize: 12.sp, color: Colors.white.withValues(alpha: 0.45)),
-        ),
-        Text(
-          'Rs. ${amount.toStringAsFixed(2)}',
-          style: GoogleFonts.barlowCondensed(
-            fontSize: 14.sp,
-            fontWeight: FontWeight.w600,
-            color: Colors.white.withValues(alpha: 0.80),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _discountLine(double rate, double amount) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          'Discount (${rate.toStringAsFixed(rate.truncateToDouble() == rate ? 0 : 1)}%)',
-          style: GoogleFonts.barlow(
-              fontSize: 12.sp, color: AppColors.error.withValues(alpha: 0.7)),
-        ),
-        Text(
-          '− Rs. ${amount.toStringAsFixed(2)}',
-          style: GoogleFonts.barlowCondensed(
-            fontSize: 14.sp,
-            fontWeight: FontWeight.w600,
-            color: AppColors.error.withValues(alpha: 0.7),
-          ),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) =>
+      BillTotalsCard(breakdown: bill.breakdown);
 }
 
 // ── Action row ────────────────────────────────────────────────────────────────

@@ -22,6 +22,7 @@ import {
   formatCurrency,
 } from '../columns/rep-bill-columns'
 import type { RepBillDetail, RepBillLineItem } from '../../schema/rep-bill.schema'
+import { BillBreakdown, detailBreakdown, discountNote } from '@/components/billing/billing-breakdown'
 import {
   BillingAdjustmentHistory,
   ReturnTypeBadge,
@@ -306,57 +307,26 @@ export function RepBillDetailDialog() {
               </div>
             </ScrollArea>
 
-            <div className="shrink-0 space-y-1 border-t bg-muted/30 px-4 py-3 sm:px-6">
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Subtotal</span>
-                <span className="tabular-nums">{formatCurrency(bill.subTotalAmount)}</span>
-              </div>
-              {bill.itemWiseTotalDiscount > 0 && (
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Item Discounts</span>
-                  <span className="tabular-nums text-red-500">
-                    − {formatCurrency(bill.itemWiseTotalDiscount)}
-                  </span>
-                </div>
-              )}
-              {bill.billDiscountAmount > 0 && (
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Bill Discount ({bill.billDiscountRate}%)</span>
-                  <span className="tabular-nums text-red-500">
-                    − {formatCurrency(bill.billDiscountAmount)}
-                  </span>
-                </div>
-              )}
-              {bill.returnValue > 0 && (
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Returns</span>
-                  <span className="tabular-nums text-red-500">
-                    − {formatCurrency(bill.returnValue)}
-                  </span>
-                </div>
-              )}
-              {bill.freeIssueValue > 0 && (
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Free Issue Value</span>
-                  <span className="tabular-nums text-amber-600">
-                    {formatCurrency(bill.freeIssueValue)}
-                  </span>
-                </div>
-              )}
-              {bill.distributorReturnValue > 0 && (
-                // Informational: the parent lines were already reduced, so this is never deducted.
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Distributor Returns (not deducted)</span>
-                  <span className="tabular-nums text-orange-600">
-                    {formatCurrency(bill.distributorReturnValue)}
-                  </span>
-                </div>
-              )}
-              <Separator className="my-1" />
-              <div className="flex justify-between text-sm font-bold">
-                <span>Total</span>
-                <span className="tabular-nums">{formatCurrency(bill.totalAmount)}</span>
-              </div>
+            <div className="shrink-0 border-t bg-muted/30 px-4 py-3 sm:px-6">
+              <BillBreakdown
+                amounts={detailBreakdown(bill)}
+                formatCurrency={formatCurrency}
+                discountNote={discountNote(
+                  bill.itemWiseTotalDiscount,
+                  bill.billDiscountAmount,
+                  bill.billDiscountRate,
+                )}
+              >
+                {bill.distributorReturnValue > 0 && (
+                  // Informational: the parent lines were already reduced, so this is never deducted.
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Distributor Returns (not deducted)</span>
+                    <span className="tabular-nums text-orange-600">
+                      {formatCurrency(bill.distributorReturnValue)}
+                    </span>
+                  </div>
+                )}
+              </BillBreakdown>
             </div>
           </div>
         ) : (

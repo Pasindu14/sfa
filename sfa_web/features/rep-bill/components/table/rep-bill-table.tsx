@@ -45,7 +45,7 @@ export function RepBillTable() {
             enableExport: true,
             enableColumnResizing: true,
             enableUrlState: false,
-            columnResizingTableId: 'rep-bills-table',
+            columnResizingTableId: 'rep-bills-table-v2',
           }}
           getColumns={getColumns}
           fetchDataFn={useRepBillDataTable}

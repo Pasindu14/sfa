@@ -12,6 +12,10 @@ class BillingSummaryModel extends BillingSummary {
     required super.distributorId,
     required super.distributorName,
     required super.totalAmount,
+    super.grossAmount,
+    super.totalDiscount,
+    super.returnValue,
+    super.freeIssueValue,
     required super.status,
     required super.createdAt,
   });
@@ -28,6 +32,10 @@ class BillingSummaryModel extends BillingSummary {
       distributorId: json['distributorId'] as int,
       distributorName: json['distributorName'] as String,
       totalAmount: (json['totalAmount'] as num).toDouble(),
+      grossAmount: (json['grossAmount'] as num?)?.toDouble(),
+      totalDiscount: (json['totalDiscount'] as num?)?.toDouble() ?? 0,
+      returnValue: (json['returnValue'] as num?)?.toDouble() ?? 0,
+      freeIssueValue: (json['freeIssueValue'] as num?)?.toDouble() ?? 0,
       status: BillingStatus.fromJson(json),
       createdAt: DateTime.parse(json['createdAt'] as String),
     );

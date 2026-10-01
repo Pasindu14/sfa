@@ -177,7 +177,11 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
                 x.PaymentType,
                 x.IsCashCollected,
                 x.CreatedAt,
-                x.AdjustmentCount > 0))
+                x.AdjustmentCount > 0,
+                x.SubTotalAmount + x.ItemWiseTotalDiscount,
+                x.TotalDiscount,
+                x.ReturnValue,
+                x.FreeIssueValue))
             .ToListAsync(ct);
 
         return (items, total);
@@ -206,7 +210,11 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
                 b.BillingDate,
                 b.TotalAmount,
                 b.RepStatus,
-                b.DistributorStatus))
+                b.DistributorStatus,
+                b.SubTotalAmount + b.ItemWiseTotalDiscount,
+                b.TotalDiscount,
+                b.ReturnValue,
+                b.FreeIssueValue))
             .ToListAsync(ct);
 
     // Active-vs-all policy (finding #10) for every sales aggregate below:

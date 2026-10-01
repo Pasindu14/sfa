@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
 import 'package:uswatte/core/widgets/app_spinner.dart';
+import 'package:uswatte/core/widgets/bill_breakdown_widgets.dart';
 import 'package:uswatte/features/outlet_bill_history/domain/entities/outlet_bill_detail.dart';
 import 'package:uswatte/features/outlet_bill_history/domain/entities/outlet_bill_item.dart';
 import 'package:uswatte/features/outlet_bill_history/presentation/cubit/outlet_bill_detail_cubit.dart';
@@ -626,94 +627,8 @@ class _TotalsCard extends StatelessWidget {
   const _TotalsCard({required this.bill});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(14.r),
-      decoration: BoxDecoration(
-        color: AppColors.darkSurface,
-        borderRadius: BorderRadius.circular(12.r),
-      ),
-      child: Column(
-        children: [
-          _line('Subtotal', bill.subTotalAmount),
-          if (bill.billDiscountAmount > 0) ...[
-            SizedBox(height: 6.h),
-            _discountLine(bill.billDiscountRate, bill.billDiscountAmount),
-          ],
-          SizedBox(height: 8.h),
-          Divider(color: Colors.white.withValues(alpha: 0.10), height: 1),
-          SizedBox(height: 10.h),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'TOTAL',
-                style: GoogleFonts.barlowCondensed(
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.5,
-                  color: Colors.white.withValues(alpha: 0.60),
-                ),
-              ),
-              Text(
-                'Rs. ${bill.totalAmount.toStringAsFixed(2)}',
-                style: GoogleFonts.barlowCondensed(
-                  fontSize: 22.sp,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.3,
-                  color: AppColors.amber,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _line(String label, double amount) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.barlow(
-              fontSize: 12.sp, color: Colors.white.withValues(alpha: 0.45)),
-        ),
-        Text(
-          'Rs. ${amount.toStringAsFixed(2)}',
-          style: GoogleFonts.barlowCondensed(
-            fontSize: 14.sp,
-            fontWeight: FontWeight.w600,
-            color: Colors.white.withValues(alpha: 0.80),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _discountLine(double rate, double amount) {
-    final rateStr =
-        rate.toStringAsFixed(rate.truncateToDouble() == rate ? 0 : 1);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          'Discount ($rateStr%)',
-          style: GoogleFonts.barlow(
-              fontSize: 12.sp, color: AppColors.error.withValues(alpha: 0.7)),
-        ),
-        Text(
-          '− Rs. ${amount.toStringAsFixed(2)}',
-          style: GoogleFonts.barlowCondensed(
-            fontSize: 14.sp,
-            fontWeight: FontWeight.w600,
-            color: AppColors.error.withValues(alpha: 0.7),
-          ),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) =>
+      BillTotalsCard(breakdown: bill.breakdown);
 }
 
 // ── Error state ───────────────────────────────────────────────────────────────

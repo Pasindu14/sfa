@@ -5,5 +5,10 @@ public record BillLineDto(
     string BillingNumber,
     DateOnly BillingDate,
     decimal TotalAmount,
-    string Status
+    string Status,
+    // Breakdown shown on every bill list: Sales (gross) − Discount − Returns = Total; FreeIssueValue is informational.
+    decimal GrossAmount,
+    decimal TotalDiscount,
+    decimal ReturnValue,
+    decimal FreeIssueValue
 );

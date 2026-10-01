@@ -17,6 +17,12 @@ class BillingDetailModel extends BillingDetail {
     required super.subTotalAmount,
     required super.billDiscountRate,
     required super.billDiscountAmount,
+    super.itemWiseTotalDiscount,
+    super.totalDiscount,
+    super.returnValue,
+    super.freeIssueValue,
+    super.freeIssueValueCompany,
+    super.freeIssueValueDistributor,
     required super.totalAmount,
     required super.status,
     super.notes,
@@ -40,6 +46,15 @@ class BillingDetailModel extends BillingDetail {
       subTotalAmount: (json['subTotalAmount'] as num).toDouble(),
       billDiscountRate: (json['billDiscountRate'] as num).toDouble(),
       billDiscountAmount: (json['billDiscountAmount'] as num).toDouble(),
+      itemWiseTotalDiscount:
+          (json['itemWiseTotalDiscount'] as num?)?.toDouble() ?? 0,
+      totalDiscount: (json['totalDiscount'] as num?)?.toDouble(),
+      returnValue: (json['returnValue'] as num?)?.toDouble() ?? 0,
+      freeIssueValue: (json['freeIssueValue'] as num?)?.toDouble() ?? 0,
+      freeIssueValueCompany:
+          (json['freeIssueValueCompany'] as num?)?.toDouble() ?? 0,
+      freeIssueValueDistributor:
+          (json['freeIssueValueDistributor'] as num?)?.toDouble() ?? 0,
       totalAmount: (json['totalAmount'] as num).toDouble(),
       status: BillingStatus.fromJson(json),
       notes: json['notes'] as String?,

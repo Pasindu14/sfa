@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/bill_breakdown_widgets.dart';
 import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/outlet_bill_history/domain/entities/outlet_bill_summary.dart';
 import 'package:uswatte/features/outlet_bill_history/presentation/cubit/outlet_bill_history_cubit.dart';
@@ -385,7 +386,22 @@ class _BillTile extends StatelessWidget {
             ),
           ],
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildRow(),
+            if (bill.breakdown.hasListSubline) ...[
+              SizedBox(height: 8.h),
+              BillBreakdownSubline(breakdown: bill.breakdown),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRow() {
+    return Row(
           children: [
             Container(
               width: 40.r,
@@ -438,8 +454,6 @@ class _BillTile extends StatelessWidget {
             Icon(Icons.chevron_right_rounded,
                 size: 16.r, color: AppColors.surfaceVariant),
           ],
-        ),
-      ),
     );
   }
 

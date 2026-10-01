@@ -65,7 +65,7 @@ export function OutletBillsPage() {
           enableExport: false,
           enableColumnResizing: true,
           enableUrlState: false,
-          columnResizingTableId: `outlet-bills-table-${outletId}`,
+          columnResizingTableId: `outlet-bills-table-v2-${outletId}`,
           searchPlaceholder: 'Search by billing number...',
         }}
         getColumns={getColumns}

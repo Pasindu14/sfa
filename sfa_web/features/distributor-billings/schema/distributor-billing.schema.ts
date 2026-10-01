@@ -18,6 +18,12 @@ export const distributorBillingListItemSchema = z.object({
   isCashCollected: z.boolean(),
   createdAt: z.string(),
   isAdjusted: z.boolean().default(false),
+  // Breakdown behind totalAmount: grossAmount - totalDiscount - returnValue = totalAmount;
+  // freeIssueValue is informational. Optional so an API that predates them still parses.
+  grossAmount: z.number().optional(),
+  totalDiscount: z.number().optional(),
+  returnValue: z.number().optional(),
+  freeIssueValue: z.number().optional(),
 })
 
 export const billingItemSchema = z.object({
@@ -79,6 +85,9 @@ export const distributorBillingDetailSchema = distributorBillingListItemSchema.e
   freeIssueValue: z.number(),
   freeIssueValueCompany: z.number(),
   freeIssueValueDistributor: z.number(),
+  // subTotalAmount is NET of line discounts: gross = subTotalAmount + itemWiseTotalDiscount.
+  itemWiseTotalDiscount: z.number().optional(),
+  totalDiscount: z.number().optional(),
   distributorReturnValue: z.number().default(0),
   rejectionReason: z.string().nullable().optional(),
   notes: z.string().nullable(),

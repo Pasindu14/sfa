@@ -4,6 +4,7 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Eye, ClipboardCheck, Banknote } from 'lucide-react'
+import { BillAmountCell, listBreakdown } from '@/components/billing/billing-breakdown'
 import type { DistributorBillingListItem } from '../../schema/distributor-billing.schema'
 import { formatColombo } from '@/lib/utils/datetime'
 
@@ -92,10 +93,15 @@ export function getDistributorBillingColumns(
     {
       accessorKey: 'totalAmount',
       header: () => <span className="block text-right">Amount</span>,
+      // Wide enough for the muted "Sales · Disc · Returns" line to fold onto two rows at most.
+      size: 220,
+      minSize: 160,
       cell: ({ row }) => (
-        <span className="block text-right tabular-nums text-sm font-semibold">
-          {formatCurrency(row.original.totalAmount)}
-        </span>
+        <BillAmountCell
+          amounts={listBreakdown(row.original)}
+          total={row.original.totalAmount}
+          formatCurrency={formatCurrency}
+        />
       ),
     },
     {

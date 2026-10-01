@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/bill_breakdown_widgets.dart';
 import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/my_bills/domain/entities/my_bill_summary.dart';
 import 'package:uswatte/features/my_bills/presentation/cubit/my_bills_cubit.dart';
@@ -662,6 +663,10 @@ class _BillTile extends StatelessWidget {
                             ),
                           ],
                         ),
+                        if (bill.breakdown.hasListSubline) ...[
+                          SizedBox(height: 4.h),
+                          BillBreakdownSubline(breakdown: bill.breakdown),
+                        ],
                         SizedBox(height: 9.h),
                         Container(height: 1, color: AppColors.surfaceVariant),
                         SizedBox(height: 8.h),

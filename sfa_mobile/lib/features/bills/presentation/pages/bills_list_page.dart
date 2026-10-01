@@ -6,8 +6,10 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uswatte/features/rep_assignment/presentation/bloc/rep_assignment_bloc.dart';
 import 'package:uswatte/core/theme/app_theme.dart';
+import 'package:uswatte/core/widgets/bill_breakdown_widgets.dart';
 import 'package:uswatte/core/widgets/app_spinner.dart';
 import 'package:uswatte/features/bills/domain/entities/bill.dart';
+import 'package:uswatte/features/bills/domain/entities/bill_amounts.dart';
 import 'package:uswatte/features/bills/domain/entities/sync_status.dart';
 import 'package:uswatte/features/bills/presentation/bloc/bills_list_bloc.dart';
 import 'package:uswatte/features/bills/presentation/bloc/bills_list_event.dart';
@@ -331,6 +333,7 @@ class _BillTile extends StatelessWidget {
                       color: AppColors.foregroundMuted,
                     ),
                   ),
+                  BillBreakdownSubline(breakdown: bill.breakdown),
                   Text(
                     _formatDateTime(bill.createdAt),
                     style: GoogleFonts.barlow(

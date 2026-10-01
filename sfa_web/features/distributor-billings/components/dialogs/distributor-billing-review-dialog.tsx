@@ -42,6 +42,12 @@ import {
 } from '../../hooks/distributor-billing.hooks'
 import type { DistributorBillingListItem, BillingLineItem } from '../../schema/distributor-billing.schema'
 import { ReturnTypeBadge } from '@/components/billing/billing-adjustment-history'
+import {
+  BillBreakdown,
+  detailBreakdown,
+  listBreakdown,
+  type BillBreakdownAmounts,
+} from '@/components/billing/billing-breakdown'
 import { formatColombo } from '@/lib/utils/datetime'
 
 function formatCurrency(amount: number) {
@@ -149,12 +155,20 @@ export function DistributorBillingReviewDialog({ billing, onClose }: Props) {
     })
   }, [watchedItems, adjustableItems])
 
-  // Preview of the payable total after the pending edits — mirrors the server rollup: only Sale
-  // lines feed the sub-total, and Distributor Returns are never subtracted.
-  const previewTotal = useMemo(() => {
-    if (!detail) return 0
-    let subTotal = 0
-    let marketReturns = 0
+  // Breakdown shown in the summary box. Without pending edits it is the server's own figures, so it
+  // always reconciles. With edits it is a live preview that mirrors the server rollup: sums come
+  // from the UNROUNDED line math and are rounded once, only Sale lines feed gross / discount, and
+  // Distributor Returns are never subtracted. Outlet returns can't be edited here, so the
+  // preview takes them from the server's returnValue (Good Return, Damage and Expire all count).
+  const billingBreakdown = billing ? listBreakdown(billing) : null
+  const amounts = useMemo((): BillBreakdownAmounts => {
+    const fallback = (billing && listBreakdown(billing)) || { gross: 0, discount: 0, returns: 0, freeIssue: 0, total: billing?.totalAmount ?? 0 }
+    if (!detail) return fallback
+    if (changedLines.length === 0) return detailBreakdown(detail)
+
+    let gross = 0
+    let itemDiscount = 0
+    let freeIssue = 0
 
     detail.items.forEach((item) => {
       const editedIdx = adjustableItems.findIndex((a) => a.id === item.id)
@@ -163,15 +177,23 @@ export function DistributorBillingReviewDialog({ billing, onClose }: Props) {
         : item.quantity
 
       if (item.billingItemType === 'Sale') {
-        subTotal += lineTotal(quantity, item.unitPrice, item.discountRate, false)
-      } else if (item.billingItemType === 'Return' && item.returnType === 'MarketResell') {
-        marketReturns += item.totalPrice
+        gross += quantity * item.unitPrice
+        itemDiscount += (quantity * item.unitPrice * item.discountRate) / 100
+      } else if (item.billingItemType === 'FreeIssue') {
+        freeIssue += lineTotal(quantity, item.unitPrice, item.discountRate, true)
       }
     })
 
-    const billDiscount = round2((subTotal * detail.billDiscountRate) / 100)
-    return round2(subTotal - billDiscount - marketReturns)
-  }, [detail, adjustableItems, watchedItems])
+    const subTotal = gross - itemDiscount
+    const billDiscount = (subTotal * detail.billDiscountRate) / 100
+    return {
+      gross: round2(gross),
+      discount: round2(itemDiscount + billDiscount),
+      returns: detail.returnValue,
+      freeIssue: round2(freeIssue),
+      total: round2(subTotal - billDiscount - detail.returnValue),
+    }
+  }, [billing, detail, changedLines.length, adjustableItems, watchedItems])
 
   const totalReturning = useMemo(
     () => changedLines.reduce((sum, row) => {
@@ -270,21 +292,27 @@ export function DistributorBillingReviewDialog({ billing, onClose }: Props) {
                   </div>
                 </div>
                 <Separator />
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total Amount</span>
-                  <span className="tabular-nums">
-                    {changedLines.length > 0 ? (
-                      <>
-                        <span className="text-muted-foreground line-through mr-2">
-                          {formatCurrency(detail?.totalAmount ?? billing.totalAmount)}
+                {detail || billingBreakdown ? (
+                  <BillBreakdown
+                    amounts={amounts}
+                    formatCurrency={formatCurrency}
+                    totalSlot={
+                      changedLines.length > 0 ? (
+                        <span className="tabular-nums">
+                          <span className="text-muted-foreground line-through mr-2 font-normal">
+                            {formatCurrency(detail?.totalAmount ?? billing.totalAmount)}
+                          </span>
+                          <span className="text-amber-700">{formatCurrency(amounts.total)}</span>
                         </span>
-                        <span className="font-bold text-amber-700">{formatCurrency(previewTotal)}</span>
-                      </>
-                    ) : (
-                      <span className="font-bold">{formatCurrency(detail?.totalAmount ?? billing.totalAmount)}</span>
-                    )}
-                  </span>
-                </div>
+                      ) : undefined
+                    }
+                  />
+                ) : (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Total Amount</span>
+                    <span className="font-bold tabular-nums">{formatCurrency(billing.totalAmount)}</span>
+                  </div>
+                )}
               </div>
 
               {/* ── Editable quantities ─────────────────────────────────── */}

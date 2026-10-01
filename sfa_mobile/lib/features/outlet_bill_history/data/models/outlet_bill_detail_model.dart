@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:uswatte/features/outlet_bill_history/data/models/outlet_bill_item_model.dart';
 import 'package:uswatte/features/outlet_bill_history/domain/entities/outlet_bill_detail.dart';
 
@@ -13,6 +15,12 @@ class OutletBillDetailModel {
   final double billDiscountRate;
   final double billDiscountAmount;
   final double totalAmount;
+  final double itemWiseTotalDiscount;
+  final double totalDiscount;
+  final double returnValue;
+  final double freeIssueValue;
+  final double freeIssueValueCompany;
+  final double freeIssueValueDistributor;
   final String repStatus;
   final String distributorStatus;
   final String? rejectionReason;
@@ -37,6 +45,12 @@ class OutletBillDetailModel {
     required this.billDiscountRate,
     required this.billDiscountAmount,
     required this.totalAmount,
+    this.itemWiseTotalDiscount = 0,
+    this.totalDiscount = 0,
+    this.returnValue = 0,
+    this.freeIssueValue = 0,
+    this.freeIssueValueCompany = 0,
+    this.freeIssueValueDistributor = 0,
     required this.repStatus,
     required this.distributorStatus,
     this.rejectionReason,
@@ -50,8 +64,29 @@ class OutletBillDetailModel {
     required this.items,
   });
 
-  factory OutletBillDetailModel.fromJson(Map<String, dynamic> json) =>
-      OutletBillDetailModel(
+  factory OutletBillDetailModel.fromJson(Map<String, dynamic> json) {
+    final subTotal = (json['subTotalAmount'] as num).toDouble();
+    final billDiscount = (json['billDiscountAmount'] as num).toDouble();
+    final total = (json['totalAmount'] as num).toDouble();
+    final items = (json['items'] as List<dynamic>)
+        .map((e) => OutletBillItemModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+
+    // The breakdown fields are newer than the rest of the payload. When an
+    // older API build omits them, rebuild them from what is always there so
+    // Sales − Discount − Returns still adds up to the total:
+    //   gross = subTotal + itemWise, returns = subTotal − billDiscount − total.
+    final itemWise = (json['itemWiseTotalDiscount'] as num?)?.toDouble() ?? 0;
+    final totalDiscount =
+        (json['totalDiscount'] as num?)?.toDouble() ?? itemWise + billDiscount;
+    final returnValue = (json['returnValue'] as num?)?.toDouble() ??
+        math.max(0.0, subTotal - billDiscount - total);
+    final freeIssueValue = (json['freeIssueValue'] as num?)?.toDouble() ??
+        items
+            .where((i) => i.isFreeIssue)
+            .fold<double>(0, (s, i) => s + i.quantity * i.unitPrice);
+
+    return OutletBillDetailModel(
         id: json['id'] as int,
         billingNumber: json['billingNumber'] as String,
         billingDate: json['billingDate'] as String,
@@ -62,7 +97,15 @@ class OutletBillDetailModel {
         subTotalAmount: (json['subTotalAmount'] as num).toDouble(),
         billDiscountRate: (json['billDiscountRate'] as num).toDouble(),
         billDiscountAmount: (json['billDiscountAmount'] as num).toDouble(),
-        totalAmount: (json['totalAmount'] as num).toDouble(),
+        totalAmount: total,
+        itemWiseTotalDiscount: itemWise,
+        totalDiscount: totalDiscount,
+        returnValue: returnValue,
+        freeIssueValue: freeIssueValue,
+        freeIssueValueCompany:
+            (json['freeIssueValueCompany'] as num?)?.toDouble() ?? 0,
+        freeIssueValueDistributor:
+            (json['freeIssueValueDistributor'] as num?)?.toDouble() ?? 0,
         repStatus: json['repStatus'] as String,
         distributorStatus: json['distributorStatus'] as String,
         rejectionReason: json['rejectionReason'] as String?,
@@ -75,10 +118,9 @@ class OutletBillDetailModel {
             (json['distributorReturnValue'] as num?)?.toDouble() ?? 0,
         pricingStructureId: json['pricingStructureId'] as int?,
         pricingStructureName: json['pricingStructureName'] as String?,
-        items: (json['items'] as List<dynamic>)
-            .map((e) => OutletBillItemModel.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+        items: items,
+    );
+  }
 
   OutletBillDetail toEntity() => OutletBillDetail(
         id: id,
@@ -92,6 +134,12 @@ class OutletBillDetailModel {
         billDiscountRate: billDiscountRate,
         billDiscountAmount: billDiscountAmount,
         totalAmount: totalAmount,
+        itemWiseTotalDiscount: itemWiseTotalDiscount,
+        totalDiscount: totalDiscount,
+        returnValue: returnValue,
+        freeIssueValue: freeIssueValue,
+        freeIssueValueCompany: freeIssueValueCompany,
+        freeIssueValueDistributor: freeIssueValueDistributor,
         repStatus: repStatus,
         distributorStatus: distributorStatus,
         rejectionReason: rejectionReason,

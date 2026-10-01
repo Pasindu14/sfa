@@ -19,5 +19,10 @@ public record BillingListDto(
     PaymentType PaymentType,
     bool IsCashCollected,
     DateTime CreatedAt,
-    bool IsAdjusted
+    bool IsAdjusted,
+    // Breakdown shown on every bill list: Sales (gross) − Discount − Returns = Total; FreeIssueValue is informational.
+    decimal GrossAmount,
+    decimal TotalDiscount,
+    decimal ReturnValue,
+    decimal FreeIssueValue
 );

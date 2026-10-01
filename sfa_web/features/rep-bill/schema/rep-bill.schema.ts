@@ -26,6 +26,12 @@ export const repBillListItemSchema = z.object({
   isCashCollected: z.boolean(),
   isAdjusted: z.boolean().default(false),
   createdAt: z.string(),
+  // Breakdown behind totalAmount: grossAmount - totalDiscount - returnValue = totalAmount;
+  // freeIssueValue is informational. Optional so an API that predates them still parses.
+  grossAmount: z.number().optional(),
+  totalDiscount: z.number().optional(),
+  returnValue: z.number().optional(),
+  freeIssueValue: z.number().optional(),
 })
 
 /** One line on a bill. `expireDate` is staff-only — the portal DTO omits it. */

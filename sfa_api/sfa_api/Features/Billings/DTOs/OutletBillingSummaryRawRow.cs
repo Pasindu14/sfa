@@ -10,5 +10,9 @@ public record OutletBillingSummaryRawRow(
     DateOnly BillingDate,
     decimal TotalAmount,
     RepBillingStatus RepStatus,
-    DistributorBillingStatus DistributorStatus
+    DistributorBillingStatus DistributorStatus,
+    decimal GrossAmount,
+    decimal TotalDiscount,
+    decimal ReturnValue,
+    decimal FreeIssueValue
 );

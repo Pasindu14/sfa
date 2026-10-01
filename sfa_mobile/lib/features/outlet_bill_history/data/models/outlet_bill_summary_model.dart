@@ -9,6 +9,10 @@ class OutletBillSummaryModel {
   final String salesRepName;
   final String distributorName;
   final double totalAmount;
+  final double grossAmount;
+  final double totalDiscount;
+  final double returnValue;
+  final double freeIssueValue;
   final String status;
   final String createdAt;
 
@@ -21,6 +25,10 @@ class OutletBillSummaryModel {
     required this.salesRepName,
     required this.distributorName,
     required this.totalAmount,
+    required this.grossAmount,
+    this.totalDiscount = 0,
+    this.returnValue = 0,
+    this.freeIssueValue = 0,
     required this.status,
     required this.createdAt,
   });
@@ -35,6 +43,12 @@ class OutletBillSummaryModel {
         salesRepName: json['salesRepName'] as String,
         distributorName: json['distributorName'] as String,
         totalAmount: (json['totalAmount'] as num).toDouble(),
+        // Newer fields: an older API build omits them, so fall back to a
+        // plain bill (gross = total, no discount/returns) instead of crashing.
+        grossAmount: ((json['grossAmount'] ?? json['totalAmount']) as num).toDouble(),
+        totalDiscount: (json['totalDiscount'] as num?)?.toDouble() ?? 0,
+        returnValue: (json['returnValue'] as num?)?.toDouble() ?? 0,
+        freeIssueValue: (json['freeIssueValue'] as num?)?.toDouble() ?? 0,
         status: json['repStatus'] as String,
         createdAt: json['createdAt'] as String,
       );
@@ -48,6 +62,10 @@ class OutletBillSummaryModel {
         salesRepName: salesRepName,
         distributorName: distributorName,
         totalAmount: totalAmount,
+        grossAmount: grossAmount,
+        totalDiscount: totalDiscount,
+        returnValue: returnValue,
+        freeIssueValue: freeIssueValue,
         status: status,
         createdAt: DateTime.parse(createdAt),
       );
