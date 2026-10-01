@@ -22,7 +22,7 @@ import {
 } from '@/features/distributor/actions/distributor.actions'
 import type { DistributorDto } from '@/features/distributor/schema/distributor.schema'
 import { useDistributorStock } from '@/features/stock/hooks/stock.hooks'
-import { useCreateStockTransfer } from '../../hooks/stock-transfer.hooks'
+import { isDefinitiveRejection, useCreateStockTransfer } from '../../hooks/stock-transfer.hooks'
 import { stockLineKey } from '@/features/stock/lib/quantity'
 import { exportDistributorStockExcel } from '../../lib/stock-transfer-export'
 import { StockTransferConfirmDialog, type ConfirmLine } from '../dialogs/stock-transfer-confirm-dialog'
@@ -49,8 +49,11 @@ export function StockTransferPage() {
   // Per-line transfer qty in pieces. Lines without an override default to the full balance.
   const [overrides, setOverrides] = useState<Record<string, number>>({})
   const [confirmOpen, setConfirmOpen] = useState(false)
-  // One key per confirmed submission, so a retry of the same transfer is deduplicated by the API.
-  const [idempotencyKey, setIdempotencyKey] = useState('')
+  // The idempotency key is owned per payload: it survives ambiguous failures (network error,
+  // timeout, 5xx — the transfer may have committed) and closing/reopening the dialog, so a retry of
+  // the same transfer is deduplicated by the API. It is dropped only after a definitive rejection,
+  // a changed payload, or success. A ref, so a retry never reads a stale value.
+  const idempotencyRef = useRef<{ key: string; signature: string } | null>(null)
   const [exporting, setExporting] = useState(false)
 
   // Last options each picker loaded — used to resolve the selected distributor's name.
@@ -103,7 +106,7 @@ export function StockTransferPage() {
     setNotes('')
     setOverrides({})
     setConfirmOpen(false)
-    setIdempotencyKey('')
+    idempotencyRef.current = null
     setFormKey((k) => k + 1)
   }, [])
 
@@ -135,28 +138,35 @@ export function StockTransferPage() {
     }
   }
 
-  const openConfirm = () => {
-    setIdempotencyKey(crypto.randomUUID())
-    setConfirmOpen(true)
-  }
+  const openConfirm = () => setConfirmOpen(true)
 
   const submit = () => {
-    if (!source || !target || confirmLines.length === 0) return
-    createMutation.mutate({
-      idempotencyKey,
-      data: {
-        sourceDistributorId: source.id,
-        targetDistributorId: target.id,
-        notes: notes.trim() || undefined,
-        lines: confirmLines.map(({ item, quantity }) => ({
-          productId: item.productId,
-          stockType: item.stockType,
-          quantity,
-        })),
+    if (!source || !target || confirmLines.length === 0 || createMutation.isPending) return
+    const data = {
+      sourceDistributorId: source.id,
+      targetDistributorId: target.id,
+      notes: notes.trim() || undefined,
+      lines: confirmLines.map(({ item, quantity }) => ({
+        productId: item.productId,
+        stockType: item.stockType,
+        quantity,
+      })),
+    }
+    // Same payload as the previous attempt -> same key; anything edited -> a new transfer, new key.
+    const signature = JSON.stringify(data)
+    if (idempotencyRef.current?.signature !== signature) {
+      idempotencyRef.current = { key: crypto.randomUUID(), signature }
+    }
+    createMutation.mutate({ idempotencyKey: idempotencyRef.current.key, data }, {
+      onError: (error) => {
+        // Definitive rejection: nothing was moved. Drop the key and close so a retry starts fresh.
+        // Ambiguous failure (network/timeout/5xx): keep the key and leave the dialog open so
+        // pressing Confirm again replays the SAME key and cannot move the stock twice.
+        if (isDefinitiveRejection(error)) {
+          idempotencyRef.current = null
+          setConfirmOpen(false)
+        }
       },
-    }, {
-      // The API rejected this submission outright — close so a retry reopens with a fresh key.
-      onError: () => setConfirmOpen(false),
     })
   }
 

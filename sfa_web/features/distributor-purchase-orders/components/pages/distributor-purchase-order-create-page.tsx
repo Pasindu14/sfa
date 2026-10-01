@@ -1,8 +1,9 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { useForm, useFieldArray, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FileText, Minus, Plus, ShoppingCart, Trash2, Save, Send } from 'lucide-react'
@@ -108,10 +109,16 @@ export function DistributorPurchaseOrderCreatePage() {
   const products = categoryPricings.map((r) => ({ id: r.productId, code: r.productCode, itemDescription: r.itemDescription }))
   const { data: profile, isLoading: isLoadingProfile } = useMyDistributorProfile()
 
-  const { mutate: createOrder, isPending: isCreating, fieldErrors } = useCreateMyPurchaseOrder()
-  const { mutate: submitOrder, isPending: isSubmitting } = useSubmitMyPurchaseOrder(
-    (id) => router.push(`/distributor-purchase-orders/${id}`)
-  )
+  const { mutateAsync: createOrder, fieldErrors } = useCreateMyPurchaseOrder()
+  const { mutateAsync: submitOrder } = useSubmitMyPurchaseOrder()
+
+  // One latch covers create + the chained submit + the navigation. It is released only when the
+  // flow ends WITHOUT navigating (a failure), so a second click can never start a second create.
+  const busyRef = useRef(false)
+  const [isBusy, setIsBusy] = useState(false)
+  // The draft this page has already created. If the submit step fails, the next click re-submits
+  // THIS id instead of creating another PO; `signature` is the payload it was created from.
+  const createdDraftRef = useRef<{ id: number; signature: string } | null>(null)
 
   const form = useForm<CreateMyPurchaseOrderInput>({
     resolver: zodResolver(createMyPurchaseOrderSchema),
@@ -156,26 +163,59 @@ export function DistributorPurchaseOrderCreatePage() {
   )
   const canSubmit = hasValidItem && !hasUnpricedItems
 
-  const onSubmitForApproval = (data: CreateMyPurchaseOrderInput) => {
-    const validItems = data.items.filter((i) => i.productId > 0)
-    createOrder(
-      { ...data, items: validItems },
-      { onSuccess: (created) => submitOrder(created.id) }
-    )
+  const runCreateFlow = async (data: CreateMyPurchaseOrderInput, submitAfterCreate: boolean) => {
+    if (busyRef.current) return
+    const payload = { ...data, items: data.items.filter((i) => i.productId > 0) }
+    if (payload.items.length === 0) return
+    busyRef.current = true
+    setIsBusy(true)
+    let navigating = false
+    try {
+      const signature = JSON.stringify(payload)
+      let draft = createdDraftRef.current
+
+      // The form was edited after a draft had already been saved: do not create a second PO.
+      if (draft && draft.signature !== signature) {
+        toast.info('Your draft was saved — open it to submit')
+        navigating = true
+        router.push(`/distributor-purchase-orders/${draft.id}`)
+        return
+      }
+
+      if (!draft) {
+        const created = await createOrder(payload)
+        draft = { id: created.id, signature }
+        createdDraftRef.current = draft
+      }
+
+      if (submitAfterCreate) {
+        try {
+          await submitOrder(draft.id)
+        } catch {
+          // The hook already toasted the API error; make clear nothing is lost and what a retry does.
+          toast.warning('Your draft was saved but not submitted. Click "Submit for Approval" to retry.')
+          return
+        }
+      }
+
+      navigating = true
+      router.push(`/distributor-purchase-orders/${draft.id}`)
+    } catch {
+      // create failed — useCreateMyPurchaseOrder already surfaced the error
+    } finally {
+      if (!navigating) {
+        busyRef.current = false
+        setIsBusy(false)
+      }
+    }
   }
 
-  const onSaveDraft = () => {
-    const data = form.getValues()
-    const validItems = data.items.filter((i) => i.productId > 0)
-    if (validItems.length === 0) return
-    createOrder(
-      { ...data, items: validItems },
-      { onSuccess: (created) => router.push(`/distributor-purchase-orders/${created.id}`) }
-    )
-  }
+  const onSubmitForApproval = (data: CreateMyPurchaseOrderInput) => runCreateFlow(data, true)
+
+  const onSaveDraft = () => runCreateFlow(form.getValues(), false)
 
   const isLoading = isLoadingPricings || isLoadingProfile
-  const isPending = isCreating || isSubmitting
+  const isPending = isBusy
 
   if (isLoading) {
     return (

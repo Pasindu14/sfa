@@ -72,9 +72,12 @@ export class ApiError extends Error {
 
 // ─────────────────────────────────────────────────────────────
 // Idempotency key helper
-// Callers generate a stable key BEFORE initiating a mutation and pass it
-// via `config.headers["X-Idempotency-Key"]`.  The interceptor no longer
-// sets a key globally — a per-request UUID defeats the purpose.
+// The request interceptor attaches a random key to every mutating request that
+// does not already carry one, and the transport-level retry re-sends that same
+// key.  That only covers a single axios call: a caller that may re-issue the
+// SAME logical operation after an ambiguous failure (lost response, timeout,
+// 5xx) must generate the key itself, once, and pass it via
+// `config.headers["X-Idempotency-Key"]` — the interceptor leaves it untouched.
 // ─────────────────────────────────────────────────────────────
 
 /**
