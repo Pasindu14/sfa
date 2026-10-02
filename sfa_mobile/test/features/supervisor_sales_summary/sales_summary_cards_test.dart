@@ -56,16 +56,18 @@ void main() {
     expect(find.text('DISCOUNT'), findsOneWidget);
     expect(find.text('LKR 299.43'), findsOneWidget);
     expect(find.text('FREE ISSUE'), findsOneWidget);
-    expect(find.text('LKR 1,560.75'), findsOneWidget);
+    expect(find.text('LKR 310.25'), findsOneWidget);
     expect(find.text('TOTAL DISCOUNT'), findsNothing);
-    // Hero = billed 13,371.30 less free issue 1,560.75.
-    expect(find.text('LKR 11,810.55'), findsOneWidget);
+    // Hero = billed 13,371.30 less distributor-funded free issue 310.25
+    // (company-funded 1,250.50 is not deducted).
+    expect(find.text('LKR 13,061.05'), findsOneWidget);
+    expect(find.text('LKR 1,250.50'), findsNothing);
     expect(find.text('NET SALES'), findsNothing);
   });
 
-  test('freeIssueTotal and missing free-issue fields default to zero', () {
-    expect(_summary().freeIssueTotal, 1560.75);
-    expect(_summary().netSales, closeTo(11810.55, 0.001));
+  test('distributor free issue is the deducted figure and missing free-issue fields default to zero', () {
+    expect(_summary().freeIssueTotal, 310.25);
+    expect(_summary().netSales, closeTo(13061.05, 0.001));
     // Gross is unaffected by free issue.
     expect(_summary().grossSales, closeTo(13371.30 + 299.43 + 5377.32 + 4621.96, 0.001));
     final old = RepBillingSummary.fromJson({

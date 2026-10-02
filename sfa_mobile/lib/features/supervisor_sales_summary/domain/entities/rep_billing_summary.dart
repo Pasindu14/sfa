@@ -41,9 +41,10 @@ class RepBillingSummary extends Equatable {
     this.freeIssueDistributor = 0.0,
   });
 
-  /// Free-issue (FOC) value, company + distributor funded. Not in the bills'
-  /// TotalAmount; it is deducted from the net figure shown on the cards.
-  double get freeIssueTotal => freeIssueCompany + freeIssueDistributor;
+  /// Free issue shown on the cards and deducted from net: the distributor-funded
+  /// FOC only. Company-funded FOC (drawn from the company's FOC stock pool) is
+  /// not part of the rep's net figure; [freeIssueCompany] stays parsed for reference.
+  double get freeIssueTotal => freeIssueDistributor;
 
   /// Sales before any discount, free issue or return. Exact because discount
   /// and both return buckets are summed over the same approved + pending bills,
@@ -53,7 +54,7 @@ class RepBillingSummary extends Equatable {
 
   /// What the cards show as net: each bill's TotalAmount summed over approved +
   /// pending bills ([totalBilled], i.e. gross - discount - returns) less the
-  /// free-issue value.
+  /// distributor-funded free issue.
   double get netSales => totalBilled - freeIssueTotal;
 
   factory RepBillingSummary.fromJson(Map<String, dynamic> json) {
