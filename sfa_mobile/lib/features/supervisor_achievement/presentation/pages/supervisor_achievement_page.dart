@@ -1607,10 +1607,8 @@ class _SummaryStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final totalPct = data.totalTargetQuantity > 0
-        ? (data.totalSoldQuantity / data.totalTargetQuantity * 100)
-            .clamp(0.0, 9999.0)
-        : 0.0;
+    // Items sold without a target must not inflate the overall %.
+    final totalPct = data.overallAchievementPercent.clamp(0.0, 9999.0);
     final accent = _accentForPercent(totalPct);
 
     return Container(

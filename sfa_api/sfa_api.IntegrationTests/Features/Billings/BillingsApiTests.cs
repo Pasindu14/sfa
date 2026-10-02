@@ -1028,4 +1028,81 @@ public class BillingsApiTests
         status.Should().Be(HttpStatusCode.NotFound, raw);
         raw.Should().Contain("PRICINGSTRUCTURE_NOT_FOUND");
     }
+
+    // ── Item-wise achievement (real query, SQLite) ──────────────────────────
+    // Shared DB across the collection, so assert on the delta this test causes for product A.
+    [Fact]
+    public async Task MonthlySalesItemwise_CountsApprovedNetOfReturns_AndIgnoresCancelledRejectedAndPending()
+    {
+        await EnsureSeededAsync();
+        SetToken(_repToken);
+        var now = DateTime.UtcNow;
+
+        async Task<(decimal Sold, decimal Returned, decimal Pending)> ReadAsync()
+        {
+            var resp = await _client.GetAsync($"{BaseUrl}/my-monthly-sales-itemwise?year={now.Year}&month={now.Month}");
+            var raw = await resp.Content.ReadAsStringAsync();
+            resp.StatusCode.Should().Be(HttpStatusCode.OK, raw);
+            using var doc = JsonDocument.Parse(raw);
+            foreach (var it in doc.RootElement.GetProperty("data").GetProperty("items").EnumerateArray())
+                if (it.GetProperty("productId").GetInt32() == _productAId)
+                    return (it.GetProperty("soldQuantityPacks").GetDecimal(),
+                            it.GetProperty("returnQuantityPacks").GetDecimal(),
+                            it.GetProperty("pendingQuantityPacks").GetDecimal());
+            return (0m, 0m, 0m);
+        }
+
+        async Task<int> CreateBillAsync(params object[] items)
+        {
+            var (status, data, raw) = await PostBillingAsync(new
+            {
+                outletId = _outletId,
+                billDiscountRate = 0m,
+                billingDate = Today(),
+                latitude = 6.9271,
+                longitude = 79.8612,
+                items
+            });
+            status.Should().Be(HttpStatusCode.Created, raw);
+            return data.GetProperty("id").GetInt32();
+        }
+
+        async Task SetStatusAsync(int billId, DistributorBillingStatus dist, RepBillingStatus rep)
+        {
+            using var scope = _factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var bill = db.Billings.Single(b => b.Id == billId);
+            bill.DistributorStatus = dist;
+            bill.RepStatus = rep;
+            await db.SaveChangesAsync();
+        }
+
+        var before = await ReadAsync();
+
+        // Approved: sold 10, 2 resellable returns → net 8.
+        var approved = await CreateBillAsync(
+            new { productId = _productAId, quantity = 10m, unitPrice = 50m, discountRate = 0m, billingItemType = 0 },
+            new { productId = _productAId, quantity = 2m,  unitPrice = 50m, discountRate = 0m, billingItemType = 1, returnType = 0 });
+        await SetStatusAsync(approved, DistributorBillingStatus.Approved, RepBillingStatus.Submitted);
+
+        // Pending: 4 packs → reported as pending, not sold.
+        await CreateBillAsync(
+            new { productId = _productAId, quantity = 4m, unitPrice = 50m, discountRate = 0m, billingItemType = 0 });
+
+        // Approved but later cancelled by the rep — must not count.
+        var cancelled = await CreateBillAsync(
+            new { productId = _productAId, quantity = 100m, unitPrice = 50m, discountRate = 0m, billingItemType = 0 });
+        await SetStatusAsync(cancelled, DistributorBillingStatus.Approved, RepBillingStatus.Cancelled);
+
+        // Rejected by the distributor — must not count.
+        var rejected = await CreateBillAsync(
+            new { productId = _productAId, quantity = 50m, unitPrice = 50m, discountRate = 0m, billingItemType = 0 });
+        await SetStatusAsync(rejected, DistributorBillingStatus.Rejected, RepBillingStatus.Submitted);
+
+        var after = await ReadAsync();
+
+        (after.Sold - before.Sold).Should().Be(8m, "approved sale 10 minus 2 returned; cancelled/rejected/pending excluded");
+        (after.Returned - before.Returned).Should().Be(2m);
+        (after.Pending - before.Pending).Should().Be(4m);
+    }
 }

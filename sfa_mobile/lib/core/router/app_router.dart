@@ -39,10 +39,9 @@ import 'package:uswatte/features/sales_rep/presentation/pages/sales_rep_home_pag
 import 'package:uswatte/features/sales_rep_target/domain/usecases/get_rep_monthly_target_usecase.dart';
 import 'package:uswatte/features/sales_rep_target/presentation/cubit/rep_target_cubit.dart';
 import 'package:uswatte/features/rep_monthly_sales/data/datasources/rep_billing_summary_remote_datasource.dart';
-import 'package:uswatte/features/rep_monthly_sales/domain/usecases/get_rep_daily_sales_usecase.dart';
 import 'package:uswatte/features/rep_monthly_sales/domain/usecases/get_rep_monthly_sales_usecase.dart';
-import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_billing_summary_cubit.dart';
-import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_daily_sales_cubit.dart';
+import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_sales_summary_cubit.dart';
+import 'package:uswatte/features/rep_monthly_sales/presentation/pages/rep_sales_summary_page.dart';
 import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_monthly_sales_cubit.dart';
 import 'package:uswatte/features/item_wise_achievement/domain/usecases/get_item_wise_achievement_usecase.dart';
 import 'package:uswatte/features/item_wise_achievement/presentation/cubit/item_wise_achievement_cubit.dart';
@@ -261,12 +260,7 @@ class AppRouter {
                     },
                   ),
                   BlocProvider(
-                    create: (_) =>
-                        RepDailySalesCubit(getIt<GetRepDailySalesUseCase>())
-                          ..load(DateTime.now()),
-                  ),
-                  BlocProvider(
-                    create: (_) => RepBillingSummaryCubit(
+                    create: (_) => RepSalesSummaryCubit(
                       getIt<RepBillingSummaryRemoteDatasource>(),
                     )..load(),
                   ),
@@ -604,6 +598,16 @@ class AppRouter {
                   MyBillsRepositoryImpl(getIt<MyBillsRemoteDatasource>()),
                 ),
                 child: const MyBillsPage(),
+              ),
+            ),
+            GoRoute(
+              path: 'sales-summary',
+              name: 'repSalesSummary',
+              builder: (_, __) => BlocProvider(
+                create: (_) => RepSalesSummaryCubit(
+                  getIt<RepBillingSummaryRemoteDatasource>(),
+                ),
+                child: const RepSalesSummaryPage(),
               ),
             ),
             GoRoute(

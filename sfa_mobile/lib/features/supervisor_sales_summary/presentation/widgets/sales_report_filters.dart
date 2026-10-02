@@ -365,6 +365,9 @@ class SelectBox extends StatelessWidget {
   final bool enabled;
   final VoidCallback onTap;
 
+  /// The dropdown chevron; hidden when the value is fixed (the rep's own page).
+  final bool showChevron;
+
   const SelectBox({
     super.key,
     required this.icon,
@@ -372,6 +375,7 @@ class SelectBox extends StatelessWidget {
     required this.filled,
     required this.enabled,
     required this.onTap,
+    this.showChevron = true,
   });
 
   @override

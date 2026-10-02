@@ -113,6 +113,156 @@ class SalesSummaryCards extends StatelessWidget {
   }
 }
 
+/// Everything a finished summary shows: the cards, the NET SALES breakdown and
+/// the footnote. Used by both the supervisor and the sales rep pages.
+class SalesSummaryResults extends StatelessWidget {
+  final RepBillingSummary summary;
+  final String repName;
+  const SalesSummaryResults({
+    super.key,
+    required this.summary,
+    required this.repName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SalesSummaryCards(summary: summary, repName: repName),
+        SizedBox(height: 12.h),
+        SalesSummaryNetCard(summary: summary),
+        SizedBox(height: 10.h),
+        Text(
+          'Money figures cover approved + pending bills. Rejected and '
+          'cancelled bills are counted only.',
+          style: GoogleFonts.barlow(
+            fontSize: 10.sp,
+            color: AppColors.foregroundMuted,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The same SALES → DISCOUNT → FREE ISSUE → RETURNS → NET breakdown the rep sees on a
+/// bill (cart_list.dart), totalled over the range.
+class SalesSummaryNetCard extends StatelessWidget {
+  final RepBillingSummary summary;
+  const SalesSummaryNetCard({super.key, required this.summary});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = summary;
+    Widget row(String label, String value, {bool minus = false}) => Padding(
+      padding: EdgeInsets.symmetric(vertical: 5.h),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: GoogleFonts.barlowCondensed(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.0,
+                color: AppColors.foregroundMuted,
+              ),
+            ),
+          ),
+          Text(
+            '${minus ? '−' : ''}$value',
+            style: GoogleFonts.barlowCondensed(
+              fontSize: 15.sp,
+              fontWeight: FontWeight.w700,
+              color: AppColors.foreground,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 14.h),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.10),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.receipt_long_rounded,
+                size: 15.r,
+                color: AppColors.primary,
+              ),
+              SizedBox(width: 6.w),
+              Text(
+                'NET SALES',
+                style: GoogleFonts.barlowCondensed(
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 2.0,
+                  color: AppColors.primary,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                'Approved + pending',
+                style: GoogleFonts.barlow(
+                  fontSize: 10.sp,
+                  color: AppColors.foregroundMuted,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 6.h),
+          row('GROSS SALES · ITEMS SOLD', fmtLkr(s.grossSales)),
+          row('DISCOUNT', fmtLkr(s.totalDiscount), minus: true),
+          row('FREE ISSUE', fmtLkr(s.freeIssueTotal), minus: true),
+          row('GOOD RETURN', fmtLkr(s.goodReturn), minus: true),
+          row('MARKET RETURN', fmtLkr(s.marketReturn), minus: true),
+          Divider(height: 14.h, color: AppColors.surfaceVariant),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'NET SALES',
+                  style: GoogleFonts.barlowCondensed(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                    color: AppColors.foreground,
+                  ),
+                ),
+              ),
+              Text(
+                fmtLkr(s.netSales),
+                style: GoogleFonts.barlowCondensed(
+                  fontSize: 22.sp,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.3,
+                  color: AppColors.primaryDark,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class SalesSummaryHeroCard extends StatelessWidget {
   final RepBillingSummary summary;
   final String repName;
@@ -287,6 +437,15 @@ class SalesSummaryHeroCard extends StatelessWidget {
                       ),
                     ),
                   ],
+                ),
+              ),
+              SizedBox(height: 8.h),
+              Text(
+                'Not counted as your sale until the distributor approves the bill.',
+                style: GoogleFonts.barlow(
+                  fontSize: 9.sp,
+                  height: 1.3,
+                  color: Colors.white.withValues(alpha: 0.72),
                 ),
               ),
             ],

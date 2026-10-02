@@ -21,12 +21,10 @@ import 'package:uswatte/features/rep_assignment/presentation/bloc/rep_assignment
 import 'package:uswatte/features/route_assignment/presentation/bloc/assignments_bloc.dart';
 import 'package:uswatte/features/sales_rep_target/presentation/cubit/rep_target_cubit.dart';
 import 'package:uswatte/features/sales_rep_target/presentation/cubit/rep_target_state.dart';
-import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_daily_sales_cubit.dart';
-import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_daily_sales_state.dart';
+import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_sales_summary_cubit.dart';
 import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_monthly_sales_cubit.dart';
 import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_monthly_sales_state.dart';
 import 'package:uswatte/features/notifications/presentation/bloc/notifications_bloc.dart';
-import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_billing_summary_cubit.dart';
 import 'package:uswatte/features/supervisor_sales_summary/presentation/widgets/sales_summary_cards.dart';
 import 'package:uswatte/features/sales_rep/presentation/widgets/location_nag_banner.dart';
 import 'package:uswatte/features/sales_rep/presentation/widgets/logout_with_sync_check.dart';
@@ -43,41 +41,44 @@ class _SalesRepHomePageState extends State<SalesRepHomePage>
   late AnimationController _ctrl;
 
   Animation<double> _fade(double from, double to) => CurvedAnimation(
-      parent: _ctrl, curve: Interval(from, to, curve: Curves.easeOut));
+    parent: _ctrl,
+    curve: Interval(from, to, curve: Curves.easeOut),
+  );
 
   Animation<Offset> _slide(double from, double to) =>
       Tween<Offset>(begin: const Offset(0, 0.07), end: Offset.zero).animate(
-          CurvedAnimation(
-              parent: _ctrl,
-              curve: Interval(from, to, curve: Curves.easeOutCubic)));
+        CurvedAnimation(
+          parent: _ctrl,
+          curve: Interval(from, to, curve: Curves.easeOutCubic),
+        ),
+      );
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1000))
-      ..forward();
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..forward();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && mounted) {
-      context
-          .read<AssignmentsBloc>()
-          .add(LoadAssignmentsRequested(date: DateTime.now()));
+      context.read<AssignmentsBloc>().add(
+        LoadAssignmentsRequested(date: DateTime.now()),
+      );
     }
   }
 
   Future<void> _onRefresh() async {
     final now = DateTime.now();
-    // Not awaited: the cards keep their previous figures and update in place,
-    // so a slow summary call must not hold the pull-to-refresh spinner open.
-    unawaited(context.read<RepBillingSummaryCubit>().load());
+    // Not awaited: a slow summary call must not hold the pull-to-refresh spinner open.
+    unawaited(context.read<RepSalesSummaryCubit>().load());
     context.read<AssignmentsBloc>().add(LoadAssignmentsRequested(date: now));
     await Future.wait([
       context.read<RepMonthlySalesCubit>().load(now.year, now.month),
-      context.read<RepDailySalesCubit>().load(now),
       context.read<RepTargetCubit>().load(now.year, now.month),
     ]);
   }
@@ -97,117 +98,121 @@ class _SalesRepHomePageState extends State<SalesRepHomePage>
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: AppTheme.systemOverlayStyle,
       child: BlocListener<AssignmentsBloc, AssignmentsState>(
-      listenWhen: (_, curr) => curr is AssignmentsLoaded,
-      listener: (context, state) {
-        if (state is AssignmentsLoaded) {
-          if (state.assignments.isNotEmpty) {
-            final assignment = state.assignments.first;
-            context.read<OutletsBloc>().add(SyncDailyOutletsRequested(
+        listenWhen: (_, curr) => curr is AssignmentsLoaded,
+        listener: (context, state) {
+          if (state is AssignmentsLoaded) {
+            if (state.assignments.isNotEmpty) {
+              final assignment = state.assignments.first;
+              context.read<OutletsBloc>().add(
+                SyncDailyOutletsRequested(
                   routeId: assignment.routeId,
                   routeName: assignment.routeName,
-                ));
-          } else {
-            // Confirmed no assignment today — wipe any stale outlets/sync
-            // stamp so the billing flow doesn't keep showing yesterday's data.
-            context
-                .read<OutletsBloc>()
-                .add(const NoAssignmentTodayConfirmed());
+                ),
+              );
+            } else {
+              // Confirmed no assignment today — wipe any stale outlets/sync
+              // stamp so the billing flow doesn't keep showing yesterday's data.
+              context.read<OutletsBloc>().add(
+                const NoAssignmentTodayConfirmed(),
+              );
+            }
           }
-        }
-      },
-      child: Scaffold(
-      backgroundColor: AppColors.background,
-      body: RefreshIndicator(
-        color: AppColors.primary,
-        onRefresh: _onRefresh,
-        child: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: FadeTransition(
-              opacity: _fade(0.0, 0.5),
-              child: const _TopBar(),
+        },
+        child: Scaffold(
+          backgroundColor: AppColors.background,
+          body: RefreshIndicator(
+            color: AppColors.primary,
+            onRefresh: _onRefresh,
+            child: CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: FadeTransition(
+                    opacity: _fade(0.0, 0.5),
+                    child: const _TopBar(),
+                  ),
+                ),
+                // Sits directly under the top bar and above everything else — it is only
+                // rendered when something is actually wrong, and when it is, it matters more
+                // than the day's numbers. Not wrapped in the fade/slide animation so it cannot
+                // be missed on a quick glance at the screen.
+                const SliverToBoxAdapter(child: LocationNagBanner()),
+                SliverToBoxAdapter(
+                  child: FadeTransition(
+                    opacity: _fade(0.05, 0.55),
+                    child: SlideTransition(
+                      position: _slide(0.05, 0.55),
+                      child: const _HeroRow(),
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: FadeTransition(
+                    opacity: _fade(0.10, 0.60),
+                    child: SlideTransition(
+                      position: _slide(0.10, 0.60),
+                      child: const _NewOrderButton(),
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: FadeTransition(
+                    opacity: _fade(0.15, 0.65),
+                    child: SlideTransition(
+                      position: _slide(0.15, 0.65),
+                      child: const _TodaySummarySection(),
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: FadeTransition(
+                    opacity: _fade(0.20, 0.70),
+                    child: SlideTransition(
+                      position: _slide(0.20, 0.70),
+                      child: const _DailyPaceRow(),
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: FadeTransition(
+                    opacity: _fade(0.25, 0.75),
+                    child: SlideTransition(
+                      position: _slide(0.25, 0.75),
+                      child: const _SectionLabel("TODAY'S METRICS"),
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: FadeTransition(
+                    opacity: _fade(0.30, 0.80),
+                    child: SlideTransition(
+                      position: _slide(0.30, 0.80),
+                      child: const _MetricsGrid(),
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: FadeTransition(
+                    opacity: _fade(0.45, 0.90),
+                    child: SlideTransition(
+                      position: _slide(0.45, 0.90),
+                      child: const _SectionLabel('QUICK ACTIONS'),
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: FadeTransition(
+                    opacity: _fade(0.50, 1.0),
+                    child: SlideTransition(
+                      position: _slide(0.50, 1.0),
+                      child: const _ActionsGrid(),
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(child: SizedBox(height: 40.h)),
+              ],
             ),
           ),
-          // Sits directly under the top bar and above everything else — it is only
-          // rendered when something is actually wrong, and when it is, it matters more
-          // than the day's numbers. Not wrapped in the fade/slide animation so it cannot
-          // be missed on a quick glance at the screen.
-          const SliverToBoxAdapter(child: LocationNagBanner()),
-          SliverToBoxAdapter(
-            child: FadeTransition(
-              opacity: _fade(0.05, 0.55),
-              child: SlideTransition(
-                  position: _slide(0.05, 0.55), child: const _HeroRow()),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: FadeTransition(
-              opacity: _fade(0.10, 0.60),
-              child: SlideTransition(
-                  position: _slide(0.10, 0.60),
-                  child: const _NewOrderButton()),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: FadeTransition(
-              opacity: _fade(0.15, 0.65),
-              child: SlideTransition(
-                  position: _slide(0.15, 0.65), child: const _KpiRow()),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: FadeTransition(
-              opacity: _fade(0.20, 0.70),
-              child: SlideTransition(
-                  position: _slide(0.20, 0.70),
-                  child: const _DailyPaceRow()),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: FadeTransition(
-              opacity: _fade(0.22, 0.72),
-              child: SlideTransition(
-                  position: _slide(0.22, 0.72),
-                  child: const _MonthSummarySection()),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: FadeTransition(
-              opacity: _fade(0.25, 0.75),
-              child: SlideTransition(
-                  position: _slide(0.25, 0.75),
-                  child: const _SectionLabel("TODAY'S METRICS")),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: FadeTransition(
-              opacity: _fade(0.30, 0.80),
-              child: SlideTransition(
-                  position: _slide(0.30, 0.80),
-                  child: const _MetricsGrid()),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: FadeTransition(
-              opacity: _fade(0.45, 0.90),
-              child: SlideTransition(
-                  position: _slide(0.45, 0.90),
-                  child: const _SectionLabel('QUICK ACTIONS')),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: FadeTransition(
-              opacity: _fade(0.50, 1.0),
-              child: SlideTransition(
-                  position: _slide(0.50, 1.0),
-                  child: const _ActionsGrid()),
-            ),
-          ),
-          SliverToBoxAdapter(child: SizedBox(height: 40.h)),
-        ],
-      ),
-      ),
-      ),
+        ),
       ),
     );
   }
@@ -233,9 +238,10 @@ class _NewOrderButtonState extends State<_NewOrderButton>
       vsync: this,
       duration: const Duration(milliseconds: 1800),
     )..repeat(reverse: true);
-    _glow = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
-    );
+    _glow = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _pulse, curve: Curves.easeInOut));
   }
 
   @override
@@ -252,12 +258,17 @@ class _NewOrderButtonState extends State<_NewOrderButton>
           content: Text(
             'No distributor is assigned to you, so orders can\'t be placed. '
             'Contact your supervisor.',
-            style: GoogleFonts.barlow(color: Colors.white, fontWeight: FontWeight.w500),
+            style: GoogleFonts.barlow(
+              color: Colors.white,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           backgroundColor: AppColors.darkSurface,
           behavior: SnackBarBehavior.floating,
           margin: EdgeInsets.all(16.w),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8.r),
+          ),
         ),
       );
   }
@@ -285,8 +296,9 @@ class _NewOrderButtonState extends State<_NewOrderButton>
                       offset: const Offset(0, 3),
                     )
                   : BoxShadow(
-                      color: AppColors.primary
-                          .withValues(alpha: 0.28 + _glow.value * 0.18),
+                      color: AppColors.primary.withValues(
+                        alpha: 0.28 + _glow.value * 0.18,
+                      ),
                       blurRadius: 18 + _glow.value * 14,
                       offset: const Offset(0, 6),
                       spreadRadius: _glow.value * 1.5,
@@ -311,7 +323,11 @@ class _NewOrderButtonState extends State<_NewOrderButton>
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                   colors: disabled
-                      ? const [Color(0xFF9CA3AF), Color(0xFFADB2BA), Color(0xFFBFC3C9)]
+                      ? const [
+                          Color(0xFF9CA3AF),
+                          Color(0xFFADB2BA),
+                          Color(0xFFBFC3C9),
+                        ]
                       : const [
                           AppColors.primaryDark,
                           AppColors.primary,
@@ -337,22 +353,27 @@ class _NewOrderButtonState extends State<_NewOrderButton>
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(disabled ? 'NO DISTRIBUTOR ASSIGNED' : '+ PLACE',
-                                    style: GoogleFonts.barlowCondensed(
-                                      fontSize: 9.sp,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 3.0,
-                                      color:
-                                          Colors.white.withValues(alpha: 0.62),
-                                    )),
-                                Text('NEW ORDER',
-                                    style: GoogleFonts.barlowCondensed(
-                                      fontSize: 30.sp,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 0.8,
-                                      height: 1.0,
-                                      color: Colors.white,
-                                    )),
+                                Text(
+                                  disabled
+                                      ? 'NO DISTRIBUTOR ASSIGNED'
+                                      : '+ PLACE',
+                                  style: GoogleFonts.barlowCondensed(
+                                    fontSize: 9.sp,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 3.0,
+                                    color: Colors.white.withValues(alpha: 0.62),
+                                  ),
+                                ),
+                                Text(
+                                  'NEW ORDER',
+                                  style: GoogleFonts.barlowCondensed(
+                                    fontSize: 30.sp,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.8,
+                                    height: 1.0,
+                                    color: Colors.white,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -368,11 +389,12 @@ class _NewOrderButtonState extends State<_NewOrderButton>
                               ),
                             ),
                             child: Icon(
-                                disabled
-                                    ? Icons.block_rounded
-                                    : Icons.add_shopping_cart_rounded,
-                                color: Colors.white,
-                                size: 20.r),
+                              disabled
+                                  ? Icons.block_rounded
+                                  : Icons.add_shopping_cart_rounded,
+                              color: Colors.white,
+                              size: 20.r,
+                            ),
                           ),
                         ],
                       ),
@@ -416,9 +438,21 @@ class _TopBar extends StatelessWidget {
 
   String get _dateLabel {
     final now = DateTime.now();
-    const m = ['JAN','FEB','MAR','APR','MAY','JUN',
-                'JUL','AUG','SEP','OCT','NOV','DEC'];
-    const d = ['MON','TUE','WED','THU','FRI','SAT','SUN'];
+    const m = [
+      'JAN',
+      'FEB',
+      'MAR',
+      'APR',
+      'MAY',
+      'JUN',
+      'JUL',
+      'AUG',
+      'SEP',
+      'OCT',
+      'NOV',
+      'DEC',
+    ];
+    const d = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
     return '${d[now.weekday - 1]}, ${m[now.month - 1]} ${now.day}';
   }
 
@@ -433,23 +467,29 @@ class _TopBar extends StatelessWidget {
           children: [
             Row(
               children: [
-                Image.asset('assets/images/uswatte-logo.png',
-                    height: 32.h, fit: BoxFit.contain),
+                Image.asset(
+                  'assets/images/uswatte-logo.png',
+                  height: 32.h,
+                  fit: BoxFit.contain,
+                ),
                 SizedBox(width: 10.w),
                 const _AppLabel(),
                 const Spacer(),
-                Text(_dateLabel,
-                    style: GoogleFonts.barlowCondensed(
-                      fontSize: 11.sp,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1.0,
-                      color: AppColors.foregroundMuted,
-                    )),
+                Text(
+                  _dateLabel,
+                  style: GoogleFonts.barlowCondensed(
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.0,
+                    color: AppColors.foregroundMuted,
+                  ),
+                ),
                 SizedBox(width: 12.w),
                 BlocBuilder<NotificationsBloc, NotificationsState>(
                   builder: (context, state) {
-                    final unread =
-                        state is NotificationsLoaded ? state.unreadCount : 0;
+                    final unread = state is NotificationsLoaded
+                        ? state.unreadCount
+                        : 0;
                     return Stack(
                       clipBehavior: Clip.none,
                       children: [
@@ -460,9 +500,9 @@ class _TopBar extends StatelessWidget {
                           onTap: () async {
                             await context.push('/sales-rep/notifications');
                             if (context.mounted) {
-                              context
-                                  .read<NotificationsBloc>()
-                                  .add(const LoadNotifications());
+                              context.read<NotificationsBloc>().add(
+                                const LoadNotifications(),
+                              );
                             }
                           },
                         ),
@@ -505,7 +545,8 @@ class _TopBar extends StatelessWidget {
                         if (state is AssignmentsLoaded &&
                             state.assignments.isNotEmpty) {
                           return _RouteChip(
-                              routeName: state.assignments.first.routeName);
+                            routeName: state.assignments.first.routeName,
+                          );
                         }
                         return const SizedBox.shrink();
                       },
@@ -535,9 +576,7 @@ class _RouteChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.primary.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(8.r),
-          border: Border.all(
-            color: AppColors.primary.withValues(alpha: 0.22),
-          ),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.22)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -651,8 +690,11 @@ class _SyncStatusChipState extends State<_SyncStatusChip> {
         key: const ValueKey('synced'),
         color: AppColors.success,
         label: 'SYNCED',
-        leading: Icon(Icons.check_rounded,
-            size: 11.r, color: AppColors.success),
+        leading: Icon(
+          Icons.check_rounded,
+          size: 11.r,
+          color: AppColors.success,
+        ),
       );
     } else {
       child = const SizedBox.shrink(key: ValueKey('idle'));
@@ -702,8 +744,11 @@ class _SyncStatusChipState extends State<_SyncStatusChip> {
 }
 
 class _NavIconBtn extends StatelessWidget {
-  const _NavIconBtn(
-      {required this.icon, required this.onTap, this.accent = false});
+  const _NavIconBtn({
+    required this.icon,
+    required this.onTap,
+    this.accent = false,
+  });
   final IconData icon;
   final VoidCallback onTap;
   final bool accent;
@@ -726,10 +771,11 @@ class _NavIconBtn extends StatelessWidget {
                 : AppColors.surfaceVariant,
           ),
         ),
-        child: Icon(icon,
-            size: 16.r,
-            color:
-                accent ? AppColors.primary : AppColors.foregroundMuted),
+        child: Icon(
+          icon,
+          size: 16.r,
+          color: accent ? AppColors.primary : AppColors.foregroundMuted,
+        ),
       ),
     );
   }
@@ -784,119 +830,128 @@ class _HeroCard extends StatelessWidget {
     );
 
     return Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [AppColors.primary, AppColors.primaryLight],
-          ),
-          borderRadius: BorderRadius.circular(16.r),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.30),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.primary, AppColors.primaryLight],
         ),
-        padding: EdgeInsets.fromLTRB(22.w, 22.h, 22.w, 22.h),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Positioned(
-              right: -20.w,
-              top: -20.h,
-              child: Container(
-                width: 120.r,
-                height: 120.r,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.07),
-                ),
+        borderRadius: BorderRadius.circular(16.r),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.30),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      padding: EdgeInsets.fromLTRB(22.w, 22.h, 22.w, 22.h),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            right: -20.w,
+            top: -20.h,
+            child: Container(
+              width: 120.r,
+              height: 120.r,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.07),
               ),
             ),
-            Positioned(
-              right: 20.w,
-              bottom: -10.h,
-              child: Container(
-                width: 70.r,
-                height: 70.r,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.05),
-                ),
+          ),
+          Positioned(
+            right: 20.w,
+            bottom: -10.h,
+            child: Container(
+              width: 70.r,
+              height: 70.r,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.05),
               ),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: EdgeInsets.symmetric(
-                      horizontal: 10.w, vertical: 4.h),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(20.r),
-                  ),
-                  child: Text('DASHBOARD',
-                      style: GoogleFonts.barlowCondensed(
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 2.5,
-                        color: Colors.white,
-                      )),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(20.r),
                 ),
-                SizedBox(height: 14.h),
-                Text(_greeting,
-                    style: GoogleFonts.barlow(
-                      fontSize: 13.sp,
-                      color: Colors.white.withValues(alpha: 0.75),
-                    )),
-                Text(displayName,
-                    style: GoogleFonts.barlowCondensed(
-                      fontSize: 32.sp,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                      height: 1.0,
-                      color: Colors.white,
-                    )),
-                if (distributorName != null) ...[
-                  SizedBox(height: 6.h),
-                  Row(
-                    children: [
-                      Icon(Icons.store_rounded,
-                          size: 11.r,
-                          color: Colors.white.withValues(alpha: 0.7)),
-                      SizedBox(width: 5.w),
-                      Text(
-                        distributorName,
-                        style: GoogleFonts.barlowCondensed(
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.3,
-                          color: Colors.white.withValues(alpha: 0.85),
-                        ),
-                      ),
-                    ],
+                child: Text(
+                  'DASHBOARD',
+                  style: GoogleFonts.barlowCondensed(
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 2.5,
+                    color: Colors.white,
                   ),
-                ],
-                SizedBox(height: 16.h),
+                ),
+              ),
+              SizedBox(height: 14.h),
+              Text(
+                _greeting,
+                style: GoogleFonts.barlow(
+                  fontSize: 13.sp,
+                  color: Colors.white.withValues(alpha: 0.75),
+                ),
+              ),
+              Text(
+                displayName,
+                style: GoogleFonts.barlowCondensed(
+                  fontSize: 32.sp,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                  height: 1.0,
+                  color: Colors.white,
+                ),
+              ),
+              if (distributorName != null) ...[
+                SizedBox(height: 6.h),
                 Row(
                   children: [
-                    Container(
-                        height: 2.h,
-                        width: 20.w,
-                        color: Colors.white.withValues(alpha: 0.5)),
-                    SizedBox(width: 4.w),
-                    Container(
-                        height: 2.h,
-                        width: 7.w,
-                        color: Colors.white.withValues(alpha: 0.25)),
+                    Icon(
+                      Icons.store_rounded,
+                      size: 11.r,
+                      color: Colors.white.withValues(alpha: 0.7),
+                    ),
+                    SizedBox(width: 5.w),
+                    Text(
+                      distributorName,
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.3,
+                        color: Colors.white.withValues(alpha: 0.85),
+                      ),
+                    ),
                   ],
                 ),
               ],
-            ),
-          ],
-        ),
+              SizedBox(height: 16.h),
+              Row(
+                children: [
+                  Container(
+                    height: 2.h,
+                    width: 20.w,
+                    color: Colors.white.withValues(alpha: 0.5),
+                  ),
+                  SizedBox(width: 4.w),
+                  Container(
+                    height: 2.h,
+                    width: 7.w,
+                    color: Colors.white.withValues(alpha: 0.25),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -910,233 +965,216 @@ class _AchievementCard extends StatelessWidget {
     return BlocBuilder<RepMonthlySalesCubit, RepMonthlySalesState>(
       builder: (context, salesState) =>
           BlocBuilder<RepTargetCubit, RepTargetState>(
-        builder: (context, targetState) {
-          final isLoading = salesState is RepMonthlySalesLoading ||
-              targetState is RepTargetLoading;
+            builder: (context, targetState) {
+              final isLoading =
+                  salesState is RepMonthlySalesLoading ||
+                  targetState is RepTargetLoading;
 
-          double? pct;
-          if (salesState is RepMonthlySalesLoaded &&
-              targetState is RepTargetLoaded) {
-            final target = targetState.target.totalTarget;
-            pct = target > 0
-                ? (salesState.sales.totalSales / target * 100)
-                    .clamp(0.0, 999.0)
-                : 0.0;
-          }
+              double? pct;
+              if (salesState is RepMonthlySalesLoaded &&
+                  targetState is RepTargetLoaded) {
+                final target = targetState.target.totalTarget;
+                pct = target > 0
+                    ? (salesState.sales.totalSales / target * 100).clamp(
+                        0.0,
+                        999.0,
+                      )
+                    : 0.0;
+              }
 
-          final Color accent = pct == null
-              ? AppColors.primary
-              : pct >= 100
+              final Color accent = pct == null
+                  ? AppColors.primary
+                  : pct >= 100
                   ? const Color(0xFF22C55E)
                   : pct >= 75
-                      ? const Color(0xFFF59E0B)
-                      : AppColors.primary;
+                  ? const Color(0xFFF59E0B)
+                  : AppColors.primary;
 
-          final progressVal =
-              pct != null ? (pct / 100).clamp(0.0, 1.0) : 0.0;
-          final label = isLoading
-              ? '...'
-              : pct != null
+              final progressVal = pct != null
+                  ? (pct / 100).clamp(0.0, 1.0)
+                  : 0.0;
+              final label = isLoading
+                  ? '...'
+                  : pct != null
                   ? '${pct.toStringAsFixed(0)}%'
                   : '—';
 
-          return GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => context.pushNamed('achievementDetail'),
-            child: Container(
-            width: 96.w,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16.r),
-              border: Border.all(color: accent.withValues(alpha: 0.20)),
-              boxShadow: [
-                BoxShadow(
-                  color: accent.withValues(alpha: 0.14),
-                  blurRadius: 18,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    SizedBox(
-                      width: 68.r,
-                      height: 68.r,
-                      child: CircularProgressIndicator(
-                        value: progressVal,
-                        strokeWidth: 6.r,
-                        backgroundColor: accent.withValues(alpha: 0.12),
-                        valueColor: AlwaysStoppedAnimation<Color>(accent),
-                        strokeCap: StrokeCap.round,
+              return GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => context.pushNamed('achievementDetail'),
+                child: Container(
+                  width: 96.w,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16.r),
+                    border: Border.all(color: accent.withValues(alpha: 0.20)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: accent.withValues(alpha: 0.14),
+                        blurRadius: 18,
+                        offset: const Offset(0, 6),
                       ),
-                    ),
-                    Text(
-                      label,
-                      style: GoogleFonts.barlowCondensed(
-                        fontSize: 20.sp,
-                        fontWeight: FontWeight.w900,
-                        height: 1.0,
-                        letterSpacing: -0.5,
-                        color: accent,
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          SizedBox(
+                            width: 68.r,
+                            height: 68.r,
+                            child: CircularProgressIndicator(
+                              value: progressVal,
+                              strokeWidth: 6.r,
+                              backgroundColor: accent.withValues(alpha: 0.12),
+                              valueColor: AlwaysStoppedAnimation<Color>(accent),
+                              strokeCap: StrokeCap.round,
+                            ),
+                          ),
+                          Text(
+                            label,
+                            style: GoogleFonts.barlowCondensed(
+                              fontSize: 20.sp,
+                              fontWeight: FontWeight.w900,
+                              height: 1.0,
+                              letterSpacing: -0.5,
+                              color: accent,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 10.h),
-                Text(
-                  'ACHIEVED',
-                  style: GoogleFonts.barlowCondensed(
-                    fontSize: 9.sp,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.5,
-                    color: AppColors.foregroundMuted,
+                      SizedBox(height: 10.h),
+                      Text(
+                        'ACHIEVED',
+                        style: GoogleFonts.barlowCondensed(
+                          fontSize: 9.sp,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.5,
+                          color: AppColors.foregroundMuted,
+                        ),
+                      ),
+                      SizedBox(height: 2.h),
+                      Text(
+                        'THIS MONTH',
+                        style: GoogleFonts.barlowCondensed(
+                          fontSize: 8.sp,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 1.0,
+                          color: AppColors.foregroundMuted.withValues(
+                            alpha: 0.55,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                SizedBox(height: 2.h),
-                Text(
-                  'THIS MONTH',
-                  style: GoogleFonts.barlowCondensed(
-                    fontSize: 8.sp,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.0,
-                    color: AppColors.foregroundMuted.withValues(alpha: 0.55),
-                  ),
-                ),
-              ],
-            ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-String _formatAmount(double amount) {
-  final rounded = amount.toStringAsFixed(0);
-  return rounded.replaceAllMapped(
-    RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-    (m) => '${m[1]},',
-  );
-}
-
-// ── KPI row ───────────────────────────────────────────────────────────────────
-class _KpiRow extends StatelessWidget {
-  const _KpiRow();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 0),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-          BlocBuilder<RepMonthlySalesCubit, RepMonthlySalesState>(
-            builder: (context, state) {
-              final value = switch (state) {
-                RepMonthlySalesLoading() => '...',
-                RepMonthlySalesLoaded(:final sales) => _formatAmount(sales.totalSales),
-                _ => '—',
-              };
-              final pending = state is RepMonthlySalesLoaded && state.sales.pendingTotal > 0
-                  ? '${_formatAmount(state.sales.pendingTotal)} PENDING'
-                  : null;
-              return _KpiCard(
-                label: 'MTD SALES',
-                value: value,
-                unit: 'LKR  ·  APPROVED',
-                color: AppColors.primary,
-                pendingText: pending,
               );
             },
           ),
-          SizedBox(width: 10.w),
-          BlocBuilder<RepTargetCubit, RepTargetState>(
-            builder: (context, state) {
-              final value = switch (state) {
-                RepTargetLoading() => '...',
-                RepTargetLoaded(:final target) => _formatAmount(target.totalTarget),
-                _ => '—',
-              };
-              return _KpiCard(
-                  label: 'TARGET', value: value, unit: 'LKR',
-                  color: AppColors.primary);
-            },
-          ),
-        ],
-      ),
-      ),
     );
   }
 }
 
-class _KpiCard extends StatelessWidget {
-  const _KpiCard({
-    required this.label,
-    required this.value,
-    required this.unit,
-    required this.color,
-    this.pendingText,
-  });
-  final String label, value, unit;
-  final Color color;
-  final String? pendingText;
+String _formatAmount(double amount, {int decimals = 0}) {
+  final fixed = amount.toStringAsFixed(decimals);
+  final parts = fixed.split('.');
+  final whole = parts[0].replaceAllMapped(
+    RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+    (m) => '${m[1]},',
+  );
+  return parts.length > 1 ? '$whole.${parts[1]}' : whole;
+}
+
+// ── Today's sales summary (collapsed by default) ──────────────────────────────
+class _TodaySummarySection extends StatefulWidget {
+  const _TodaySummarySection();
+
+  @override
+  State<_TodaySummarySection> createState() => _TodaySummarySectionState();
+}
+
+class _TodaySummarySectionState extends State<_TodaySummarySection> {
+  bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: EdgeInsets.all(14.r),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(color: color.withValues(alpha: 0.15)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label,
-                style: GoogleFonts.barlowCondensed(
-                  fontSize: 9.sp,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.5,
-                  color: color,
-                )),
-            SizedBox(height: 4.h),
-            Text(value,
-                style: GoogleFonts.barlowCondensed(
-                  fontSize: 26.sp,
-                  fontWeight: FontWeight.w900,
-                  height: 1.0,
-                  letterSpacing: -0.5,
-                  color: AppColors.foreground,
-                )),
-            Text(unit,
-                style: GoogleFonts.barlowCondensed(
-                  fontSize: 9.sp,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.0,
-                  color: color,
-                )),
-            if (pendingText != null) ...[
-              SizedBox(height: 4.h),
-              Text(
-                pendingText!,
-                style: GoogleFonts.barlowCondensed(
-                  fontSize: 9.sp,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.0,
-                  color: const Color(0xFFF59E0B),
-                ),
+    final name = context.select<AuthBloc, String>(
+      (bloc) => bloc.state is AuthAuthenticated
+          ? (bloc.state as AuthAuthenticated).name
+          : '',
+    );
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.15)),
               ),
-            ],
-          ],
-        ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      "TODAY'S SALES SUMMARY",
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.5,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                  AnimatedRotation(
+                    turns: _expanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(Icons.keyboard_arrow_down_rounded,
+                        color: AppColors.primary, size: 22.r),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeInOut,
+            alignment: Alignment.topCenter,
+            child: !_expanded
+                ? const SizedBox(width: double.infinity)
+                : Padding(
+                    padding: EdgeInsets.only(top: 12.h),
+                    child:
+                        BlocBuilder<RepSalesSummaryCubit, RepSalesSummaryState>(
+                      builder: (context, state) {
+                        final s = state.summary;
+                        if (s == null) {
+                          return Padding(
+                            padding: EdgeInsets.symmetric(vertical: 20.h),
+                            child: Center(
+                              child: state.isLoading
+                                  ? const CircularProgressIndicator()
+                                  : const Text('Summary unavailable'),
+                            ),
+                          );
+                        }
+                        return SalesSummaryCards(
+                          summary: s,
+                          repName: name.isNotEmpty ? name : 'Sales Rep',
+                        );
+                      },
+                    ),
+                  ),
+          ),
+        ],
       ),
     );
   }
@@ -1152,109 +1190,117 @@ class _DailyPaceRow extends StatelessWidget {
     final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
     final daysElapsed = now.day.clamp(1, daysInMonth);
 
-    return BlocBuilder<RepDailySalesCubit, RepDailySalesState>(
+    return BlocBuilder<RepSalesSummaryCubit, RepSalesSummaryState>(
       builder: (context, dailyState) =>
           BlocBuilder<RepTargetCubit, RepTargetState>(
-        builder: (context, targetState) {
-          final isLoading = dailyState is RepDailySalesLoading ||
-              targetState is RepTargetLoading;
+            builder: (context, targetState) {
+              final isLoading =
+                  dailyState.isLoading || targetState is RepTargetLoading;
 
-          double? dailyTarget;
-          double? dailySales;
-          double? dailyPct;
+              double? dailyTarget;
+              double? dailySales;
+              double? dailyPct;
 
-          if (!isLoading) {
-            final totalTarget = targetState is RepTargetLoaded
-                ? targetState.target.totalTarget
-                : null;
-            final dailyData = dailyState is RepDailySalesLoaded
-                ? dailyState.sales
-                : null;
-            if (totalTarget != null && dailyData != null) {
-              dailyTarget = totalTarget > 0 ? totalTarget / daysInMonth : 0.0;
-              dailySales  = dailyData.pendingTotal;
-              dailyPct    = dailyTarget > 0
-                  ? (dailySales / dailyTarget * 100).clamp(0.0, 999.0)
-                  : 0.0;
-            }
-          }
+              if (!isLoading) {
+                final totalTarget = targetState is RepTargetLoaded
+                    ? targetState.target.totalTarget
+                    : null;
+                // Today's achieved bill value — the same net figure as the Today's
+                // Sales card and the Sales Summary (approved + pending bills).
+                final dailyData = dailyState.summary;
+                if (totalTarget != null && dailyData != null) {
+                  dailyTarget = totalTarget > 0
+                      ? totalTarget / daysInMonth
+                      : 0.0;
+                  dailySales = dailyData.netSales;
+                  dailyPct = dailyTarget > 0
+                      ? (dailySales / dailyTarget * 100).clamp(0.0, 999.0)
+                      : 0.0;
+                }
+              }
 
-          final accent = dailyPct == null
-              ? AppColors.primary
-              : dailyPct >= 100
+              final accent = dailyPct == null
+                  ? AppColors.primary
+                  : dailyPct >= 100
                   ? const Color(0xFF22C55E)
                   : dailyPct >= 75
-                      ? const Color(0xFFF59E0B)
-                      : AppColors.primary;
+                  ? const Color(0xFFF59E0B)
+                  : AppColors.primary;
 
-          String fmtVal(double? v) => v == null
-              ? (isLoading ? '...' : '—')
-              : _formatAmount(v);
+              String fmtVal(double? v) =>
+                  v == null ? (isLoading ? '...' : '—') : _formatAmount(v);
 
-          return Padding(
-            padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 0),
-            child: Container(
-              padding: EdgeInsets.fromLTRB(14.w, 10.h, 14.w, 12.h),
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(12.r),
-                border: Border.all(color: accent.withValues(alpha: 0.18)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+              return Padding(
+                padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 0),
+                child: Container(
+                  padding: EdgeInsets.fromLTRB(14.w, 10.h, 14.w, 12.h),
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(12.r),
+                    border: Border.all(color: accent.withValues(alpha: 0.18)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.trending_up_rounded,
-                          size: 11.r, color: accent),
-                      SizedBox(width: 5.w),
-                      Text(
-                        'DAILY PACE  ·  DAY $daysElapsed OF $daysInMonth',
-                        style: GoogleFonts.barlowCondensed(
-                          fontSize: 9.sp,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.8,
-                          color: accent,
-                        ),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.trending_up_rounded,
+                            size: 11.r,
+                            color: accent,
+                          ),
+                          SizedBox(width: 5.w),
+                          Text(
+                            'DAILY PACE  ·  DAY $daysElapsed OF $daysInMonth',
+                            style: GoogleFonts.barlowCondensed(
+                              fontSize: 9.sp,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.8,
+                              color: accent,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 10.h),
+                      Row(
+                        children: [
+                          _DailyStat(
+                            label: 'DAILY TARGET',
+                            value: fmtVal(dailyTarget),
+                            unit: 'LKR / DAY',
+                            color: AppColors.foregroundMuted,
+                          ),
+                          Container(
+                            width: 1,
+                            height: 52.h,
+                            color: AppColors.surfaceVariant,
+                          ),
+                          _DailyStat(
+                            label: 'ACHIEVED',
+                            value: dailySales == null
+                                ? fmtVal(null)
+                                : _formatAmount(dailySales, decimals: 2),
+                            unit: 'LKR  ·  BILL VALUE',
+                            color: AppColors.foreground,
+                          ),
+                          Container(
+                            width: 1,
+                            height: 52.h,
+                            color: AppColors.surfaceVariant,
+                          ),
+                          _DailyPctRing(
+                            pct: dailyPct,
+                            isLoading: isLoading,
+                            accent: accent,
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  SizedBox(height: 10.h),
-                  Row(
-                    children: [
-                      _DailyStat(
-                        label: 'DAILY TARGET',
-                        value: fmtVal(dailyTarget),
-                        unit: 'LKR / DAY',
-                        color: AppColors.foregroundMuted,
-                      ),
-                      Container(
-                          width: 1,
-                          height: 52.h,
-                          color: AppColors.surfaceVariant),
-                      _DailyStat(
-                        label: 'DAILY SALES',
-                        value: fmtVal(dailySales),
-                        unit: 'LKR  ·  PENDING',
-                        color: AppColors.foreground,
-                      ),
-                      Container(
-                          width: 1,
-                          height: 52.h,
-                          color: AppColors.surfaceVariant),
-                      _DailyPctRing(
-                        pct: dailyPct,
-                        isLoading: isLoading,
-                        accent: accent,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
+                ),
+              );
+            },
+          ),
     );
   }
 }
@@ -1276,8 +1322,8 @@ class _DailyPctRing extends StatelessWidget {
     final label = isLoading
         ? '...'
         : pct != null
-            ? '${pct!.toStringAsFixed(0)}%'
-            : '—';
+        ? '${pct!.toStringAsFixed(0)}%'
+        : '—';
 
     return Expanded(
       child: Column(
@@ -1376,118 +1422,6 @@ class _DailyStat extends StatelessWidget {
   }
 }
 
-// ── This month's sales summary cards ─────────────────────────────────────────
-// The same cards the supervisor sees on Sales Summary (without the NET SALES
-// breakdown), for the calling rep, 1st of the month → today.
-class _MonthSummarySection extends StatelessWidget {
-  const _MonthSummarySection();
-
-  @override
-  Widget build(BuildContext context) {
-    final name = context.select<AuthBloc, String>(
-      (bloc) => bloc.state is AuthAuthenticated
-          ? (bloc.state as AuthAuthenticated).name
-          : '',
-    );
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const _SectionLabel("THIS MONTH'S SALES"),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.w),
-          child: BlocBuilder<RepBillingSummaryCubit, RepBillingSummaryState>(
-            builder: (context, state) => switch (state) {
-              RepBillingSummaryLoaded(:final summary) => SalesSummaryCards(
-                  summary: summary,
-                  repName: name.isNotEmpty ? name : 'Sales Rep',
-                ),
-              RepBillingSummaryError() => _SummaryRetry(
-                  onRetry: () => context.read<RepBillingSummaryCubit>().load(),
-                ),
-              _ => const _SummarySkeleton(),
-            },
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Placeholder roughly the height of the loaded cards, so the content below
-/// doesn't jump when the data arrives.
-class _SummarySkeleton extends StatelessWidget {
-  const _SummarySkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    Widget block(double h) => Container(
-          height: h,
-          decoration: BoxDecoration(
-            color: AppColors.surfaceVariant.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(16.r),
-          ),
-        );
-    Widget pair() => Row(
-          children: [
-            Expanded(child: block(104.h)),
-            SizedBox(width: 10.w),
-            Expanded(child: block(104.h)),
-          ],
-        );
-    return Column(
-      children: [
-        block(176.h),
-        SizedBox(height: 12.h),
-        pair(),
-        SizedBox(height: 10.h),
-        block(70.h),
-        SizedBox(height: 10.h),
-        pair(),
-        SizedBox(height: 10.h),
-        pair(),
-      ],
-    );
-  }
-}
-
-class _SummaryRetry extends StatelessWidget {
-  const _SummaryRetry({required this.onRetry});
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onRetry,
-      borderRadius: BorderRadius.circular(12.r),
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 16.h, horizontal: 14.w),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.sync_rounded, size: 16.r, color: AppColors.primary),
-            SizedBox(width: 8.w),
-            Expanded(
-              child: Text(
-                "Couldn't load this month's summary. Tap to retry.",
-                style: GoogleFonts.barlowCondensed(
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.foregroundMuted,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // ── Section label ─────────────────────────────────────────────────────────────
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.text);
@@ -1508,13 +1442,15 @@ class _SectionLabel extends StatelessWidget {
             ),
           ),
           SizedBox(width: 8.w),
-          Text(text,
-              style: GoogleFonts.barlowCondensed(
-                fontSize: 11.sp,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 2.5,
-                color: AppColors.foregroundMuted,
-              )),
+          Text(
+            text,
+            style: GoogleFonts.barlowCondensed(
+              fontSize: 11.sp,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 2.5,
+              color: AppColors.foregroundMuted,
+            ),
+          ),
         ],
       ),
     );
@@ -1540,8 +1476,9 @@ class _MetricsGrid extends StatelessWidget {
               ? billsState.bills.where((b) => _isToday(b.billingDate)).toList()
               : <Bill>[];
           final visitedIds = todaysBills.map((b) => b.outletId).toSet();
-          final ordersValue =
-              billsState is BillsListLoaded ? todaysBills.length.toString() : '—';
+          final ordersValue = billsState is BillsListLoaded
+              ? todaysBills.length.toString()
+              : '—';
 
           return BlocBuilder<OutletsBloc, OutletsState>(
             builder: (context, outletsState) {
@@ -1552,9 +1489,10 @@ class _MetricsGrid extends StatelessWidget {
                   ? visitedIds.length.toString()
                   : '—';
               final progressValue =
-                  (billsState is BillsListLoaded && outletsState is OutletsLoaded)
-                      ? '${visitedIds.length}/$totalOutlets'
-                      : '—';
+                  (billsState is BillsListLoaded &&
+                      outletsState is OutletsLoaded)
+                  ? '${visitedIds.length}/$totalOutlets'
+                  : '—';
 
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1647,21 +1585,25 @@ class _MetricTile extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(value,
-                        style: GoogleFonts.barlowCondensed(
-                          fontSize: 54.sp,
-                          fontWeight: FontWeight.w900,
-                          height: 1.0,
-                          letterSpacing: -2,
-                          color: color,
-                        )),
-                    Text(label,
-                        style: GoogleFonts.barlowCondensed(
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w600,
-                          height: 1.25,
-                          color: AppColors.foregroundMuted,
-                        )),
+                    Text(
+                      value,
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 54.sp,
+                        fontWeight: FontWeight.w900,
+                        height: 1.0,
+                        letterSpacing: -2,
+                        color: color,
+                      ),
+                    ),
+                    Text(
+                      label,
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
+                        height: 1.25,
+                        color: AppColors.foregroundMuted,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -1671,22 +1613,26 @@ class _MetricTile extends StatelessWidget {
                 Icon(icon, color: color, size: 16.r),
                 SizedBox(width: 8.w),
                 Expanded(
-                  child: Text(label,
-                      style: GoogleFonts.barlowCondensed(
-                        fontSize: 11.sp,
-                        fontWeight: FontWeight.w600,
-                        height: 1.2,
-                        color: AppColors.foregroundMuted,
-                      )),
-                ),
-                Text(value,
+                  child: Text(
+                    label,
                     style: GoogleFonts.barlowCondensed(
-                      fontSize: 26.sp,
-                      fontWeight: FontWeight.w900,
-                      height: 1.0,
-                      letterSpacing: -1,
-                      color: color,
-                    )),
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w600,
+                      height: 1.2,
+                      color: AppColors.foregroundMuted,
+                    ),
+                  ),
+                ),
+                Text(
+                  value,
+                  style: GoogleFonts.barlowCondensed(
+                    fontSize: 26.sp,
+                    fontWeight: FontWeight.w900,
+                    height: 1.0,
+                    letterSpacing: -1,
+                    color: color,
+                  ),
+                ),
               ],
             ),
     );
@@ -1811,7 +1757,15 @@ class _ActionsGrid extends StatelessWidget {
                 ),
               ),
               SizedBox(width: 10.w),
-              Expanded(child: SizedBox()),
+              Expanded(
+                child: _TileActionCard(
+                  icon: Icons.bar_chart_rounded,
+                  title: 'SALES SUMMARY',
+                  subtitle: 'My totals by date range',
+                  color: const Color(0xFF0D9488),
+                  onTap: () => context.push('/sales-rep/sales-summary'),
+                ),
+              ),
             ],
           ),
           SizedBox(height: 10.h),
@@ -1964,13 +1918,15 @@ class _SecondaryAction extends StatelessWidget {
             children: [
               Icon(icon, color: color, size: 20.r),
               SizedBox(height: 6.h),
-              Text(label,
-                  style: GoogleFonts.barlowCondensed(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.2,
-                    color: color,
-                  )),
+              Text(
+                label,
+                style: GoogleFonts.barlowCondensed(
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.2,
+                  color: color,
+                ),
+              ),
             ],
           ),
         ),

@@ -61,31 +61,14 @@ class ItemWiseAchievementPage extends StatelessWidget {
                       child: data.items.isEmpty
                           ? ListView(
                               physics: const AlwaysScrollableScrollPhysics(),
+                              padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 0),
                               children: [
-                                _SummaryStrip(data: data),
+                                _SummaryCard(data: data),
                                 SizedBox(height: 80.h),
                                 const _EmptyView(),
                               ],
                             )
-                          : CustomScrollView(
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              slivers: [
-                                SliverToBoxAdapter(
-                                  child: _SummaryStrip(data: data),
-                                ),
-                                SliverPadding(
-                                  padding:
-                                      EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 40.h),
-                                  sliver: SliverList.separated(
-                                    itemCount: data.items.length,
-                                    separatorBuilder: (_, __) =>
-                                        SizedBox(height: 10.h),
-                                    itemBuilder: (_, i) =>
-                                        _ItemRow(item: data.items[i]),
-                                  ),
-                                ),
-                              ],
-                            ),
+                          : _ItemList(data: data),
                     ),
                 };
               },
@@ -185,69 +168,64 @@ class _AppBar extends StatelessWidget {
   }
 }
 
-// ── Summary strip ─────────────────────────────────────────────────────────────
+// ── Item list ─────────────────────────────────────────────────────────────────
 
-class _SummaryStrip extends StatelessWidget {
+/// Items with a target come first (laggards first, as the API orders them),
+/// then the items that sold without one under their own label.
+class _ItemList extends StatelessWidget {
   final ItemWiseAchievement data;
-  const _SummaryStrip({required this.data});
+  const _ItemList({required this.data});
 
   @override
   Widget build(BuildContext context) {
-    final totalPct = data.totalTargetQuantity > 0
-        ? (data.totalSoldQuantity / data.totalTargetQuantity * 100)
-            .clamp(0.0, 9999.0)
-        : 0.0;
-    final accent = _accentForPercent(totalPct);
+    final targeted = data.items.where((i) => i.hasTarget).toList();
+    final untargeted = data.items.where((i) => !i.hasTarget).toList();
 
-    return Container(
-      color: Colors.white,
-      padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 14.h),
+    final children = <Widget>[
+      _SummaryCard(data: data),
+      if (targeted.isNotEmpty) const _GroupLabel('ITEMS WITH A TARGET'),
+      for (final item in targeted) _ItemCard(item: item),
+      if (untargeted.isNotEmpty) const _GroupLabel('SOLD WITHOUT A TARGET'),
+      for (final item in untargeted) _ItemCard(item: item),
+      const _Footnote(),
+    ];
+
+    return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 40.h),
+      itemCount: children.length,
+      separatorBuilder: (_, __) => SizedBox(height: 10.h),
+      itemBuilder: (_, i) => children[i],
+    );
+  }
+}
+
+class _GroupLabel extends StatelessWidget {
+  final String text;
+  const _GroupLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(top: 6.h, left: 2.w),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Expanded(
-            child: _MiniStat(
-              label: 'TARGET',
-              value: '${_fmtCases(data.totalTargetQuantity)} CS',
+          Container(
+            width: 3.w,
+            height: 12.h,
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(2.r),
             ),
           ),
-          Container(
-            width: 1,
-            height: 30.h,
-            color: AppColors.surfaceVariant,
-          ),
-          Expanded(
-            child: _MiniStat(
-              label: 'SOLD',
-              value:
-                  '${_fmtCases(data.totalSoldQuantity)} CS · ${_fmtPacks(data.totalSoldQuantityPacks)} PKT',
-            ),
-          ),
-          Container(
-            width: 1,
-            height: 30.h,
-            color: AppColors.surfaceVariant,
-          ),
-          Expanded(
-            child: Center(
-              child: Container(
-                padding:
-                    EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: accent.withValues(alpha: 0.30)),
-                ),
-                child: Text(
-                  '${totalPct.toStringAsFixed(0)}%',
-                  style: GoogleFonts.barlowCondensed(
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.5,
-                    color: accent,
-                  ),
-                ),
-              ),
+          SizedBox(width: 8.w),
+          Text(
+            text,
+            style: GoogleFonts.barlowCondensed(
+              fontSize: 11.sp,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 2.0,
+              color: AppColors.foregroundMuted,
             ),
           ),
         ],
@@ -256,14 +234,145 @@ class _SummaryStrip extends StatelessWidget {
   }
 }
 
-class _MiniStat extends StatelessWidget {
+class _Footnote extends StatelessWidget {
+  const _Footnote();
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      'Sold = distributor-approved bills minus returns. Pending bills count '
+      'once approved; free issue is never counted as sold.',
+      style: GoogleFonts.barlow(
+        fontSize: 10.sp,
+        color: AppColors.foregroundMuted,
+      ),
+    );
+  }
+}
+
+// ── Summary card ──────────────────────────────────────────────────────────────
+
+class _SummaryCard extends StatelessWidget {
+  final ItemWiseAchievement data;
+  const _SummaryCard({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = data.overallAchievementPercent;
+    final hasAnyTarget = data.totalTargetQuantity > 0;
+    final bar = (pct / 100).clamp(0.0, 1.0);
+
+    return Container(
+      padding: EdgeInsets.all(18.r),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.primary, AppColors.primaryLight],
+        ),
+        borderRadius: BorderRadius.circular(16.r),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.30),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'OVERALL ACHIEVEMENT · ITEMS WITH A TARGET',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.barlowCondensed(
+              fontSize: 11.sp,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.8,
+              color: Colors.white.withValues(alpha: 0.78),
+            ),
+          ),
+          SizedBox(height: 2.h),
+          Text(
+            hasAnyTarget ? '${pct.toStringAsFixed(1)}%' : '—',
+            style: GoogleFonts.barlowCondensed(
+              fontSize: 40.sp,
+              fontWeight: FontWeight.w900,
+              height: 1.05,
+              letterSpacing: -0.5,
+              color: Colors.white,
+            ),
+          ),
+          SizedBox(height: 8.h),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(99),
+            child: LinearProgressIndicator(
+              value: hasAnyTarget ? bar : 0,
+              minHeight: 7.h,
+              backgroundColor: Colors.white.withValues(alpha: 0.22),
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          ),
+          SizedBox(height: 14.h),
+          Row(
+            children: [
+              Expanded(
+                child: _HeroStat(
+                  label: 'TARGET',
+                  value: '${_fmtCases(data.totalTargetQuantity)} CS',
+                ),
+              ),
+              Expanded(
+                child: _HeroStat(
+                  label: 'SOLD',
+                  value:
+                      '${_fmtCases(data.totalSoldQuantity)} CS · ${_fmtPacks(data.totalSoldQuantityPacks)} PKT',
+                ),
+              ),
+              Expanded(
+                child: _HeroStat(
+                  label: 'SALES VALUE',
+                  value: 'Rs. ${_fmtAmount(data.totalSoldAmount)}',
+                ),
+              ),
+            ],
+          ),
+          if (data.totalPendingQuantityPacks > 0 ||
+              data.totalReturnQuantityPacks > 0 ||
+              data.totalFreeIssueQuantityPacks > 0) ...[
+            SizedBox(height: 12.h),
+            Wrap(
+              spacing: 6.w,
+              runSpacing: 6.h,
+              children: [
+                if (data.totalPendingQuantityPacks > 0)
+                  _HeroChip(
+                      'PENDING ${_fmtPacks(data.totalPendingQuantityPacks)} PKT'),
+                if (data.totalReturnQuantityPacks > 0)
+                  _HeroChip(
+                      'RETURNED ${_fmtPacks(data.totalReturnQuantityPacks)} PKT'),
+                if (data.totalFreeIssueQuantityPacks > 0)
+                  _HeroChip(
+                      'FREE ISSUE ${_fmtPacks(data.totalFreeIssueQuantityPacks)} PKT'),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroStat extends StatelessWidget {
   final String label;
   final String value;
-  const _MiniStat({required this.label, required this.value});
+  const _HeroStat({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
@@ -272,16 +381,20 @@ class _MiniStat extends StatelessWidget {
             fontSize: 9.sp,
             fontWeight: FontWeight.w700,
             letterSpacing: 1.5,
-            color: AppColors.foregroundMuted,
+            color: Colors.white.withValues(alpha: 0.75),
           ),
         ),
-        SizedBox(height: 3.h),
-        Text(
-          value,
-          style: GoogleFonts.barlowCondensed(
-            fontSize: 16.sp,
-            fontWeight: FontWeight.w800,
-            color: AppColors.foreground,
+        SizedBox(height: 2.h),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            value,
+            style: GoogleFonts.barlowCondensed(
+              fontSize: 15.sp,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+            ),
           ),
         ),
       ],
@@ -289,24 +402,48 @@ class _MiniStat extends StatelessWidget {
   }
 }
 
-// ── Item row ──────────────────────────────────────────────────────────────────
+class _HeroChip extends StatelessWidget {
+  final String text;
+  const _HeroChip(this.text);
 
-class _ItemRow extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 9.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Text(
+        text,
+        style: GoogleFonts.barlowCondensed(
+          fontSize: 10.sp,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.0,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Item card ─────────────────────────────────────────────────────────────────
+
+class _ItemCard extends StatelessWidget {
   final ItemAchievement item;
-  const _ItemRow({required this.item});
+  const _ItemCard({required this.item});
 
   @override
   Widget build(BuildContext context) {
     final pct = item.achievementPercent;
-    final accent = _accentForPercent(pct);
-    final ringValue = (pct / 100).clamp(0.0, 1.0);
+    final accent = item.hasTarget ? _accentForPercent(pct) : AppColors.foregroundMuted;
 
     return Container(
-      padding: EdgeInsets.all(12.r),
+      padding: EdgeInsets.all(14.r),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: accent.withValues(alpha: 0.18)),
+        border: Border.all(color: accent.withValues(alpha: 0.20)),
         boxShadow: [
           BoxShadow(
             color: AppColors.foreground.withValues(alpha: 0.04),
@@ -315,122 +452,162 @@ class _ItemRow extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Ring
-          SizedBox(
-            width: 50.r,
-            height: 50.r,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox(
-                  width: 50.r,
-                  height: 50.r,
-                  child: CircularProgressIndicator(
-                    value: ringValue,
-                    strokeWidth: 4.r,
-                    backgroundColor: accent.withValues(alpha: 0.12),
-                    valueColor: AlwaysStoppedAnimation<Color>(accent),
-                    strokeCap: StrokeCap.round,
-                  ),
-                ),
-                Text(
-                  '${pct.toStringAsFixed(0)}%',
-                  style: GoogleFonts.barlowCondensed(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w900,
-                    height: 1.0,
-                    color: accent,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(width: 12.w),
-
-          // Code + name
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  item.itemCode,
-                  style: GoogleFonts.barlowCondensed(
-                    fontSize: 11.sp,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.0,
-                    color: AppColors.foregroundMuted,
-                  ),
-                ),
-                SizedBox(height: 2.h),
-                Text(
-                  item.itemName,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.barlowCondensed(
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w700,
-                    height: 1.15,
-                    color: AppColors.foreground,
-                  ),
-                ),
-                SizedBox(height: 6.h),
-                Text(
-                  'Rs. ${_fmtAmount(item.soldAmount)}',
-                  style: GoogleFonts.barlowCondensed(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.amber,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          SizedBox(width: 10.w),
-
-          // Target / Sold qty stack — Target only in cases; Sold shown in CS · PKT
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisSize: MainAxisSize.min,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _QtyChip(
-                label: 'TARGET',
-                value: '${_fmtCases(item.targetQuantity)} CS',
-                color: AppColors.foregroundMuted,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.itemCode,
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.0,
+                        color: AppColors.foregroundMuted,
+                      ),
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      item.itemName,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.barlowCondensed(
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.w700,
+                        height: 1.15,
+                        color: AppColors.foreground,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              SizedBox(height: 6.h),
-              _SoldChip(
-                cases: item.soldQuantity,
-                packs: item.soldQuantityPacks,
+              SizedBox(width: 10.w),
+              _PctBadge(
+                text: item.hasTarget ? '${pct.toStringAsFixed(1)}%' : 'NO TARGET',
                 color: accent,
               ),
             ],
           ),
+          if (item.hasTarget) ...[
+            SizedBox(height: 10.h),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(99),
+              child: LinearProgressIndicator(
+                value: (pct / 100).clamp(0.0, 1.0),
+                minHeight: 6.h,
+                backgroundColor: accent.withValues(alpha: 0.14),
+                valueColor: AlwaysStoppedAnimation<Color>(accent),
+              ),
+            ),
+          ],
+          SizedBox(height: 12.h),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (item.hasTarget)
+                Expanded(
+                  child: _Qty(
+                    label: 'TARGET',
+                    value: '${_fmtCases(item.targetQuantity)} CS',
+                    color: AppColors.foreground,
+                  ),
+                ),
+              Expanded(
+                flex: 2,
+                child: _Qty(
+                  label: 'SOLD',
+                  value:
+                      '${_fmtCases(item.soldQuantity)} CS · ${_fmtPacks(item.soldQuantityPacks)} PKT',
+                  color: accent == AppColors.foregroundMuted
+                      ? AppColors.foreground
+                      : accent,
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: _Qty(
+                  label: 'VALUE',
+                  value: 'Rs. ${_fmtAmount(item.soldAmount)}',
+                  color: AppColors.amber,
+                ),
+              ),
+            ],
+          ),
+          if (item.pendingQuantityPacks > 0 ||
+              item.returnQuantityPacks > 0 ||
+              item.freeIssueQuantityPacks > 0) ...[
+            SizedBox(height: 10.h),
+            Wrap(
+              spacing: 6.w,
+              runSpacing: 6.h,
+              children: [
+                if (item.pendingQuantityPacks > 0)
+                  _Tag(
+                    text:
+                        '+${_fmtPacks(item.pendingQuantityPacks)} PKT PENDING APPROVAL',
+                    color: _amberAccent,
+                  ),
+                if (item.returnQuantityPacks > 0)
+                  _Tag(
+                    text: '−${_fmtPacks(item.returnQuantityPacks)} PKT RETURNED',
+                    color: const Color(0xFFDC2626),
+                  ),
+                if (item.freeIssueQuantityPacks > 0)
+                  _Tag(
+                    text: '${_fmtPacks(item.freeIssueQuantityPacks)} PKT FREE ISSUE',
+                    color: AppColors.foregroundMuted,
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-class _QtyChip extends StatelessWidget {
+class _PctBadge extends StatelessWidget {
+  final String text;
+  final Color color;
+  const _PctBadge({required this.text, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: color.withValues(alpha: 0.30)),
+      ),
+      child: Text(
+        text,
+        style: GoogleFonts.barlowCondensed(
+          fontSize: 14.sp,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.5,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
+class _Qty extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
-
-  const _QtyChip({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
+  const _Qty({required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
@@ -442,13 +619,18 @@ class _QtyChip extends StatelessWidget {
             color: AppColors.foregroundMuted,
           ),
         ),
-        Text(
-          value,
-          style: GoogleFonts.barlowCondensed(
-            fontSize: 14.sp,
-            fontWeight: FontWeight.w800,
-            height: 1.1,
-            color: color,
+        SizedBox(height: 2.h),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            value,
+            style: GoogleFonts.barlowCondensed(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w800,
+              height: 1.1,
+              color: color,
+            ),
           ),
         ),
       ],
@@ -456,51 +638,28 @@ class _QtyChip extends StatelessWidget {
   }
 }
 
-class _SoldChip extends StatelessWidget {
-  final double cases;
-  final double packs;
+class _Tag extends StatelessWidget {
+  final String text;
   final Color color;
-
-  const _SoldChip({
-    required this.cases,
-    required this.packs,
-    required this.color,
-  });
+  const _Tag({required this.text, required this.color});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          'SOLD',
-          style: GoogleFonts.barlowCondensed(
-            fontSize: 9.sp,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.5,
-            color: AppColors.foregroundMuted,
-          ),
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(6.r),
+      ),
+      child: Text(
+        text,
+        style: GoogleFonts.barlowCondensed(
+          fontSize: 10.sp,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.6,
+          color: color,
         ),
-        Text(
-          '${_fmtCases(cases)} CS',
-          style: GoogleFonts.barlowCondensed(
-            fontSize: 14.sp,
-            fontWeight: FontWeight.w800,
-            height: 1.1,
-            color: color,
-          ),
-        ),
-        Text(
-          '${_fmtPacks(packs)} PKT',
-          style: GoogleFonts.barlowCondensed(
-            fontSize: 11.sp,
-            fontWeight: FontWeight.w600,
-            height: 1.2,
-            color: AppColors.foregroundMuted,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

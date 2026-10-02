@@ -277,21 +277,57 @@ public class BillingRepository(AppDbContext db) : IBillingRepository
     {
         var from = new DateOnly(year, month, 1);
         var to   = from.AddMonths(1);
-        return await _db.BillingItems
+
+        // Live bills only: approved (and not later cancelled by the rep — CancelAsync ignores
+        // DistributorStatus, so an approved bill can still be cancelled) or still pending.
+        // Rejected and cancelled bills never count. One rep's month is a few hundred lines, so the
+        // per-product rollup runs in memory (also keeps it provider-neutral: SQLite cannot SUM decimals).
+        var lines = await _db.BillingItems
             .AsNoTracking()
-            .Where(bi => bi.BillingItemType              == BillingItemType.Sale
-                      && bi.Billing.SalesRepId           == salesRepId
-                      && bi.Billing.BillingDate          >= from
-                      && bi.Billing.BillingDate          <  to
-                      && bi.Billing.DistributorStatus    == DistributorBillingStatus.Approved
+            .Where(bi => bi.Billing.SalesRepId  == salesRepId
+                      && bi.Billing.BillingDate >= from
+                      && bi.Billing.BillingDate <  to
                       && bi.Billing.IsActive
-                      && !bi.Billing.IsDeleted)
-            .GroupBy(bi => bi.ProductId)
-            .Select(g => new RepProductSalesRow(
-                g.Key,
-                g.Sum(x => x.Quantity),
-                g.Sum(x => x.TotalPrice)))
+                      && !bi.Billing.IsDeleted
+                      && ((bi.Billing.DistributorStatus == DistributorBillingStatus.Approved
+                           && bi.Billing.RepStatus      != RepBillingStatus.Cancelled)
+                       || (bi.Billing.DistributorStatus == DistributorBillingStatus.Pending
+                           && bi.Billing.RepStatus      == RepBillingStatus.Submitted)))
+            .Select(bi => new
+            {
+                bi.ProductId,
+                bi.BillingItemType,
+                bi.ReturnType,
+                bi.Quantity,
+                bi.TotalPrice,
+                Approved = bi.Billing.DistributorStatus == DistributorBillingStatus.Approved,
+            })
             .ToListAsync(ct);
+
+        // An outlet return (resellable, damaged or expired) takes sold quantity back. A
+        // DistributorReturn is the distributor trimming a bill line — it is already reflected in the
+        // reduced Sale quantity, so counting it again would double-deduct.
+        static bool IsOutletReturn(ReturnType? t)
+            => t is ReturnType.MarketResell or ReturnType.Damage or ReturnType.Expire;
+
+        return lines
+            .GroupBy(l => l.ProductId)
+            .Select(g =>
+            {
+                var approved = g.Where(l => l.Approved).ToList();
+                var pending  = g.Where(l => !l.Approved).ToList();
+
+                return new RepProductSalesRow(
+                    g.Key,
+                    SaleQty:       approved.Where(l => l.BillingItemType == BillingItemType.Sale).Sum(l => l.Quantity),
+                    ReturnQty:     approved.Where(l => l.BillingItemType == BillingItemType.Return && IsOutletReturn(l.ReturnType)).Sum(l => l.Quantity),
+                    FreeIssueQty:  approved.Where(l => l.BillingItemType == BillingItemType.FreeIssue).Sum(l => l.Quantity),
+                    PendingNetQty: pending.Where(l => l.BillingItemType == BillingItemType.Sale).Sum(l => l.Quantity)
+                                 - pending.Where(l => l.BillingItemType == BillingItemType.Return && IsOutletReturn(l.ReturnType)).Sum(l => l.Quantity),
+                    NetAmount:     approved.Where(l => l.BillingItemType == BillingItemType.Sale).Sum(l => l.TotalPrice)
+                                 - approved.Where(l => l.BillingItemType == BillingItemType.Return && IsOutletReturn(l.ReturnType)).Sum(l => l.TotalPrice));
+            })
+            .ToList();
     }
 
     public Task AddAsync(Billing billing, CancellationToken ct = default)
