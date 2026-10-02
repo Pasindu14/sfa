@@ -13,6 +13,7 @@ import 'package:uswatte/core/update/app_update_service.dart';
 import 'package:uswatte/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:uswatte/features/bills/domain/entities/bill.dart';
 import 'package:uswatte/features/bills/presentation/bloc/bills_list_bloc.dart';
+import 'package:uswatte/features/bills/presentation/bloc/bills_list_event.dart';
 import 'package:uswatte/features/bills/presentation/bloc/bills_list_state.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_bloc.dart';
 import 'package:uswatte/features/outlets/presentation/bloc/outlets_event.dart';
@@ -208,7 +209,7 @@ class _SalesRepHomePageState extends State<SalesRepHomePage>
                     ),
                   ),
                 ),
-                SliverToBoxAdapter(child: SizedBox(height: 40.h)),
+                SliverToBoxAdapter(child: SizedBox(height: 24.h)),
               ],
             ),
           ),
@@ -282,7 +283,7 @@ class _NewOrderButtonState extends State<_NewOrderButton>
     );
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 0),
+      padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 0),
       child: AnimatedBuilder(
         animation: _glow,
         builder: (context, child) => Container(
@@ -317,7 +318,7 @@ class _NewOrderButtonState extends State<_NewOrderButton>
             splashColor: Colors.white.withValues(alpha: 0.14),
             highlightColor: Colors.white.withValues(alpha: 0.07),
             child: Ink(
-              height: 74.h,
+              height: 58.h,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.centerLeft,
@@ -353,21 +354,23 @@ class _NewOrderButtonState extends State<_NewOrderButton>
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  disabled
-                                      ? 'NO DISTRIBUTOR ASSIGNED'
-                                      : '+ PLACE',
-                                  style: GoogleFonts.barlowCondensed(
-                                    fontSize: 9.sp,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 3.0,
-                                    color: Colors.white.withValues(alpha: 0.62),
+                                // Only explains a disabled button; "+ PLACE" is gone.
+                                if (disabled)
+                                  Text(
+                                    'NO DISTRIBUTOR ASSIGNED',
+                                    style: GoogleFonts.barlowCondensed(
+                                      fontSize: 9.sp,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 3.0,
+                                      color: Colors.white.withValues(
+                                        alpha: 0.62,
+                                      ),
+                                    ),
                                   ),
-                                ),
                                 Text(
                                   'NEW ORDER',
                                   style: GoogleFonts.barlowCondensed(
-                                    fontSize: 30.sp,
+                                    fontSize: 26.sp,
                                     fontWeight: FontWeight.w900,
                                     letterSpacing: 0.8,
                                     height: 1.0,
@@ -378,8 +381,8 @@ class _NewOrderButtonState extends State<_NewOrderButton>
                             ),
                           ),
                           Container(
-                            width: 46.r,
-                            height: 46.r,
+                            width: 38.r,
+                            height: 38.r,
                             decoration: BoxDecoration(
                               color: Colors.white.withValues(alpha: 0.17),
                               shape: BoxShape.circle,
@@ -461,7 +464,7 @@ class _TopBar extends StatelessWidget {
     return SafeArea(
       child: Container(
         color: AppColors.background,
-        padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 8.h),
+        padding: EdgeInsets.fromLTRB(20.w, 6.h, 20.w, 2.h),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -554,6 +557,7 @@ class _TopBar extends StatelessWidget {
                   ),
                 ),
                 const _SyncStatusChip(),
+                const _SyncAllButton(),
               ],
             ),
           ],
@@ -613,6 +617,76 @@ class _RouteChip extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Small "sync all" button at the right end of the route row. Runs the same
+/// full sync that runs after login (downloads, bill / not-billing uploads,
+/// stock) and refreshes the dashboard figures. While it runs the icon becomes a
+/// spinner; the chip next to it narrates the steps.
+class _SyncAllButton extends StatelessWidget {
+  const _SyncAllButton();
+
+  Future<void> _run(BuildContext context) async {
+    final now = DateTime.now();
+    final sync = getIt<BackgroundSyncService>();
+    final bills = context.read<BillsListBloc>();
+
+    // Server-backed dashboard figures refresh alongside; they are not awaited.
+    unawaited(context.read<RepSalesSummaryCubit>().load());
+    unawaited(context.read<RepTargetCubit>().load(now.year, now.month));
+    unawaited(context.read<RepMonthlySalesCubit>().load(now.year, now.month));
+
+    await sync.runSync();
+    // The upload step changes local bill state — pick it up.
+    bills.add(const LoadBillsRequested());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = getIt<BackgroundSyncService>().progress;
+    return ValueListenableBuilder<AppSyncProgress>(
+      valueListenable: progress,
+      builder: (context, value, _) {
+        final syncing = value.isSyncing;
+        return Padding(
+          padding: EdgeInsets.only(top: 8.h, left: 8.w),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: syncing ? null : () => _run(context),
+            child: Container(
+              width: 28.r,
+              height: 28.r,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8.r),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.22),
+                ),
+              ),
+              child: Center(
+                child: syncing
+                    ? SizedBox(
+                        width: 13.r,
+                        height: 13.r,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.6,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            AppColors.primary,
+                          ),
+                        ),
+                      )
+                    : Icon(
+                        Icons.sync_rounded,
+                        size: 16.r,
+                        color: AppColors.primary,
+                      ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -845,7 +919,7 @@ class _HeroCard extends StatelessWidget {
           ),
         ],
       ),
-      padding: EdgeInsets.fromLTRB(22.w, 22.h, 22.w, 22.h),
+      padding: EdgeInsets.fromLTRB(18.w, 14.h, 18.w, 14.h),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -892,7 +966,7 @@ class _HeroCard extends StatelessWidget {
                   ),
                 ),
               ),
-              SizedBox(height: 14.h),
+              SizedBox(height: 8.h),
               Text(
                 _greeting,
                 style: GoogleFonts.barlow(
@@ -903,7 +977,7 @@ class _HeroCard extends StatelessWidget {
               Text(
                 displayName,
                 style: GoogleFonts.barlowCondensed(
-                  fontSize: 32.sp,
+                  fontSize: 27.sp,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.5,
                   height: 1.0,
@@ -911,7 +985,7 @@ class _HeroCard extends StatelessWidget {
                 ),
               ),
               if (distributorName != null) ...[
-                SizedBox(height: 6.h),
+                SizedBox(height: 4.h),
                 Row(
                   children: [
                     Icon(
@@ -932,7 +1006,7 @@ class _HeroCard extends StatelessWidget {
                   ],
                 ),
               ],
-              SizedBox(height: 14.h),
+              SizedBox(height: 8.h),
               // Monthly target — small, at the bottom of the greeting card.
               BlocBuilder<RepTargetCubit, RepTargetState>(
                 builder: (context, state) {
@@ -1131,7 +1205,7 @@ class _TodaySummarySectionState extends State<_TodaySummarySection> {
           : '',
     );
     return Padding(
-      padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 0),
+      padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1139,7 +1213,7 @@ class _TodaySummarySectionState extends State<_TodaySummarySection> {
             behavior: HitTestBehavior.opaque,
             onTap: () => setState(() => _expanded = !_expanded),
             child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 9.h),
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(12.r),
@@ -1256,9 +1330,9 @@ class _DailyPaceRow extends StatelessWidget {
                   v == null ? (isLoading ? '...' : '—') : _formatAmount(v);
 
               return Padding(
-                padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 0),
+                padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 0),
                 child: Container(
-                  padding: EdgeInsets.fromLTRB(14.w, 10.h, 14.w, 12.h),
+                  padding: EdgeInsets.fromLTRB(14.w, 8.h, 14.w, 8.h),
                   decoration: BoxDecoration(
                     color: accent.withValues(alpha: 0.06),
                     borderRadius: BorderRadius.circular(12.r),
@@ -1286,7 +1360,7 @@ class _DailyPaceRow extends StatelessWidget {
                           ),
                         ],
                       ),
-                      SizedBox(height: 10.h),
+                      SizedBox(height: 6.h),
                       Row(
                         children: [
                           _DailyStat(
@@ -1297,7 +1371,7 @@ class _DailyPaceRow extends StatelessWidget {
                           ),
                           Container(
                             width: 1,
-                            height: 52.h,
+                            height: 44.h,
                             color: AppColors.surfaceVariant,
                           ),
                           _DailyStat(
@@ -1310,7 +1384,7 @@ class _DailyPaceRow extends StatelessWidget {
                           ),
                           Container(
                             width: 1,
-                            height: 52.h,
+                            height: 44.h,
                             color: AppColors.surfaceVariant,
                           ),
                           _DailyPctRing(
@@ -1357,8 +1431,8 @@ class _DailyPctRing extends StatelessWidget {
             alignment: Alignment.center,
             children: [
               SizedBox(
-                width: 46.r,
-                height: 46.r,
+                width: 40.r,
+                height: 40.r,
                 child: CircularProgressIndicator(
                   value: progressVal,
                   strokeWidth: 4.r,
@@ -1455,7 +1529,7 @@ class _SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(20.w, 22.h, 20.w, 10.h),
+      padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 6.h),
       child: Row(
         children: [
           Container(
@@ -1542,7 +1616,7 @@ class _MetricsGrid extends StatelessWidget {
                           color: AppColors.primary,
                           large: false,
                         ),
-                        SizedBox(height: 10.h),
+                        SizedBox(height: 8.h),
                         _MetricTile(
                           icon: Icons.map_outlined,
                           label: 'Route Progress',
@@ -1579,8 +1653,8 @@ class _MetricTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: large ? 158.h : 74.h,
-      padding: EdgeInsets.all(14.r),
+      height: large ? 126.h : 59.h,
+      padding: EdgeInsets.all(10.r),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12.r),
@@ -1599,8 +1673,8 @@ class _MetricTile extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  width: 34.r,
-                  height: 34.r,
+                  width: 28.r,
+                  height: 28.r,
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8.r),
@@ -1613,7 +1687,7 @@ class _MetricTile extends StatelessWidget {
                     Text(
                       value,
                       style: GoogleFonts.barlowCondensed(
-                        fontSize: 54.sp,
+                        fontSize: 32.sp,
                         fontWeight: FontWeight.w900,
                         height: 1.0,
                         letterSpacing: -2,
@@ -1651,7 +1725,7 @@ class _MetricTile extends StatelessWidget {
                 Text(
                   value,
                   style: GoogleFonts.barlowCondensed(
-                    fontSize: 26.sp,
+                    fontSize: 22.sp,
                     fontWeight: FontWeight.w900,
                     height: 1.0,
                     letterSpacing: -1,
@@ -1697,7 +1771,7 @@ class _ActionsGrid extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 10.h),
+          SizedBox(height: 8.h),
           Row(
             children: [
               Expanded(
@@ -1721,7 +1795,7 @@ class _ActionsGrid extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 10.h),
+          SizedBox(height: 8.h),
           Row(
             children: [
               Expanded(
@@ -1745,7 +1819,7 @@ class _ActionsGrid extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 10.h),
+          SizedBox(height: 8.h),
           Row(
             children: [
               Expanded(
@@ -1769,7 +1843,7 @@ class _ActionsGrid extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 10.h),
+          SizedBox(height: 8.h),
           Row(
             children: [
               Expanded(
@@ -1793,7 +1867,7 @@ class _ActionsGrid extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 10.h),
+          SizedBox(height: 8.h),
           Row(
             children: [
               Expanded(
@@ -1849,7 +1923,7 @@ class _TileActionCard extends StatelessWidget {
         splashColor: Colors.white.withValues(alpha: 0.12),
         highlightColor: Colors.white.withValues(alpha: 0.06),
         child: Ink(
-          height: 108.h,
+          height: 90.h,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16.r),
             gradient: LinearGradient(
@@ -1866,19 +1940,19 @@ class _TileActionCard extends StatelessWidget {
             ],
           ),
           child: Padding(
-            padding: EdgeInsets.all(14.r),
+            padding: EdgeInsets.all(11.r),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  width: 40.r,
-                  height: 40.r,
+                  width: 32.r,
+                  height: 32.r,
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(11.r),
                   ),
-                  child: Icon(icon, color: Colors.white, size: 20.r),
+                  child: Icon(icon, color: Colors.white, size: 17.r),
                 ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1938,7 +2012,7 @@ class _SecondaryAction extends StatelessWidget {
             borderRadius: BorderRadius.circular(12.r),
             border: Border.all(color: color.withValues(alpha: 0.15)),
           ),
-          padding: EdgeInsets.symmetric(vertical: 14.h),
+          padding: EdgeInsets.symmetric(vertical: 9.h),
           child: Column(
             children: [
               Icon(icon, color: color, size: 20.r),
