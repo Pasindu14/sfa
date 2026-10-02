@@ -932,21 +932,46 @@ class _HeroCard extends StatelessWidget {
                   ],
                 ),
               ],
-              SizedBox(height: 16.h),
-              Row(
-                children: [
-                  Container(
-                    height: 2.h,
-                    width: 20.w,
-                    color: Colors.white.withValues(alpha: 0.5),
-                  ),
-                  SizedBox(width: 4.w),
-                  Container(
-                    height: 2.h,
-                    width: 7.w,
-                    color: Colors.white.withValues(alpha: 0.25),
-                  ),
-                ],
+              SizedBox(height: 14.h),
+              // Monthly target — small, at the bottom of the greeting card.
+              BlocBuilder<RepTargetCubit, RepTargetState>(
+                builder: (context, state) {
+                  final value = switch (state) {
+                    RepTargetLoading() => '...',
+                    RepTargetLoaded(:final target) => _formatAmount(
+                      target.totalTarget,
+                    ),
+                    _ => '—',
+                  };
+                  return Row(
+                    children: [
+                      Text(
+                        'MONTHLY TARGET',
+                        style: GoogleFonts.barlowCondensed(
+                          fontSize: 9.sp,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.5,
+                          color: Colors.white.withValues(alpha: 0.7),
+                        ),
+                      ),
+                      SizedBox(width: 8.w),
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'LKR $value',
+                            style: GoogleFonts.barlowCondensed(
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ],
           ),
