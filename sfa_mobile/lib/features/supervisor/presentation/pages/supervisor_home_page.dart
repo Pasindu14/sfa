@@ -113,7 +113,7 @@ class _SupervisorHomePageState extends State<SupervisorHomePage>
               ),
             ),
           ),
-          SliverToBoxAdapter(child: SizedBox(height: 40.h)),
+          SliverToBoxAdapter(child: SizedBox(height: 24.h)),
         ],
       ),
       ),
@@ -138,7 +138,7 @@ class _TopBar extends StatelessWidget {
     return SafeArea(
       child: Container(
         color: AppColors.background,
-        padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 8.h),
+        padding: EdgeInsets.fromLTRB(20.w, 6.h, 20.w, 2.h),
         child: Row(
           children: [
             Image.asset('assets/images/uswatte-logo.png',
@@ -286,7 +286,7 @@ class _HeroCard extends StatelessWidget {
             ),
           ],
         ),
-        padding: EdgeInsets.fromLTRB(22.w, 22.h, 22.w, 22.h),
+        padding: EdgeInsets.fromLTRB(18.w, 14.h, 18.w, 14.h),
         child: Stack(
           clipBehavior: Clip.none,
           children: [
@@ -331,7 +331,7 @@ class _HeroCard extends StatelessWidget {
                         color: Colors.white,
                       )),
                 ),
-                SizedBox(height: 14.h),
+                SizedBox(height: 8.h),
                 Text(_greeting,
                     style: GoogleFonts.barlow(
                       fontSize: 13.sp,
@@ -339,13 +339,13 @@ class _HeroCard extends StatelessWidget {
                     )),
                 Text(displayName,
                     style: GoogleFonts.barlowCondensed(
-                      fontSize: 32.sp,
+                      fontSize: 27.sp,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.5,
                       height: 1.0,
                       color: Colors.white,
                     )),
-                SizedBox(height: 16.h),
+                SizedBox(height: 10.h),
                 Row(
                   children: [
                     Container(
@@ -456,7 +456,7 @@ class _MetricsSection extends StatelessWidget {
                                   : '—',
                           large: false,
                         ),
-                        SizedBox(height: 10.h),
+                        SizedBox(height: 8.h),
                         _MetricTile(
                           icon: Icons.block_rounded,
                           label: 'Non-Billings',
@@ -472,7 +472,7 @@ class _MetricsSection extends StatelessWidget {
                   ),
                 ],
               ),
-              SizedBox(height: 10.h),
+              SizedBox(height: 8.h),
               _SalesTile(
                 value: loading
                     ? '…'
@@ -501,7 +501,7 @@ class _SalesTile extends StatelessWidget {
     const color = AppColors.success;
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12.r),
@@ -570,8 +570,8 @@ class _MetricTile extends StatelessWidget {
   Widget build(BuildContext context) {
     const color = AppColors.primary;
     return Container(
-      height: large ? 158.h : 74.h,
-      padding: EdgeInsets.all(14.r),
+      height: large ? 126.h : 59.h,
+      padding: EdgeInsets.all(10.r),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12.r),
@@ -590,8 +590,8 @@ class _MetricTile extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  width: 34.r,
-                  height: 34.r,
+                  width: 28.r,
+                  height: 28.r,
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8.r),
@@ -603,7 +603,7 @@ class _MetricTile extends StatelessWidget {
                   children: [
                     Text(value,
                         style: GoogleFonts.barlowCondensed(
-                          fontSize: 46.sp,
+                          fontSize: 34.sp,
                           fontWeight: FontWeight.w900,
                           height: 1.0,
                           letterSpacing: -1.5,
@@ -635,7 +635,7 @@ class _MetricTile extends StatelessWidget {
                 ),
                 Text(value,
                     style: GoogleFonts.barlowCondensed(
-                      fontSize: 24.sp,
+                      fontSize: 22.sp,
                       fontWeight: FontWeight.w900,
                       height: 1.0,
                       letterSpacing: -1,
@@ -655,7 +655,7 @@ class _SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(20.w, 22.h, 20.w, 10.h),
+      padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 6.h),
       child: Row(
         children: [
           Container(
@@ -704,7 +704,7 @@ class _ActionsSection extends StatelessWidget {
             subtitle: '+ DAILY',
             onTap: () => pushAndRefresh('/supervisor/assign-route'),
           ),
-          SizedBox(height: 14.h),
+          SizedBox(height: 8.h),
           // Time-critical — a rep is standing at a shop waiting — so it sits
           // above the reporting tiles, full width, with the waiting count.
           BlocBuilder<PendingUnlockCountCubit, int>(
@@ -719,7 +719,7 @@ class _ActionsSection extends StatelessWidget {
               onTap: () => pushAndRefresh('/supervisor/unlock-requests'),
             ),
           ),
-          SizedBox(height: 10.h),
+          SizedBox(height: 8.h),
           Row(
             children: [
               Expanded(
@@ -743,7 +743,7 @@ class _ActionsSection extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 10.h),
+          SizedBox(height: 8.h),
           Row(
             children: [
               Expanded(
@@ -767,7 +767,7 @@ class _ActionsSection extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 10.h),
+          SizedBox(height: 8.h),
           Row(
             children: [
               Expanded(
@@ -791,7 +791,7 @@ class _ActionsSection extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 10.h),
+          SizedBox(height: 8.h),
           Row(
             children: [
               Expanded(
@@ -887,7 +887,7 @@ class _HeroActionCardState extends State<_HeroActionCard>
           splashColor: Colors.white.withValues(alpha: 0.14),
           highlightColor: Colors.white.withValues(alpha: 0.07),
           child: Ink(
-            height: 74.h,
+            height: 58.h,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 begin: Alignment.centerLeft,
@@ -926,7 +926,7 @@ class _HeroActionCardState extends State<_HeroActionCard>
                                   )),
                               Text(widget.title,
                                   style: GoogleFonts.barlowCondensed(
-                                    fontSize: 30.sp,
+                                    fontSize: 26.sp,
                                     fontWeight: FontWeight.w900,
                                     letterSpacing: 0.8,
                                     height: 1.0,
@@ -936,8 +936,8 @@ class _HeroActionCardState extends State<_HeroActionCard>
                           ),
                         ),
                         Container(
-                          width: 46.r,
-                          height: 46.r,
+                          width: 38.r,
+                          height: 38.r,
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.17),
                             shape: BoxShape.circle,
@@ -1018,7 +1018,7 @@ class _TileActionCard extends StatelessWidget {
         splashColor: Colors.white.withValues(alpha: 0.12),
         highlightColor: Colors.white.withValues(alpha: 0.06),
         child: Ink(
-          height: 108.h,
+          height: 90.h,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16.r),
             gradient: LinearGradient(
@@ -1035,7 +1035,7 @@ class _TileActionCard extends StatelessWidget {
             ],
           ),
           child: Padding(
-            padding: EdgeInsets.all(14.r),
+            padding: EdgeInsets.all(11.r),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1043,13 +1043,13 @@ class _TileActionCard extends StatelessWidget {
                 Row(
                   children: [
                     Container(
-                      width: 40.r,
-                      height: 40.r,
+                      width: 32.r,
+                      height: 32.r,
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.18),
                         borderRadius: BorderRadius.circular(11.r),
                       ),
-                      child: Icon(icon, color: Colors.white, size: 20.r),
+                      child: Icon(icon, color: Colors.white, size: 17.r),
                     ),
                     if (badge > 0) ...[
                       const Spacer(),
