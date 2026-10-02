@@ -309,10 +309,12 @@ try
 
     // ── Middleware Pipeline (ORDER MATTERS) ───────────────────────────────
     app.UseResponseCompression();                    // 0. Compress responses (before logging)
-    app.UseMiddleware<GlobalExceptionMiddleware>();  // 1. Catch all exceptions (must be first to wrap all errors)
-    app.UseMiddleware<CorrelationIdMiddleware>();    // 2. Correlation ID
-    app.UseSerilogRequestLogging(o =>               // 3. Log every request (sees final status);
-        o.GetLevel = SerilogConfig.GetRequestLogLevel); //    /health probes are dropped (Verbose)
+    app.UseMiddleware<CorrelationIdMiddleware>();    // 1. Correlation ID (outermost so every log line below carries it)
+    app.UseSerilogRequestLogging(o =>               // 2. Log every request. It must sit OUTSIDE the exception middleware:
+        o.GetLevel = SerilogConfig.GetRequestLogLevel); //    inside it, an exception passes through before it is mapped to a
+                                                    //    status, so a handled 401/404 was logged as 'responded 500' at ERROR.
+                                                    //    /health probes are dropped (Verbose)
+    app.UseMiddleware<GlobalExceptionMiddleware>();  // 3. Catch all exceptions and map them to ApiError (wraps everything below)
     app.UseHttpsRedirection();                      // 4. HTTPS only
     app.UseCors("SFAPolicy");                       // 5. CORS
     // 6. Trust X-Forwarded-For ONLY from explicitly configured proxies/load balancers.

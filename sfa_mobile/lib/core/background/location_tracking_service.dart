@@ -125,6 +125,10 @@ Future<void> _tick() async {
 
   final now = DateTime.now();
   if (!_uploadCadence.isDue(now)) return;
+  // No session (expired and cleared, or never logged in): every request would just 401. Keep
+  // queueing positions, send nothing, and leave the cadence untouched so the first tick after
+  // the rep logs back in uploads straight away.
+  if (!await _hasStoredSession()) return;
   _uploadCadence.markAttempt(now);
 
   try {
@@ -213,11 +217,24 @@ Future<_SkipReason?> _captureAndQueue() async {
   return null; // captured and queued
 }
 
+/// Whether secure storage still holds an access token. Storage errors count as 'yes' so a
+/// storage hiccup never silently stops uploads — the request itself will fail loudly instead.
+Future<bool> _hasStoredSession() async {
+  try {
+    final token = await getIt<FlutterSecureStorage>()
+        .read(key: AppConstants.accessTokenKey);
+    return token != null && token.isNotEmpty;
+  } catch (_) {
+    return true;
+  }
+}
+
 /// Uploads the outbox oldest-first in chunks of [locationPingChunkSize]. Each
 /// chunk's rows are deleted only after that chunk is accepted; the first
 /// failure stops the drain and is rethrown, and the remainder waits for the
 /// next window. See [LocationPingUploader].
 Future<void> _flushQueue() async {
+  if (!await _hasStoredSession()) return;
   final database = await DatabaseHelper.instance.database;
   final dio = getIt<Dio>();
   await LocationPingUploader(

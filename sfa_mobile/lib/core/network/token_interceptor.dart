@@ -115,9 +115,13 @@ class TokenInterceptor extends Interceptor {
 
     _refreshCompleter = Completer<bool>();
 
+    // The refresh token this attempt sends — kept outside the try so a rejection can
+    // tell whether the stored one is still the same dead token.
+    String? sentRefreshToken;
     try {
       final refreshToken =
           await _storage.read(key: AppConstants.refreshTokenKey);
+      sentRefreshToken = refreshToken;
       if (refreshToken == null) {
         _fail();
         return false;
@@ -149,11 +153,41 @@ class TokenInterceptor extends Interceptor {
 
       _refreshCompleter!.complete(true);
       return true;
-    } catch (_) {
+    } catch (e) {
+      // The server definitively refused this refresh token (revoked / unknown / expired).
+      // Left in storage it would be re-sent forever by any isolate that still holds the
+      // session — notably the background location service, which keeps running with no UI
+      // to log the rep out. A network error or 5xx says nothing about the token, so only
+      // a 401/403 clears it.
+      if (e is DioException && _isRejection(e) && sentRefreshToken != null) {
+        await _dropDeadTokens(sentRefreshToken);
+      }
       _fail();
       return false;
     } finally {
       _refreshCompleter = null;
+    }
+  }
+
+  static bool _isRejection(DioException e) {
+    final status = e.response?.statusCode;
+    return status == 401 || status == 403;
+  }
+
+  /// Deletes the stored token pair, but only while the stored refresh token is still
+  /// [rejected]. The UI and background isolates each run their own interceptor against the
+  /// same secure storage: if the other one already rotated the pair, the stored token
+  /// differs, the pair is healthy, and wiping it would log out a valid session.
+  Future<void> _dropDeadTokens(String rejected) async {
+    try {
+      final current = await _storage.read(key: AppConstants.refreshTokenKey);
+      if (current != rejected) return;
+      await Future.wait([
+        _storage.delete(key: AppConstants.accessTokenKey),
+        _storage.delete(key: AppConstants.refreshTokenKey),
+      ]);
+    } catch (_) {
+      // Best effort — the session-expired signal still fires.
     }
   }
 

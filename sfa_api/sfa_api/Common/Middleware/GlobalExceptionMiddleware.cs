@@ -103,9 +103,11 @@ public class GlobalExceptionMiddleware(RequestDelegate next,
             _logger.LogError(exception,
                 "Unhandled exception. CorrelationId: {CorrelationId}", correlationId);
         else
-            _logger.LogWarning(exception,
-                "Handled exception {Code}. CorrelationId: {CorrelationId}",
-                error.Code, correlationId);
+            // An expected 4xx (bad token, validation, not found, stock...) is not a defect, so log the
+            // code and message only — a full stack trace per handled error buries the real failures.
+            _logger.LogWarning(
+                "Handled exception {Code}: {Message} (HTTP {StatusCode}). CorrelationId: {CorrelationId}",
+                error.Code, error.Message, statusCode, correlationId);
 
         context.Response.ContentType = "application/json";
         context.Response.StatusCode = statusCode;
