@@ -20,7 +20,9 @@ public record RepBillingSummaryDto(
     decimal PendingValue,
     decimal TotalDiscount,
     decimal GoodReturn,
-    decimal MarketReturn);
+    decimal MarketReturn,
+    decimal FreeIssueCompany = 0m,
+    decimal FreeIssueDistributor = 0m);
 
 /// <summary>Bills of one (RepStatus, DistributorStatus) pair: count and header sums.</summary>
 public record RepBillingStatusGroupRow(
@@ -28,7 +30,9 @@ public record RepBillingStatusGroupRow(
     DistributorBillingStatus DistributorStatus,
     int Count,
     decimal TotalAmount,
-    decimal TotalDiscount);
+    decimal TotalDiscount,
+    decimal FreeIssueCompany = 0m,
+    decimal FreeIssueDistributor = 0m);
 
 /// <summary>Return-line sums over live bills. Good = MarketResell, Market = Damage + Expire.</summary>
 public record RepBillingReturnTotals(decimal GoodReturn, decimal MarketReturn);

@@ -4,13 +4,14 @@ using System.Security.Claims;
 using sfa_api.Common.Errors;
 using sfa_api.Common.Extensions;
 using sfa_api.Features.Billings.Services;
+using sfa_api.Features.Supervisor.Services;
 
 namespace sfa_api.Features.Billings.Controllers;
 
 [ApiController]
 [Route("api/v1/billings")]
 [Authorize(Roles = "Admin,NSM,RSM,ASM,Supervisor,SalesRep,Distributor")]
-public class RepBillingController(IBillingService billingService) : ControllerBase
+public class RepBillingController(IBillingService billingService, ISupervisorService supervisorService) : ControllerBase
 {
     private int GetCallerId()
     {
@@ -38,6 +39,22 @@ public class RepBillingController(IBillingService billingService) : ControllerBa
     {
         var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
         var result = await billingService.GetRepDailySalesAsync(GetCallerId(), date, ct);
+        return Ok(ResponseHelper.Ok(result, correlationId));
+    }
+
+    /// <summary>
+    /// GET /api/v1/billings/my-billing-summary?from=YYYY-MM-DD&amp;to=YYYY-MM-DD — the calling rep's own
+    /// bill counts, sales, discount, returns and free issue over a date range (max 92 days). Same
+    /// figures the supervisor sees on the Sales Summary screen.
+    /// </summary>
+    [HttpGet("my-billing-summary")]
+    public async Task<IActionResult> GetMyBillingSummary(
+        [FromQuery] DateOnly from,
+        [FromQuery] DateOnly to,
+        CancellationToken ct)
+    {
+        var correlationId = HttpContext.Items["CorrelationId"]?.ToString() ?? string.Empty;
+        var result = await supervisorService.GetRepBillingSummaryAsync(GetCallerId(), from, to, ct);
         return Ok(ResponseHelper.Ok(result, correlationId));
     }
 

@@ -72,6 +72,25 @@ public class RepBillingSummaryTests
 
         dto.TotalBills.Should().Be(0);
         dto.TotalBilled.Should().Be(0m);
+        dto.FreeIssueCompany.Should().Be(0m);
+        dto.FreeIssueDistributor.Should().Be(0m);
+    }
+
+    [Fact]
+    public void Build_FreeIssue_SumsApprovedAndPending_ExcludesRejectedAndCancelled()
+    {
+        var groups = new[]
+        {
+            new RepBillingStatusGroupRow(RepBillingStatus.Submitted, DistributorBillingStatus.Approved, 3, 1000m, 50m, 120m, 30m),
+            new RepBillingStatusGroupRow(RepBillingStatus.Submitted, DistributorBillingStatus.Pending,  2,  400m, 20m,  80m, 15m),
+            new RepBillingStatusGroupRow(RepBillingStatus.Submitted, DistributorBillingStatus.Rejected, 1,  300m, 99m, 500m, 500m),
+            new RepBillingStatusGroupRow(RepBillingStatus.Cancelled, DistributorBillingStatus.Approved, 1,  200m, 99m, 700m, 700m),
+        };
+
+        var dto = SupervisorService.BuildRepBillingSummary(From, To, groups, new RepBillingReturnTotals(0m, 0m));
+
+        dto.FreeIssueCompany.Should().Be(200m);
+        dto.FreeIssueDistributor.Should().Be(45m);
     }
 
     [Theory]

@@ -26,6 +26,8 @@ import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_daily_
 import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_monthly_sales_cubit.dart';
 import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_monthly_sales_state.dart';
 import 'package:uswatte/features/notifications/presentation/bloc/notifications_bloc.dart';
+import 'package:uswatte/features/rep_monthly_sales/presentation/cubit/rep_billing_summary_cubit.dart';
+import 'package:uswatte/features/supervisor_sales_summary/presentation/widgets/sales_summary_cards.dart';
 import 'package:uswatte/features/sales_rep/presentation/widgets/location_nag_banner.dart';
 import 'package:uswatte/features/sales_rep/presentation/widgets/logout_with_sync_check.dart';
 
@@ -69,6 +71,9 @@ class _SalesRepHomePageState extends State<SalesRepHomePage>
 
   Future<void> _onRefresh() async {
     final now = DateTime.now();
+    // Not awaited: the cards keep their previous figures and update in place,
+    // so a slow summary call must not hold the pull-to-refresh spinner open.
+    unawaited(context.read<RepBillingSummaryCubit>().load());
     context.read<AssignmentsBloc>().add(LoadAssignmentsRequested(date: now));
     await Future.wait([
       context.read<RepMonthlySalesCubit>().load(now.year, now.month),
@@ -156,6 +161,14 @@ class _SalesRepHomePageState extends State<SalesRepHomePage>
               child: SlideTransition(
                   position: _slide(0.20, 0.70),
                   child: const _DailyPaceRow()),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: FadeTransition(
+              opacity: _fade(0.22, 0.72),
+              child: SlideTransition(
+                  position: _slide(0.22, 0.72),
+                  child: const _MonthSummarySection()),
             ),
           ),
           SliverToBoxAdapter(
@@ -1358,6 +1371,118 @@ class _DailyStat extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── This month's sales summary cards ─────────────────────────────────────────
+// The same cards the supervisor sees on Sales Summary (without the NET SALES
+// breakdown), for the calling rep, 1st of the month → today.
+class _MonthSummarySection extends StatelessWidget {
+  const _MonthSummarySection();
+
+  @override
+  Widget build(BuildContext context) {
+    final name = context.select<AuthBloc, String>(
+      (bloc) => bloc.state is AuthAuthenticated
+          ? (bloc.state as AuthAuthenticated).name
+          : '',
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _SectionLabel("THIS MONTH'S SALES"),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.w),
+          child: BlocBuilder<RepBillingSummaryCubit, RepBillingSummaryState>(
+            builder: (context, state) => switch (state) {
+              RepBillingSummaryLoaded(:final summary) => SalesSummaryCards(
+                  summary: summary,
+                  repName: name.isNotEmpty ? name : 'Sales Rep',
+                ),
+              RepBillingSummaryError() => _SummaryRetry(
+                  onRetry: () => context.read<RepBillingSummaryCubit>().load(),
+                ),
+              _ => const _SummarySkeleton(),
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Placeholder roughly the height of the loaded cards, so the content below
+/// doesn't jump when the data arrives.
+class _SummarySkeleton extends StatelessWidget {
+  const _SummarySkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    Widget block(double h) => Container(
+          height: h,
+          decoration: BoxDecoration(
+            color: AppColors.surfaceVariant.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(16.r),
+          ),
+        );
+    Widget pair() => Row(
+          children: [
+            Expanded(child: block(104.h)),
+            SizedBox(width: 10.w),
+            Expanded(child: block(104.h)),
+          ],
+        );
+    return Column(
+      children: [
+        block(176.h),
+        SizedBox(height: 12.h),
+        pair(),
+        SizedBox(height: 10.h),
+        block(70.h),
+        SizedBox(height: 10.h),
+        pair(),
+        SizedBox(height: 10.h),
+        pair(),
+      ],
+    );
+  }
+}
+
+class _SummaryRetry extends StatelessWidget {
+  const _SummaryRetry({required this.onRetry});
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onRetry,
+      borderRadius: BorderRadius.circular(12.r),
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 16.h, horizontal: 14.w),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.sync_rounded, size: 16.r, color: AppColors.primary),
+            SizedBox(width: 8.w),
+            Expanded(
+              child: Text(
+                "Couldn't load this month's summary. Tap to retry.",
+                style: GoogleFonts.barlowCondensed(
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.foregroundMuted,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
