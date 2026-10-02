@@ -108,24 +108,32 @@ public class SupervisorRepository(AppDbContext context) : ISupervisorRepository
                     Count = g.Count(),
                     TotalAmount = g.Sum(b => b.TotalAmount),
                     TotalDiscount = g.Sum(b => b.TotalDiscount),
+                    FreeCompany = g.Sum(b => b.FreeIssueValueCompany),
+                    FreeDistributor = g.Sum(b => b.FreeIssueValueDistributor),
                 })
                 .ToListAsync(ct);
 
             return grouped
                 .Select(r => new RepBillingStatusGroupRow(
-                    r.RepStatus, r.DistributorStatus, r.Count, r.TotalAmount, r.TotalDiscount))
+                    r.RepStatus, r.DistributorStatus, r.Count, r.TotalAmount, r.TotalDiscount,
+                    r.FreeCompany, r.FreeDistributor))
                 .ToList();
         }
 
         var rows = await query
-            .Select(b => new { b.RepStatus, b.DistributorStatus, b.TotalAmount, b.TotalDiscount })
+            .Select(b => new
+            {
+                b.RepStatus, b.DistributorStatus, b.TotalAmount, b.TotalDiscount,
+                b.FreeIssueValueCompany, b.FreeIssueValueDistributor,
+            })
             .ToListAsync(ct);
 
         return rows
             .GroupBy(b => new { b.RepStatus, b.DistributorStatus })
             .Select(g => new RepBillingStatusGroupRow(
                 g.Key.RepStatus, g.Key.DistributorStatus, g.Count(),
-                g.Sum(b => b.TotalAmount), g.Sum(b => b.TotalDiscount)))
+                g.Sum(b => b.TotalAmount), g.Sum(b => b.TotalDiscount),
+                g.Sum(b => b.FreeIssueValueCompany), g.Sum(b => b.FreeIssueValueDistributor)))
             .ToList();
     }
 

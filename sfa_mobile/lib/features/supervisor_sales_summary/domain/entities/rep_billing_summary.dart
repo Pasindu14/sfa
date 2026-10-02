@@ -20,6 +20,8 @@ class RepBillingSummary extends Equatable {
   final double totalDiscount;
   final double goodReturn;
   final double marketReturn;
+  final double freeIssueCompany;
+  final double freeIssueDistributor;
 
   const RepBillingSummary({
     required this.from,
@@ -35,18 +37,24 @@ class RepBillingSummary extends Equatable {
     required this.totalDiscount,
     required this.goodReturn,
     required this.marketReturn,
+    this.freeIssueCompany = 0.0,
+    this.freeIssueDistributor = 0.0,
   });
 
-  /// Net sales exactly as the rep's bill shows it (NET TOTAL = SALES −
-  /// DISCOUNT − RETURNS, create_bill_state.dart): each bill's TotalAmount,
-  /// summed over approved + pending bills — i.e. [totalBilled].
-  double get netSales => totalBilled;
+  /// Free-issue (FOC) value, company + distributor funded. Not in the bills'
+  /// TotalAmount; it is deducted from the net figure shown on the cards.
+  double get freeIssueTotal => freeIssueCompany + freeIssueDistributor;
 
-  /// Sales before any discount or return, rebuilt from the net. Exact because
-  /// discount and both return buckets are summed over the same approved +
-  /// pending bills, and TotalAmount = gross − TotalDiscount − ReturnValue with
+  /// Sales before any discount, free issue or return. Exact because discount
+  /// and both return buckets are summed over the same approved + pending bills,
+  /// and TotalAmount = gross - TotalDiscount - ReturnValue with
   /// ReturnValue = good (MarketResell) + market (Damage + Expire).
-  double get grossSales => netSales + totalDiscount + goodReturn + marketReturn;
+  double get grossSales => totalBilled + totalDiscount + goodReturn + marketReturn;
+
+  /// What the cards show as net: each bill's TotalAmount summed over approved +
+  /// pending bills ([totalBilled], i.e. gross - discount - returns) less the
+  /// free-issue value.
+  double get netSales => totalBilled - freeIssueTotal;
 
   factory RepBillingSummary.fromJson(Map<String, dynamic> json) {
     double d(String k) => (json[k] as num?)?.toDouble() ?? 0.0;
@@ -65,6 +73,8 @@ class RepBillingSummary extends Equatable {
       totalDiscount: d('totalDiscount'),
       goodReturn: d('goodReturn'),
       marketReturn: d('marketReturn'),
+      freeIssueCompany: d('freeIssueCompany'),
+      freeIssueDistributor: d('freeIssueDistributor'),
     );
   }
 
@@ -83,5 +93,7 @@ class RepBillingSummary extends Equatable {
         totalDiscount,
         goodReturn,
         marketReturn,
+        freeIssueCompany,
+        freeIssueDistributor,
       ];
 }

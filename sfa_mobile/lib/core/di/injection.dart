@@ -121,6 +121,7 @@ import 'package:uswatte/features/sales_rep_target/data/datasources/rep_target_re
 import 'package:uswatte/features/sales_rep_target/data/repositories/rep_target_repository_impl.dart';
 import 'package:uswatte/features/sales_rep_target/domain/repositories/rep_target_repository.dart';
 import 'package:uswatte/features/sales_rep_target/domain/usecases/get_rep_monthly_target_usecase.dart';
+import 'package:uswatte/features/rep_monthly_sales/data/datasources/rep_billing_summary_remote_datasource.dart';
 import 'package:uswatte/features/rep_monthly_sales/data/datasources/rep_monthly_sales_remote_datasource.dart';
 import 'package:uswatte/features/rep_monthly_sales/data/repositories/rep_monthly_sales_repository_impl.dart';
 import 'package:uswatte/features/rep_monthly_sales/domain/repositories/rep_monthly_sales_repository.dart';
@@ -458,6 +459,8 @@ Future<void> configureDependencies() async {
   // ── Rep Monthly Sales ────────────────────────────────────────────────────────
   getIt.registerLazySingleton(
       () => RepMonthlySalesRemoteDatasource(getIt<Dio>()));
+  getIt.registerLazySingleton(
+      () => RepBillingSummaryRemoteDatasource(getIt<Dio>()));
   getIt.registerLazySingleton<RepMonthlySalesRepository>(
     () => RepMonthlySalesRepositoryImpl(getIt<RepMonthlySalesRemoteDatasource>()),
   );

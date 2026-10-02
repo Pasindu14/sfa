@@ -133,6 +133,7 @@ public class SupervisorService(ISupervisorRepository repository, ICacheService c
     {
         int approvedN = 0, pendingN = 0, rejectedN = 0, cancelledN = 0;
         decimal approved = 0m, pending = 0m, discount = 0m;
+        decimal freeCompany = 0m, freeDistributor = 0m;
 
         foreach (var g in groups)
         {
@@ -150,11 +151,15 @@ public class SupervisorService(ISupervisorRepository repository, ICacheService c
                     approvedN += g.Count;
                     approved  += g.TotalAmount;
                     discount  += g.TotalDiscount;
+                    freeCompany     += g.FreeIssueCompany;
+                    freeDistributor += g.FreeIssueDistributor;
                     break;
                 default:
                     pendingN += g.Count;
                     pending  += g.TotalAmount;
                     discount += g.TotalDiscount;
+                    freeCompany     += g.FreeIssueCompany;
+                    freeDistributor += g.FreeIssueDistributor;
                     break;
             }
         }
@@ -172,7 +177,9 @@ public class SupervisorService(ISupervisorRepository repository, ICacheService c
             PendingValue:   pending,
             TotalDiscount:  discount,
             GoodReturn:     returns.GoodReturn,
-            MarketReturn:   returns.MarketReturn);
+            MarketReturn:   returns.MarketReturn,
+            FreeIssueCompany:     freeCompany,
+            FreeIssueDistributor: freeDistributor);
     }
 
     public async Task<SupervisorSummaryDto> GetSummaryAsync(int supervisorId, DateOnly date, CancellationToken ct = default)
