@@ -1460,56 +1460,97 @@ public class BillingService(
         var cached = await _cache.GetAsync<RepMonthlySalesItemwiseDto>(cacheKey, ct);
         if (cached is not null) return cached;
 
-        // Two narrow grouped queries — sequential because they share the scoped DbContext.
-        // Each is index-friendly and runs in single-digit ms.
+        // Two narrow queries — sequential because they share the scoped DbContext.
         var sales   = await _billingRepository.GetRepMonthlySalesByProductAsync(salesRepId, year, month, ct);
         var targets = await _salesTargetRepository.GetByRepAndMonthAsync(salesRepId, year, month, ct);
 
-        var salesByProduct   = sales.ToDictionary(r => r.ProductId);
         var targetsByProduct = targets
             .GroupBy(t => t.ProductId)
             .ToDictionary(g => g.Key, g => g.Sum(x => x.TargetQuantity));
 
-        var productIds = salesByProduct.Keys.Union(targetsByProduct.Keys).ToList();
+        var productIds = sales.Select(r => r.ProductId).Union(targetsByProduct.Keys).ToList();
         var nameMap    = await _productRepository.GetCodeAndNameByIdsAsync(productIds, ct);
+
+        var result = BuildRepMonthlySalesItemwise(year, month, sales, targetsByProduct, nameMap);
+
+        await _cache.SetAsync(cacheKey, result, SalesCacheTtl, ct);
+        return result;
+    }
+
+    /// <summary>
+    /// Pure aggregation (unit-tested). Sold = approved sale packs minus outlet returns, floored at 0;
+    /// pending-approval packs are reported separately and free issue is informational only.
+    /// Achievement is computed from the UNROUNDED case figure — rounding to 1 decimal first skews the %.
+    /// Items with a target come first, laggards first; items sold without a target follow, best sellers first.
+    /// </summary>
+    public static RepMonthlySalesItemwiseDto BuildRepMonthlySalesItemwise(
+        int year, int month,
+        IEnumerable<RepProductSalesRow> sales,
+        IReadOnlyDictionary<int, decimal> targetsByProduct,
+        IReadOnlyDictionary<int, (string Code, string Name, int PacksPerCase)> nameMap)
+    {
+        var salesByProduct = sales.ToDictionary(r => r.ProductId);
+        var productIds     = salesByProduct.Keys.Union(targetsByProduct.Keys).ToList();
+
+        decimal targetedSoldCases = 0m, targetedTargetCases = 0m;
 
         var items = productIds
             .Select(pid =>
             {
-                var soldPacks  = salesByProduct.TryGetValue(pid, out var s)  ? s.Qty    : 0m;
-                var soldAmount = salesByProduct.TryGetValue(pid, out var s2) ? s2.Amount : 0m;
-                var targetQty  = targetsByProduct.TryGetValue(pid, out var t) ? t : 0m;
+                salesByProduct.TryGetValue(pid, out var row);
+                var targetQty = targetsByProduct.TryGetValue(pid, out var t) ? t : 0m;
 
                 var (code, name, packsPerCase) = nameMap.TryGetValue(pid, out var meta)
                     ? meta
                     : ($"#{pid}", $"Product {pid}", 1);
-
-                // Billing quantity is stored in packs; targets are recorded in cases.
-                // Send both — mobile renders "2 CS · 120 PKT" so reps see breakdown and total.
-                // Cases are reported to 1 decimal — half-case breaks matter, quarter-cases don't.
                 var divisor = packsPerCase > 0 ? packsPerCase : 1;
-                var soldQtyCases = Math.Round(soldPacks / divisor, 1);
 
-                var pct = targetQty > 0
-                    ? Math.Round(soldQtyCases / targetQty * 100m, 1)
-                    : 0m;
+                var soldPacks    = Math.Max(0m, (row?.SaleQty ?? 0m) - (row?.ReturnQty ?? 0m));
+                var pendingPacks = Math.Max(0m, row?.PendingNetQty ?? 0m);
+                var soldCases    = soldPacks / divisor;
+
+                var hasTarget = targetQty > 0;
+                if (hasTarget)
+                {
+                    targetedSoldCases   += soldCases;
+                    targetedTargetCases += targetQty;
+                }
 
                 return new RepMonthlySalesItemDto(
-                    pid, code, name, targetQty, soldQtyCases, soldPacks, soldAmount, pct);
+                    ProductId:              pid,
+                    ItemCode:               code,
+                    ItemName:               name,
+                    TargetQuantity:         targetQty,
+                    SoldQuantity:           Math.Round(soldCases, 1),
+                    SoldQuantityPacks:      soldPacks,
+                    SoldAmount:             Math.Max(0m, row?.NetAmount ?? 0m),
+                    AchievementPercent:     hasTarget ? Math.Round(soldCases / targetQty * 100m, 1) : 0m,
+                    ReturnQuantityPacks:    row?.ReturnQty ?? 0m,
+                    FreeIssueQuantityPacks: row?.FreeIssueQty ?? 0m,
+                    PendingQuantityPacks:   pendingPacks,
+                    PendingQuantity:        Math.Round(pendingPacks / divisor, 1),
+                    HasTarget:              hasTarget);
             })
-            .OrderBy(i => i.AchievementPercent)   // laggards first
+            .Where(i => i.HasTarget || i.SoldQuantityPacks > 0 || i.PendingQuantityPacks > 0
+                     || i.ReturnQuantityPacks > 0 || i.FreeIssueQuantityPacks > 0)
+            .OrderByDescending(i => i.HasTarget)
+            .ThenBy(i => i.HasTarget ? i.AchievementPercent : 0m)
+            .ThenByDescending(i => i.SoldQuantityPacks)
             .ThenBy(i => i.ItemName)
             .ToList();
 
-        var result = new RepMonthlySalesItemwiseDto(
+        return new RepMonthlySalesItemwiseDto(
             year, month,
-            TotalTargetQuantity:    items.Sum(i => i.TargetQuantity),
-            TotalSoldQuantity:      items.Sum(i => i.SoldQuantity),
-            TotalSoldQuantityPacks: items.Sum(i => i.SoldQuantityPacks),
-            TotalSoldAmount:        items.Sum(i => i.SoldAmount),
-            Items: items);
-
-        await _cache.SetAsync(cacheKey, result, SalesCacheTtl, ct);
-        return result;
+            TotalTargetQuantity:         items.Sum(i => i.TargetQuantity),
+            TotalSoldQuantity:           items.Sum(i => i.SoldQuantity),
+            TotalSoldQuantityPacks:      items.Sum(i => i.SoldQuantityPacks),
+            TotalSoldAmount:             items.Sum(i => i.SoldAmount),
+            Items:                       items,
+            TotalReturnQuantityPacks:    items.Sum(i => i.ReturnQuantityPacks),
+            TotalFreeIssueQuantityPacks: items.Sum(i => i.FreeIssueQuantityPacks),
+            TotalPendingQuantityPacks:   items.Sum(i => i.PendingQuantityPacks),
+            OverallAchievementPercent:   targetedTargetCases > 0
+                ? Math.Round(targetedSoldCases / targetedTargetCases * 100m, 1)
+                : 0m);
     }
 }

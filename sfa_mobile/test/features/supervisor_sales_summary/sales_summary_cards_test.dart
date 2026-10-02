@@ -62,6 +62,10 @@ void main() {
     // (company-funded 1,250.50 is not deducted).
     expect(find.text('LKR 13,061.05'), findsOneWidget);
     expect(find.text('LKR 1,250.50'), findsNothing);
+    expect(
+        find.text(
+            'Not counted as your sale until the distributor approves the bill.'),
+        findsOneWidget);
     expect(find.text('NET SALES'), findsNothing);
   });
 
