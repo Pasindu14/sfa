@@ -78,7 +78,7 @@ class SalesSummaryCards extends StatelessWidget {
                 icon: Icons.card_giftcard_rounded,
                 label: 'FREE ISSUE',
                 value: fmtLkr(s.freeIssueTotal),
-                caption: 'Company + distributor',
+                caption: 'Distributor-funded',
                 color: AppColors.primary,
               ),
             ),
